@@ -84,6 +84,18 @@ const Signals = () => {
     });
   };
 
+  const handleRemoveSignal = (signalId: number) => {
+    setSignals(prev => prev.filter(signal => signal.id !== signalId));
+    setPerformance(prev => ({
+      ...prev,
+      activeSignals: prev.activeSignals - 1
+    }));
+    toast({
+      title: "Signal Removed",
+      description: "Signal has been removed from your list",
+    });
+  };
+
   const handleRefresh = () => {
     toast({
       title: "Refreshing signals...",
@@ -141,6 +153,7 @@ const Signals = () => {
                 key={signal.id} 
                 signal={signal} 
                 onTakeSignal={handleTakeSignal}
+                onRemoveSignal={handleRemoveSignal}
               />
             ))}
           </div>

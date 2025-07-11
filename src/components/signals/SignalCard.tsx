@@ -10,7 +10,8 @@ import {
   Brain,
   TrendingUp,
   TrendingDown,
-  Clock
+  Clock,
+  X
 } from 'lucide-react';
 
 interface Signal {
@@ -33,9 +34,10 @@ interface Signal {
 interface SignalCardProps {
   signal: Signal;
   onTakeSignal?: (signal: Signal) => void;
+  onRemoveSignal?: (signalId: number) => void;
 }
 
-export const SignalCard: React.FC<SignalCardProps> = ({ signal, onTakeSignal }) => {
+export const SignalCard: React.FC<SignalCardProps> = ({ signal, onTakeSignal, onRemoveSignal }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500/20 border-green-500/30 text-green-400';
@@ -70,7 +72,15 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onTakeSignal }) 
   };
 
   return (
-    <div className="glass-card p-6 hover-glow animate-slide-up">
+    <div className="glass-card p-6 hover-glow animate-slide-up relative">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute top-2 right-2 w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-red-500/20"
+        onClick={() => onRemoveSignal?.(signal.id)}
+      >
+        <X className="w-3 h-3" />
+      </Button>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-4">
           <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
