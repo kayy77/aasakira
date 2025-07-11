@@ -15,99 +15,79 @@ class SmartMoneyAnalyzer {
     }
 
     const candles = marketData.candles;
-    
-    // Get the MOST CURRENT price - use the latest candle's close price
     const latestCandle = candles[candles.length - 1];
     const currentPrice = latestCandle?.close || marketData.currentPrice;
     
     console.log(`📊 Using LATEST CANDLE price: ${currentPrice} for ${marketData.pair} (timestamp: ${new Date(latestCandle.timestamp).toLocaleTimeString()})`);
 
-    // Smart Money Concepts Analysis
+    // ✅ STRICT Smart Money Concept Analysis - ALL conditions must be met
     const bos = this.detectBreakOfStructure(candles);
-    const fvg = this.detectFairValueGap(candles);
+    const fvgOrOrderBlock = this.detectFairValueGapOrOrderBlock(candles, currentPrice);
     const liquiditySweep = this.detectLiquiditySweep(candles);
-    const orderBlock = this.detectOrderBlock(candles);
-    const momentum = this.analyzeMomentum(candles);
     const support = this.detectSupportResistance(candles, currentPrice);
     
-    let confidence = 0;
-    let reason = '';
-    let signalType: 'BUY' | 'SELL' | null = null;
+    console.log(`📋 Confluence Check for ${marketData.pair}:`);
+    console.log(`  ✅ Break of Structure: ${bos.detected ? `YES (${bos.direction})` : 'NO'}`);
+    console.log(`  ✅ FVG/Order Block: ${fvgOrOrderBlock.detected ? 'YES' : 'NO'}`);
+    console.log(`  ✅ Liquidity Sweep: ${liquiditySweep.detected ? 'YES' : 'NO'}`);
+    console.log(`  ✅ Support/Resistance: ${support.atLevel ? 'YES' : 'NO'}`);
     
-    // Calculate confidence based on confluences
-    if (bos.detected) {
-      confidence += 25;
-      reason += 'Break of Structure detected. ';
-      signalType = bos.direction;
-    }
+    // ALL CONDITIONS MUST BE MET for signal generation
+    const allConditionsMet = bos.detected && fvgOrOrderBlock.detected && liquiditySweep.detected && support.atLevel;
     
-    if (fvg.detected) {
-      confidence += 20;
-      reason += 'Fair Value Gap identified. ';
-    }
-    
-    if (liquiditySweep.detected) {
-      confidence += 15;
-      reason += 'Liquidity sweep confirmed. ';
-    }
-    
-    if (orderBlock.detected) {
-      confidence += 25;
-      reason += 'Order block confluence. ';
-    }
-    
-    if (momentum.strong) {
-      confidence += 15;
-      reason += `${momentum.direction} momentum. `;
-      if (!signalType) {
-        signalType = momentum.direction === 'bullish' ? 'BUY' : 'SELL';
-      }
-    }
-
-    if (support.atLevel) {
-      confidence += 10;
-      reason += 'Key level interaction. ';
-    }
-
-    // If no clear direction, determine from price action
-    if (!signalType) {
-      const recentCandles = candles.slice(-5);
-      const avgClose = recentCandles.reduce((sum, c) => sum + c.close, 0) / recentCandles.length;
-      signalType = currentPrice > avgClose ? 'BUY' : 'SELL';
-      confidence += 5; // Minimal confidence for basic direction
-    }
-
-    // Always generate a signal with the best available setup
-    if (signalType && confidence > 0) {
-      const riskRewardRatio = 2.5;
-      const stopLossDistance = this.calculateStopLoss(candles, signalType);
+    if (!allConditionsMet) {
+      const missingConditions = [];
+      if (!bos.detected) missingConditions.push('Break of Structure');
+      if (!fvgOrOrderBlock.detected) missingConditions.push('FVG/Order Block');
+      if (!liquiditySweep.detected) missingConditions.push('Liquidity Sweep');
+      if (!support.atLevel) missingConditions.push('Support/Resistance');
       
-      const signal = {
-        id: Date.now(),
-        pair: marketData.pair,
-        type: signalType,
-        confidence,
-        entry: Number(currentPrice.toFixed(marketData.pair.includes('JPY') ? 2 : 4)), // Use EXACT current price
-        stopLoss: signalType === 'BUY' 
-          ? Number((currentPrice - stopLossDistance).toFixed(marketData.pair.includes('JPY') ? 2 : 4))
-          : Number((currentPrice + stopLossDistance).toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
-        takeProfit: signalType === 'BUY' 
-          ? Number((currentPrice + (stopLossDistance * riskRewardRatio)).toFixed(marketData.pair.includes('JPY') ? 2 : 4))
-          : Number((currentPrice - (stopLossDistance * riskRewardRatio)).toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
-        status: confidence >= 75 ? 'active' as const : 'monitoring' as const,
-        timestamp: new Date().toISOString(),
-        timeframe: 'H1',
-        risk: confidence > 70 ? 'Low' as const : confidence > 40 ? 'Medium' as const : 'High' as const,
-        analysis: `${confidence >= 75 ? 'High-probability' : 'Moderate'} ${signalType} setup with ${confidence}% confidence using live market data`,
-        reason: reason.trim() || 'Basic price action setup'
+      console.log(`❌ Missing confluences: ${missingConditions.join(', ')}`);
+      return { 
+        signal: null, 
+        confidence: 0, 
+        reason: `Missing confluences: ${missingConditions.join(', ')}` 
       };
-
-      console.log(`✅ SIGNAL GENERATED: ${signalType} ${marketData.pair} @ ${currentPrice} (${confidence}% confidence)`);
-      return { signal, confidence, reason };
     }
+    
+    // Calculate proper risk:reward ratio
+    const stopLossDistance = this.calculateStopLoss(candles, bos.direction);
+    const riskRewardRatio = 2.1; // Minimum 2:1 R:R
+    
+    // Verify R:R is adequate
+    if (stopLossDistance <= 0) {
+      return { signal: null, confidence: 0, reason: 'Invalid stop loss calculation' };
+    }
+    
+    const signal = {
+      id: Date.now(),
+      pair: marketData.pair,
+      type: bos.direction,
+      confidence: 85, // High confidence when all confluences align
+      entry: Number(currentPrice.toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
+      stopLoss: bos.direction === 'BUY' 
+        ? Number((currentPrice - stopLossDistance).toFixed(marketData.pair.includes('JPY') ? 2 : 4))
+        : Number((currentPrice + stopLossDistance).toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
+      takeProfit: bos.direction === 'BUY' 
+        ? Number((currentPrice + (stopLossDistance * riskRewardRatio)).toFixed(marketData.pair.includes('JPY') ? 2 : 4))
+        : Number((currentPrice - (stopLossDistance * riskRewardRatio)).toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
+      status: 'active' as const,
+      timestamp: new Date().toISOString(),
+      timeframe: 'M15',
+      risk: 'Low' as const,
+      analysis: `High-probability ${bos.direction} setup with full Smart Money confluence`,
+      reason: `Liquidity sweep + ${fvgOrOrderBlock.type} tap after BoS`
+    };
 
-    console.log(`❌ No signal: ${marketData.pair} insufficient setup`);
-    return { signal: null, confidence: 0, reason: 'No viable setup found' };
+    console.log(`🎯 PERFECT SETUP FOUND: ${bos.direction} ${marketData.pair} @ ${currentPrice}`);
+    console.log(`   Entry: ${signal.entry} | SL: ${signal.stopLoss} | TP: ${signal.takeProfit}`);
+    console.log(`   R:R: ${riskRewardRatio}:1 | Risk: ${stopLossDistance.toFixed(4)}`);
+    
+    return { 
+      signal, 
+      confidence: 85, 
+      reason: `Liquidity sweep + ${fvgOrOrderBlock.type} tap after BoS` 
+    };
   }
 
   private detectBreakOfStructure(candles: CandleData[]): { detected: boolean; direction: 'BUY' | 'SELL' } {
@@ -178,6 +158,35 @@ class SmartMoneyAnalyzer {
     const sweepLow = lastCandle.low < minPrevLow && lastCandle.close > minPrevLow;
     
     return { detected: sweepHigh || sweepLow };
+  }
+
+  private detectFairValueGapOrOrderBlock(candles: CandleData[], currentPrice: number): { detected: boolean; type: string } {
+    if (candles.length < 6) return { detected: false, type: '' };
+    
+    // Check for Fair Value Gap first
+    const fvg = this.detectFairValueGap(candles);
+    if (fvg.detected) {
+      return { detected: true, type: 'FVG' };
+    }
+    
+    // Check for Order Block
+    const recent = candles.slice(-6);
+    for (const candle of recent) {
+      const bodySize = Math.abs(candle.close - candle.open);
+      const totalSize = candle.high - candle.low;
+      
+      // Strong body relative to total range (> 70%) and price near this level
+      if (bodySize / totalSize > 0.7) {
+        const candleMidpoint = (candle.high + candle.low) / 2;
+        const tolerance = currentPrice * 0.002; // 0.2% tolerance
+        
+        if (Math.abs(currentPrice - candleMidpoint) < tolerance) {
+          return { detected: true, type: 'Order Block' };
+        }
+      }
+    }
+    
+    return { detected: false, type: '' };
   }
 
   private detectOrderBlock(candles: CandleData[]): { detected: boolean } {
