@@ -21,7 +21,7 @@ class SignalService {
   private signals: Signal[] = [];
   private lastUpdate: number = 0;
   private readonly UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes for more frequent updates
-  private readonly MAJOR_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'GBPJPY', 'AUDUSD', 'XAUUSD'];
+  private readonly MAJOR_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'GBPJPY', 'AUDUSD', 'USDCAD', 'XAUUSD', 'NZDUSD', 'EURGBP', 'EURJPY'];
 
   async generateLiveSignal(): Promise<Signal | null> {
     console.log('🔍 Scanning ALL major pairs for BEST available opportunity...');
