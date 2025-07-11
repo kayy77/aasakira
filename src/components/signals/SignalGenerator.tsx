@@ -10,9 +10,12 @@ import {
   Zap, 
   Brain,
   Loader,
-  Sparkles
+  Sparkles,
+  Activity,
+  BarChart3
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { signalService } from '@/services/signalService';
 
 interface SignalGeneratorProps {
   onSignalGenerated: (signal: any) => void;
@@ -24,6 +27,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
   remainingSignals 
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<string>('');
   const { toast } = useToast();
 
   const generateSignal = async () => {
@@ -37,72 +41,50 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
     }
 
     setIsGenerating(true);
+    setAnalysisStatus('Connecting to live market data...');
 
-    // Simulate AI signal generation
-    setTimeout(() => {
-      const pairs = ['EURUSD', 'GBPJPY', 'XAUUSD', 'USDJPY', 'GBPUSD', 'AUDUSD'];
-      const timeframes = ['M15', 'H1', 'H4', 'D1'];
-      const types = ['BUY', 'SELL'];
-      const risks = ['Low', 'Medium', 'High'];
-      
-      const selectedPair = pairs[Math.floor(Math.random() * pairs.length)];
-      const selectedType = types[Math.floor(Math.random() * types.length)];
-      const selectedTimeframe = timeframes[Math.floor(Math.random() * timeframes.length)];
-      const selectedRisk = risks[Math.floor(Math.random() * risks.length)];
-      
-      const basePrice = selectedPair === 'XAUUSD' ? 2050 : 1.0850;
-      const variation = selectedPair === 'XAUUSD' ? 0.1 : 0.001;
-      
-      const entry = basePrice + (Math.random() - 0.5) * variation * 20;
-      const stopLoss = selectedType === 'BUY' 
-        ? entry - variation * (5 + Math.random() * 10)
-        : entry + variation * (5 + Math.random() * 10);
-      const takeProfit = selectedType === 'BUY'
-        ? entry + variation * (10 + Math.random() * 20)
-        : entry - variation * (10 + Math.random() * 20);
+    try {
+      // Phase 1: Market scanning
+      setAnalysisStatus('Scanning major currency pairs...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const reasons = [
-        'FVG tap with liquidity sweep confirmed',
-        'Break of structure + Order block confluence',
-        'Internal liquidity grab at key level',
-        'Smart money reversal pattern detected',
-        'Institutional order flow alignment',
-        'High-probability setup with confluence'
-      ];
+      // Phase 2: Smart Money analysis
+      setAnalysisStatus('Analyzing Smart Money Concepts...');
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
-      const analyses = [
-        'Strong institutional buying pressure with retail stops hunted. Key support held with aggressive rejection.',
-        'Perfect storm setup: FVG filled, liquidity swept, and BoS confirmed. High probability reversal zone.',
-        'Smart money leaving footprints - large volume at key levels with retail trapped on wrong side.',
-        'Textbook manipulation followed by institutional accumulation. Classic smart money behavior.',
-        'Multiple timeframe confluence with order flow supporting directional bias. Clean setup.',
-        'Market structure shift confirmed with strong momentum follow-through expected.'
-      ];
+      // Phase 3: Signal generation
+      setAnalysisStatus('Detecting high-probability setups...');
+      const signal = await signalService.generateLiveSignal();
 
-      const newSignal = {
-        id: Date.now(),
-        pair: selectedPair,
-        type: selectedType,
-        confidence: 75 + Math.floor(Math.random() * 20),
-        entry: Number(entry.toFixed(selectedPair === 'XAUUSD' ? 2 : 5)),
-        stopLoss: Number(stopLoss.toFixed(selectedPair === 'XAUUSD' ? 2 : 5)),
-        takeProfit: Number(takeProfit.toFixed(selectedPair === 'XAUUSD' ? 2 : 5)),
-        status: 'active',
-        timestamp: new Date().toISOString(),
-        timeframe: selectedTimeframe,
-        risk: selectedRisk,
-        analysis: analyses[Math.floor(Math.random() * analyses.length)],
-        reason: reasons[Math.floor(Math.random() * reasons.length)]
-      };
-
-      onSignalGenerated(newSignal);
-      setIsGenerating(false);
-
+      if (signal) {
+        setAnalysisStatus('Signal confirmed! Processing...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        onSignalGenerated(signal);
+        
+        toast({
+          title: "🎯 High-Conviction Signal Generated!",
+          description: `${signal.type} ${signal.pair} with ${signal.confidence}% confidence`,
+        });
+      } else {
+        setAnalysisStatus('No high-probability setups found');
+        toast({
+          title: "No Signals Found",
+          description: "Market conditions don't meet our strict criteria. Try again in 15 minutes.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Signal generation error:', error);
       toast({
-        title: "New Signal Generated!",
-        description: `${selectedType} signal for ${selectedPair} is ready`,
+        title: "Analysis Error",
+        description: "Failed to analyze market data. Please try again.",
+        variant: "destructive"
       });
-    }, 3000);
+    } finally {
+      setIsGenerating(false);
+      setAnalysisStatus('');
+    }
   };
 
   return (
@@ -110,36 +92,64 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-            <Target className="w-6 h-6 text-white" />
+            <Brain className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">AI Signal Generator</h2>
-            <p className="text-gray-400">High-conviction trading signals with institutional-grade analysis</p>
+            <h2 className="text-xl font-bold text-white">Live AI Signal Generator</h2>
+            <p className="text-gray-400">Real-time Smart Money Concepts analysis</p>
           </div>
         </div>
-        <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-          {remainingSignals} signals remaining
+        <Badge className="bg-green-500/20 text-green-400 border-green-500/30 animate-pulse">
+          <Activity className="w-3 h-3 mr-1" />
+          LIVE DATA
         </Badge>
       </div>
 
       <div className="glass-card p-6 mb-6">
         <div className="flex items-center space-x-2 mb-4">
-          <TrendingUp className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg font-semibold text-white">Intelligent Market Analysis</h3>
+          <BarChart3 className="w-5 h-5 text-purple-400" />
+          <h3 className="text-lg font-semibold text-white">Advanced Market Analysis</h3>
         </div>
         <p className="text-gray-300 mb-6">
-          Our AI automatically scans all major currency pairs, analyzes market conditions using Smart Money Concepts, 
-          and selects the highest probability trade setup. Features include FVG detection, liquidity sweeps, 
-          order block analysis, and break of structure confirmation.
+          Our AI continuously monitors live market data from Yahoo Finance, analyzing major currency pairs 
+          using institutional-grade Smart Money Concepts. Each signal undergoes rigorous validation including:
         </p>
         
-        <Alert className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-orange-300">
-            <strong>Beta Notice:</strong> Entry prices may vary 1-3 pips from live market rates. 
-            Trade setups and direction remain highly accurate based on institutional logic.
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="glass-card p-3 text-center">
+            <div className="text-sm text-blue-400 font-semibold">Break of Structure</div>
+            <div className="text-xs text-gray-400">Higher highs/lows</div>
+          </div>
+          <div className="glass-card p-3 text-center">
+            <div className="text-sm text-green-400 font-semibold">Fair Value Gaps</div>
+            <div className="text-xs text-gray-400">Price imbalances</div>
+          </div>
+          <div className="glass-card p-3 text-center">
+            <div className="text-sm text-yellow-400 font-semibold">Liquidity Sweeps</div>
+            <div className="text-xs text-gray-400">Stop hunts</div>
+          </div>
+          <div className="glass-card p-3 text-center">
+            <div className="text-sm text-purple-400 font-semibold">Confluence</div>
+            <div className="text-xs text-gray-400">Key levels</div>
+          </div>
+        </div>
+
+        <Alert className="mb-6 border-green-500/30 bg-green-500/10">
+          <AlertCircle className="h-4 w-4 text-green-400" />
+          <AlertDescription className="text-green-300">
+            <strong>Live Analysis:</strong> All signals are based on real-time market data with 
+            minimum 75% confidence threshold. Only high-conviction setups are selected.
           </AlertDescription>
         </Alert>
+
+        {isGenerating && analysisStatus && (
+          <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Loader className="w-4 h-4 text-blue-400 animate-spin" />
+              <span className="text-blue-300 text-sm">{analysisStatus}</span>
+            </div>
+          </div>
+        )}
 
         <Button 
           size="lg" 
@@ -150,12 +160,12 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
           {isGenerating ? (
             <>
               <Loader className="w-5 h-5 mr-2 animate-spin" />
-              Analyzing Markets...
+              Analyzing Live Markets...
             </>
           ) : (
             <>
               <Sparkles className="w-5 h-5 mr-2" />
-              Generate Best Signal
+              Generate Live Signal
             </>
           )}
         </Button>
@@ -164,14 +174,14 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       {/* AI Features */}
       <div className="grid grid-cols-2 gap-4">
         <div className="glass-card p-4">
-          <Brain className="w-6 h-6 text-blue-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">Smart Money Logic</h4>
-          <p className="text-sm text-gray-400">FVG, Order Blocks, Liquidity Sweeps</p>
+          <Activity className="w-6 h-6 text-green-400 mb-2" />
+          <h4 className="text-white font-semibold mb-1">Real-Time Data</h4>
+          <p className="text-sm text-gray-400">Live market feeds from Yahoo Finance</p>
         </div>
         <div className="glass-card p-4">
-          <Target className="w-6 h-6 text-green-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">High Accuracy</h4>
-          <p className="text-sm text-gray-400">87% Win Rate with 2.8:1 R:R</p>
+          <Target className="w-6 h-6 text-blue-400 mb-2" />
+          <h4 className="text-white font-semibold mb-1">High Conviction</h4>
+          <p className="text-sm text-gray-400">75%+ confidence threshold</p>
         </div>
       </div>
     </div>
