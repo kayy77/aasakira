@@ -17,46 +17,58 @@ interface MarketData {
 class MarketDataService {
   private cache = new Map<string, { data: MarketData; timestamp: number }>();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private readonly API_KEY = 'd0vu8r9r01qkepd2ihl0d0vu8r9r01qkepd2ihlg';
 
   async fetchMarketData(pair: string): Promise<MarketData> {
     const cacheKey = pair;
     const cached = this.cache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      console.log(`📦 Using cached data for ${pair}`);
       return cached.data;
     }
 
     try {
-      // Convert pair format for Yahoo Finance (e.g., EURUSD -> EURUSD=X)
-      const yahooSymbol = this.convertToYahooSymbol(pair);
-      const response = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=5m&range=1d`,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        }
-      );
+      console.log(`🔄 Fetching live data for ${pair} from Finnhub...`);
+      
+      // Convert pair format for Finnhub (e.g., EURUSD -> EUR_USD)
+      const finnhubSymbol = this.convertToFinnhubSymbol(pair);
+      const now = Math.floor(Date.now() / 1000);
+      const from = now - (5 * 60 * 100); // Last 100 candles of 5min data
+      
+      const url = `https://finnhub.io/api/v1/forex/candle?symbol=OANDA:${finnhubSymbol}&resolution=5&from=${from}&to=${now}&token=${this.API_KEY}`;
+      
+      console.log(`📡 Finnhub URL: ${url}`);
+      
+      const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch data: ${response.statusText}`);
+        throw new Error(`Finnhub API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      const result = data.chart.result[0];
+      console.log(`📊 Finnhub response status: ${data.s}`);
       
-      if (!result || !result.timestamp || !result.indicators.quote[0]) {
-        throw new Error('Invalid data structure from Yahoo Finance');
+      if (data.s !== 'ok') {
+        console.error('Finnhub error response:', data);
+        throw new Error(`Finnhub returned status: ${data.s}`);
       }
 
-      const candles: CandleData[] = result.timestamp.map((timestamp: number, index: number) => ({
-        timestamp: timestamp * 1000,
-        open: result.indicators.quote[0].open[index] || 0,
-        high: result.indicators.quote[0].high[index] || 0,
-        low: result.indicators.quote[0].low[index] || 0,
-        close: result.indicators.quote[0].close[index] || 0,
-        volume: result.indicators.quote[0].volume?.[index] || 0
+      if (!data.t || !data.o || !data.h || !data.l || !data.c) {
+        throw new Error('Invalid data structure from Finnhub');
+      }
+
+      const candles: CandleData[] = data.t.map((timestamp: number, index: number) => ({
+        timestamp: timestamp * 1000, // Convert to milliseconds
+        open: data.o[index],
+        high: data.h[index],
+        low: data.l[index],
+        close: data.c[index],
+        volume: data.v?.[index] || 0 // Volume might not be available for forex
       })).filter(candle => candle.open > 0); // Filter out invalid candles
+
+      console.log(`✅ Received ${candles.length} live candles for ${pair}`);
+      console.log(`📈 Latest candle: Open ${candles[candles.length - 1]?.open}, Close ${candles[candles.length - 1]?.close}`);
 
       const marketData: MarketData = {
         pair,
@@ -67,28 +79,72 @@ class MarketDataService {
       this.cache.set(cacheKey, { data: marketData, timestamp: Date.now() });
       return marketData;
     } catch (error) {
-      console.error(`Error fetching market data for ${pair}:`, error);
+      console.error(`❌ Error fetching live data for ${pair}:`, error);
+      console.log(`🔄 Falling back to mock data for ${pair}`);
       // Return mock data as fallback
       return this.generateMockData(pair);
     }
   }
 
-  private convertToYahooSymbol(pair: string): string {
+  private convertToFinnhubSymbol(pair: string): string {
     const forexPairs: { [key: string]: string } = {
-      'EURUSD': 'EURUSD=X',
-      'GBPUSD': 'GBPUSD=X',
-      'USDJPY': 'USDJPY=X',
-      'GBPJPY': 'GBPJPY=X',
-      'AUDUSD': 'AUDUSD=X',
-      'USDCAD': 'USDCAD=X',
-      'XAUUSD': 'GC=F', // Gold futures
-      'BTCUSD': 'BTC-USD'
+      'EURUSD': 'EUR_USD',
+      'GBPUSD': 'GBP_USD', 
+      'USDJPY': 'USD_JPY',
+      'GBPJPY': 'GBP_JPY',
+      'AUDUSD': 'AUD_USD',
+      'USDCAD': 'USD_CAD',
+      'XAUUSD': 'XAU_USD', // Gold
+      'BTCUSD': 'BTC_USD'  // Bitcoin (if supported)
     };
     
-    return forexPairs[pair] || `${pair}=X`;
+    return forexPairs[pair] || pair.replace(/(.{3})(.{3})/, '$1_$2');
+  }
+
+  // Debug method to test API connection
+  async debugApiConnection(pair: string = 'EURUSD'): Promise<void> {
+    console.log('🔍 DEBUG: Testing Finnhub API connection...');
+    console.log(`🔑 API Key: ${this.API_KEY.substring(0, 8)}...`);
+    
+    const finnhubSymbol = this.convertToFinnhubSymbol(pair);
+    const now = Math.floor(Date.now() / 1000);
+    const from = now - (5 * 60 * 20); // Last 20 candles
+    
+    const url = `https://finnhub.io/api/v1/forex/candle?symbol=OANDA:${finnhubSymbol}&resolution=5&from=${from}&to=${now}&token=${this.API_KEY}`;
+    
+    console.log(`🌐 Test URL: ${url}`);
+    
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      console.log('📊 Raw Finnhub Response:', {
+        status: data.s,
+        candleCount: data.t?.length || 0,
+        firstCandle: data.t?.[0] ? {
+          time: new Date(data.t[0] * 1000).toISOString(),
+          open: data.o?.[0],
+          close: data.c?.[0]
+        } : null,
+        lastCandle: data.t?.length > 0 ? {
+          time: new Date(data.t[data.t.length - 1] * 1000).toISOString(),
+          open: data.o?.[data.o.length - 1],
+          close: data.c?.[data.c.length - 1]
+        } : null
+      });
+      
+      if (data.s === 'ok') {
+        console.log('✅ Finnhub API connection successful!');
+      } else {
+        console.log('❌ Finnhub API returned error status:', data.s);
+      }
+    } catch (error) {
+      console.error('❌ Failed to connect to Finnhub API:', error);
+    }
   }
 
   private generateMockData(pair: string): MarketData {
+    console.log(`⚠️ Generating mock data for ${pair} - API might be down`);
     const basePrice = pair === 'XAUUSD' ? 2050 : 1.0850;
     const candles: CandleData[] = [];
     let currentPrice = basePrice;
