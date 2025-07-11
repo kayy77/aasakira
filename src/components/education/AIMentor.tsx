@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
-import { Send, Bot, User, Lightbulb, BookOpen, Target, TrendingUp, BarChart3, Zap } from 'lucide-react';
+import { Send, Bot, User, Lightbulb, BookOpen, Target, TrendingUp, BarChart3, Zap, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
 
 interface Message {
   id: string;
@@ -13,6 +13,7 @@ interface Message {
 }
 
 const AIMentor = () => {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -117,6 +118,18 @@ const AIMentor = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 p-6">
+      {/* Header with Back Button */}
+      <div className="max-w-7xl mx-auto mb-6">
+        <Button
+          onClick={() => navigate('/')}
+          variant="outline"
+          className="flex items-center space-x-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Home</span>
+        </Button>
+      </div>
+
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Start Section */}
         <div className="space-y-6">
