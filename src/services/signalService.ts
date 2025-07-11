@@ -1,4 +1,3 @@
-
 import { marketDataService } from './marketDataService';
 import { smartMoneyAnalyzer } from './smartMoneyAnalyzer';
 
@@ -21,38 +20,46 @@ interface Signal {
 class SignalService {
   private signals: Signal[] = [];
   private lastUpdate: number = 0;
-  private readonly UPDATE_INTERVAL = 15 * 60 * 1000; // 15 minutes
+  private readonly UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes for more frequent updates
   private readonly MAJOR_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'GBPJPY', 'AUDUSD', 'XAUUSD'];
 
   async generateLiveSignal(): Promise<Signal | null> {
-    console.log('🔍 Scanning markets for high-probability signals...');
+    console.log('🔍 Scanning ALL major pairs for BEST available opportunity...');
     
-    // Analyze all major pairs
+    let bestSignal: Signal | null = null;
+    let highestConfidence = 0;
+    
+    // Analyze all major pairs and find the best one
     for (const pair of this.MAJOR_PAIRS) {
       try {
-        console.log(`📊 Analyzing ${pair}...`);
+        console.log(`📊 Analyzing ${pair} for opportunities...`);
         const marketData = await marketDataService.fetchMarketData(pair);
         const analysis = smartMoneyAnalyzer.analyzeForSignal(marketData);
         
-        if (analysis.signal && analysis.confidence >= 75) {
-          console.log(`✅ High-conviction signal found for ${pair} (${analysis.confidence}% confidence)`);
-          const signal = {
+        console.log(`${pair}: ${analysis.confidence}% confidence - ${analysis.reason}`);
+        
+        // Keep track of the highest confidence signal regardless of threshold
+        if (analysis.signal && analysis.confidence > highestConfidence) {
+          highestConfidence = analysis.confidence;
+          bestSignal = {
             ...analysis.signal,
             confidence: analysis.confidence
           };
-          
-          this.signals.unshift(signal);
-          this.lastUpdate = Date.now();
-          return signal;
-        } else {
-          console.log(`❌ ${pair}: No high-probability setup (${analysis.confidence}% confidence)`);
+          console.log(`🎯 NEW BEST: ${pair} with ${analysis.confidence}% confidence`);
         }
       } catch (error) {
         console.error(`Error analyzing ${pair}:`, error);
       }
     }
     
-    console.log('⏰ No high-conviction signals found. Will retry in 15 minutes...');
+    if (bestSignal) {
+      console.log(`✅ BEST OPPORTUNITY FOUND: ${bestSignal.type} ${bestSignal.pair} @ ${bestSignal.entry} (${bestSignal.confidence}% confidence)`);
+      this.signals.unshift(bestSignal);
+      this.lastUpdate = Date.now();
+      return bestSignal;
+    }
+    
+    console.log('❌ No viable opportunities found across all major pairs');
     return null;
   }
 

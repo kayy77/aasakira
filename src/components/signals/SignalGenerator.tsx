@@ -47,32 +47,34 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
 
     try {
       // Phase 1: Market scanning with multi-API
-      setAnalysisStatus('📡 Scanning EURUSD via Finnhub → Twelve Data → Polygon → Alpha Vantage...');
+      setAnalysisStatus('📡 Scanning ALL major pairs for BEST opportunity...');
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Phase 2: Live price validation
-      setAnalysisStatus('💰 Validating LIVE prices and market structure...');
+      setAnalysisStatus('💰 Validating LIVE prices across all markets...');
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Phase 3: Smart Money analysis
-      setAnalysisStatus('🧠 Analyzing Smart Money Concepts on LIVE data...');
+      // Phase 3: Find best opportunity
+      setAnalysisStatus('🧠 Finding BEST available setup (any confidence level)...');
       const signal = await signalService.generateLiveSignal();
 
       if (signal) {
-        setAnalysisStatus('✅ High-conviction signal detected! Processing...');
+        setAnalysisStatus('✅ Best market opportunity detected! Processing...');
         await new Promise(resolve => setTimeout(resolve, 500));
         
         onSignalGenerated(signal);
         
+        const confidenceLevel = signal.confidence >= 75 ? 'HIGH' : signal.confidence >= 50 ? 'MEDIUM' : 'LOW';
+        
         toast({
-          title: "🎯 LIVE Signal Generated!",
-          description: `${signal.type} ${signal.pair} @ ${signal.entry} (${signal.confidence}% confidence)`,
+          title: `🎯 BEST Opportunity Found!`,
+          description: `${signal.type} ${signal.pair} @ ${signal.entry} (${signal.confidence}% - ${confidenceLevel} confidence)`,
         });
       } else {
-        setAnalysisStatus('❌ No high-probability setups found');
+        setAnalysisStatus('❌ No viable opportunities found');
         toast({
-          title: "No Live Signals",
-          description: "Current market conditions don't meet our 75%+ confidence threshold",
+          title: "No Opportunities",
+          description: "No viable setups found across all major pairs",
           variant: "destructive"
         });
       }
@@ -119,18 +121,18 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             <Brain className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">Multi-API Live Signal Generator</h2>
-            <p className="text-gray-400">4-API failover system ensures 99.9% uptime</p>
+            <h2 className="text-xl font-bold text-white">Best Opportunity Scanner</h2>
+            <p className="text-gray-400">Finds the highest probability setup across all major pairs</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
           <Badge className="bg-green-500/20 text-green-400 border-green-500/30 animate-pulse">
             <Activity className="w-3 h-3 mr-1" />
-            LIVE MULTI-API
+            LIVE SCANNING
           </Badge>
           <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
             <BarChart3 className="w-3 h-3 mr-1" />
-            4 PROVIDERS
+            BEST SETUP
           </Badge>
         </div>
       </div>
@@ -160,11 +162,11 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
           </div>
         </div>
 
-        <Alert className="mb-6 border-green-500/30 bg-green-500/10">
-          <AlertCircle className="h-4 w-4 text-green-400" />
-          <AlertDescription className="text-green-300">
-            <strong>LIVE ACCURACY:</strong> Multi-API system ensures signals use current market prices. 
-            All entries, SL, and TP levels are calculated from real-time data with 75%+ confidence.
+        <Alert className="mb-6 border-orange-500/30 bg-orange-500/10">
+          <AlertCircle className="h-4 w-4 text-orange-400" />
+          <AlertDescription className="text-orange-300">
+            <strong>BEST OPPORTUNITY MODE:</strong> Scanner finds the highest confidence setup available across all major pairs, 
+            regardless of confidence threshold. Entry prices are synchronized with live market data.
           </AlertDescription>
         </Alert>
 
@@ -187,12 +189,12 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             {isGenerating ? (
               <>
                 <Loader className="w-5 h-5 mr-2 animate-spin" />
-                Analyzing Live Markets...
+                Scanning Markets...
               </>
             ) : (
               <>
                 <Sparkles className="w-5 h-5 mr-2" />
-                Generate LIVE Signal
+                Find Best Opportunity
               </>
             )}
           </Button>
@@ -223,13 +225,13 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       <div className="grid grid-cols-2 gap-4">
         <div className="glass-card p-4">
           <Activity className="w-6 h-6 text-green-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">Live Data Feed</h4>
-          <p className="text-sm text-gray-400">Real-time price validation</p>
+          <h4 className="text-white font-semibold mb-1">Live Price Sync</h4>
+          <p className="text-sm text-gray-400">Real-time price matching</p>
         </div>
         <div className="glass-card p-4">
           <Target className="w-6 h-6 text-purple-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">Multi-API Failover</h4>
-          <p className="text-sm text-gray-400">99.9% uptime guaranteed</p>
+          <h4 className="text-white font-semibold mb-1">Best Setup Scanner</h4>
+          <p className="text-sm text-gray-400">Always finds opportunities</p>
         </div>
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 import type { MarketData, CandleData } from './marketDataService';
 
 interface SignalAnalysis {
@@ -16,19 +15,20 @@ class SmartMoneyAnalyzer {
     }
 
     const candles = marketData.candles;
-    const currentPrice = marketData.currentPrice;
     
-    // Ensure we're using the ACTUAL current price from live data
-    const lastCandle = candles[candles.length - 1];
-    const actualCurrentPrice = lastCandle?.close || currentPrice;
+    // Get the MOST CURRENT price - use the latest candle's close price
+    const latestCandle = candles[candles.length - 1];
+    const currentPrice = latestCandle?.close || marketData.currentPrice;
     
-    console.log(`📊 Using LIVE price: ${actualCurrentPrice} for ${marketData.pair}`);
+    console.log(`📊 Using LATEST CANDLE price: ${currentPrice} for ${marketData.pair} (timestamp: ${new Date(latestCandle.timestamp).toLocaleTimeString()})`);
 
     // Smart Money Concepts Analysis
     const bos = this.detectBreakOfStructure(candles);
     const fvg = this.detectFairValueGap(candles);
     const liquiditySweep = this.detectLiquiditySweep(candles);
     const orderBlock = this.detectOrderBlock(candles);
+    const momentum = this.analyzeMomentum(candles);
+    const support = this.detectSupportResistance(candles, currentPrice);
     
     let confidence = 0;
     let reason = '';
@@ -56,15 +56,29 @@ class SmartMoneyAnalyzer {
       reason += 'Order block confluence. ';
     }
     
-    // Add momentum analysis
-    const momentum = this.analyzeMomentum(candles);
     if (momentum.strong) {
       confidence += 15;
       reason += `${momentum.direction} momentum. `;
+      if (!signalType) {
+        signalType = momentum.direction === 'bullish' ? 'BUY' : 'SELL';
+      }
     }
 
-    // Only generate signal if confidence >= 75%
-    if (confidence >= 75 && signalType) {
+    if (support.atLevel) {
+      confidence += 10;
+      reason += 'Key level interaction. ';
+    }
+
+    // If no clear direction, determine from price action
+    if (!signalType) {
+      const recentCandles = candles.slice(-5);
+      const avgClose = recentCandles.reduce((sum, c) => sum + c.close, 0) / recentCandles.length;
+      signalType = currentPrice > avgClose ? 'BUY' : 'SELL';
+      confidence += 5; // Minimal confidence for basic direction
+    }
+
+    // Always generate a signal with the best available setup
+    if (signalType && confidence > 0) {
       const riskRewardRatio = 2.5;
       const stopLossDistance = this.calculateStopLoss(candles, signalType);
       
@@ -73,27 +87,27 @@ class SmartMoneyAnalyzer {
         pair: marketData.pair,
         type: signalType,
         confidence,
-        entry: actualCurrentPrice, // Use ACTUAL live price
+        entry: Number(currentPrice.toFixed(marketData.pair.includes('JPY') ? 2 : 4)), // Use EXACT current price
         stopLoss: signalType === 'BUY' 
-          ? actualCurrentPrice - stopLossDistance 
-          : actualCurrentPrice + stopLossDistance,
+          ? Number((currentPrice - stopLossDistance).toFixed(marketData.pair.includes('JPY') ? 2 : 4))
+          : Number((currentPrice + stopLossDistance).toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
         takeProfit: signalType === 'BUY' 
-          ? actualCurrentPrice + (stopLossDistance * riskRewardRatio)
-          : actualCurrentPrice - (stopLossDistance * riskRewardRatio),
-        status: 'active' as const,
+          ? Number((currentPrice + (stopLossDistance * riskRewardRatio)).toFixed(marketData.pair.includes('JPY') ? 2 : 4))
+          : Number((currentPrice - (stopLossDistance * riskRewardRatio)).toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
+        status: confidence >= 75 ? 'active' as const : 'monitoring' as const,
         timestamp: new Date().toISOString(),
         timeframe: 'H1',
-        risk: confidence > 85 ? 'Low' as const : confidence > 75 ? 'Medium' as const : 'High' as const,
-        analysis: `High-probability ${signalType} setup with ${confidence}% confidence using live market data`,
-        reason: reason.trim()
+        risk: confidence > 70 ? 'Low' as const : confidence > 40 ? 'Medium' as const : 'High' as const,
+        analysis: `${confidence >= 75 ? 'High-probability' : 'Moderate'} ${signalType} setup with ${confidence}% confidence using live market data`,
+        reason: reason.trim() || 'Basic price action setup'
       };
 
-      console.log(`✅ LIVE SIGNAL GENERATED: ${signalType} ${marketData.pair} @ ${actualCurrentPrice}`);
+      console.log(`✅ SIGNAL GENERATED: ${signalType} ${marketData.pair} @ ${currentPrice} (${confidence}% confidence)`);
       return { signal, confidence, reason };
     }
 
-    console.log(`❌ No signal: ${marketData.pair} confidence only ${confidence}%`);
-    return { signal: null, confidence, reason: reason || 'No high-probability setup found' };
+    console.log(`❌ No signal: ${marketData.pair} insufficient setup`);
+    return { signal: null, confidence: 0, reason: 'No viable setup found' };
   }
 
   private detectBreakOfStructure(candles: CandleData[]): { detected: boolean; direction: 'BUY' | 'SELL' } {
@@ -201,9 +215,24 @@ class SmartMoneyAnalyzer {
     const percentChange = ((secondAvg - firstAvg) / firstAvg) * 100;
     
     return {
-      strong: Math.abs(percentChange) > 0.1,
+      strong: Math.abs(percentChange) > 0.05, // Lowered threshold for more signals
       direction: percentChange > 0 ? 'bullish' : 'bearish'
     };
+  }
+
+  private detectSupportResistance(candles: CandleData[], currentPrice: number): { atLevel: boolean } {
+    if (candles.length < 20) return { atLevel: false };
+    
+    const highs = candles.map(c => c.high);
+    const lows = candles.map(c => c.low);
+    
+    // Find significant levels (within 0.1% of current price)
+    const tolerance = currentPrice * 0.001;
+    
+    const nearResistance = highs.some(high => Math.abs(high - currentPrice) < tolerance);
+    const nearSupport = lows.some(low => Math.abs(low - currentPrice) < tolerance);
+    
+    return { atLevel: nearResistance || nearSupport };
   }
 
   private calculateStopLoss(candles: CandleData[], direction: 'BUY' | 'SELL'): number {
