@@ -9,7 +9,8 @@ import {
   RefreshCw,
   Clock,
   DollarSign,
-  Activity
+  Activity,
+  Brain
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
