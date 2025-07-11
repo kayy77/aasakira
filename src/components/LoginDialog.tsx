@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, User, Lock, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, User, Lock, Eye, EyeOff, Loader } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface LoginDialogProps {
   open: boolean;
@@ -20,33 +22,46 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const { login, isLoading } = useAuth();
+  const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log('Login attempt:', { username, password });
+    
+    if (!username || !password) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter both username and password",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const success = await login(username, password);
+    
+    if (success) {
+      toast({
+        title: "Welcome!",
+        description: "You've successfully logged in to ForexAI",
+      });
+      onOpenChange(false);
+    } else {
+      toast({
+        title: "Login Failed",
+        description: "Invalid username or password",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md glass-card border-purple-500/20 p-0">
+      <DialogContent className="sm:max-w-md glass-card border-purple-500/20 p-0" hideCloseButton>
         <div className="p-6">
           <DialogHeader className="space-y-4">
-            <div className="flex items-center space-x-2 text-purple-400">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onOpenChange(false)}
-                className="p-0 h-auto hover:bg-transparent"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="ml-2 text-sm">Back to Home</span>
-              </Button>
-            </div>
-            
             <div className="text-center space-y-2">
-              <DialogTitle className="text-2xl font-bold text-white">Welcome back</DialogTitle>
-              <p className="text-gray-400">Sign in to your professional trading account</p>
+              <DialogTitle className="text-2xl font-bold text-white">Welcome to ForexAI</DialogTitle>
+              <p className="text-gray-400">Sign in to access professional trading tools</p>
             </div>
           </DialogHeader>
 
@@ -61,6 +76,7 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pr-10"
+                  disabled={isLoading}
                 />
                 <User className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
               </div>
@@ -76,11 +92,13 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pr-10"
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-gray-400 hover:text-gray-300"
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -90,8 +108,16 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
             <Button 
               type="submit"
               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 cyber-glow"
+              disabled={isLoading}
             >
-              Sign In
+              {isLoading ? (
+                <>
+                  <Loader className="w-4 h-4 mr-2 animate-spin" />
+                  Signing In...
+                </>
+              ) : (
+                'Sign In'
+              )}
             </Button>
           </form>
 
@@ -107,14 +133,21 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
               <Button 
                 variant="outline" 
                 className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                disabled={isLoading}
                 onClick={() => {
-                  // Handle sign up
-                  console.log('Sign up clicked');
+                  toast({
+                    title: "Demo Mode",
+                    description: "Enter any username and password to try the demo",
+                  });
                 }}
               >
-                Sign Up
+                Try Demo
               </Button>
             </div>
+          </div>
+
+          <div className="mt-4 text-xs text-center text-gray-500">
+            Demo: Use any username/password. Add "premium" to username for premium features.
           </div>
         </div>
       </DialogContent>

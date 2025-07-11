@@ -1,87 +1,88 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
-interface UsageLimits {
+interface UsageData {
   signals: number;
   memeCoins: number;
-  aiMentorMessages: number;
+  aiMentor: number;
+}
+
+interface DailyLimits {
+  signals: number;
+  memeCoins: number;
+  aiMentor: number;
 }
 
 interface SubscriptionContextType {
   isPremium: boolean;
-  usageToday: UsageLimits;
-  dailyLimits: UsageLimits;
-  canUseFeature: (feature: 'signals' | 'memeCoins' | 'aiMentor') => boolean;
-  incrementUsage: (feature: 'signals' | 'memeCoins' | 'aiMentor') => void;
+  usageToday: UsageData;
+  dailyLimits: DailyLimits;
+  canUseFeature: (feature: keyof UsageData) => boolean;
+  incrementUsage: (feature: keyof UsageData) => void;
   resetDailyUsage: () => void;
-  upgradeToPremium: () => void;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
-const FREE_LIMITS: UsageLimits = {
+const FREE_LIMITS: DailyLimits = {
   signals: 2,
   memeCoins: 2,
-  aiMentorMessages: 10
+  aiMentor: 10
 };
 
-const PREMIUM_LIMITS: UsageLimits = {
-  signals: 999,
-  memeCoins: 999,
-  aiMentorMessages: 999
+const PREMIUM_LIMITS: DailyLimits = {
+  signals: Infinity,
+  memeCoins: Infinity,
+  aiMentor: Infinity
 };
 
-export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isPremium, setIsPremium] = useState(false);
-  const [usageToday, setUsageToday] = useState<UsageLimits>({
+export const SubscriptionProvider = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
+  const isPremium = user?.isPremium || false;
+  
+  const [usageToday, setUsageToday] = useState<UsageData>({
     signals: 0,
     memeCoins: 0,
-    aiMentorMessages: 0
+    aiMentor: 0
   });
 
   const dailyLimits = isPremium ? PREMIUM_LIMITS : FREE_LIMITS;
 
-  // Load usage from localStorage on mount
+  // Load usage data from localStorage on mount and when user changes
   useEffect(() => {
-    const savedUsage = localStorage.getItem('dailyUsage');
-    const savedDate = localStorage.getItem('usageDate');
-    const today = new Date().toDateString();
-
-    if (savedUsage && savedDate === today) {
-      setUsageToday(JSON.parse(savedUsage));
-    } else {
-      // Reset if it's a new day
-      resetDailyUsage();
+    if (user) {
+      const today = new Date().toDateString();
+      const savedUsage = localStorage.getItem(`usage_${user.id}_${today}`);
+      
+      if (savedUsage) {
+        try {
+          setUsageToday(JSON.parse(savedUsage));
+        } catch (error) {
+          console.error('Failed to parse usage data:', error);
+          resetDailyUsage();
+        }
+      } else {
+        resetDailyUsage();
+      }
     }
+  }, [user]);
 
-    // Check premium status (you can integrate with Stripe here later)
-    const premiumStatus = localStorage.getItem('isPremium') === 'true';
-    setIsPremium(premiumStatus);
-  }, []);
-
-  // Save usage to localStorage whenever it changes
+  // Save usage data to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem('dailyUsage', JSON.stringify(usageToday));
-    localStorage.setItem('usageDate', new Date().toDateString());
-  }, [usageToday]);
+    if (user) {
+      const today = new Date().toDateString();
+      localStorage.setItem(`usage_${user.id}_${today}`, JSON.stringify(usageToday));
+    }
+  }, [usageToday, user]);
 
-  const canUseFeature = (feature: 'signals' | 'memeCoins' | 'aiMentor'): boolean => {
+  const canUseFeature = (feature: keyof UsageData): boolean => {
+    if (!user) return false;
     if (isPremium) return true;
-    
-    switch (feature) {
-      case 'signals':
-        return usageToday.signals < dailyLimits.signals;
-      case 'memeCoins':
-        return usageToday.memeCoins < dailyLimits.memeCoins;
-      case 'aiMentor':
-        return usageToday.aiMentorMessages < dailyLimits.aiMentorMessages;
-      default:
-        return false;
-    }
+    return usageToday[feature] < dailyLimits[feature];
   };
 
-  const incrementUsage = (feature: 'signals' | 'memeCoins' | 'aiMentor'): void => {
-    if (isPremium) return; // No limits for premium users
+  const incrementUsage = (feature: keyof UsageData) => {
+    if (!user) return;
     
     setUsageToday(prev => ({
       ...prev,
@@ -89,19 +90,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }));
   };
 
-  const resetDailyUsage = (): void => {
+  const resetDailyUsage = () => {
     setUsageToday({
       signals: 0,
       memeCoins: 0,
-      aiMentorMessages: 0
+      aiMentor: 0
     });
-    localStorage.removeItem('dailyUsage');
-    localStorage.removeItem('usageDate');
-  };
-
-  const upgradeToPremium = (): void => {
-    setIsPremium(true);
-    localStorage.setItem('isPremium', 'true');
   };
 
   return (
@@ -111,17 +105,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       dailyLimits,
       canUseFeature,
       incrementUsage,
-      resetDailyUsage,
-      upgradeToPremium
+      resetDailyUsage
     }}>
       {children}
     </SubscriptionContext.Provider>
   );
 };
 
-export const useSubscription = (): SubscriptionContextType => {
+export const useSubscription = () => {
   const context = useContext(SubscriptionContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useSubscription must be used within a SubscriptionProvider');
   }
   return context;

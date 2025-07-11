@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
 import { Button } from "@/components/ui/button"
 import LoginDialog from './LoginDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
@@ -47,12 +54,21 @@ const Navigation = () => {
               AI Mentor
             </Link>
             
-            <Button 
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover-lift"
-              onClick={() => setIsLoginOpen(true)}
-            >
-              Get Started
-            </Button>
+            <div className="flex items-center space-x-3">
+              {user && (
+                <span className="text-sm text-gray-300">
+                  Welcome, {user.username}
+                  {user.isPremium && <span className="ml-1 text-purple-400">✨</span>}
+                </span>
+              )}
+              <Button 
+                className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 hover-lift"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -100,14 +116,18 @@ const Navigation = () => {
               >
                 AI Mentor
               </Link>
+              {user && (
+                <div className="px-2 py-1 text-sm text-gray-300 border-t border-white/10 pt-4">
+                  Welcome, {user.username}
+                  {user.isPremium && <span className="ml-1 text-purple-400">✨</span>}
+                </div>
+              )}
               <Button 
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 w-full"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setIsLoginOpen(true);
-                }}
+                className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 w-full"
+                onClick={handleLogout}
               >
-                Get Started
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
               </Button>
             </div>
           </div>

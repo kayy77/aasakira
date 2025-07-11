@@ -5,27 +5,32 @@ import Index from '@/pages/Index';
 import Signals from '@/pages/Signals';
 import Education from '@/pages/Education';
 import NotFound from '@/pages/NotFound';
+import MemeCoins from '@/pages/MemeCoins';
 import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
-
-import MemeCoins from '@/pages/MemeCoins';
+import { AuthProvider } from '@/contexts/AuthContext';
+import AuthGuard from '@/components/AuthGuard';
 
 function App() {
   return (
-    <SubscriptionProvider>
-      <BrowserRouter>
-        <div className="min-h-screen bg-black text-white">
-          <Toaster />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/signals" element={<Signals />} />
-            <Route path="/education" element={<Education />} />
-            <Route path="/memecoins" element={<MemeCoins />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </div>
-      </BrowserRouter>
-    </SubscriptionProvider>
+    <AuthProvider>
+      <SubscriptionProvider>
+        <BrowserRouter>
+          <div className="min-h-screen bg-black text-white">
+            <Toaster />
+            <AuthGuard>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/signals" element={<Signals />} />
+                <Route path="/education" element={<Education />} />
+                <Route path="/memecoins" element={<MemeCoins />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthGuard>
+          </div>
+        </BrowserRouter>
+      </SubscriptionProvider>
+    </AuthProvider>
   );
 }
 
