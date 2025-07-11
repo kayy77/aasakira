@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { Send, Bot, User, Lightbulb, BookOpen, Target, TrendingUp, BarChart3, Zap, ArrowLeft } from 'lucide-react';
+import { Send, Bot, User, Lightbulb, BookOpen, Target, TrendingUp, BarChart3, Zap, ArrowLeft, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
+import { geminiService } from '@/services/geminiService';
 
 interface Message {
   id: string;
   content: string;
   isUser: boolean;
   timestamp: Date;
+  isGeminiPowered?: boolean;
 }
 
 const AIMentor = () => {
@@ -17,9 +19,10 @@ const AIMentor = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Welcome to Aasakira — Your AI Trading Mentor\n\nReady to level up your trading skills?\n\nAsk me anything about trading, or use our professional tools to practice what you learn.",
+      content: "Welcome to Aasakira 2.0 — Your AI Trading Mentor ✨\n\nI'm now powered by Google's Gemini AI for even more intelligent and personalized trading education!\n\nReady to level up your trading skills with advanced AI insights?\n\nAsk me anything about trading, or use our professional tools to practice what you learn.",
       isUser: false,
-      timestamp: new Date()
+      timestamp: new Date(),
+      isGeminiPowered: true
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
@@ -65,23 +68,39 @@ const AIMentor = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentMessage = inputMessage;
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse: Message = {
+    try {
+      // Use Gemini API for more powerful responses
+      const aiResponse = await geminiService.generateTradingResponse(currentMessage);
+      
+      const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: generateAIResponse(inputMessage),
+        content: aiResponse,
+        isUser: false,
+        timestamp: new Date(),
+        isGeminiPowered: true
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+      // Fallback to basic response
+      const fallbackMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: generateBasicResponse(currentMessage),
         isUser: false,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, aiResponse]);
+      setMessages(prev => [...prev, fallbackMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
-  const generateAIResponse = (question: string): string => {
+  const generateBasicResponse = (question: string): string => {
     const lowerQuestion = question.toLowerCase();
     
     if (lowerQuestion.includes('forex') || lowerQuestion.includes('trading')) {
@@ -113,7 +132,7 @@ const AIMentor = () => {
 
   const handleQuickStart = (question: string) => {
     setInputMessage(question);
-    handleSendMessage();
+    setTimeout(() => handleSendMessage(), 100);
   };
 
   return (
@@ -197,9 +216,16 @@ const AIMentor = () => {
                 <CardTitle className="flex items-center space-x-2 text-pink-400">
                   <Bot className="w-6 h-6" />
                   <span>Ask Aasakira 2.0 — Your AI Mentor</span>
+                  <Sparkles className="w-4 h-4 text-yellow-400" />
                 </CardTitle>
-                <div className="bg-cyan-500 text-white text-xs px-3 py-1 rounded-full">
-                  Online
+                <div className="flex items-center space-x-2">
+                  <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-3 py-1 rounded-full flex items-center space-x-1">
+                    <Sparkles className="w-3 h-3" />
+                    <span>Gemini Powered</span>
+                  </div>
+                  <div className="bg-cyan-500 text-white text-xs px-3 py-1 rounded-full">
+                    Online
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -213,12 +239,15 @@ const AIMentor = () => {
                     message.isUser ? 'flex-row-reverse space-x-reverse' : ''
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center relative ${
                     message.isUser 
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600' 
                       : 'bg-gradient-to-r from-cyan-500 to-blue-600'
                   }`}>
                     {message.isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                    {message.isGeminiPowered && !message.isUser && (
+                      <Sparkles className="w-3 h-3 absolute -top-1 -right-1 text-yellow-400" />
+                    )}
                   </div>
                   <div className={`max-w-[80%] p-4 rounded-lg ${
                     message.isUser
@@ -228,14 +257,21 @@ const AIMentor = () => {
                     <div className="whitespace-pre-line text-sm leading-relaxed">
                       {message.content}
                     </div>
+                    {message.isGeminiPowered && !message.isUser && (
+                      <div className="flex items-center space-x-1 mt-2 text-xs text-yellow-400">
+                        <Sparkles className="w-3 h-3" />
+                        <span>Enhanced by Gemini AI</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
 
               {isTyping && (
                 <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center relative">
                     <Bot className="w-4 h-4" />
+                    <Sparkles className="w-3 h-3 absolute -top-1 -right-1 text-yellow-400" />
                   </div>
                   <div className="bg-white/10 border border-white/20 p-4 rounded-lg">
                     <div className="flex space-x-1">
@@ -252,15 +288,12 @@ const AIMentor = () => {
             <div className="px-6 py-2 border-t border-white/10">
               <div className="text-center space-y-2">
                 <div className="flex items-center justify-center space-x-2 text-yellow-400">
-                  <Lightbulb className="w-4 h-4" />
-                  <span className="text-sm">Try:</span>
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-sm">Powered by Gemini AI - Try:</span>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-400">
-                  {suggestedQuestions.map((suggestion, index) => (
-                    <span key={index} className="bg-white/5 px-2 py-1 rounded">
-                      {suggestion}
-                    </span>
-                  ))}
+                  <span className="bg-white/5 px-2 py-1 rounded">"What is forex?" or "How do I place a trade?"</span>
+                  <span className="bg-white/5 px-2 py-1 rounded">"Create a learning plan for me"</span>
                 </div>
               </div>
             </div>
@@ -272,7 +305,7 @@ const AIMentor = () => {
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Ask me anything about trading..."
+                  placeholder="Ask me anything about trading... (Powered by Gemini AI)"
                   className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
                 />
                 <Button
