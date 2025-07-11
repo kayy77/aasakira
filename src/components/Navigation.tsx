@@ -1,145 +1,121 @@
-
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { 
-  Brain, 
-  TrendingUp, 
-  BookOpen, 
-  Users, 
-  Menu, 
-  X,
-  Zap,
-  Target,
-  BarChart3,
-  Sparkles
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import LoginDialog from '@/components/LoginDialog';
+import { Link } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
+import { Button } from "@/components/ui/button"
+import { LoginDialog } from './LoginDialog';
 
 const Navigation = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const location = useLocation();
-
-  const navItems = [
-    { name: 'Home', href: '/', icon: null },
-    { name: 'AI Signals', href: '/signals', icon: Zap },
-    { name: 'AI Mentor', href: '/mentor', icon: Brain },
-    { name: 'Meme Scanner', href: '/scanner', icon: Target },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Education', href: '/education', icon: BookOpen },
-    { name: 'Community', href: '/community', icon: Users },
-  ];
-
-  const isActive = (path: string) => location.pathname === path;
 
   return (
-    <>
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2 hover-glow">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold gradient-text">AASAKIRA</span>
-              <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">BETA</span>
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2 hover-lift">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">FX</span>
+            </div>
+            <span className="text-xl font-bold gradient-text">ForexAI</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            <Link 
+              to="/" 
+              className="text-gray-300 hover:text-white transition-colors hover-glow"
+            >
+              Home
             </Link>
+            <Link 
+              to="/signals" 
+              className="text-gray-300 hover:text-white transition-colors hover-glow"
+            >
+              Signals
+            </Link>
+            <Link 
+              to="/memecoins" 
+              className="text-gray-300 hover:text-white transition-colors hover-glow"
+            >
+              Meme Coins
+            </Link>
+            <Link 
+              to="/education" 
+              className="text-gray-300 hover:text-white transition-colors hover-glow"
+            >
+              AI Mentor
+            </Link>
+            
+            <Button 
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover-lift"
+              onClick={() => setIsLoginOpen(true)}
+            >
+              Get Started
+            </Button>
+          </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center space-x-2 ${
-                      isActive(item.href)
-                        ? 'bg-purple-500/20 text-purple-400 cyber-glow'
-                        : 'text-gray-300 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    {Icon && <Icon className="w-4 h-4" />}
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* CTA Buttons */}
-            <div className="hidden md:flex items-center space-x-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsLoginOpen(true)}
-                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-              >
-                Login
-              </Button>
-              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-6 hover-lift">
-                Get Started
-              </Button>
-            </div>
-
-            {/* Mobile menu button */}
-            <div className="md:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsOpen(!isOpen)}
-                className="text-gray-300 hover:text-white"
-              >
-                {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </Button>
-            </div>
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="text-white hover:bg-white/10"
+            >
+              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
-        {isOpen && (
-          <div className="md:hidden glass-card m-4 rounded-xl animate-slide-up">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    onClick={() => setIsOpen(false)}
-                    className={`block px-4 py-3 rounded-lg text-base font-medium transition-all duration-300 flex items-center space-x-3 ${
-                      isActive(item.href)
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : 'text-gray-300 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    {Icon && <Icon className="w-5 h-5" />}
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              })}
-              <div className="pt-4 pb-2 space-y-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setIsLoginOpen(true);
-                    setIsOpen(false);
-                  }}
-                  className="w-full border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-                >
-                  Login
-                </Button>
-                <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold">
-                  Get Started
-                </Button>
-              </div>
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-white/10 py-4">
+            <div className="flex flex-col space-y-4">
+              <Link 
+                to="/" 
+                className="text-gray-300 hover:text-white transition-colors px-2 py-1"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Home
+              </Link>
+              <Link 
+                to="/signals" 
+                className="text-gray-300 hover:text-white transition-colors px-2 py-1"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Signals
+              </Link>
+              <Link 
+                to="/memecoins" 
+                className="text-gray-300 hover:text-white transition-colors px-2 py-1"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Meme Coins
+              </Link>
+              <Link 
+                to="/education" 
+                className="text-gray-300 hover:text-white transition-colors px-2 py-1"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                AI Mentor
+              </Link>
+              <Button 
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 w-full"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsLoginOpen(true);
+                }}
+              >
+                Get Started
+              </Button>
             </div>
           </div>
         )}
-      </nav>
+      </div>
 
       <LoginDialog open={isLoginOpen} onOpenChange={setIsLoginOpen} />
-    </>
+    </nav>
   );
 };
 
