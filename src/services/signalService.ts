@@ -38,14 +38,24 @@ class SignalService {
         
         console.log(`${pair}: ${analysis.confidence}% confidence - ${analysis.reason}`);
         
-        // Keep track of the highest confidence signal regardless of threshold
-        if (analysis.signal && analysis.confidence > highestConfidence) {
-          highestConfidence = analysis.confidence;
-          bestSignal = {
-            ...analysis.signal,
-            confidence: analysis.confidence
-          };
-          console.log(`🎯 NEW BEST: ${pair} with ${analysis.confidence}% confidence`);
+        // Always log if we get a signal, even if it's not the best
+        if (analysis.signal) {
+          console.log(`  📈 ${pair} Signal: ${analysis.signal.type} @ ${analysis.signal.entry} (${analysis.confidence}%)`);
+          
+          // Keep track of the highest confidence signal regardless of threshold
+          if (analysis.confidence > highestConfidence) {
+            highestConfidence = analysis.confidence;
+            const oldBest = bestSignal?.pair || 'none';
+            bestSignal = {
+              ...analysis.signal,
+              confidence: analysis.confidence
+            };
+            console.log(`🎯 NEW BEST: ${pair} (${analysis.confidence}%) replaces ${oldBest}`);
+          } else {
+            console.log(`  ⚖️ ${pair} (${analysis.confidence}%) not better than current best (${highestConfidence}%)`);
+          }
+        } else {
+          console.log(`  ❌ ${pair}: No signal generated`);
         }
       } catch (error) {
         console.error(`Error analyzing ${pair}:`, error);
