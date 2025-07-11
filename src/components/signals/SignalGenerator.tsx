@@ -17,28 +17,28 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { signalService } from '@/services/signalService';
 import { marketDataService } from '@/services/marketDataService';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { PremiumUpgrade } from '@/components/PremiumUpgrade';
 
 interface SignalGeneratorProps {
   onSignalGenerated: (signal: any) => void;
-  remainingSignals: number;
+  remainingSignals?: number;
 }
 
 export const SignalGenerator: React.FC<SignalGeneratorProps> = ({ 
-  onSignalGenerated, 
-  remainingSignals 
+  onSignalGenerated
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDebugging, setIsDebugging] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const { toast } = useToast();
+  
+  const { canUseFeature, incrementUsage, usageToday, dailyLimits, isPremium } = useSubscription();
 
   const generateSignal = async () => {
-    if (remainingSignals <= 0) {
-      toast({
-        title: "No signals remaining",
-        description: "Upgrade to Premium for unlimited signals",
-        variant: "destructive"
-      });
+    if (!canUseFeature('signals')) {
+      setShowUpgrade(true);
       return;
     }
 
@@ -59,9 +59,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       const signal = await signalService.generateLiveSignal();
 
       if (signal) {
-        setAnalysisStatus('✅ Best market opportunity detected! Processing...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
+        incrementUsage('signals');
         onSignalGenerated(signal);
         
         const confidenceLevel = signal.confidence >= 75 ? 'HIGH' : signal.confidence >= 50 ? 'MEDIUM' : 'LOW';
@@ -113,6 +111,12 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
     }
   };
 
+  const remainingSignals = dailyLimits.signals - usageToday.signals;
+
+  if (showUpgrade) {
+    return <PremiumUpgrade feature="Signals" onClose={() => setShowUpgrade(false)} />;
+  }
+
   return (
     <div className="glass-card p-8 mb-8 hover-glow">
       <div className="flex items-center justify-between mb-6">
@@ -134,6 +138,11 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             <BarChart3 className="w-3 h-3 mr-1" />
             BEST SETUP
           </Badge>
+          {!isPremium && (
+            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+              {remainingSignals} left today
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -220,6 +229,22 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Usage Warning for Free Users */}
+      {!isPremium && remainingSignals <= 1 && (
+        <Alert className="mb-6 border-orange-500/30 bg-orange-500/10">
+          <AlertCircle className="h-4 w-4 text-orange-400" />
+          <AlertDescription className="text-orange-300">
+            <strong>Limited Usage:</strong> You have {remainingSignals} signal{remainingSignals !== 1 ? 's' : ''} remaining today. 
+            <button 
+              onClick={() => setShowUpgrade(true)}
+              className="ml-2 underline hover:text-orange-200"
+            >
+              Upgrade to Premium for unlimited access
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* API Status Grid */}
       <div className="grid grid-cols-2 gap-4">

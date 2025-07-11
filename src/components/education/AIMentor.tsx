@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import QuickStartSection from './QuickStartSection';
 import ChatInterface from './ChatInterface';
 import { useAIResponses } from './useAIResponses';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { PremiumUpgrade } from '@/components/PremiumUpgrade';
 
 interface Message {
   id: string;
@@ -18,6 +19,7 @@ interface Message {
 const AIMentor = () => {
   const navigate = useNavigate();
   const { generateAIResponse } = useAIResponses();
+  const { canUseFeature, incrementUsage, usageToday, dailyLimits, isPremium } = useSubscription();
   
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -30,9 +32,15 @@ const AIMentor = () => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
+
+    if (!canUseFeature('aiMentor')) {
+      setShowUpgrade(true);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -58,6 +66,7 @@ const AIMentor = () => {
       };
       
       setMessages(prev => [...prev, aiMessage]);
+      incrementUsage('aiMentor');
     } finally {
       setIsTyping(false);
     }
@@ -68,17 +77,53 @@ const AIMentor = () => {
     setTimeout(() => handleSendMessage(), 100);
   };
 
+  const remainingMessages = dailyLimits.aiMentorMessages - usageToday.aiMentorMessages;
+
+  if (showUpgrade) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 p-6">
+        <div className="max-w-7xl mx-auto mb-6">
+          <Button
+            onClick={() => setShowUpgrade(false)}
+            variant="outline"
+            className="flex items-center space-x-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to AI Mentor</span>
+          </Button>
+        </div>
+        <PremiumUpgrade feature="AI Mentor" onClose={() => setShowUpgrade(false)} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 p-6">
       <div className="max-w-7xl mx-auto mb-6">
-        <Button
-          onClick={() => navigate('/')}
-          variant="outline"
-          className="flex items-center space-x-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Home</span>
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button
+            onClick={() => navigate('/')}
+            variant="outline"
+            className="flex items-center space-x-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Home</span>
+          </Button>
+          
+          {!isPremium && (
+            <div className="text-right">
+              <p className="text-sm text-purple-400">
+                {remainingMessages} message{remainingMessages !== 1 ? 's' : ''} remaining today
+              </p>
+              <button 
+                onClick={() => setShowUpgrade(true)}
+                className="text-xs text-gray-400 hover:text-purple-300 underline"
+              >
+                Upgrade for unlimited access
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">

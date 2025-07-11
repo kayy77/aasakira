@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +24,8 @@ import { useToast } from '@/hooks/use-toast';
 import { memeCoinsService, TokenMetrics, RiskProfile } from '@/services/memeCoinsService';
 import { TokenCard } from './TokenCard';
 import { RiskProfileCard } from './RiskProfileCard';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { PremiumUpgrade } from '@/components/PremiumUpgrade';
 
 const MemeCoinScanner = () => {
   const [tokens, setTokens] = useState<{ [key: string]: TokenMetrics[] }>({});
@@ -33,7 +34,10 @@ const MemeCoinScanner = () => {
   const [riskProfiles, setRiskProfiles] = useState<RiskProfile[]>([]);
   const [useRelaxedFilters, setUseRelaxedFilters] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const { toast } = useToast();
+
+  const { canUseFeature, incrementUsage, usageToday, dailyLimits, isPremium } = useSubscription();
 
   useEffect(() => {
     setRiskProfiles(memeCoinsService.getRiskProfiles());
@@ -41,6 +45,11 @@ const MemeCoinScanner = () => {
   }, []);
 
   const handleScan = async () => {
+    if (!canUseFeature('memeCoins')) {
+      setShowUpgrade(true);
+      return;
+    }
+
     setIsScanning(true);
     
     try {
@@ -54,6 +63,7 @@ const MemeCoinScanner = () => {
 
       const results = await memeCoinsService.scanMemeCoins(useRelaxedFilters);
       setTokens(results);
+      incrementUsage('memeCoins');
 
       const totalFound = Object.values(results).reduce((sum, arr) => sum + arr.length, 0);
       
@@ -102,6 +112,12 @@ const MemeCoinScanner = () => {
 
   const filteredTokens = selectedRisk ? { [selectedRisk]: tokens[selectedRisk] || [] } : tokens;
 
+  const remainingScans = dailyLimits.memeCoins - usageToday.memeCoins;
+
+  if (showUpgrade) {
+    return <PremiumUpgrade feature="Meme Coin Scans" onClose={() => setShowUpgrade(false)} />;
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -113,12 +129,17 @@ const MemeCoinScanner = () => {
           <p className="text-gray-400">
             Discover high-potential meme coins with AI-powered risk analysis
           </p>
+          {!isPremium && (
+            <p className="text-sm text-purple-400 mt-1">
+              {remainingScans} scan{remainingScans !== 1 ? 's' : ''} remaining today
+            </p>
+          )}
         </div>
         <Button 
           size="lg"
           className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover-lift cyber-glow"
           onClick={handleScan}
-          disabled={isScanning}
+          disabled={isScanning || (!isPremium && remainingScans <= 0)}
         >
           {isScanning ? (
             <>
@@ -133,6 +154,22 @@ const MemeCoinScanner = () => {
           )}
         </Button>
       </div>
+
+      {/* Usage Warning for Free Users */}
+      {!isPremium && remainingScans <= 1 && (
+        <Alert className="border-orange-500/30 bg-orange-500/10">
+          <Info className="h-4 w-4 text-orange-400" />
+          <AlertDescription className="text-orange-300">
+            <strong>Limited Usage:</strong> You have {remainingScans} scan{remainingScans !== 1 ? 's' : ''} remaining today. 
+            <button 
+              onClick={() => setShowUpgrade(true)}
+              className="ml-2 underline hover:text-orange-200"
+            >
+              Upgrade to Premium for unlimited scans
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Scanner Controls */}
       <div className="glass-card p-6">
