@@ -20,73 +20,110 @@ class SmartMoneyAnalyzer {
     
     console.log(`📊 Using LATEST CANDLE price: ${currentPrice} for ${marketData.pair} (timestamp: ${new Date(latestCandle.timestamp).toLocaleTimeString()})`);
 
-    // ✅ STRICT Smart Money Concept Analysis - ALL conditions must be met
+    // ✅ BEST OPPORTUNITY ANALYSIS - Score each confluence
     const bos = this.detectBreakOfStructure(candles);
     const fvgOrOrderBlock = this.detectFairValueGapOrOrderBlock(candles, currentPrice);
     const liquiditySweep = this.detectLiquiditySweep(candles);
     const support = this.detectSupportResistance(candles, currentPrice);
+    const momentum = this.analyzeMomentum(candles);
     
     console.log(`📋 Confluence Check for ${marketData.pair}:`);
     console.log(`  ✅ Break of Structure: ${bos.detected ? `YES (${bos.direction})` : 'NO'}`);
     console.log(`  ✅ FVG/Order Block: ${fvgOrOrderBlock.detected ? 'YES' : 'NO'}`);
     console.log(`  ✅ Liquidity Sweep: ${liquiditySweep.detected ? 'YES' : 'NO'}`);
     console.log(`  ✅ Support/Resistance: ${support.atLevel ? 'YES' : 'NO'}`);
+    console.log(`  ✅ Momentum: ${momentum.strong ? `YES (${momentum.direction})` : 'NO'}`);
     
-    // ALL CONDITIONS MUST BE MET for signal generation
-    const allConditionsMet = bos.detected && fvgOrOrderBlock.detected && liquiditySweep.detected && support.atLevel;
+    // Calculate confidence score based on confluences present
+    let confidence = 0;
+    let confluenceCount = 0;
+    let direction = 'BUY' as 'BUY' | 'SELL';
+    let reasons = [];
     
-    if (!allConditionsMet) {
-      const missingConditions = [];
-      if (!bos.detected) missingConditions.push('Break of Structure');
-      if (!fvgOrOrderBlock.detected) missingConditions.push('FVG/Order Block');
-      if (!liquiditySweep.detected) missingConditions.push('Liquidity Sweep');
-      if (!support.atLevel) missingConditions.push('Support/Resistance');
-      
-      console.log(`❌ Missing confluences: ${missingConditions.join(', ')}`);
-      return { 
-        signal: null, 
-        confidence: 0, 
-        reason: `Missing confluences: ${missingConditions.join(', ')}` 
-      };
+    if (bos.detected) {
+      confidence += 30;
+      confluenceCount++;
+      direction = bos.direction;
+      reasons.push('Break of Structure');
     }
     
+    if (fvgOrOrderBlock.detected) {
+      confidence += 25;
+      confluenceCount++;
+      reasons.push(fvgOrOrderBlock.type);
+    }
+    
+    if (liquiditySweep.detected) {
+      confidence += 20;
+      confluenceCount++;
+      reasons.push('Liquidity Sweep');
+    }
+    
+    if (support.atLevel) {
+      confidence += 15;
+      confluenceCount++;
+      reasons.push('S/R Level');
+    }
+    
+    if (momentum.strong) {
+      confidence += 10;
+      confluenceCount++;
+      direction = momentum.direction === 'bullish' ? 'BUY' : 'SELL';
+      reasons.push('Strong Momentum');
+    }
+    
+    // Even if no specific confluences, use momentum for direction
+    if (confluenceCount === 0) {
+      direction = momentum.direction === 'bullish' ? 'BUY' : 'SELL';
+      confidence = 25; // Base confidence
+      reasons.push('Market Direction');
+    }
+    
+    console.log(`🎯 Confidence Score: ${confidence}% (${confluenceCount} confluences)`);
+    console.log(`📊 Reasons: ${reasons.join(' + ')}`);
+    
+    // Always generate a signal with the available confluences
+    
     // Calculate proper risk:reward ratio
-    const stopLossDistance = this.calculateStopLoss(candles, bos.direction);
+    let stopLossDistance = this.calculateStopLoss(candles, direction);
     const riskRewardRatio = 2.1; // Minimum 2:1 R:R
     
     // Verify R:R is adequate
     if (stopLossDistance <= 0) {
-      return { signal: null, confidence: 0, reason: 'Invalid stop loss calculation' };
+      console.log(`⚠️ Invalid stop loss for ${marketData.pair}, using default`);
+      // Use default stop loss based on pair type
+      stopLossDistance = marketData.pair.includes('JPY') ? 0.20 : 0.0020;
     }
     
     const signal = {
       id: Date.now(),
       pair: marketData.pair,
-      type: bos.direction,
-      confidence: 85, // High confidence when all confluences align
+      type: direction,
+      confidence: Math.min(confidence, 95), // Cap at 95%
       entry: Number(currentPrice.toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
-      stopLoss: bos.direction === 'BUY' 
+      stopLoss: direction === 'BUY' 
         ? Number((currentPrice - stopLossDistance).toFixed(marketData.pair.includes('JPY') ? 2 : 4))
         : Number((currentPrice + stopLossDistance).toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
-      takeProfit: bos.direction === 'BUY' 
+      takeProfit: direction === 'BUY' 
         ? Number((currentPrice + (stopLossDistance * riskRewardRatio)).toFixed(marketData.pair.includes('JPY') ? 2 : 4))
         : Number((currentPrice - (stopLossDistance * riskRewardRatio)).toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
       status: 'active' as const,
       timestamp: new Date().toISOString(),
       timeframe: 'M15',
-      risk: 'Low' as const,
-      analysis: `High-probability ${bos.direction} setup with full Smart Money confluence`,
-      reason: `Liquidity sweep + ${fvgOrOrderBlock.type} tap after BoS`
+      risk: confidence >= 70 ? 'Low' : confidence >= 50 ? 'Medium' : 'High',
+      analysis: `${confluenceCount} confluence${confluenceCount !== 1 ? 's' : ''} detected: ${reasons.join(', ')}. ${direction === 'BUY' ? 'Bullish' : 'Bearish'} setup with ${confidence}% confidence.`,
+      reason: reasons.length > 0 ? reasons.join(' + ') : 'Market Direction'
     };
 
-    console.log(`🎯 PERFECT SETUP FOUND: ${bos.direction} ${marketData.pair} @ ${currentPrice}`);
+    console.log(`🎯 BEST OPPORTUNITY: ${direction} ${marketData.pair} @ ${currentPrice} (${confidence}% confidence)`);
     console.log(`   Entry: ${signal.entry} | SL: ${signal.stopLoss} | TP: ${signal.takeProfit}`);
     console.log(`   R:R: ${riskRewardRatio}:1 | Risk: ${stopLossDistance.toFixed(4)}`);
+    console.log(`   Confluences: ${reasons.join(' + ')}`);
     
     return { 
       signal, 
-      confidence: 85, 
-      reason: `Liquidity sweep + ${fvgOrOrderBlock.type} tap after BoS` 
+      confidence: Math.min(confidence, 95), 
+      reason: reasons.length > 0 ? reasons.join(' + ') : 'Market Direction'
     };
   }
 
