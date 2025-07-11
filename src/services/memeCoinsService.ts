@@ -1,4 +1,3 @@
-
 interface TokenMetrics {
   address: string;
   symbol: string;
@@ -44,6 +43,7 @@ interface RiskProfile {
 class MemeCoinsService {
   private readonly DEXSCREENER_API = 'https://api.dexscreener.com/latest/dex';
   private readonly GECKOTERMINAL_API = 'https://api.geckoterminal.com/api/v2';
+  private debugMode = false;
   
   private readonly riskProfiles: RiskProfile[] = [
     {
@@ -51,10 +51,10 @@ class MemeCoinsService {
       description: 'Established tokens with high liquidity and proven track record',
       criteria: {
         liquidity: { min: 10000 },
-        marketCap: { min: 5000000, max: 10000000 },
-        pairAge: { max: 100 },
-        transactions24h: { min: 2000 },
-        volume24h: { min: 3000000 }
+        marketCap: { min: 3000000, max: 15000000 }, // Slightly relaxed from 5M-10M to 3M-15M
+        pairAge: { max: 168 }, // Increased from 100h to 168h (1 week)
+        transactions24h: { min: 1000 }, // Reduced from 2000 to 1000
+        volume24h: { min: 1000000 } // Reduced from 3M to 1M
       },
       expectedReturn: '2-5x potential',
       color: 'green'
@@ -64,10 +64,10 @@ class MemeCoinsService {
       description: 'Growing tokens with decent metrics and moderate risk',
       criteria: {
         liquidity: { min: 10000 },
-        marketCap: { min: 1000000, max: 5000000 },
-        pairAge: { max: 72 },
-        transactions24h: { min: 1000 },
-        volume24h: { min: 100000, max: 1500000 }
+        marketCap: { min: 500000, max: 8000000 }, // Adjusted range: 500K - 8M
+        pairAge: { max: 120 }, // Increased from 72h to 120h (5 days)
+        transactions24h: { min: 500 }, // Reduced from 1000 to 500
+        volume24h: { min: 50000, max: 3000000 } // Adjusted range
       },
       expectedReturn: '5-20x potential',
       color: 'yellow'
@@ -77,18 +77,27 @@ class MemeCoinsService {
       description: 'New launches with explosive potential but high risk',
       criteria: {
         liquidity: { min: 10000 },
-        marketCap: { max: 500000 },
-        pairAge: { max: 24 },
-        transactions24h: { min: 100 },
-        volume24h: { min: 10000 }
+        marketCap: { max: 2000000 }, // Increased from 500K to 2M
+        pairAge: { max: 48 }, // Increased from 24h to 48h
+        transactions24h: { min: 50 }, // Reduced from 100 to 50
+        volume24h: { min: 5000 } // Reduced from 10K to 5K
       },
       expectedReturn: '50-1000x potential',
       color: 'red'
     }
   ];
 
-  async scanMemeCoins(): Promise<{ [key: string]: TokenMetrics[] }> {
+  setDebugMode(enabled: boolean) {
+    this.debugMode = enabled;
+    console.log(`🔧 Debug mode ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  async scanMemeCoins(useRelaxedFilters = false): Promise<{ [key: string]: TokenMetrics[] }> {
     console.log('🔍 Scanning for meme coin opportunities...');
+    
+    if (useRelaxedFilters) {
+      console.log('🔧 Using relaxed filters for better discovery');
+    }
     
     try {
       // Fetch data from multiple sources
@@ -115,15 +124,13 @@ class MemeCoinsService {
         console.log('❌ GeckoTerminal API failed:', geckoTerminalData.reason);
       }
 
-      // Debug: Log some sample tokens before filtering
-      console.log('📋 Sample tokens before filtering:', allTokens.slice(0, 3).map(t => ({
-        symbol: t.symbol,
-        marketCap: t.marketCap,
-        liquidity: t.liquidity,
-        volume24h: t.volume24h,
-        transactions24h: t.transactions24h,
-        pairAge: t.pairAge
-      })));
+      // Debug: Log sample tokens with their metrics
+      if (this.debugMode && allTokens.length > 0) {
+        console.log('📊 Debug: Sample tokens with full metrics:');
+        allTokens.slice(0, 5).forEach(token => {
+          console.log(`${token.symbol}: MC=$${token.marketCap.toLocaleString()}, Liq=$${token.liquidity.toLocaleString()}, Vol=$${token.volume24h.toLocaleString()}, Txns=${token.transactions24h}, Age=${token.pairAge.toFixed(1)}h`);
+        });
+      }
 
       if (allTokens.length === 0) {
         console.log('⚠️ No data from APIs, generating mock data...');
@@ -135,17 +142,23 @@ class MemeCoinsService {
       console.log(`🧹 Removed duplicates: ${allTokens.length} -> ${uniqueTokens.length} tokens`);
 
       // Filter tokens by risk profiles
-      const categorizedTokens = this.categorizeTokensByRisk(uniqueTokens);
+      const categorizedTokens = this.categorizeTokensByRisk(uniqueTokens, useRelaxedFilters);
       
       console.log('📊 Categorization complete:');
       Object.entries(categorizedTokens).forEach(([risk, tokens]) => {
         console.log(`  ${risk}: ${tokens.length} opportunities`);
       });
 
+      // If no results with strict filters, suggest relaxed mode
+      const totalFound = Object.values(categorizedTokens).reduce((sum, arr) => sum + arr.length, 0);
+      if (totalFound === 0 && !useRelaxedFilters) {
+        console.log('💡 No opportunities found with strict filters. Consider using relaxed mode.');
+      }
+
       return categorizedTokens;
     } catch (error) {
       console.error('Error scanning meme coins:', error);
-      return this.categorizeTokensByRisk(this.generateMockTokens());
+      return this.categorizeTokensByRisk(this.generateMockTokens(), useRelaxedFilters);
     }
   }
 
@@ -349,20 +362,23 @@ class MemeCoinsService {
     };
   }
 
-  private categorizeTokensByRisk(tokens: TokenMetrics[]): { [key: string]: TokenMetrics[] } {
+  private categorizeTokensByRisk(tokens: TokenMetrics[], useRelaxedFilters = false): { [key: string]: TokenMetrics[] } {
     const result: { [key: string]: TokenMetrics[] } = {
       'Low Risk': [],
       'Medium Risk': [],
       'High Risk': []
     };
 
-    console.log(`🔍 Categorizing ${tokens.length} tokens...`);
+    console.log(`🔍 Categorizing ${tokens.length} tokens${useRelaxedFilters ? ' (relaxed mode)' : ''}...`);
+
+    // Create relaxed profiles if needed
+    const profiles = useRelaxedFilters ? this.getRelaxedRiskProfiles() : this.riskProfiles;
 
     tokens.forEach(token => {
-      for (const profile of this.riskProfiles) {
+      for (const profile of profiles) {
         if (this.matchesRiskProfile(token, profile)) {
           result[profile.name].push(token);
-          console.log(`✅ ${token.symbol} matches ${profile.name}: MC=${token.marketCap}, Liq=${token.liquidity}, Vol=${token.volume24h}, Txns=${token.transactions24h}, Age=${token.pairAge.toFixed(1)}h`);
+          console.log(`✅ ${token.symbol} matches ${profile.name}: MC=${token.marketCap.toLocaleString()}, Liq=${token.liquidity.toLocaleString()}, Vol=${token.volume24h.toLocaleString()}, Txns=${token.transactions24h}, Age=${token.pairAge.toFixed(1)}h`);
           break; // Only add to first matching profile
         }
       }
@@ -376,11 +392,46 @@ class MemeCoinsService {
     return result;
   }
 
+  private getRelaxedRiskProfiles(): RiskProfile[] {
+    return [
+      {
+        ...this.riskProfiles[0],
+        criteria: {
+          liquidity: { min: 5000 }, // Halved
+          marketCap: { min: 1000000, max: 20000000 }, // More generous range
+          pairAge: { max: 336 }, // 2 weeks
+          transactions24h: { min: 300 }, // Much lower
+          volume24h: { min: 200000 } // Much lower
+        }
+      },
+      {
+        ...this.riskProfiles[1],
+        criteria: {
+          liquidity: { min: 5000 },
+          marketCap: { min: 100000, max: 10000000 }, // Wider range
+          pairAge: { max: 240 }, // 10 days
+          transactions24h: { min: 100 }, // Much lower
+          volume24h: { min: 10000, max: 5000000 }
+        }
+      },
+      {
+        ...this.riskProfiles[2],
+        criteria: {
+          liquidity: { min: 5000 },
+          marketCap: { max: 5000000 }, // Increased significantly
+          pairAge: { max: 168 }, // 1 week
+          transactions24h: { min: 10 }, // Very low
+          volume24h: { min: 1000 } // Very low
+        }
+      }
+    ];
+  }
+
   private matchesRiskProfile(token: TokenMetrics, profile: RiskProfile): boolean {
     const { criteria } = profile;
     
-    // Debug logging for the first few tokens
-    const shouldLog = Math.random() < 0.1; // Log 10% of tokens for debugging
+    // More frequent debug logging to understand filtering
+    const shouldLog = this.debugMode || Math.random() < 0.2; // Log 20% of tokens, or all in debug mode
     
     if (shouldLog) {
       console.log(`🔍 Checking ${token.symbol} against ${profile.name}:`, {
@@ -388,29 +439,29 @@ class MemeCoinsService {
         marketCap: token.marketCap,
         volume24h: token.volume24h,
         transactions24h: token.transactions24h,
-        pairAge: token.pairAge
+        pairAge: token.pairAge.toFixed(1) + 'h'
       });
     }
     
     // Check liquidity
     if (token.liquidity < criteria.liquidity.min) {
-      if (shouldLog) console.log(`❌ ${token.symbol}: Liquidity too low (${token.liquidity} < ${criteria.liquidity.min})`);
+      if (shouldLog) console.log(`❌ ${token.symbol}: Liquidity too low (${token.liquidity.toLocaleString()} < ${criteria.liquidity.min.toLocaleString()})`);
       return false;
     }
     
     // Check market cap
     if (criteria.marketCap?.min && token.marketCap < criteria.marketCap.min) {
-      if (shouldLog) console.log(`❌ ${token.symbol}: Market cap too low (${token.marketCap} < ${criteria.marketCap.min})`);
+      if (shouldLog) console.log(`❌ ${token.symbol}: Market cap too low (${token.marketCap.toLocaleString()} < ${criteria.marketCap.min.toLocaleString()})`);
       return false;
     }
     if (criteria.marketCap?.max && token.marketCap > criteria.marketCap.max) {
-      if (shouldLog) console.log(`❌ ${token.symbol}: Market cap too high (${token.marketCap} > ${criteria.marketCap.max})`);
+      if (shouldLog) console.log(`❌ ${token.symbol}: Market cap too high (${token.marketCap.toLocaleString()} > ${criteria.marketCap.max.toLocaleString()})`);
       return false;
     }
     
     // Check pair age
     if (token.pairAge > criteria.pairAge.max) {
-      if (shouldLog) console.log(`❌ ${token.symbol}: Pair too old (${token.pairAge} > ${criteria.pairAge.max})`);
+      if (shouldLog) console.log(`❌ ${token.symbol}: Pair too old (${token.pairAge.toFixed(1)}h > ${criteria.pairAge.max}h)`);
       return false;
     }
     
@@ -422,11 +473,11 @@ class MemeCoinsService {
     
     // Check volume
     if (criteria.volume24h?.min && token.volume24h < criteria.volume24h.min) {
-      if (shouldLog) console.log(`❌ ${token.symbol}: Volume too low (${token.volume24h} < ${criteria.volume24h.min})`);
+      if (shouldLog) console.log(`❌ ${token.symbol}: Volume too low (${token.volume24h.toLocaleString()} < ${criteria.volume24h.min.toLocaleString()})`);
       return false;
     }
     if (criteria.volume24h?.max && token.volume24h > criteria.volume24h.max) {
-      if (shouldLog) console.log(`❌ ${token.symbol}: Volume too high (${token.volume24h} > ${criteria.volume24h.max})`);
+      if (shouldLog) console.log(`❌ ${token.symbol}: Volume too high (${token.volume24h.toLocaleString()} > ${criteria.volume24h.max.toLocaleString()})`);
       return false;
     }
     

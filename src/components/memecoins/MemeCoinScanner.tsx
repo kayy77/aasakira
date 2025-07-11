@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { 
   Search, 
   RefreshCw, 
@@ -16,7 +17,9 @@ import {
   Clock,
   BarChart3,
   Users,
-  Loader
+  Loader,
+  Settings,
+  Info
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { memeCoinsService, TokenMetrics, RiskProfile } from '@/services/memeCoinsService';
@@ -28,6 +31,8 @@ const MemeCoinScanner = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [selectedRisk, setSelectedRisk] = useState<string | null>(null);
   const [riskProfiles, setRiskProfiles] = useState<RiskProfile[]>([]);
+  const [useRelaxedFilters, setUseRelaxedFilters] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -39,20 +44,33 @@ const MemeCoinScanner = () => {
     setIsScanning(true);
     
     try {
+      // Set debug mode
+      memeCoinsService.setDebugMode(debugMode);
+      
       toast({
         title: "🔍 Scanning Meme Coins",
-        description: "Analyzing thousands of tokens across multiple DEXs...",
+        description: `Analyzing tokens with ${useRelaxedFilters ? 'relaxed' : 'strict'} filters...`,
       });
 
-      const results = await memeCoinsService.scanMemeCoins();
+      const results = await memeCoinsService.scanMemeCoins(useRelaxedFilters);
       setTokens(results);
 
       const totalFound = Object.values(results).reduce((sum, arr) => sum + arr.length, 0);
       
-      toast({
-        title: "✅ Scan Complete!",
-        description: `Found ${totalFound} opportunities across all risk levels`,
-      });
+      if (totalFound === 0) {
+        toast({
+          title: "⚠️ No Opportunities Found",
+          description: useRelaxedFilters 
+            ? "Market conditions may be unfavorable. Try again later."
+            : "Try enabling relaxed filters to discover more opportunities.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "✅ Scan Complete!",
+          description: `Found ${totalFound} opportunities across all risk levels`,
+        });
+      }
     } catch (error) {
       toast({
         title: "Scan Error",
@@ -116,6 +134,57 @@ const MemeCoinScanner = () => {
         </Button>
       </div>
 
+      {/* Scanner Controls */}
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Settings className="w-5 h-5 text-purple-400" />
+            <h3 className="text-lg font-semibold text-white">Scanner Settings</h3>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Relaxed Filters Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-white">Relaxed Filters</label>
+              <p className="text-xs text-gray-400">
+                Use broader criteria to find more opportunities when market is quiet
+              </p>
+            </div>
+            <Switch
+              checked={useRelaxedFilters}
+              onCheckedChange={setUseRelaxedFilters}
+            />
+          </div>
+
+          {/* Debug Mode Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-white">Debug Mode</label>
+              <p className="text-xs text-gray-400">
+                Show detailed filtering logs in console for troubleshooting
+              </p>
+            </div>
+            <Switch
+              checked={debugMode}
+              onCheckedChange={setDebugMode}
+            />
+          </div>
+        </div>
+
+        {/* Info Alert */}
+        {useRelaxedFilters && (
+          <Alert className="mt-4 border-yellow-500/30 bg-yellow-500/10">
+            <Info className="h-4 w-4 text-yellow-400" />
+            <AlertDescription className="text-yellow-300">
+              <strong>Relaxed Mode Active:</strong> Using broader criteria to discover more opportunities. 
+              Results may include tokens with higher risk profiles.
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+
       {/* Risk Profile Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {riskProfiles.map((profile) => (
@@ -153,7 +222,7 @@ const MemeCoinScanner = () => {
         <Alert className="border-blue-500/30 bg-blue-500/10">
           <Activity className="h-4 w-4 text-blue-400 animate-pulse" />
           <AlertDescription className="text-blue-300">
-            <strong>Multi-API Scanning:</strong> Analyzing DexScreener, GeckoTerminal, and other premium data sources...
+            <strong>Multi-API Scanning:</strong> Analyzing DexScreener, GeckoTerminal, and other premium data sources with {useRelaxedFilters ? 'relaxed' : 'strict'} filters...
           </AlertDescription>
         </Alert>
       )}
@@ -210,12 +279,28 @@ const MemeCoinScanner = () => {
           </div>
           <h3 className="text-xl font-semibold text-white mb-2">No Opportunities Found</h3>
           <p className="text-gray-400 mb-4">
-            Try scanning again or adjust your risk preferences
+            {useRelaxedFilters 
+              ? "Market conditions may be unfavorable right now. Consider trying again later."
+              : "Your filters are quite strict. Try enabling relaxed filters or scan again later."
+            }
           </p>
-          <Button onClick={handleScan} variant="outline">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Scan Again
-          </Button>
+          <div className="flex items-center justify-center space-x-3">
+            <Button onClick={handleScan} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Scan Again
+            </Button>
+            {!useRelaxedFilters && (
+              <Button 
+                onClick={() => {
+                  setUseRelaxedFilters(true);
+                  setTimeout(handleScan, 100);
+                }}
+                className="bg-yellow-600 hover:bg-yellow-700"
+              >
+                Try Relaxed Filters
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>
