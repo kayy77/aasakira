@@ -11,7 +11,8 @@ import {
   Trophy,
   Target,
   Gamepad2,
-  Palette
+  Palette,
+  Mountain
 } from 'lucide-react';
 import PixelAvatarDesigner from './PixelAvatarDesigner';
 import EnhancedPixelBattle from './EnhancedPixelBattle';

@@ -145,7 +145,7 @@ const PixelAvatarDesigner = ({ userStats, selectedClass, onCharacterCreate }: Pi
       name: 'Market Phantom',
       lore: 'A shadow from market edges. Master of range traps and misdirection.',
       stats: { wisdom: 50, stealth: 90, aggression: 60 },
-      defaultAppearan: {
+      defaultAppearance: {
         skinTone: 'pale',
         hairStyle: 'hidden',
         hairColor: 'black',
