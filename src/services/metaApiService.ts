@@ -11,7 +11,7 @@ interface TradingAccount {
   leverage: number;
   currency: string;
   server: string;
-  connectionStatus: 'connected' | 'disconnected' | 'connecting';
+  connectionStatus: 'connected' | 'disconnected' | 'connecting' | 'deploying' | 'deployed';
 }
 
 interface Position {
@@ -45,17 +45,45 @@ interface AccountCredentials {
   password: string;
   server: string;
   broker: string;
+  platform: 'mt4' | 'mt5';
+}
+
+interface MetaApiAccount {
+  id: string;
+  name: string;
+  login: string;
+  server: string;
+  platform: string;
+  brokerName: string;
+  state: 'DEPLOYING' | 'DEPLOYED' | 'DEPLOY_FAILED' | 'UNDEPLOYING' | 'UNDEPLOYED';
+  connectionStatus: 'CONNECTED' | 'DISCONNECTED' | 'DISCONNECTED_FROM_BROKER';
+  accountInformation?: {
+    balance: number;
+    equity: number;
+    margin: number;
+    freeMargin: number;
+    leverage: number;
+    currency: string;
+  };
 }
 
 class MetaApiService {
   private readonly API_KEY = 'eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI5YWQ5OTNjNWFkMjBmMWMyNTA0MWJmMDY0OGU0YWY3NyIsImFjY2Vzc1J1bGVzIjpbeyJpZCI6InRyYWRpbmctYWNjb3VudC1tYW5hZ2VtZW50LWFwaSIsIm1ldGhvZHMiOlsidHJhZGluZy1hY2NvdW50LW1hbmFnZW1lbnQtYXBpOnJlc3Q6cHVibGljOio6KiJdLCJyb2xlcyI6WyJyZWFkZXIiLCJ3cml0ZXIiXSwicmVzb3VyY2VzIjpbIio6JFVTRVJfSUQkOioiXX0seyJpZCI6Im1ldGFhcGktcmVzdC1hcGkiLCJtZXRob2RzIjpbIm1ldGFhcGktYXBpOnJlc3Q6cHVibGljOio6KiJdLCJyb2xlcyI6WyJyZWFkZXIiLCJ3cml0ZXIiXSwicmVzb3VyY2VzIjpbIio6JFVTRVJfSUQkOioiXX0seyJpZCI6Im1ldGFhcGktcnBjLWFwaSIsIm1ldGhvZHMiOlsibWV0YWFwaS1hcGk6d3M6cHVibGljOio6KiJdLCJyb2xlcyI6WyJyZWFkZXIiLCJ3cml0ZXIiXSwicmVzb3VyY2VzIjpbIio6JFVTRVJfSUQkOioiXX0seyJpZCI6Im1ldGFhcGktcmVhbC10aW1lLXN0cmVhbWluZy1hcGkiLCJtZXRob2RzIjpbIm1ldGFhcGktYXBpOndzOnB1YmxpYzoqOioiXSwicm9sZXMiOlsicmVhZGVyIiwid3JpdGVyIl0sInJlc291cmNlcyI6WyIqOiRVU0VSX0lEJDoqIl19LHsiaWQiOiJtZXRhc3RhdHMtYXBpIiwibWV0aG9kcyI6WyJtZXRhc3RhdHMtYXBpOnJlc3Q6cHVibGljOio6KiJdLCJyb2xlcyI6WyJyZWFkZXIiLCJ3cml0ZXIiXSwicmVzb3VyY2VzIjpbIio6JFVTRVJfSUQkOioiXX0seyJpZCI6InJpc2stbWFuYWdlbWVudC1hcGkiLCJtZXRob2RzIjpbInJpc2stbWFuYWdlbWVudC1hcGk6cmVzdDpwdWJsaWM6KjoqIl0sInJvbGVzIjpbInJlYWRlciIsIndyaXRlciJdLCJyZXNvdXJjZXMiOlsiKjokVVNFUl9JRCQ6KiJdfSx7ImlkIjoiY29weWZhY3RvcnktYXBpIiwibWV0aG9kcyI6WyJjb3B5ZmFjdG9yeS1hcGk6cmVzdDpwdWJsaWM6KjoqIl0sInJvbGVzIjpbInJlYWRlciIsIndyaXRlciJdLCJyZXNvdXJjZXMiOlsiKjokVVNFUl9JRCQ6KiJdfSx7ImlkIjoibXQtbWFuYWdlci1hcGkiLCJtZXRob2RzIjpbIm10LW1hbmFnZXItYXBpOnJlc3Q6ZGVhbGluZzoqOioiLCJtdC1tYW5hZ2VyLWFwaTpyZXN0OnB1YmxpYzoqOioiXSwicm9sZXMiOlsicmVhZGVyIiwid3JpdGVyIl0sInJlc291cmNlcyI6WyIqOiRVU0VSX0lEJDoqIl19LHsiaWQiOiJiaWxsaW5nLWFwaSIsIm1ldGhvZHMiOlsiYmlsbGluZy1hcGk6cmVzdDpwdWJsaWM6KjoqIl0sInJvbGVzIjpbInJlYWRlciJdLCJyZXNvdXJjZXMiOlsiKjokVVNFUl9JRCQ6KiJdfV0sImlnbm9yZVJhdGVMaW1pdHMiOmZhbHNlLCJ0b2tlbklkIjoiMjAyMTAyMTMiLCJpbXBlcnNvbmF0ZWQiOmZhbHNlLCJyZWFsVXNlcklkIjoiOWFkOTkzYzVhZDIwZjFjMjUwNDFiZjA2NDhlNGFmNzciLCJpYXQiOjE3NTIzMjU3NDZ9.TH9-RRsnppdJk-TYO5t8rscHoTV6TZJD0gnwc6ZmNd08kWzh4KL8bQwvK5_RdcTEwHaIWmpWdLrWX9HEh9o3_d-sDO8WyGWuF1kjGPoNJvYkHJp5vsHuw5lZfPQ5-kipEsJmtZedfOz67n4xrBjH2MHhJ2GAg4oDDlmSHyLpzXHF8QFPxSpzAVLSjWrEGr2_pKvUDkLhGcjE2w5gPrJMBG1vXQEbgnnHe5_HZizamzfrpx-OJT-cnHPNZDGdOKxGmo0ABL4l2iUv8td1QasNT4KFjdblcLCZRR1V2kZiJ0Lna-q7yaibj6XMbGLmxqMI0lX3v1HsTVssbF_Bf1XrLaY2TOuivYs1kNGXwm2mlfixR93fNGewzkgU0rXAG1_5i-DgAMCBsoqaWfMlE0Ab3bEouQWPXhDvuqxyoVMHihXpMraL4IULfXphGocpqwdmEVDMPKnks1nLLfASE6d6P1DGaKdDi34HWL-r5wJl0tKVLAH035U82NJ4TnkkoWRWHtV6wmptEM1yhZ91pWuYvSemZPbV8ghn9mYVfV79rKoPfc5ick4RXd539m5-o_gnS7ifwrqfUINURNS2tpiGTZ71JYMFj-cYUxkdWzArPBbg728tSDrG8V54FFOwopXDceMTVVtiOeLDIwmcFDicSc4Im2W6jQdHABdJW0SNzWI';
-  private readonly BASE_URL = 'https://mt-manager-api-v1.agiliumtrade.agiliumtrade.ai';
+  private readonly BASE_URL = 'https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai';
   private cache = new Map<string, { data: any; timestamp: number }>();
   private readonly CACHE_DURATION = 5 * 1000; // 5 seconds cache
   private connectedAccounts = new Map<string, AccountCredentials>();
 
+  // IC Markets server configurations
+  private readonly IC_MARKETS_SERVERS = {
+    demo: ['ICMarkets-Demo02', 'ICMarkets-Demo03', 'ICMarkets-Demo04'],
+    live: ['ICMarkets-Live02', 'ICMarkets-Live03', 'ICMarkets-Live04']
+  };
+
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
     const url = `${this.BASE_URL}${endpoint}`;
+    console.log(`🔄 Making MetaAPI request to: ${endpoint}`);
+    
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -66,40 +94,117 @@ class MetaApiService {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ MetaAPI Error: ${response.status} ${response.statusText}`, errorText);
       throw new Error(`MetaAPI Error: ${response.status} ${response.statusText}`);
     }
 
     return response.json();
   }
 
-  async connectAccount(credentials: AccountCredentials): Promise<TradingAccount> {
+  getServerOptions(broker: string): string[] {
+    if (broker === 'IC Markets') {
+      return [...this.IC_MARKETS_SERVERS.demo, ...this.IC_MARKETS_SERVERS.live];
+    }
+    return [`${broker}-Demo01`, `${broker}-Live01`];
+  }
+
+  async createMetaApiAccount(credentials: AccountCredentials): Promise<string> {
+    console.log(`🔄 Creating MetaAPI account for ${credentials.broker}...`);
+    
+    const accountData = {
+      login: credentials.login,
+      password: credentials.password,
+      name: `${credentials.broker} Account`,
+      server: credentials.server,
+      platform: credentials.platform,
+      magic: 0,
+      application: 'MetaApi',
+      type: 'cloud',
+      state: 'DEPLOYING'
+    };
+
     try {
-      console.log(`🔄 Connecting account ${credentials.login} to ${credentials.broker}...`);
+      const response = await this.makeRequest('/users/current/accounts', {
+        method: 'POST',
+        body: JSON.stringify(accountData)
+      });
+
+      console.log(`✅ MetaAPI account created with ID: ${response.id}`);
+      return response.id;
+    } catch (error) {
+      console.error('❌ Failed to create MetaAPI account:', error);
+      throw error;
+    }
+  }
+
+  async waitForAccountDeployment(accountId: string, maxWaitTime: number = 60000): Promise<MetaApiAccount> {
+    console.log(`🔄 Waiting for account ${accountId} to deploy...`);
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      try {
+        const account = await this.makeRequest(`/users/current/accounts/${accountId}`);
+        console.log(`📊 Account state: ${account.state}, Connection: ${account.connectionStatus}`);
+        
+        if (account.state === 'DEPLOYED') {
+          console.log(`✅ Account ${accountId} successfully deployed!`);
+          return account;
+        }
+        
+        if (account.state === 'DEPLOY_FAILED') {
+          throw new Error(`Account deployment failed: ${account.stateReason || 'Unknown error'}`);
+        }
+        
+        // Wait 2 seconds before checking again
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error('❌ Error checking account status:', error);
+      }
+    }
+    
+    throw new Error('Account deployment timed out');
+  }
+
+  async connectAccount(credentials: AccountCredentials, onStatusUpdate?: (status: string, details?: string) => void): Promise<TradingAccount> {
+    try {
+      onStatusUpdate?.('Creating account...', 'Setting up MetaAPI account');
+      
+      // Create the MetaAPI account
+      const accountId = await this.createMetaApiAccount(credentials);
+      
+      onStatusUpdate?.('Deploying account...', 'Waiting for account to become active');
+      
+      // Wait for deployment
+      const deployedAccount = await this.waitForAccountDeployment(accountId);
+      
+      onStatusUpdate?.('Connecting to broker...', 'Establishing connection with broker');
       
       // Store credentials for future use
-      this.connectedAccounts.set(credentials.accountId, credentials);
+      this.connectedAccounts.set(accountId, { ...credentials, accountId });
       
-      // In a real implementation, you would create/connect the account via MetaAPI
-      // For now, we'll simulate the connection and return account data
+      // Convert to our TradingAccount format
       const accountData: TradingAccount = {
-        id: credentials.accountId,
-        name: `${credentials.broker} Account`,
-        broker: credentials.broker,
+        id: deployedAccount.id,
+        name: deployedAccount.name,
+        broker: deployedAccount.brokerName || credentials.broker,
         type: credentials.server.includes('Demo') ? 'Demo' : 'Live',
-        balance: 10000 + Math.random() * 50000,
-        equity: 10000 + Math.random() * 55000,
-        margin: Math.random() * 5000,
-        freeMargin: 8000 + Math.random() * 40000,
-        leverage: 500,
-        currency: 'USD',
-        server: credentials.server,
-        connectionStatus: 'connected'
+        balance: deployedAccount.accountInformation?.balance || 0,
+        equity: deployedAccount.accountInformation?.equity || 0,
+        margin: deployedAccount.accountInformation?.margin || 0,
+        freeMargin: deployedAccount.accountInformation?.freeMargin || 0,
+        leverage: deployedAccount.accountInformation?.leverage || 1,
+        currency: deployedAccount.accountInformation?.currency || 'USD',
+        server: deployedAccount.server,
+        connectionStatus: deployedAccount.connectionStatus === 'CONNECTED' ? 'connected' : 'connecting'
       };
 
+      onStatusUpdate?.('Connected successfully!', 'Account is ready for trading');
       console.log(`✅ Successfully connected to ${credentials.broker}`);
       return accountData;
     } catch (error) {
       console.error('❌ Failed to connect account:', error);
+      onStatusUpdate?.('Connection failed', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }
@@ -109,26 +214,27 @@ class MetaApiService {
       console.log('🔄 Fetching MetaAPI accounts...');
       const accounts = await this.makeRequest('/users/current/accounts');
       
-      const mappedAccounts: TradingAccount[] = accounts.map((account: any) => ({
+      const mappedAccounts: TradingAccount[] = accounts.map((account: MetaApiAccount) => ({
         id: account.id,
-        name: account.name || `${account.type} Account`,
-        broker: account.brokerName || 'IC Markets',
-        type: account.type || 'Demo',
+        name: account.name || `${account.brokerName} Account`,
+        broker: account.brokerName || 'Unknown',
+        type: account.server.includes('Demo') ? 'Demo' : 'Live',
         balance: account.accountInformation?.balance || 0,
         equity: account.accountInformation?.equity || 0,
         margin: account.accountInformation?.margin || 0,
         freeMargin: account.accountInformation?.freeMargin || 0,
         leverage: account.accountInformation?.leverage || 1,
         currency: account.accountInformation?.currency || 'USD',
-        server: account.server || 'Demo',
-        connectionStatus: account.connectionStatus === 'CONNECTED' ? 'connected' : 'disconnected'
+        server: account.server,
+        connectionStatus: account.connectionStatus === 'CONNECTED' ? 'connected' : 
+                         account.state === 'DEPLOYING' ? 'deploying' :
+                         account.state === 'DEPLOYED' ? 'deployed' : 'disconnected'
       }));
 
       console.log(`✅ Found ${mappedAccounts.length} MetaAPI accounts`);
       return mappedAccounts;
     } catch (error) {
       console.error('❌ Failed to fetch MetaAPI accounts:', error);
-      // Return connected accounts if API fails
       return Array.from(this.connectedAccounts.values()).map(creds => ({
         id: creds.accountId,
         name: `${creds.broker} Account`,

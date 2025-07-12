@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,9 @@ import {
   ExternalLink,
   CheckCircle,
   AlertCircle,
-  Loader
+  Loader,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { metaApiService } from '@/services/metaApiService';
@@ -25,8 +28,9 @@ interface LinkedAccount {
   name: string;
   broker: string;
   accountNumber: string;
-  status: 'connected' | 'disconnected' | 'error';
+  status: 'connected' | 'disconnected' | 'connecting' | 'deploying' | 'error';
   lastSync: string;
+  statusMessage?: string;
 }
 
 interface AccountLinkingProps {
@@ -38,6 +42,8 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<string>('');
+  const [connectionDetails, setConnectionDetails] = useState<string>('');
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -46,21 +52,37 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
     server: '',
     username: '',
     password: '',
-    accountName: ''
+    accountName: '',
+    platform: 'mt4' as 'mt4' | 'mt5'
   });
 
   const supportedBrokers = [
     'IC Markets',
     'OANDA',
-    'XM',
+    'XM', 
     'FXCM',
     'IG',
-    'MetaQuotes Demo',
     'Custom MT4/MT5'
   ];
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      
+      // Auto-fill server when broker is selected
+      if (field === 'broker' && value === 'IC Markets') {
+        updated.server = 'ICMarkets-Demo02';
+      }
+      
+      return updated;
+    });
+  };
+
+  const getServerOptions = (broker: string): string[] => {
+    if (broker === 'IC Markets') {
+      return metaApiService.getServerOptions(broker);
+    }
+    return [`${broker}-Demo01`, `${broker}-Live01`];
   };
 
   const handleConnect = async () => {
@@ -73,7 +95,19 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
       return;
     }
 
+    // Validate IC Markets broker selection
+    if (formData.broker === 'IC Markets' && !formData.server.includes('ICMarkets')) {
+      toast({
+        title: "Invalid Server Selection",
+        description: "For IC Markets, please select a server that starts with 'ICMarkets-'",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsConnecting(true);
+    setConnectionStatus('Initializing...');
+    setConnectionDetails('Preparing to connect to MetaAPI');
 
     try {
       console.log('🔄 Attempting to connect account via MetaAPI...');
@@ -82,26 +116,59 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
         accountId: `acc-${Date.now()}`,
         login: formData.username,
         password: formData.password,
-        server: formData.server || `${formData.broker}-Demo`,
-        broker: formData.broker
+        server: formData.server,
+        broker: formData.broker,
+        platform: formData.platform
       };
 
-      const accountData = await metaApiService.connectAccount(credentials);
+      // Add temporary account to show connecting status
+      const tempAccount: LinkedAccount = {
+        id: credentials.accountId,
+        name: formData.accountName || `${formData.broker} Account`,
+        broker: formData.broker,
+        accountNumber: formData.accountNumber,
+        status: 'connecting',
+        lastSync: new Date().toISOString(),
+        statusMessage: 'Connecting...'
+      };
       
+      setLinkedAccounts(prev => [...prev, tempAccount]);
+
+      const accountData = await metaApiService.connectAccount(
+        credentials,
+        (status: string, details?: string) => {
+          console.log(`📊 Connection status: ${status} - ${details || ''}`);
+          setConnectionStatus(status);
+          setConnectionDetails(details || '');
+          
+          // Update the temporary account status
+          setLinkedAccounts(prev => prev.map(acc => 
+            acc.id === credentials.accountId 
+              ? { ...acc, status: 'connecting', statusMessage: status }
+              : acc
+          ));
+        }
+      );
+      
+      // Update with successful connection
       const newLinkedAccount: LinkedAccount = {
         id: accountData.id,
         name: formData.accountName || accountData.name,
         broker: accountData.broker,
         accountNumber: formData.accountNumber,
         status: 'connected',
-        lastSync: new Date().toISOString()
+        lastSync: new Date().toISOString(),
+        statusMessage: 'Connected successfully'
       };
 
-      setLinkedAccounts(prev => [...prev, newLinkedAccount]);
+      setLinkedAccounts(prev => prev.map(acc => 
+        acc.id === credentials.accountId ? newLinkedAccount : acc
+      ));
+      
       onAccountLinked(accountData);
       
       toast({
-        title: "Account Connected Successfully!",
+        title: "Account Connected Successfully! ✅",
         description: `Connected to ${formData.broker} account via MetaAPI.`,
       });
 
@@ -112,18 +179,30 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
         server: '',
         username: '',
         password: '',
-        accountName: ''
+        accountName: '',
+        platform: 'mt4'
       });
       setShowAddForm(false);
     } catch (error) {
       console.error('❌ Failed to connect account:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Update account with error status
+      setLinkedAccounts(prev => prev.map(acc => 
+        acc.id === credentials.accountId 
+          ? { ...acc, status: 'error', statusMessage: `Error: ${errorMessage}` }
+          : acc
+      ));
+      
       toast({
-        title: "Connection Failed",
-        description: "Failed to connect to your trading account via MetaAPI. Please check your credentials and try again.",
+        title: "Connection Failed ❌",
+        description: `Failed to connect: ${errorMessage}`,
         variant: "destructive"
       });
     } finally {
       setIsConnecting(false);
+      setConnectionStatus('');
+      setConnectionDetails('');
     }
   };
 
@@ -133,6 +212,34 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
       title: "Account Removed",
       description: "Trading account has been disconnected.",
     });
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'connected':
+        return <CheckCircle className="w-3 h-3 mr-1 text-green-400" />;
+      case 'connecting':
+      case 'deploying':
+        return <Loader className="w-3 h-3 mr-1 animate-spin text-blue-400" />;
+      case 'error':
+        return <AlertCircle className="w-3 h-3 mr-1 text-red-400" />;
+      default:
+        return <WifiOff className="w-3 h-3 mr-1 text-gray-400" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'connected':
+        return 'bg-green-500/20 text-green-400';
+      case 'connecting':
+      case 'deploying':
+        return 'bg-blue-500/20 text-blue-400';
+      case 'error':
+        return 'bg-red-500/20 text-red-400';
+      default:
+        return 'bg-gray-500/20 text-gray-400';
+    }
   };
 
   return (
@@ -145,6 +252,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
         </div>
         <Button
           onClick={() => setShowAddForm(true)}
+          disabled={isConnecting}
           className="bg-gradient-to-r from-purple-600 to-pink-600"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -156,7 +264,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
       <Card className="glass-card border-blue-500/20 bg-blue-900/10">
         <CardContent className="p-4">
           <div className="flex items-center space-x-3">
-            <Activity className="w-5 h-5 text-blue-400" />
+            <Wifi className="w-5 h-5 text-blue-400" />
             <div>
               <h4 className="font-medium text-blue-300">MetaAPI Integration Active</h4>
               <p className="text-sm text-blue-400/80">
@@ -166,6 +274,23 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Connection Progress */}
+      {isConnecting && (
+        <Card className="glass-card border-blue-500/20 bg-blue-900/10">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <Loader className="w-5 h-5 animate-spin text-blue-400" />
+              <div>
+                <h4 className="font-medium text-blue-300">{connectionStatus}</h4>
+                {connectionDetails && (
+                  <p className="text-sm text-blue-400/80">{connectionDetails}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Linked Accounts */}
       {linkedAccounts.length > 0 && (
@@ -184,20 +309,14 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                       <p className="text-xs text-gray-500">
                         Last sync: {new Date(account.lastSync).toLocaleString()}
                       </p>
+                      {account.statusMessage && (
+                        <p className="text-xs text-gray-400 mt-1">{account.statusMessage}</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge 
-                      className={
-                        account.status === 'connected' 
-                          ? 'bg-green-500/20 text-green-400'
-                          : account.status === 'error'
-                          ? 'bg-red-500/20 text-red-400'
-                          : 'bg-gray-500/20 text-gray-400'
-                      }
-                    >
-                      {account.status === 'connected' && <CheckCircle className="w-3 h-3 mr-1" />}
-                      {account.status === 'error' && <AlertCircle className="w-3 h-3 mr-1" />}
+                    <Badge className={getStatusColor(account.status)}>
+                      {getStatusIcon(account.status)}
                       {account.status.charAt(0).toUpperCase() + account.status.slice(1)}
                     </Badge>
                     <Button
@@ -205,6 +324,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                       variant="ghost"
                       size="sm"
                       className="text-red-400 hover:text-red-300"
+                      disabled={account.status === 'connecting' || account.status === 'deploying'}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -228,7 +348,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="broker" className="text-gray-300">Broker *</Label>
+                <Label htmlFor="broker" className="text-gray-300">Broker * (Select IC Markets)</Label>
                 <select
                   id="broker"
                   value={formData.broker}
@@ -239,6 +359,19 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                   {supportedBrokers.map(broker => (
                     <option key={broker} value={broker}>{broker}</option>
                   ))}
+                </select>
+              </div>
+
+              <div>
+                <Label htmlFor="platform" className="text-gray-300">Platform *</Label>
+                <select
+                  id="platform"
+                  value={formData.platform}
+                  onChange={(e) => handleInputChange('platform', e.target.value as 'mt4' | 'mt5')}
+                  className="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="mt4">MetaTrader 4</option>
+                  <option value="mt5">MetaTrader 5</option>
                 </select>
               </div>
 
@@ -267,15 +400,29 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
               </div>
 
               <div>
-                <Label htmlFor="server" className="text-gray-300">Server</Label>
-                <Input
-                  id="server"
-                  type="text"
-                  placeholder="ICMarkets-Demo02"
-                  value={formData.server}
-                  onChange={(e) => handleInputChange('server', e.target.value)}
-                  className="bg-gray-800 border-gray-600 text-white"
-                />
+                <Label htmlFor="server" className="text-gray-300">Server * (Auto-filled for IC Markets)</Label>
+                {formData.broker && getServerOptions(formData.broker).length > 1 ? (
+                  <select
+                    id="server"
+                    value={formData.server}
+                    onChange={(e) => handleInputChange('server', e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">Select Server</option>
+                    {getServerOptions(formData.broker).map(server => (
+                      <option key={server} value={server}>{server}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    id="server"
+                    type="text"
+                    placeholder="ICMarkets-Demo02"
+                    value={formData.server}
+                    onChange={(e) => handleInputChange('server', e.target.value)}
+                    className="bg-gray-800 border-gray-600 text-white"
+                  />
+                )}
               </div>
 
               <div>
@@ -290,7 +437,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                 />
               </div>
 
-              <div>
+              <div className="md:col-span-2">
                 <Label htmlFor="password" className="text-gray-300">MT4/MT5 Password *</Label>
                 <div className="relative">
                   <Input
@@ -318,8 +465,11 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
               <div className="flex items-start space-x-2">
                 <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
                 <div className="text-sm text-green-300">
-                  <p className="font-medium mb-1">MetaAPI Security</p>
-                  <p>Your credentials are processed through MetaAPI's secure infrastructure. We use read-only access for maximum security.</p>
+                  <p className="font-medium mb-1">MetaAPI Security & IC Markets Integration</p>
+                  <p>• Your credentials are processed through MetaAPI's secure infrastructure</p>
+                  <p>• For IC Markets, select "IC Markets" as broker (not MetaQuotes Demo)</p>
+                  <p>• Server will auto-fill to ICMarkets-Demo02 for proper connection</p>
+                  <p>• Read-only access ensures maximum security</p>
                 </div>
               </div>
             </div>
@@ -341,7 +491,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                 {isConnecting ? (
                   <>
                     <Loader className="w-4 h-4 mr-2 animate-spin" />
-                    Connecting via MetaAPI...
+                    {connectionStatus || 'Connecting...'}
                   </>
                 ) : (
                   "Connect Account"
