@@ -1,7 +1,7 @@
 
 import React from 'react';
 import Navigation from '@/components/Navigation';
-import SignalGenerator from '@/components/signals/SignalGenerator';
+import EnhancedSignals from '@/components/enhanced/EnhancedSignals';
 import { PerformanceStats } from '@/components/signals/PerformanceStats';
 import FeatureGate from '@/components/FeatureGate';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
@@ -24,7 +24,7 @@ const Signals = () => {
           </div>
 
           <FeatureGate feature="signals" featureName="AI Trading Signals">
-            <SignalGenerator />
+            <EnhancedSignals />
           </FeatureGate>
           
           <PerformanceStats winRate={78} totalSignals={156} activeSignals={3} avgRR={2.4} />

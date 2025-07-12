@@ -21,7 +21,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import CherryBlossomBackground from './CherryBlossomBackground';
-import PremiumUpgrade from './PremiumUpgrade';
+import EnhancedPremiumUpgrade from './enhanced/EnhancedPremiumUpgrade';
 import UserProfile from './UserProfile';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
@@ -359,7 +359,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <PremiumUpgrade open={showUpgrade} onOpenChange={setShowUpgrade} />
+      <EnhancedPremiumUpgrade open={showUpgrade} onOpenChange={setShowUpgrade} />
     </div>
   );
 };
