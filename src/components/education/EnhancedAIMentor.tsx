@@ -16,18 +16,31 @@ import {
   Star,
   MessageCircle,
   ChevronRight,
-  Upload
+  Upload,
+  Swords
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMentorMemory } from './useMentorMemory';
 import ProgressChart from './ProgressChart';
 import ImageUpload from './ImageUpload';
 import ChatInterface from './ChatInterface';
+import CombatMode from './CombatMode';
 import { useAIResponses } from './useAIResponses';
 
 interface EnhancedAIMentorProps {
   onFeatureUse?: () => void;
 }
+
+// Transform MentorInteraction to Message format for ChatInterface
+const transformInteractionsToMessages = (interactions: any[]) => {
+  return interactions.map((interaction, index) => ({
+    id: `msg-${index}`,
+    content: interaction.response || interaction.content,
+    isUser: false,
+    timestamp: interaction.timestamp,
+    isGeminiPowered: true
+  }));
+};
 
 const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
   const [message, setMessage] = useState('');
@@ -111,6 +124,9 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
     }
   ];
 
+  // Transform interactions for ChatInterface
+  const chatMessages = transformInteractionsToMessages(mentorData.interactions);
+
   return (
     <div className="space-y-8">
       {/* Mentor Status Card */}
@@ -157,10 +173,14 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
       </Card>
 
       <Tabs defaultValue="chat" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-gray-800/50">
+        <TabsList className="grid w-full grid-cols-5 bg-gray-800/50">
           <TabsTrigger value="chat" className="data-[state=active]:bg-purple-600">
             <MessageCircle className="w-4 h-4 mr-2" />
             Chat
+          </TabsTrigger>
+          <TabsTrigger value="combat" className="data-[state=active]:bg-red-600">
+            <Swords className="w-4 h-4 mr-2" />
+            Combat
           </TabsTrigger>
           <TabsTrigger value="upload" className="data-[state=active]:bg-purple-600">
             <Camera className="w-4 h-4 mr-2" />
@@ -177,28 +197,17 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         </TabsList>
 
         <TabsContent value="chat" className="space-y-6">
-          <ChatInterface messages={mentorData.interactions} />
-          
-          <Card className="glass-card border-purple-500/20">
-            <CardContent className="p-4">
-              <div className="flex space-x-2">
-                <Input
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Ask your AI mentor anything about trading..."
-                  className="flex-1 bg-gray-800/50 border-purple-500/30 text-white"
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                />
-                <Button 
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !message.trim()}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <ChatInterface 
+            messages={chatMessages}
+            inputMessage={message}
+            isTyping={isLoading}
+            onInputChange={setMessage}
+            onSendMessage={handleSendMessage}
+          />
+        </TabsContent>
+
+        <TabsContent value="combat" className="space-y-6">
+          <CombatMode />
         </TabsContent>
 
         <TabsContent value="upload" className="space-y-6">
@@ -206,7 +215,7 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         </TabsContent>
 
         <TabsContent value="progress" className="space-y-6">
-          <ProgressChart data={mentorData} />
+          <ProgressChart />
         </TabsContent>
 
         <TabsContent value="lessons" className="space-y-6">
