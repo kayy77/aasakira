@@ -2,7 +2,7 @@
 import React from 'react';
 import Navigation from '@/components/Navigation';
 import SignalGenerator from '@/components/signals/SignalGenerator';
-import PerformanceStats from '@/components/signals/PerformanceStats';
+import { PerformanceStats } from '@/components/signals/PerformanceStats';
 import FeatureGate from '@/components/FeatureGate';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 
@@ -27,7 +27,7 @@ const Signals = () => {
             <SignalGenerator />
           </FeatureGate>
           
-          <PerformanceStats />
+          <PerformanceStats winRate={78} totalSignals={156} activeSignals={3} avgRR={2.4} />
         </div>
       </div>
     </div>
