@@ -44,7 +44,7 @@ const Dashboard = () => {
   };
 
   const handleBackToHome = () => {
-    window.location.href = '/';
+    navigate('/');
   };
 
   if (showProfile) {
