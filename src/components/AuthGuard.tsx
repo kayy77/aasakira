@@ -34,17 +34,12 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     return <LoginDialog open={true} onOpenChange={() => {}} />;
   }
 
-  // If user is authenticated and on the home page, show dashboard
-  if (isAuthenticated && location.pathname === '/') {
+  // If user is authenticated and specifically on the dashboard route, show dashboard
+  if (isAuthenticated && location.pathname === '/dashboard') {
     return <Dashboard />;
   }
 
-  // If user is not authenticated and on public route, show the content
-  if (!isAuthenticated && isPublicRoute) {
-    return <>{children}</>;
-  }
-
-  // For authenticated users on protected routes
+  // For all other cases, show the children (including authenticated users on home page)
   return <>{children}</>;
 };
 
