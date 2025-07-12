@@ -1,18 +1,19 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
-  Swords, 
   TrendingUp, 
   TrendingDown, 
-  Clock,
+  Clock, 
   Zap,
   Crown,
   Target,
-  Flame
+  Swords,
+  Activity,
+  Brain,
+  BarChart3
 } from 'lucide-react';
 
 interface PixelBattleProps {
@@ -43,299 +44,314 @@ const EnhancedPixelBattle = ({
   battlePhase,
   result
 }: PixelBattleProps) => {
-  const [animationFrame, setAnimationFrame] = useState(0);
-  const [battleEffects, setBattleEffects] = useState<Array<{
-    id: string;
-    type: 'slash' | 'block' | 'aura';
+  const [cherryBlossoms, setCherryBlossoms] = useState<Array<{
+    id: number;
     x: number;
     y: number;
-    timestamp: number;
+    delay: number;
   }>>([]);
 
-  // Animation loop
+  // Initialize cherry blossoms
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAnimationFrame(prev => prev + 1);
-    }, 100);
-    return () => clearInterval(interval);
+    const blossoms = Array.from({ length: 12 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      delay: Math.random() * 3
+    }));
+    setCherryBlossoms(blossoms);
   }, []);
 
-  // Add battle effects
-  const addBattleEffect = (type: 'slash' | 'block' | 'aura', x: number, y: number) => {
-    const newEffect = {
-      id: `${Date.now()}-${Math.random()}`,
-      type,
-      x,
-      y,
-      timestamp: Date.now()
-    };
-    setBattleEffects(prev => [...prev.slice(-5), newEffect]);
+  const formatTime = (seconds: number) => {
+    return `0:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Clean up old effects
-  useEffect(() => {
-    const cleanup = setInterval(() => {
-      setBattleEffects(prev => prev.filter(effect => Date.now() - effect.timestamp < 2000));
-    }, 500);
-    return () => clearInterval(cleanup);
-  }, []);
-
-  const PixelCharacterDisplay = ({ character, side, isActive }: { 
+  const PixelWarrior = ({ character, side, isPlayer }: { 
     character: any; 
     side: 'left' | 'right'; 
-    isActive: boolean;
+    isPlayer: boolean;
   }) => {
-    const auraIntensity = isActive ? 1 : 0.5;
-    const bounce = isActive ? 'animate-bounce' : '';
+    const getCharacterSprite = () => {
+      if (character.class === 'monk') {
+        return (
+          <div className="relative w-20 h-24 mx-auto">
+            {/* Monk pixel sprite */}
+            <div className="absolute inset-0 bg-gradient-to-b from-amber-600 to-amber-800 rounded-lg pixel-art">
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-amber-300 rounded-full" />
+              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-cyan-400 rounded-lg" />
+              <div className="absolute bottom-2 left-2 w-4 h-6 bg-amber-700 rounded" />
+              <div className="absolute bottom-2 right-2 w-4 h-6 bg-amber-700 rounded" />
+            </div>
+            {/* Blue aura */}
+            <div className="absolute inset-0 bg-cyan-400/20 rounded-lg animate-pulse blur-sm scale-110" />
+          </div>
+        );
+      } else if (character.class === 'samurai') {
+        return (
+          <div className="relative w-20 h-24 mx-auto">
+            {/* Samurai pixel sprite */}
+            <div className="absolute inset-0 bg-gradient-to-b from-red-700 to-red-900 rounded-lg pixel-art">
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-red-300 rounded-full" />
+              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-gray-800 rounded-lg" />
+              <div className="absolute bottom-2 left-2 w-4 h-6 bg-red-800 rounded" />
+              <div className="absolute bottom-2 right-2 w-4 h-6 bg-red-800 rounded" />
+              {/* Katana */}
+              <div className={`absolute top-4 ${side === 'left' ? 'right-0' : 'left-0'} w-2 h-12 bg-gray-300 rounded-full`} />
+            </div>
+            {/* Red aura */}
+            <div className="absolute inset-0 bg-red-500/20 rounded-lg animate-pulse blur-sm scale-110" />
+          </div>
+        );
+      } else {
+        return (
+          <div className="relative w-20 h-24 mx-auto">
+            {/* Phantom pixel sprite */}
+            <div className="absolute inset-0 bg-gradient-to-b from-purple-700 to-gray-900 rounded-lg pixel-art">
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-purple-300 rounded-full" />
+              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-purple-900 rounded-lg" />
+              <div className="absolute bottom-2 left-2 w-4 h-6 bg-purple-800 rounded" />
+              <div className="absolute bottom-2 right-2 w-4 h-6 bg-purple-800 rounded" />
+            </div>
+            {/* Purple aura */}
+            <div className="absolute inset-0 bg-purple-500/20 rounded-lg animate-pulse blur-sm scale-110" />
+          </div>
+        );
+      }
+    };
+
+    const getClassName = () => {
+      if (character.class === 'monk') return 'Wandering Monk';
+      if (character.class === 'samurai') return 'Rising Samurai';
+      return 'Market Phantom';
+    };
+
+    const getXP = () => character.xp || (isPlayer ? 1250 : 1450);
+    const getLevel = () => character.level || (isPlayer ? 13 : 14);
 
     return (
-      <div className={`relative ${bounce}`}>
-        {/* Character Aura */}
-        <div 
-          className="absolute inset-0 rounded-full animate-pulse"
-          style={{
-            background: `radial-gradient(circle, ${character.aura?.color || '#3B82F6'}40 0%, transparent 70%)`,
-            transform: `scale(${1 + auraIntensity * 0.2})`
-          }}
-        />
-        
-        {/* Character Avatar */}
-        <div className={`w-24 h-24 rounded-lg bg-gradient-to-br ${
-          character.class === 'monk' ? 'from-amber-700 to-orange-800' :
-          character.class === 'samurai' ? 'from-red-700 to-red-900' :
-          'from-purple-800 to-gray-900'
-        } flex items-center justify-center border-4 border-white/20 shadow-2xl relative overflow-hidden`}>
-          
-          {/* Class Icon */}
-          {character.class === 'monk' && <div className="w-12 h-12 text-white">🧘</div>}
-          {character.class === 'samurai' && <Swords className="w-12 h-12 text-white" />}
-          {character.class === 'phantom' && <div className="w-12 h-12 text-white">👤</div>}
-          
-          {/* Equipment Overlays */}
-          {character.equipment?.mask !== 'none' && (
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent" />
-          )}
-          
-          {character.equipment?.weapon && character.equipment.weapon !== 'none' && (
-            <div className={`absolute ${side === 'left' ? 'bottom-0 right-0' : 'bottom-0 left-0'} w-6 h-6 text-yellow-400`}>
-              <Swords className="w-4 h-4" />
-            </div>
-          )}
-        </div>
-
-        {/* Character Info */}
-        <div className="text-center mt-2">
-          <div className="text-sm font-bold text-white">
-            {character.name || (character.class === 'monk' ? 'Monk' : character.class === 'samurai' ? 'Samurai' : 'Phantom')}
+      <div className="text-center">
+        {getCharacterSprite()}
+        <div className="mt-2">
+          <div className="text-yellow-400 text-sm font-bold pixel-font">
+            {getClassName()}
           </div>
-          <div className="text-xs text-gray-400">
-            Level {character.level || 1} • {character.xp || 0} XP
+          <div className="text-gray-300 text-xs">
+            Level {getLevel()} • {getXP()} XP
           </div>
         </div>
       </div>
     );
   };
 
-  const formatTime = (seconds: number) => {
-    return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
-  };
-
   return (
-    <Card className="glass-card border-red-500/20 bg-black/60 backdrop-blur-sm overflow-hidden">
-      <CardContent className="p-0">
-        {/* Battle Header */}
-        <div className="p-4 bg-gradient-to-r from-red-900/30 to-orange-900/30 border-b border-red-500/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Swords className="w-6 h-6 text-red-400" />
-              <div>
-                <h3 className="text-lg font-bold text-white">Pixel Battle Arena</h3>
-                <p className="text-sm text-gray-400">{marketData.symbol} Combat</p>
+    <div className="relative min-h-screen bg-black overflow-hidden pixel-battle-arena">
+      {/* Cherry Blossom Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/30 via-black to-purple-900/20">
+        {cherryBlossoms.map(blossom => (
+          <div
+            key={blossom.id}
+            className="absolute text-pink-300 text-xl animate-pulse opacity-60"
+            style={{
+              left: `${blossom.x}%`,
+              top: `${blossom.y}%`,
+              animationDelay: `${blossom.delay}s`,
+              animationDuration: '3s'
+            }}
+          >
+            🌸
+          </div>
+        ))}
+      </div>
+
+      {/* Dojo Background Elements */}
+      <div className="absolute inset-0">
+        {/* Side lanterns */}
+        <div className="absolute left-8 top-1/3 w-6 h-8 bg-orange-500 rounded-lg opacity-80 animate-pulse" />
+        <div className="absolute right-8 top-1/3 w-6 h-8 bg-orange-500 rounded-lg opacity-80 animate-pulse" />
+        
+        {/* Trading screens on walls */}
+        <div className="absolute left-16 top-32 w-24 h-16 bg-green-900 rounded border-2 border-green-400 opacity-60">
+          <div className="p-2 text-xs text-green-400">
+            {/* Mini chart */}
+            <div className="flex items-end h-8 space-x-1">
+              {marketData.priceHistory.slice(-6).map((_, i) => (
+                <div key={i} className="w-1 bg-green-400" style={{ height: `${Math.random() * 20 + 10}px` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div className="absolute right-16 top-32 w-24 h-16 bg-green-900 rounded border-2 border-green-400 opacity-60">
+          <div className="p-2 text-xs text-green-400">
+            {/* Mini chart */}
+            <div className="flex items-end h-8 space-x-1">
+              {marketData.priceHistory.slice(-6).map((_, i) => (
+                <div key={i} className="w-1 bg-green-400" style={{ height: `${Math.random() * 20 + 10}px` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Timer Display */}
+      <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="bg-black/80 border-4 border-yellow-500 rounded-lg px-6 py-2">
+          <div className="text-yellow-400 text-3xl font-bold pixel-font">
+            {formatTime(timeLeft)}
+          </div>
+        </div>
+      </div>
+
+      {/* AI Mentor Hint */}
+      <div className="absolute top-24 left-1/2 transform -translate-x-1/2 z-10 max-w-md">
+        <div className="bg-cyan-500/90 rounded-lg p-3 border-2 border-cyan-300 relative">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-cyan-700 rounded-full flex items-center justify-center">
+              <Brain className="w-4 h-4 text-white" />
+            </div>
+            <div className="text-white text-sm font-medium">
+              {marketData.aiHint}
+            </div>
+          </div>
+          {/* Speech bubble tail */}
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-cyan-500/90" />
+        </div>
+      </div>
+
+      {/* Market Data Display */}
+      <div className="absolute top-12 left-8 z-10">
+        <div className="bg-black/80 border-2 border-green-400 rounded-lg p-3">
+          <div className="text-green-400 text-lg font-bold">
+            {marketData.symbol}
+          </div>
+          <div className="text-green-300 text-2xl font-bold">
+            {marketData.currentPrice.toFixed(4)}
+          </div>
+        </div>
+      </div>
+
+      {/* Leaderboard Preview */}
+      <div className="absolute top-12 right-8 z-10">
+        <div className="bg-black/80 border-2 border-orange-400 rounded-lg p-2 text-xs">
+          <div className="text-orange-400 font-bold mb-1">👑 Leaders</div>
+          <div className="text-orange-300">🥇 ShadowTrader</div>
+          <div className="text-gray-400">🥈 MarketPhantom</div>
+          <div className="text-gray-500">🥉 DragonSlayer</div>
+        </div>
+      </div>
+
+      {/* Battle Arena Floor */}
+      <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-gray-800 to-transparent">
+        {/* Dojo platform */}
+        <div className="absolute bottom-0 left-1/4 right-1/4 h-16 bg-gradient-to-t from-amber-800 to-amber-600 rounded-t-lg border-t-4 border-amber-500" />
+      </div>
+
+      {/* Characters */}
+      <div className="absolute bottom-20 left-32">
+        <PixelWarrior character={playerCharacter} side="left" isPlayer={true} />
+        {/* Player XP bar */}
+        <div className="mt-2 bg-black/80 rounded p-2 border border-cyan-400">
+          <div className="text-cyan-400 text-xs font-bold">18 XP</div>
+          <div className="w-16 h-2 bg-gray-700 rounded">
+            <div className="w-3/4 h-2 bg-cyan-400 rounded" />
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute bottom-20 right-32">
+        <PixelWarrior character={opponentCharacter} side="right" isPlayer={false} />
+        {/* Opponent XP bar */}
+        <div className="mt-2 bg-black/80 rounded p-2 border border-red-400">
+          <div className="text-red-400 text-xs font-bold">25 XP</div>
+          <div className="w-16 h-2 bg-gray-700 rounded">
+            <div className="w-4/5 h-2 bg-red-400 rounded" />
+          </div>
+        </div>
+      </div>
+
+      {/* Central Battle Interface */}
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20">
+        {battlePhase === 'prediction' && (
+          <div className="space-y-4">
+            {/* Battle Title */}
+            <div className="text-center mb-4">
+              <div className="text-orange-400 text-2xl font-bold pixel-font mb-2">
+                CHOOSE YOUR STRIKE
               </div>
+              <div className="text-orange-300 text-sm">
+                {formatTime(timeLeft)}
+              </div>
+            </div>
+
+            {/* Battle Buttons */}
+            <div className="flex space-x-4">
+              <button
+                onClick={() => onPrediction('up')}
+                className="relative group"
+              >
+                <div className="w-32 h-20 bg-gradient-to-b from-green-500 to-green-700 border-4 border-green-300 rounded-lg flex flex-col items-center justify-center hover:scale-105 transition-transform pixel-button">
+                  <TrendingUp className="w-6 h-6 text-white mb-1" />
+                  <div className="text-white font-bold text-sm pixel-font">BULLISH</div>
+                  <div className="text-white font-bold text-sm pixel-font">STRIKE</div>
+                </div>
+                {/* Aura effect */}
+                <div className="absolute inset-0 bg-green-400/20 rounded-lg blur-md animate-pulse scale-110 -z-10" />
+              </button>
+
+              <button
+                onClick={() => onPrediction('down')}
+                className="relative group"
+              >
+                <div className="w-32 h-20 bg-gradient-to-b from-red-500 to-red-700 border-4 border-red-300 rounded-lg flex flex-col items-center justify-center hover:scale-105 transition-transform pixel-button">
+                  <TrendingDown className="w-6 h-6 text-white mb-1" />
+                  <div className="text-white font-bold text-sm pixel-font">BEARISH</div>
+                  <div className="text-white font-bold text-sm pixel-font">ATTACK</div>
+                </div>
+                {/* Aura effect */}
+                <div className="absolute inset-0 bg-red-400/20 rounded-lg blur-md animate-pulse scale-110 -z-10" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {battlePhase === 'waiting' && (
+          <div className="text-center">
+            <div className="text-yellow-400 text-xl font-bold pixel-font mb-2 animate-pulse">
+              BATTLE IN PROGRESS...
+            </div>
+            <div className="w-64 h-4 bg-gray-700 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-yellow-400 to-orange-400 transition-all duration-1000"
+                style={{ width: `${((30 - timeLeft) / 30) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {battlePhase === 'result' && result && (
+          <div className="text-center space-y-4">
+            <div className={`text-4xl font-bold pixel-font ${
+              result.winner === 'player' ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {result.winner === 'player' ? '🏆 VICTORY!' : '💀 DEFEAT'}
             </div>
             
-            {battlePhase !== 'result' && (
-              <div className="flex items-center space-x-2">
-                <Clock className="w-5 h-5 text-yellow-400" />
-                <span className="text-xl font-bold text-yellow-400">
-                  {formatTime(timeLeft)}
-                </span>
+            <div className="flex space-x-4">
+              <div className="bg-black/80 border-2 border-blue-400 rounded-lg p-3 text-center">
+                <div className="text-blue-400 text-sm">XP GAINED</div>
+                <div className="text-white text-2xl font-bold">+{result.xpGained}</div>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* AI Mentor Hint */}
-        <div className="p-3 bg-blue-900/20 border-b border-blue-500/20">
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">AI</span>
-            </div>
-            <span className="text-blue-300 text-sm font-medium">
-              {marketData.aiHint || "Watch the price action carefully..."}
-            </span>
-          </div>
-        </div>
-
-        {/* Battle Arena */}
-        <div className="relative h-64 bg-gradient-to-b from-gray-900 via-purple-900/20 to-black overflow-hidden">
-          {/* Cherry Blossom Background Effect */}
-          <div className="absolute inset-0 opacity-20">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute text-pink-300 animate-pulse"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 2}s`
-                }}
-              >
-                🌸
-              </div>
-            ))}
-          </div>
-
-          {/* Battle Effects */}
-          {battleEffects.map(effect => (
-            <div
-              key={effect.id}
-              className="absolute pointer-events-none animate-ping"
-              style={{
-                left: `${effect.x}%`,
-                top: `${effect.y}%`,
-                transform: 'translate(-50%, -50%)'
-              }}
-            >
-              {effect.type === 'slash' && <span className="text-2xl">⚡</span>}
-              {effect.type === 'block' && <span className="text-2xl">🛡️</span>}
-              {effect.type === 'aura' && <span className="text-2xl">✨</span>}
-            </div>
-          ))}
-
-          {/* Characters */}
-          <div className="absolute left-8 top-1/2 transform -translate-y-1/2">
-            <PixelCharacterDisplay 
-              character={{ ...playerCharacter, name: 'You' }} 
-              side="left" 
-              isActive={battlePhase === 'prediction'} 
-            />
-          </div>
-
-          <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
-            <PixelCharacterDisplay 
-              character={{ ...opponentCharacter, name: 'Opponent' }} 
-              side="right" 
-              isActive={battlePhase === 'waiting'} 
-            />
-          </div>
-
-          {/* VS Symbol */}
-          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center border-4 border-white/30 shadow-2xl">
-              <span className="text-white font-bold text-xl">VS</span>
-            </div>
-          </div>
-
-          {/* Market Price Display */}
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-            <div className="bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2 border border-yellow-500/30">
-              <div className="text-center">
-                <div className="text-yellow-400 text-sm font-medium">{marketData.symbol}</div>
-                <div className="text-white text-lg font-bold">{marketData.currentPrice.toFixed(4)}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Battle Phase Indicator */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-            {battlePhase === 'prediction' && (
-              <Badge className="bg-blue-600 text-white animate-pulse">
-                Choose Your Stance!
-              </Badge>
-            )}
-            {battlePhase === 'waiting' && (
-              <Badge className="bg-yellow-600 text-white animate-pulse">
-                Battle in Progress...
-              </Badge>
-            )}
-            {battlePhase === 'result' && result && (
-              <Badge className={`${result.winner === 'player' ? 'bg-green-600' : 'bg-red-600'} text-white`}>
-                {result.winner === 'player' ? 'VICTORY!' : 'DEFEAT'}
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {/* Battle Controls */}
-        <div className="p-4 bg-gradient-to-r from-gray-900/50 to-purple-900/50">
-          {battlePhase === 'prediction' && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <p className="text-gray-300 mb-4">
-                  Where will {marketData.symbol} move in the next 5 minutes?
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <Button
-                  onClick={() => {
-                    onPrediction('up');
-                    addBattleEffect('slash', 25, 50);
-                  }}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 h-12 text-lg font-semibold"
-                >
-                  <TrendingUp className="w-5 h-5 mr-2" />
-                  BULLISH STRIKE
-                </Button>
-                
-                <Button
-                  onClick={() => {
-                    onPrediction('down');
-                    addBattleEffect('slash', 75, 50);
-                  }}
-                  className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 h-12 text-lg font-semibold"
-                >
-                  <TrendingDown className="w-5 h-5 mr-2" />
-                  BEARISH ATTACK
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {battlePhase === 'waiting' && (
-            <div className="text-center">
-              <div className="text-lg font-semibold text-yellow-400 mb-2">
-                Watching the Battle Unfold...
-              </div>
-              <Progress value={(30 - timeLeft) * (100/30)} className="mb-2" />
-              <p className="text-gray-400 text-sm">May the best trader win!</p>
-            </div>
-          )}
-
-          {battlePhase === 'result' && result && (
-            <div className="text-center space-y-4">
-              <div className={`text-3xl font-bold ${result.winner === 'player' ? 'text-green-400' : 'text-red-400'}`}>
-                {result.winner === 'player' ? '🏆 VICTORY!' : '💀 DEFEAT'}
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-blue-900/20 rounded-lg">
-                  <div className="text-blue-400 text-sm">XP Gained</div>
-                  <div className="text-white text-xl font-bold">+{result.xpGained}</div>
-                </div>
-                <div className="text-center p-3 bg-purple-900/20 rounded-lg">
-                  <div className="text-purple-400 text-sm">Prediction</div>
-                  <div className={`text-lg font-bold ${result.correct ? 'text-green-400' : 'text-red-400'}`}>
-                    {result.correct ? 'CORRECT' : 'WRONG'}
-                  </div>
+              <div className="bg-black/80 border-2 border-purple-400 rounded-lg p-3 text-center">
+                <div className="text-purple-400 text-sm">PREDICTION</div>
+                <div className={`text-lg font-bold ${result.correct ? 'text-green-400' : 'text-red-400'}`}>
+                  {result.correct ? 'CORRECT' : 'WRONG'}
                 </div>
               </div>
             </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
