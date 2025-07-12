@@ -17,12 +17,13 @@ import {
 import { TokenCard } from './TokenCard';
 import { RiskProfileCard } from './RiskProfileCard';
 import { useToast } from '@/hooks/use-toast';
-import { memeCoinsService } from '@/services/memeCoinsService';
+import { memeCoinsService, TokenMetrics, RiskProfile } from '@/services/memeCoinsService';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import PremiumUpgrade from '@/components/PremiumUpgrade';
 
 export const MemeCoinScanner: React.FC = () => {
-  const [topCoins, setTopCoins] = useState([]);
+  const [categorizedTokens, setCategorizedTokens] = useState<{ [key: string]: TokenMetrics[] }>({});
+  const [selectedRiskProfile, setSelectedRiskProfile] = useState<string>('Medium Risk');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -30,15 +31,15 @@ export const MemeCoinScanner: React.FC = () => {
   const { canUseFeature } = useSubscription();
 
   useEffect(() => {
-    const fetchTopCoins = async () => {
+    const fetchTokens = async () => {
       if (!canUseFeature('memeCoins')) {
         setShowUpgrade(true);
         return;
       }
       setIsLoading(true);
       try {
-        const coins = await memeCoinsService.getTopTokens();
-        setTopCoins(coins);
+        const tokens = await memeCoinsService.scanMemeCoins();
+        setCategorizedTokens(tokens);
       } catch (e: any) {
         setError(e.message || 'Failed to fetch meme coins.');
         toast({
@@ -51,35 +52,54 @@ export const MemeCoinScanner: React.FC = () => {
       }
     };
 
-    fetchTopCoins();
+    fetchTokens();
   }, [canUseFeature, toast]);
 
   if (showUpgrade) {
     return <PremiumUpgrade open={true} onOpenChange={setShowUpgrade} />;
   }
 
+  const riskProfiles = memeCoinsService.getRiskProfiles();
+  const currentTokens = categorizedTokens[selectedRiskProfile] || [];
+
   return (
-    <div className="container mx-auto py-12">
+    <div className="container mx-auto py-12 space-y-8">
+      {/* Risk Profile Selection */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
+        {riskProfiles.map((profile) => (
+          <RiskProfileCard
+            key={profile.name}
+            profile={profile}
+            tokenCount={categorizedTokens[profile.name]?.length || 0}
+            isSelected={selectedRiskProfile === profile.name}
+            onClick={() => setSelectedRiskProfile(profile.name)}
+          />
+        ))}
+      </div>
+
+      {/* Selected Risk Profile Tokens */}
       <Card className="glass-card hover-glow">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-2xl font-bold text-white flex items-center">
               <Sparkles className="mr-2 w-6 h-6 text-yellow-400" />
-              Top Trending Meme Coins
+              {selectedRiskProfile} Opportunities
             </CardTitle>
             <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 animate-pulse">
               <Crown className="w-3 h-3 mr-1" />
-              LIVE UPDATES
+              {currentTokens.length} TOKENS
             </Badge>
           </div>
-          <p className="text-gray-400 mt-2">Real-time data on the most popular meme coins</p>
+          <p className="text-gray-400 mt-2">
+            Real-time opportunities matching {selectedRiskProfile.toLowerCase()} criteria
+          </p>
         </CardHeader>
-        <CardContent className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <CardContent>
           {isLoading ? (
             <Alert className="w-full">
               <Zap className="h-4 w-4" />
               <AlertDescription>
-                Loading top meme coins...
+                Scanning for meme coin opportunities...
               </AlertDescription>
             </Alert>
           ) : error ? (
@@ -89,22 +109,26 @@ export const MemeCoinScanner: React.FC = () => {
                 {error}
               </AlertDescription>
             </Alert>
+          ) : currentTokens.length === 0 ? (
+            <Alert className="w-full">
+              <Target className="h-4 w-4" />
+              <AlertDescription>
+                No tokens found matching {selectedRiskProfile.toLowerCase()} criteria. Try refreshing or selecting a different risk profile.
+              </AlertDescription>
+            </Alert>
           ) : (
-            <>
-              {topCoins.map((token) => (
-                <TokenCard key={token.id} token={token} />
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {currentTokens.map((token) => (
+                <TokenCard 
+                  key={token.address} 
+                  token={token} 
+                  riskLevel={selectedRiskProfile as 'Low Risk' | 'Medium Risk' | 'High Risk'}
+                />
               ))}
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
-
-      <RiskProfileCard 
-        profile="Aggressive"
-        tokenCount={topCoins.length}
-        isSelected={true}
-        onClick={() => {}}
-      />
     </div>
   );
 };
