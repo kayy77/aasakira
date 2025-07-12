@@ -15,7 +15,7 @@ import {
   Activity,
   ArrowLeft,
   Settings,
-  Cherry
+  Home
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -71,17 +71,15 @@ const Dashboard = () => {
       <CherryBlossomBackground />
       
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header with Logo and Navigation */}
+        {/* Header with Logo and Back Navigation */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
-            {/* Aasakira Logo */}
-            <div className="w-20 h-20 mr-4 flex items-center justify-center">
-              <img 
-                src="/lovable-uploads/68ed1ae9-42f1-4e05-9393-155056ac2672.png" 
-                alt="Aasakira Logo" 
-                className="w-16 h-16 object-contain filter brightness-0 invert"
-              />
-            </div>
+            {/* Aasakira Logo - Clean without background */}
+            <img 
+              src="/lovable-uploads/498e8a21-904f-4329-8f36-e14d3bb86155.png" 
+              alt="Aasakira Logo" 
+              className="h-16 w-auto object-contain mr-4"
+            />
             <div>
               <h1 className="text-4xl font-bold gradient-text">
                 Welcome back, {user.username}
@@ -100,40 +98,19 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-          <p className="text-gray-400 text-lg">
+          <p className="text-gray-400 text-lg mb-6">
             Your AI-powered trading companion dashboard
           </p>
           
-          {/* Quick Navigation */}
-          <div className="flex flex-wrap items-center justify-center gap-4 mt-6">
+          {/* Simple Back to Home Navigation */}
+          <div className="flex justify-center mb-8">
             <Button
-              onClick={() => navigate('/signals')}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover-lift"
-            >
-              <Zap className="w-4 h-4 mr-2" />
-              AI Signals
-            </Button>
-            <Button
-              onClick={() => navigate('/memecoins')}
-              className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 hover-lift"
-            >
-              <Target className="w-4 h-4 mr-2" />
-              Meme Scanner
-            </Button>
-            <Button
-              onClick={() => navigate('/education')}
-              className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 hover-lift"
-            >
-              <Brain className="w-4 h-4 mr-2" />
-              AI Mentor
-            </Button>
-            <Button
-              onClick={() => setShowProfile(true)}
+              onClick={() => navigate('/')}
               variant="outline"
               className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
             >
-              <Settings className="w-4 h-4 mr-2" />
-              Profile Settings
+              <Home className="w-4 h-4 mr-2" />
+              Back to Home
             </Button>
           </div>
         </div>
@@ -334,13 +311,16 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Account Info */}
-        <Card className="glass-card hover-glow border-purple-500/20">
+        {/* Profile Settings Card */}
+        <Card className="glass-card hover-glow border-purple-500/20 mb-12">
           <CardHeader>
-            <CardTitle className="text-xl font-bold text-white">Account Information</CardTitle>
+            <CardTitle className="text-xl font-bold text-white flex items-center">
+              <Settings className="w-6 h-6 mr-2 text-purple-400" />
+              Account Settings
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h4 className="text-sm font-medium text-gray-300 mb-1">Email</h4>
                 <p className="text-white">{user.email}</p>
@@ -351,17 +331,14 @@ const Dashboard = () => {
                   {new Date(user.createdAt).toLocaleDateString()}
                 </p>
               </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-300 mb-1">Daily Reset</h4>
-                <p className="text-white">
-                  {new Date(user.resetAt).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    timeZoneName: 'short'
-                  })}
-                </p>
-              </div>
             </div>
+            <Button 
+              onClick={() => setShowProfile(true)}
+              className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover-lift"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Edit Profile Settings
+            </Button>
           </CardContent>
         </Card>
       </div>

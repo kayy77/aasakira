@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, Crown, Activity } from 'lucide-react';
+import { Menu, X, LogOut, Crown, Activity, User } from 'lucide-react';
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import LoginDialog from './LoginDialog';
@@ -29,13 +29,11 @@ const Navigation = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 hover-lift">
-            <div className="w-8 h-8 flex items-center justify-center">
-              <img 
-                src="/lovable-uploads/68ed1ae9-42f1-4e05-9393-155056ac2672.png" 
-                alt="Aasakira Logo" 
-                className="w-8 h-8 object-contain filter brightness-0 invert"
-              />
-            </div>
+            <img 
+              src="/lovable-uploads/498e8a21-904f-4329-8f36-e14d3bb86155.png" 
+              alt="Aasakira Logo" 
+              className="h-8 w-auto object-contain"
+            />
             <span className="text-xl font-bold gradient-text">AASAKIRA</span>
           </Link>
 
@@ -106,6 +104,16 @@ const Navigation = () => {
                       </Badge>
                     )}
                   </div>
+                  {/* User Profile Icon */}
+                  <Link to="/">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-purple-400 hover:text-white hover:bg-purple-500/10"
+                    >
+                      <User className="w-5 h-5" />
+                    </Button>
+                  </Link>
                   <Button 
                     className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 hover-lift"
                     onClick={handleLogout}
