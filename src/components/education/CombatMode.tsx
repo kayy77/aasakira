@@ -13,9 +13,11 @@ import {
   Crown,
   Flame,
   Zap,
-  Users
+  Users,
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import TradingViewChart from '@/components/features/TradingViewChart';
 
 interface CombatMatch {
   id: string;
@@ -50,6 +52,15 @@ const CombatMode = () => {
     rank: 23,
     title: 'Rising Samurai'
   });
+  const [marketData, setMarketData] = useState({
+    currentPrice: 1.0850,
+    priceHistory: [1.0845, 1.0847, 1.0849, 1.0850],
+    bullPower: 65,
+    bearPower: 35,
+    volatilityAlert: false,
+    priceDirection: 'up' as 'up' | 'down',
+    lastPriceChange: 0.0005
+  });
   const { toast } = useToast();
 
   const leaderboard: LeaderboardEntry[] = [
@@ -73,6 +84,44 @@ const CombatMode = () => {
     }
     return () => clearInterval(interval);
   }, [activeMatch, timeLeft]);
+
+  // Simulate live market data updates
+  useEffect(() => {
+    if (!activeMatch) return;
+    
+    const interval = setInterval(() => {
+      setMarketData(prev => {
+        const change = (Math.random() - 0.5) * 0.002;
+        const newPrice = prev.currentPrice + change;
+        const newHistory = [...prev.priceHistory.slice(-9), newPrice];
+        
+        // Calculate bull/bear power based on recent movement
+        const recentTrend = newHistory.slice(-3);
+        const avgChange = recentTrend.reduce((acc, price, i) => {
+          if (i === 0) return 0;
+          return acc + (price - recentTrend[i-1]);
+        }, 0) / 2;
+        
+        const bullPower = Math.max(0, Math.min(100, 50 + (avgChange * 10000)));
+        const bearPower = 100 - bullPower;
+        
+        // Detect volatility spikes
+        const volatilityAlert = Math.abs(change) > 0.001;
+        
+        return {
+          currentPrice: newPrice,
+          priceHistory: newHistory,
+          bullPower,
+          bearPower,
+          volatilityAlert,
+          priceDirection: change > 0 ? 'up' : 'down',
+          lastPriceChange: change
+        };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeMatch]);
 
   const findMatch = () => {
     setIsSearching(true);
@@ -156,6 +205,114 @@ const CombatMode = () => {
   const formatTime = (seconds: number) => {
     return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
   };
+
+  const LiveMarketArena = () => (
+    <div className="relative bg-black/40 rounded-lg p-4 border border-purple-500/20 overflow-hidden">
+      {/* Battle Aura Effects */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Bull Aura */}
+        <div 
+          className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-transparent transition-opacity duration-1000"
+          style={{ opacity: marketData.bullPower / 100 }}
+        />
+        {/* Bear Aura */}
+        <div 
+          className="absolute inset-0 bg-gradient-to-l from-red-500/20 to-transparent transition-opacity duration-1000"
+          style={{ opacity: marketData.bearPower / 100 }}
+        />
+        
+        {/* Volatility Alert Flash */}
+        {marketData.volatilityAlert && (
+          <div className="absolute inset-0 bg-yellow-400/20 animate-pulse" />
+        )}
+      </div>
+
+      {/* Market Arena Header */}
+      <div className="relative z-10 flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="text-2xl font-bold text-white">
+            {activeMatch?.currency}
+          </div>
+          <div className={`text-lg font-semibold ${
+            marketData.priceDirection === 'up' ? 'text-green-400' : 'text-red-400'
+          }`}>
+            {marketData.currentPrice.toFixed(4)}
+          </div>
+          <div className={`text-sm ${
+            marketData.lastPriceChange > 0 ? 'text-green-400' : 'text-red-400'
+          }`}>
+            {marketData.lastPriceChange > 0 ? '+' : ''}{(marketData.lastPriceChange * 10000).toFixed(1)} pips
+          </div>
+        </div>
+        
+        {marketData.volatilityAlert && (
+          <div className="flex items-center space-x-2 text-yellow-400 animate-pulse">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-sm font-semibold">VOLATILITY SPIKE!</span>
+          </div>
+        )}
+      </div>
+
+      {/* Power Tug-of-War */}
+      <div className="relative z-10 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2 text-green-400">
+            <TrendingUp className="w-4 h-4" />
+            <span className="text-sm font-semibold">Bulls</span>
+            <span className="text-lg font-bold">{Math.round(marketData.bullPower)}%</span>
+          </div>
+          <div className="flex items-center space-x-2 text-red-400">
+            <span className="text-lg font-bold">{Math.round(marketData.bearPower)}%</span>
+            <span className="text-sm font-semibold">Bears</span>
+            <TrendingDown className="w-4 h-4" />
+          </div>
+        </div>
+        
+        {/* Visual Tug-of-War Bar */}
+        <div className="relative h-3 bg-gray-800 rounded-full overflow-hidden">
+          <div 
+            className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-1000"
+            style={{ width: `${marketData.bullPower}%` }}
+          />
+          <div 
+            className="absolute right-0 top-0 h-full bg-gradient-to-l from-red-500 to-red-400 transition-all duration-1000"
+            style={{ width: `${marketData.bearPower}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Live Mini Chart */}
+      <div className="relative z-10 h-32">
+        <TradingViewChart 
+          symbol={`FX:${activeMatch?.currency?.replace('/', '')}`}
+          height="128"
+          interval="1"
+          theme="dark"
+          style="3"
+          toolbar_bg="transparent"
+          enable_publishing={false}
+          allow_symbol_change={false}
+        />
+      </div>
+
+      {/* Battle Effects Overlay */}
+      <div className="absolute bottom-4 left-4 right-4 flex justify-between pointer-events-none">
+        {/* Bull Side Effect */}
+        {marketData.bullPower > 70 && (
+          <div className="text-green-400 animate-pulse">
+            <div className="text-xs font-semibold">🐂 BULL CHARGE</div>
+          </div>
+        )}
+        
+        {/* Bear Side Effect */}
+        {marketData.bearPower > 70 && (
+          <div className="text-red-400 animate-pulse ml-auto">
+            <div className="text-xs font-semibold">🐻 BEAR ATTACK</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -254,6 +411,9 @@ const CombatMode = () => {
                   </div>
                 </div>
 
+                {/* Live Market Arena - Only show during active match */}
+                <LiveMarketArena />
+
                 {!activeMatch.prediction && timeLeft > 10 && (
                   <div className="space-y-3">
                     <p className="text-center text-gray-300">
@@ -283,7 +443,7 @@ const CombatMode = () => {
                     <div className="text-lg font-semibold text-yellow-400 mb-2">
                       Prediction: {activeMatch.prediction.toUpperCase()}
                     </div>
-                    <div className="text-gray-400">Waiting for market result...</div>
+                    <div className="text-gray-400">Watching the battle unfold...</div>
                     <Progress value={(10 - timeLeft) * 10} className="mt-2" />
                   </div>
                 )}
