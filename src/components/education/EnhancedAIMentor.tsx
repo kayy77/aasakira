@@ -34,13 +34,13 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { 
-    mentorData, 
+    state: mentorData, 
     addInteraction, 
     updateProgress, 
     addGoal, 
     markGoalComplete 
   } = useMentorMemory();
-  const { getAIResponse } = useAIResponses();
+  const { generateAIResponse } = useAIResponses();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSendMessage = async () => {
@@ -50,12 +50,7 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
     onFeatureUse?.();
 
     try {
-      const response = await getAIResponse(message, {
-        userLevel: mentorData.userLevel,
-        recentTopics: mentorData.recentTopics,
-        learningStyle: mentorData.learningStyle,
-        goals: mentorData.goals
-      });
+      const response = await generateAIResponse(message);
 
       addInteraction({
         type: 'message',
@@ -184,7 +179,7 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
 
         <TabsContent value="chat" className="space-y-6">
           <ChatInterface 
-            interactions={mentorData.interactions}
+            messages={mentorData.interactions}
             isLoading={isLoading}
           />
           
@@ -211,11 +206,11 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         </TabsContent>
 
         <TabsContent value="upload" className="space-y-6">
-          <ImageUpload onImageUpload={handleImageUpload} />
+          <ImageUpload onUpload={handleImageUpload} />
         </TabsContent>
 
         <TabsContent value="progress" className="space-y-6">
-          <ProgressChart mentorData={mentorData} />
+          <ProgressChart data={mentorData} />
         </TabsContent>
 
         <TabsContent value="lessons" className="space-y-6">

@@ -1,135 +1,57 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, Crown, Activity, User } from 'lucide-react';
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Menu, X, Activity, BookOpen, Zap, TrendingUp, Coins } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import LoginDialog from './LoginDialog';
+import UserProfile from './UserProfile';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Navigation = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const { user, logout, isAuthenticated } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
 
-  const handleLogout = () => {
-    logout();
-    setIsMobileMenuOpen(false);
-  };
+  const isActive = (path: string) => location.pathname === path;
 
-  const handleLogin = () => {
-    setIsLoginOpen(true);
-    setIsMobileMenuOpen(false);
-  };
+  const navItems = [
+    { name: 'Signals', path: '/signals', icon: Zap },
+    { name: 'Education', path: '/education', icon: BookOpen },
+    { name: 'Trading', path: '/trading', icon: Activity },
+    { name: 'Meme Coins', path: '/memecoins', icon: Coins },
+  ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-purple-500/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 hover-lift">
-            <img 
-              src="/lovable-uploads/b8d9ec60-b2f7-4ad0-9d21-dbc7e5d67c6e.png" 
-              alt="Aasakira Logo" 
-              className="h-8 w-auto object-contain"
-            />
-            <span className="text-xl font-bold gradient-text">AASAKIRA</span>
+          <Link to="/" className="flex items-center space-x-2">
+            <TrendingUp className="w-8 h-8 text-purple-400" />
+            <span className="text-xl font-bold gradient-text">TradingPro</span>
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {/* Only show navigation links if user is authenticated */}
-            {isAuthenticated && (
-              <>
-                <Link 
-                  to="/" 
-                  className={`transition-colors hover-glow ${
-                    location.pathname === '/' 
-                      ? 'text-purple-400 font-semibold' 
-                      : 'text-gray-300 hover:text-white'
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.path}
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
+                    isActive(item.path)
+                      ? 'bg-purple-600/20 text-purple-400'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
                   }`}
                 >
-                  Dashboard
+                  <Icon className="w-4 h-4" />
+                  <span>{item.name}</span>
                 </Link>
-                <Link 
-                  to="/signals" 
-                  className={`transition-colors hover-glow ${
-                    location.pathname === '/signals' 
-                      ? 'text-purple-400 font-semibold' 
-                      : 'text-gray-300 hover:text-white'
-                  }`}
-                >
-                  AI Signals
-                </Link>
-                <Link 
-                  to="/memecoins" 
-                  className={`transition-colors hover-glow ${
-                    location.pathname === '/memecoins' 
-                      ? 'text-purple-400 font-semibold' 
-                      : 'text-gray-300 hover:text-white'
-                  }`}
-                >
-                  Meme Scanner
-                </Link>
-                <Link 
-                  to="/education" 
-                  className={`transition-colors hover-glow ${
-                    location.pathname === '/education' 
-                      ? 'text-purple-400 font-semibold' 
-                      : 'text-gray-300 hover:text-white'
-                  }`}
-                >
-                  AI Mentor
-                </Link>
-              </>
-            )}
+              );
+            })}
             
-            <div className="flex items-center space-x-3">
-              {isAuthenticated && user ? (
-                <>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-300">
-                      {user.username}
-                    </span>
-                    {user.role === 'premium' ? (
-                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white animate-pulse">
-                        <Crown className="w-3 h-3 mr-1" />
-                        Premium
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="border-purple-500/30 text-purple-400">
-                        <Activity className="w-3 h-3 mr-1" />
-                        Free
-                      </Badge>
-                    )}
-                  </div>
-                  {/* User Profile Icon */}
-                  <Link to="/">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-purple-400 hover:text-white hover:bg-purple-500/10"
-                    >
-                      <User className="w-5 h-5" />
-                    </Button>
-                  </Link>
-                  <Button 
-                    className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 hover-lift"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </Button>
-                </>
-              ) : (
-                <Button 
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover-lift"
-                  onClick={handleLogin}
-                >
-                  Login / Sign Up
-                </Button>
-              )}
+            <div className="flex items-center space-x-4">
+              {user ? <UserProfile /> : <LoginDialog />}
             </div>
           </div>
 
@@ -137,102 +59,44 @@ const Navigation = () => {
           <div className="md:hidden">
             <Button
               variant="ghost"
-              size="icon"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-white hover:bg-white/10"
+              size="sm"
+              onClick={() => setIsOpen(!isOpen)}
+              className="text-gray-300"
             >
-              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </Button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-white/10 py-4">
-            <div className="flex flex-col space-y-4">
-              {isAuthenticated ? (
-                <>
-                  <Link 
-                    to="/" 
-                    className={`px-2 py-1 transition-colors ${
-                      location.pathname === '/' 
-                        ? 'text-purple-400 font-semibold' 
-                        : 'text-gray-300 hover:text-white'
+        {isOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                      isActive(item.path)
+                        ? 'bg-purple-600/20 text-purple-400'
+                        : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
                     }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={() => setIsOpen(false)}
                   >
-                    Dashboard
+                    <Icon className="w-4 h-4" />
+                    <span>{item.name}</span>
                   </Link>
-                  <Link 
-                    to="/signals" 
-                    className={`px-2 py-1 transition-colors ${
-                      location.pathname === '/signals' 
-                        ? 'text-purple-400 font-semibold' 
-                        : 'text-gray-300 hover:text-white'
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    AI Signals
-                  </Link>
-                  <Link 
-                    to="/memecoins" 
-                    className={`px-2 py-1 transition-colors ${
-                      location.pathname === '/memecoins' 
-                        ? 'text-purple-400 font-semibold' 
-                        : 'text-gray-300 hover:text-white'
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Meme Scanner
-                  </Link>
-                  <Link 
-                    to="/education" 
-                    className={`px-2 py-1 transition-colors ${
-                      location.pathname === '/education' 
-                        ? 'text-purple-400 font-semibold' 
-                        : 'text-gray-300 hover:text-white'
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    AI Mentor
-                  </Link>
-                  <div className="px-2 py-1 border-t border-white/10 pt-4">
-                    <div className="flex items-center space-x-2 mb-3">
-                      <span className="text-sm text-gray-300">{user?.username}</span>
-                      {user?.role === 'premium' ? (
-                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-                          <Crown className="w-3 h-3 mr-1" />
-                          Premium
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-purple-500/30 text-purple-400">
-                          Free
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <Button 
-                    className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 w-full"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </Button>
-                </>
-              ) : (
-                <Button 
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 w-full"
-                  onClick={handleLogin}
-                >
-                  Login / Sign Up
-                </Button>
-              )}
+                );
+              })}
+              <div className="pt-4">
+                {user ? <UserProfile /> : <LoginDialog />}
+              </div>
             </div>
           </div>
         )}
       </div>
-
-      <LoginDialog open={isLoginOpen} onOpenChange={setIsLoginOpen} />
     </nav>
   );
 };

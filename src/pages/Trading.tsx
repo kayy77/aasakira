@@ -1,12 +1,11 @@
 
 import React from 'react';
 import Navigation from '@/components/Navigation';
-import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
-import { MentorMemoryProvider } from '@/components/education/MentorMemory';
+import TradingDashboard from '@/components/trading/TradingDashboard';
 import FeatureGate from '@/components/FeatureGate';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 
-const Education = () => {
+const Trading = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative">
       <CherryBlossomBackground />
@@ -16,22 +15,20 @@ const Education = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold gradient-text mb-4">
-              AI Trading Mentor
+              Live Trading Dashboard
             </h1>
             <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-              Your personalized AI mentor that remembers your progress, analyzes your charts, and adapts to your learning style
+              Connect your MetaTrader account to view real-time balance, equity, open trades, and trading history
             </p>
           </div>
 
-          <MentorMemoryProvider>
-            <FeatureGate feature="mentorMessages" featureName="AI Mentor Messages">
-              <EnhancedAIMentor />
-            </FeatureGate>
-          </MentorMemoryProvider>
+          <FeatureGate feature="signals" featureName="Trading Dashboard">
+            <TradingDashboard />
+          </FeatureGate>
         </div>
       </div>
     </div>
   );
 };
 
-export default Education;
+export default Trading;

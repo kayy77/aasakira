@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Index from '@/pages/Index';
 import Signals from '@/pages/Signals';
 import Education from '@/pages/Education';
+import Trading from '@/pages/Trading';
 import NotFound from '@/pages/NotFound';
 import MemeCoins from '@/pages/MemeCoins';
 import { Toaster } from "@/components/ui/toaster"
@@ -23,6 +24,7 @@ function App() {
                 <Route path="/" element={<Index />} />
                 <Route path="/signals" element={<Signals />} />
                 <Route path="/education" element={<Education />} />
+                <Route path="/trading" element={<Trading />} />
                 <Route path="/memecoins" element={<MemeCoins />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
