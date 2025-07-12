@@ -1,17 +1,16 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Activity, BookOpen, Zap, TrendingUp, Coins } from 'lucide-react';
+import { Menu, X, Activity, BookOpen, Zap, TrendingUp, Coins, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LoginDialog from './LoginDialog';
-import UserProfile from './UserProfile';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -53,7 +52,27 @@ const Navigation = () => {
             
             <div className="flex items-center space-x-4">
               {user ? (
-                <UserProfile />
+                <>
+                  <Link
+                    to="/dashboard"
+                    className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
+                      isActive('/dashboard')
+                        ? 'bg-purple-600/20 text-purple-400'
+                        : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
+                    }`}
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                  <Button
+                    onClick={logout}
+                    variant="outline"
+                    size="sm"
+                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                  >
+                    Logout
+                  </Button>
+                </>
               ) : (
                 <LoginDialog open={showLogin} onOpenChange={setShowLogin} />
               )}
@@ -95,9 +114,34 @@ const Navigation = () => {
                   </Link>
                 );
               })}
+              
               <div className="pt-4">
                 {user ? (
-                  <UserProfile />
+                  <>
+                    <Link
+                      to="/dashboard"
+                      className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                        isActive('/dashboard')
+                          ? 'bg-purple-600/20 text-purple-400'
+                          : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
+                      }`}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <User className="w-4 h-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                    <Button
+                      onClick={() => {
+                        logout();
+                        setIsOpen(false);
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 w-full mt-2"
+                    >
+                      Logout
+                    </Button>
+                  </>
                 ) : (
                   <LoginDialog open={showLogin} onOpenChange={setShowLogin} />
                 )}

@@ -14,10 +14,12 @@ import {
   WifiOff,
   BarChart3,
   History,
-  Settings
+  Settings,
+  Link as LinkIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { metaApiService, TradingAccount, Position, HistoryOrder } from '@/services/metaApiService';
+import AccountLinking from './AccountLinking';
 
 interface TradingDashboardProps {
   onFeatureUse?: () => void;
@@ -29,30 +31,15 @@ const TradingDashboard = ({ onFeatureUse }: TradingDashboardProps) => {
   const [positions, setPositions] = useState<Position[]>([]);
   const [history, setHistory] = useState<HistoryOrder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAccountLinking, setShowAccountLinking] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadAccounts();
-  }, []);
-
-  const loadAccounts = async () => {
-    setIsLoading(true);
-    try {
-      const accountsData = await metaApiService.getAccounts();
-      setAccounts(accountsData);
-      if (accountsData.length > 0) {
-        setSelectedAccount(accountsData[0]);
-        await loadAccountData(accountsData[0].id);
-      }
-      onFeatureUse?.();
-    } catch (error) {
-      toast({
-        title: "Connection Error",
-        description: "Failed to load trading accounts. Using demo data.",
-        variant: "destructive"
-      });
-    }
-    setIsLoading(false);
+  const handleAccountLinked = (accountData: TradingAccount) => {
+    setAccounts(prev => [...prev, accountData]);
+    setSelectedAccount(accountData);
+    setShowAccountLinking(false);
+    loadAccountData(accountData.id);
+    onFeatureUse?.();
   };
 
   const loadAccountData = async (accountId: string) => {
@@ -90,23 +77,11 @@ const TradingDashboard = ({ onFeatureUse }: TradingDashboardProps) => {
     return new Date(dateString).toLocaleString();
   };
 
-  if (!selectedAccount) {
+  if (showAccountLinking || !selectedAccount) {
     return (
-      <Card className="glass-card border-purple-500/20">
-        <CardContent className="p-8 text-center">
-          <Activity className="w-12 h-12 mx-auto mb-4 text-purple-400" />
-          <h3 className="text-xl font-semibold text-white mb-2">No Trading Account Connected</h3>
-          <p className="text-gray-400 mb-4">Connect your MetaTrader account to view live trading data</p>
-          <Button 
-            onClick={loadAccounts}
-            disabled={isLoading}
-            className="bg-gradient-to-r from-purple-600 to-pink-600"
-          >
-            {isLoading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
-            Connect Account
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <AccountLinking onAccountLinked={handleAccountLinked} />
+      </div>
     );
   }
 
@@ -115,6 +90,18 @@ const TradingDashboard = ({ onFeatureUse }: TradingDashboardProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Back to Account Linking */}
+      <div className="flex items-center justify-between">
+        <Button
+          onClick={() => setShowAccountLinking(true)}
+          variant="outline"
+          className="border-purple-500/30 text-purple-400"
+        >
+          <LinkIcon className="w-4 h-4 mr-2" />
+          Manage Accounts
+        </Button>
+      </div>
+
       {/* Account Overview */}
       <Card className="glass-card hover-glow border-purple-500/20">
         <CardHeader>
