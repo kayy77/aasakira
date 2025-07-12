@@ -147,7 +147,7 @@ const PremiumUpgrade = ({ open, onOpenChange }: PremiumUpgradeProps) => {
               <CardHeader className="text-center">
                 <CardTitle className="text-xl font-bold text-white">Monthly Plan</CardTitle>
                 <div className="text-3xl font-bold text-white">
-                  $29<span className="text-lg text-gray-400">/month</span>
+                  $25<span className="text-lg text-gray-400">/month</span>
                 </div>
                 <p className="text-gray-400">Perfect for getting started</p>
               </CardHeader>
@@ -174,15 +174,15 @@ const PremiumUpgrade = ({ open, onOpenChange }: PremiumUpgradeProps) => {
               onClick={() => setSelectedPlan('annual')}
             >
               <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white">
-                Save 30%
+                Save 17%
               </Badge>
               <CardHeader className="text-center pt-6">
                 <CardTitle className="text-xl font-bold text-white">Annual Plan</CardTitle>
                 <div className="text-3xl font-bold text-white">
-                  $199<span className="text-lg text-gray-400">/year</span>
+                  $200<span className="text-lg text-gray-400">/year</span>
                 </div>
                 <p className="text-gray-400">Best value for serious traders</p>
-                <p className="text-sm text-green-400">Save $149 per year!</p>
+                <p className="text-sm text-green-400">Save $100 per year!</p>
               </CardHeader>
               <CardContent>
                 <Button 
@@ -249,7 +249,7 @@ const PremiumUpgrade = ({ open, onOpenChange }: PremiumUpgradeProps) => {
             ) : (
               <>
                 <Crown className="w-5 h-5 mr-2" />
-                Upgrade to Premium - ${selectedPlan === 'monthly' ? '29/month' : '199/year'}
+                Upgrade to Premium - ${selectedPlan === 'monthly' ? '25/month' : '200/year'}
               </>
             )}
           </Button>

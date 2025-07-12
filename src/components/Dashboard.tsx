@@ -43,6 +43,10 @@ const Dashboard = () => {
     }
   };
 
+  const handleBackToHome = () => {
+    window.location.href = '/';
+  };
+
   if (showProfile) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative overflow-hidden">
@@ -106,7 +110,7 @@ const Dashboard = () => {
           {/* Navigation */}
           <div className="flex justify-center mb-8">
             <Button
-              onClick={() => navigate('/')}
+              onClick={handleBackToHome}
               variant="outline"
               className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
             >
