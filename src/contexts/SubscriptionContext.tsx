@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
 import { useAuth } from './AuthContext';
 
 interface DailyLimits {
@@ -28,83 +28,52 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 
 const FREE_LIMITS: DailyLimits = {
   signals: 2,
-  memeCoins: 2,
+  memeCoins: 3,
   aiMentorMessages: 10,
 };
 
 export const SubscriptionProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
-  const [usage, setUsage] = useState<UsageData>({
-    signals: 0,
-    memeCoins: 0,
-    aiMentorMessages: 0,
-    lastReset: new Date().toDateString(),
-  });
+  const { user, incrementUsage, canUseFeature, getRemainingUsage } = useAuth();
 
-  const isPremium = user?.isPremium || false;
+  const isPremium = user?.role === 'premium' || false;
 
-  // Reset usage daily
-  useEffect(() => {
-    const today = new Date().toDateString();
-    if (usage.lastReset !== today) {
-      setUsage({
-        signals: 0,
-        memeCoins: 0,
-        aiMentorMessages: 0,
-        lastReset: today,
-      });
-    }
-  }, [usage.lastReset]);
-
-  // Load usage from localStorage when user changes
-  useEffect(() => {
-    if (user) {
-      const savedUsage = localStorage.getItem(`aasakira_usage_${user.id}`);
-      if (savedUsage) {
-        try {
-          const parsedUsage = JSON.parse(savedUsage);
-          setUsage(parsedUsage);
-        } catch (error) {
-          console.error('Error parsing saved usage:', error);
-        }
-      }
-    }
-  }, [user]);
-
-  // Save usage to localStorage
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(`aasakira_usage_${user.id}`, JSON.stringify(usage));
-    }
-  }, [usage, user]);
-
-  const incrementUsage = (type: keyof Omit<UsageData, 'lastReset'>) => {
-    if (isPremium) return; // Premium users have unlimited usage
-    
-    setUsage(prev => ({
-      ...prev,
-      [type]: Number(prev[type]) + 1,
-    }));
-  };
-
-  const canUseFeature = (type: keyof Omit<UsageData, 'lastReset'>): boolean => {
-    if (isPremium) return true;
-    return Number(usage[type]) < FREE_LIMITS[type];
-  };
-
-  const getRemainingUsage = (type: keyof Omit<UsageData, 'lastReset'>): number => {
-    if (isPremium) return Infinity;
-    return Math.max(0, FREE_LIMITS[type] - Number(usage[type]));
+  // Map auth context usage to subscription context format
+  const usageToday: UsageData = {
+    signals: user?.aiSignalsUsedToday || 0,
+    memeCoins: user?.memeScansUsedToday || 0,
+    aiMentorMessages: user?.mentorMessagesUsedToday || 0,
+    lastReset: user?.resetAt || new Date().toISOString(),
   };
 
   return (
     <SubscriptionContext.Provider value={{
       isPremium,
       dailyLimits: FREE_LIMITS,
-      usageToday: usage,
-      incrementUsage,
-      canUseFeature,
-      getRemainingUsage,
+      usageToday,
+      incrementUsage: (type) => {
+        const mapping = {
+          signals: 'signals' as const,
+          memeCoins: 'memeScans' as const,
+          aiMentorMessages: 'mentorMessages' as const,
+        };
+        incrementUsage(mapping[type]);
+      },
+      canUseFeature: (type) => {
+        const mapping = {
+          signals: 'signals' as const,
+          memeCoins: 'memeScans' as const,
+          aiMentorMessages: 'mentorMessages' as const,
+        };
+        return canUseFeature(mapping[type]);
+      },
+      getRemainingUsage: (type) => {
+        const mapping = {
+          signals: 'signals' as const,
+          memeCoins: 'memeScans' as const,
+          aiMentorMessages: 'mentorMessages' as const,
+        };
+        return getRemainingUsage(mapping[type]);
+      },
     }}>
       {children}
     </SubscriptionContext.Provider>

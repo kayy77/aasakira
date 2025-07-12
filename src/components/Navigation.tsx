@@ -1,18 +1,25 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, LogOut, Crown, Activity } from 'lucide-react';
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import LoginDialog from './LoginDialog';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleLogin = () => {
+    setIsLoginOpen(true);
     setIsMobileMenuOpen(false);
   };
 
@@ -30,45 +37,87 @@ const Navigation = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link 
-              to="/" 
-              className="text-gray-300 hover:text-white transition-colors hover-glow"
-            >
-              Home
-            </Link>
-            <Link 
-              to="/signals" 
-              className="text-gray-300 hover:text-white transition-colors hover-glow"
-            >
-              Signals
-            </Link>
-            <Link 
-              to="/memecoins" 
-              className="text-gray-300 hover:text-white transition-colors hover-glow"
-            >
-              Meme Coins
-            </Link>
-            <Link 
-              to="/education" 
-              className="text-gray-300 hover:text-white transition-colors hover-glow"
-            >
-              AI Mentor
-            </Link>
+            {/* Only show navigation links if user is authenticated */}
+            {isAuthenticated && (
+              <>
+                <Link 
+                  to="/" 
+                  className={`transition-colors hover-glow ${
+                    location.pathname === '/' 
+                      ? 'text-purple-400 font-semibold' 
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  Dashboard
+                </Link>
+                <Link 
+                  to="/signals" 
+                  className={`transition-colors hover-glow ${
+                    location.pathname === '/signals' 
+                      ? 'text-purple-400 font-semibold' 
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  AI Signals
+                </Link>
+                <Link 
+                  to="/memecoins" 
+                  className={`transition-colors hover-glow ${
+                    location.pathname === '/memecoins' 
+                      ? 'text-purple-400 font-semibold' 
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  Meme Scanner
+                </Link>
+                <Link 
+                  to="/education" 
+                  className={`transition-colors hover-glow ${
+                    location.pathname === '/education' 
+                      ? 'text-purple-400 font-semibold' 
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  AI Mentor
+                </Link>
+              </>
+            )}
             
             <div className="flex items-center space-x-3">
-              {user && (
-                <span className="text-sm text-gray-300">
-                  Welcome, {user.username}
-                  {user.isPremium && <span className="ml-1 text-purple-400">✨</span>}
-                </span>
+              {isAuthenticated && user ? (
+                <>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-300">
+                      {user.username}
+                    </span>
+                    {user.role === 'premium' ? (
+                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white animate-pulse">
+                        <Crown className="w-3 h-3 mr-1" />
+                        Premium
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-purple-500/30 text-purple-400">
+                        <Activity className="w-3 h-3 mr-1" />
+                        Free
+                      </Badge>
+                    )}
+                  </div>
+                  <Button 
+                    className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 hover-lift"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover-lift"
+                  onClick={handleLogin}
+                >
+                  Login / Sign Up
+                </Button>
               )}
-              <Button 
-                className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 hover-lift"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
             </div>
           </div>
 
@@ -89,47 +138,83 @@ const Navigation = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-white/10 py-4">
             <div className="flex flex-col space-y-4">
-              <Link 
-                to="/" 
-                className="text-gray-300 hover:text-white transition-colors px-2 py-1"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Home
-              </Link>
-              <Link 
-                to="/signals" 
-                className="text-gray-300 hover:text-white transition-colors px-2 py-1"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Signals
-              </Link>
-              <Link 
-                to="/memecoins" 
-                className="text-gray-300 hover:text-white transition-colors px-2 py-1"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Meme Coins
-              </Link>
-              <Link 
-                to="/education" 
-                className="text-gray-300 hover:text-white transition-colors px-2 py-1"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                AI Mentor
-              </Link>
-              {user && (
-                <div className="px-2 py-1 text-sm text-gray-300 border-t border-white/10 pt-4">
-                  Welcome, {user.username}
-                  {user.isPremium && <span className="ml-1 text-purple-400">✨</span>}
-                </div>
+              {isAuthenticated ? (
+                <>
+                  <Link 
+                    to="/" 
+                    className={`px-2 py-1 transition-colors ${
+                      location.pathname === '/' 
+                        ? 'text-purple-400 font-semibold' 
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link 
+                    to="/signals" 
+                    className={`px-2 py-1 transition-colors ${
+                      location.pathname === '/signals' 
+                        ? 'text-purple-400 font-semibold' 
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    AI Signals
+                  </Link>
+                  <Link 
+                    to="/memecoins" 
+                    className={`px-2 py-1 transition-colors ${
+                      location.pathname === '/memecoins' 
+                        ? 'text-purple-400 font-semibold' 
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Meme Scanner
+                  </Link>
+                  <Link 
+                    to="/education" 
+                    className={`px-2 py-1 transition-colors ${
+                      location.pathname === '/education' 
+                        ? 'text-purple-400 font-semibored' 
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    AI Mentor
+                  </Link>
+                  <div className="px-2 py-1 border-t border-white/10 pt-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <span className="text-sm text-gray-300">{user?.username}</span>
+                      {user?.role === 'premium' ? (
+                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                          <Crown className="w-3 h-3 mr-1" />
+                          Premium
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-purple-500/30 text-purple-400">
+                          Free
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <Button 
+                    className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 w-full"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 w-full"
+                  onClick={handleLogin}
+                >
+                  Login / Sign Up
+                </Button>
               )}
-              <Button 
-                className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 w-full"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
             </div>
           </div>
         )}

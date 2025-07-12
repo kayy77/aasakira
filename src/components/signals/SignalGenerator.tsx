@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,30 +18,24 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { signalService } from '@/services/signalService';
 import { marketDataService } from '@/services/marketDataService';
-import { useSubscription } from '@/contexts/SubscriptionContext';
-import PremiumUpgrade from '@/components/PremiumUpgrade';
 
 interface SignalGeneratorProps {
-  onSignalGenerated: (signal: any) => void;
-  remainingSignals?: number;
+  onSignalGenerated?: (signal: any) => void;
+  onFeatureUse?: () => void;
 }
 
 export const SignalGenerator: React.FC<SignalGeneratorProps> = ({ 
-  onSignalGenerated
+  onSignalGenerated,
+  onFeatureUse
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDebugging, setIsDebugging] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
-  const [showUpgrade, setShowUpgrade] = useState(false);
   const { toast } = useToast();
-  
-  const { canUseFeature, incrementUsage, usageToday, dailyLimits, isPremium } = useSubscription();
 
   const generateSignal = async () => {
-    if (!canUseFeature('signals')) {
-      setShowUpgrade(true);
-      return;
-    }
+    // Track feature usage
+    onFeatureUse?.();
 
     setIsGenerating(true);
     setAnalysisStatus('🔄 Connecting to live market APIs (Multi-API failover)...');
@@ -58,8 +53,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       setAnalysisStatus('🧠 Finding BEST available setup (any confidence level)...');
       const signal = await signalService.generateLiveSignal();
 
-      if (signal) {
-        incrementUsage('signals');
+      if (signal && onSignalGenerated) {
         onSignalGenerated(signal);
         
         const confidenceLevel = signal.confidence >= 75 ? 'HIGH' : signal.confidence >= 50 ? 'MEDIUM' : 'LOW';
@@ -111,14 +105,8 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
     }
   };
 
-  const remainingSignals = dailyLimits.signals - usageToday.signals;
-
-  if (showUpgrade) {
-    return <PremiumUpgrade open={true} onOpenChange={setShowUpgrade} />;
-  }
-
   return (
-    <div className="glass-card p-8 mb-8 hover-glow">
+    <div className="glass-card p-8 mb-8 hover-glow border-purple-500/20">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
@@ -138,34 +126,29 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             <BarChart3 className="w-3 h-3 mr-1" />
             BEST SETUP
           </Badge>
-          {!isPremium && (
-            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-              {remainingSignals} left today
-            </Badge>
-          )}
         </div>
       </div>
 
-      <div className="glass-card p-6 mb-6">
+      <div className="glass-card p-6 mb-6 border-purple-500/10">
         <div className="flex items-center space-x-2 mb-4">
           <BarChart3 className="w-5 h-5 text-purple-400" />
           <h3 className="text-lg font-semibold text-white">Enterprise-Grade Data Sources</h3>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="glass-card p-3 text-center">
+          <div className="glass-card p-3 text-center border-purple-500/10">
             <div className="text-sm text-green-400 font-semibold">Finnhub</div>
             <div className="text-xs text-gray-400">Primary OANDA</div>
           </div>
-          <div className="glass-card p-3 text-center">
+          <div className="glass-card p-3 text-center border-purple-500/10">
             <div className="text-sm text-blue-400 font-semibold">Twelve Data</div>
             <div className="text-xs text-gray-400">Backup Feed</div>
           </div>
-          <div className="glass-card p-3 text-center">
+          <div className="glass-card p-3 text-center border-purple-500/10">
             <div className="text-sm text-yellow-400 font-semibold">Polygon.io</div>
             <div className="text-xs text-gray-400">Pro Backup</div>
           </div>
-          <div className="glass-card p-3 text-center">
+          <div className="glass-card p-3 text-center border-purple-500/10">
             <div className="text-sm text-purple-400 font-semibold">Alpha Vantage</div>
             <div className="text-xs text-gray-400">Final Fallback</div>
           </div>
@@ -193,7 +176,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             size="lg" 
             className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-4 hover-lift cyber-glow"
             onClick={generateSignal}
-            disabled={isGenerating || remainingSignals <= 0}
+            disabled={isGenerating}
           >
             {isGenerating ? (
               <>
@@ -230,30 +213,14 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
         </div>
       </div>
 
-      {/* Usage Warning for Free Users */}
-      {!isPremium && remainingSignals <= 1 && (
-        <Alert className="mb-6 border-orange-500/30 bg-orange-500/10">
-          <AlertCircle className="h-4 w-4 text-orange-400" />
-          <AlertDescription className="text-orange-300">
-            <strong>Limited Usage:</strong> You have {remainingSignals} signal{remainingSignals !== 1 ? 's' : ''} remaining today. 
-            <button 
-              onClick={() => setShowUpgrade(true)}
-              className="ml-2 underline hover:text-orange-200"
-            >
-              Upgrade to Premium for unlimited access
-            </button>
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* API Status Grid */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="glass-card p-4">
+        <div className="glass-card p-4 border-purple-500/10">
           <Activity className="w-6 h-6 text-green-400 mb-2" />
           <h4 className="text-white font-semibold mb-1">Live Price Sync</h4>
           <p className="text-sm text-gray-400">Real-time price matching</p>
         </div>
-        <div className="glass-card p-4">
+        <div className="glass-card p-4 border-purple-500/10">
           <Target className="w-6 h-6 text-purple-400 mb-2" />
           <h4 className="text-white font-semibold mb-1">Best Setup Scanner</h4>
           <p className="text-sm text-gray-400">Always finds opportunities</p>
@@ -262,3 +229,5 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
     </div>
   );
 };
+
+export default SignalGenerator;
