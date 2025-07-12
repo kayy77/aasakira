@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,9 +13,12 @@ import {
   EyeOff,
   ExternalLink,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Loader
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { metaApiService } from '@/services/metaApiService';
+import type { TradingAccount, AccountCredentials } from '@/services/metaApiService';
 
 interface LinkedAccount {
   id: string;
@@ -28,7 +30,7 @@ interface LinkedAccount {
 }
 
 interface AccountLinkingProps {
-  onAccountLinked: (account: any) => void;
+  onAccountLinked: (account: TradingAccount) => void;
 }
 
 const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
@@ -74,41 +76,33 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
     setIsConnecting(true);
 
     try {
-      // Simulate API call to connect account
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('🔄 Attempting to connect account via MetaAPI...');
+      
+      const credentials: AccountCredentials = {
+        accountId: `acc-${Date.now()}`,
+        login: formData.username,
+        password: formData.password,
+        server: formData.server || `${formData.broker}-Demo`,
+        broker: formData.broker
+      };
 
-      const newAccount: LinkedAccount = {
-        id: `acc-${Date.now()}`,
-        name: formData.accountName || `${formData.broker} Account`,
-        broker: formData.broker,
+      const accountData = await metaApiService.connectAccount(credentials);
+      
+      const newLinkedAccount: LinkedAccount = {
+        id: accountData.id,
+        name: formData.accountName || accountData.name,
+        broker: accountData.broker,
         accountNumber: formData.accountNumber,
         status: 'connected',
         lastSync: new Date().toISOString()
       };
 
-      setLinkedAccounts(prev => [...prev, newAccount]);
-      
-      // Create mock account data for the trading dashboard
-      const accountData = {
-        id: newAccount.id,
-        name: newAccount.name,
-        broker: newAccount.broker,
-        type: 'Live',
-        balance: 10000 + Math.random() * 50000,
-        equity: 10000 + Math.random() * 55000,
-        margin: Math.random() * 5000,
-        freeMargin: 8000 + Math.random() * 40000,
-        leverage: 100,
-        currency: 'USD',
-        server: formData.server,
-        connectionStatus: 'connected' as const
-      };
-
+      setLinkedAccounts(prev => [...prev, newLinkedAccount]);
       onAccountLinked(accountData);
       
       toast({
-        title: "Account Connected",
-        description: `Successfully connected to ${formData.broker} account.`,
+        title: "Account Connected Successfully!",
+        description: `Connected to ${formData.broker} account via MetaAPI.`,
       });
 
       // Reset form
@@ -122,9 +116,10 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
       });
       setShowAddForm(false);
     } catch (error) {
+      console.error('❌ Failed to connect account:', error);
       toast({
         title: "Connection Failed",
-        description: "Failed to connect to your trading account. Please check your credentials.",
+        description: "Failed to connect to your trading account via MetaAPI. Please check your credentials and try again.",
         variant: "destructive"
       });
     } finally {
@@ -145,8 +140,8 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Trading Accounts</h2>
-          <p className="text-gray-400">Connect your MT4/MT5 trading accounts</p>
+          <h2 className="text-2xl font-bold text-white">MetaAPI Account Linking</h2>
+          <p className="text-gray-400">Connect your MT4/MT5 accounts via MetaAPI for real-time data</p>
         </div>
         <Button
           onClick={() => setShowAddForm(true)}
@@ -156,6 +151,21 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
           Add Account
         </Button>
       </div>
+
+      {/* Connection Status Banner */}
+      <Card className="glass-card border-blue-500/20 bg-blue-900/10">
+        <CardContent className="p-4">
+          <div className="flex items-center space-x-3">
+            <Activity className="w-5 h-5 text-blue-400" />
+            <div>
+              <h4 className="font-medium text-blue-300">MetaAPI Integration Active</h4>
+              <p className="text-sm text-blue-400/80">
+                Using professional MetaAPI service for real-time trading data from IC Markets and other brokers
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Linked Accounts */}
       {linkedAccounts.length > 0 && (
@@ -212,7 +222,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
           <CardHeader>
             <CardTitle className="text-white flex items-center">
               <Plus className="w-5 h-5 mr-2 text-purple-400" />
-              Connect Trading Account
+              Connect MT4/MT5 Account via MetaAPI
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -261,7 +271,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                 <Input
                   id="server"
                   type="text"
-                  placeholder="ICMarkets-Live02"
+                  placeholder="ICMarkets-Demo02"
                   value={formData.server}
                   onChange={(e) => handleInputChange('server', e.target.value)}
                   className="bg-gray-800 border-gray-600 text-white"
@@ -269,11 +279,11 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
               </div>
 
               <div>
-                <Label htmlFor="username" className="text-gray-300">Login *</Label>
+                <Label htmlFor="username" className="text-gray-300">MT4/MT5 Login *</Label>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Your MT4/MT5 Login"
+                  placeholder="Your MetaTrader Login"
                   value={formData.username}
                   onChange={(e) => handleInputChange('username', e.target.value)}
                   className="bg-gray-800 border-gray-600 text-white"
@@ -281,12 +291,12 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
               </div>
 
               <div>
-                <Label htmlFor="password" className="text-gray-300">Password *</Label>
+                <Label htmlFor="password" className="text-gray-300">MT4/MT5 Password *</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Your MT4/MT5 Password"
+                    placeholder="Your MetaTrader Password"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
                     className="bg-gray-800 border-gray-600 text-white pr-10"
@@ -304,12 +314,12 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
               </div>
             </div>
 
-            <div className="bg-blue-900/20 border border-blue-500/20 rounded-lg p-4">
+            <div className="bg-green-900/20 border border-green-500/20 rounded-lg p-4">
               <div className="flex items-start space-x-2">
-                <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5" />
-                <div className="text-sm text-blue-300">
-                  <p className="font-medium mb-1">Security Notice</p>
-                  <p>Your credentials are encrypted and stored securely. We use read-only access to fetch your trading data.</p>
+                <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
+                <div className="text-sm text-green-300">
+                  <p className="font-medium mb-1">MetaAPI Security</p>
+                  <p>Your credentials are processed through MetaAPI's secure infrastructure. We use read-only access for maximum security.</p>
                 </div>
               </div>
             </div>
@@ -319,6 +329,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                 variant="outline"
                 onClick={() => setShowAddForm(false)}
                 className="border-gray-600 text-gray-300"
+                disabled={isConnecting}
               >
                 Cancel
               </Button>
@@ -327,7 +338,14 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                 disabled={isConnecting}
                 className="bg-gradient-to-r from-purple-600 to-pink-600"
               >
-                {isConnecting ? "Connecting..." : "Connect Account"}
+                {isConnecting ? (
+                  <>
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    Connecting via MetaAPI...
+                  </>
+                ) : (
+                  "Connect Account"
+                )}
               </Button>
             </div>
           </CardContent>

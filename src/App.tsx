@@ -7,6 +7,7 @@ import Education from '@/pages/Education';
 import Trading from '@/pages/Trading';
 import NotFound from '@/pages/NotFound';
 import MemeCoins from '@/pages/MemeCoins';
+import Dashboard from '@/components/Dashboard';
 import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -22,6 +23,7 @@ function App() {
             <AuthGuard>
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/signals" element={<Signals />} />
                 <Route path="/education" element={<Education />} />
                 <Route path="/trading" element={<Trading />} />
