@@ -1,8 +1,16 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Activity, BookOpen, Zap, TrendingUp, Coins, User } from 'lucide-react';
+import { Menu, X, Activity, BookOpen, Zap, TrendingUp, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import LoginDialog from './LoginDialog';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -20,6 +28,10 @@ const Navigation = () => {
     { name: 'Trading', path: '/trading', icon: Activity },
     { name: 'Meme Coins', path: '/memecoins', icon: Coins },
   ];
+
+  const getUserInitials = (username: string) => {
+    return username.slice(0, 2).toUpperCase();
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-purple-500/20">
@@ -52,27 +64,39 @@ const Navigation = () => {
             
             <div className="flex items-center space-x-4">
               {user ? (
-                <>
-                  <Link
-                    to="/dashboard"
-                    className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
-                      isActive('/dashboard')
-                        ? 'bg-purple-600/20 text-purple-400'
-                        : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
-                    }`}
-                  >
-                    <User className="w-4 h-4" />
-                    <span>Dashboard</span>
-                  </Link>
-                  <Button
-                    onClick={logout}
-                    variant="outline"
-                    size="sm"
-                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-                  >
-                    Logout
-                  </Button>
-                </>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatar} alt={user.username} />
+                        <AvatarFallback className="bg-purple-600 text-white text-sm">
+                          {getUserInitials(user.username)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 bg-gray-900 border-gray-700" align="end" forceMount>
+                    <div className="flex items-center justify-start gap-2 p-2">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium text-white">{user.username}</p>
+                        <p className="text-xs text-gray-400">{user.email}</p>
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator className="bg-gray-700" />
+                    <DropdownMenuItem asChild>
+                      <Link to="/dashboard" className="text-gray-300 hover:text-white">
+                        Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-gray-700" />
+                    <DropdownMenuItem
+                      onClick={logout}
+                      className="text-gray-300 hover:text-white cursor-pointer"
+                    >
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
                 <LoginDialog open={showLogin} onOpenChange={setShowLogin} />
               )}
@@ -127,7 +151,12 @@ const Navigation = () => {
                       }`}
                       onClick={() => setIsOpen(false)}
                     >
-                      <User className="w-4 h-4" />
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={user.avatar} alt={user.username} />
+                        <AvatarFallback className="bg-purple-600 text-white text-xs">
+                          {getUserInitials(user.username)}
+                        </AvatarFallback>
+                      </Avatar>
                       <span>Dashboard</span>
                     </Link>
                     <Button
