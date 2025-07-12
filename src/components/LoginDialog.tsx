@@ -22,50 +22,90 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const { login, signup, isLoading } = useAuth();
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!username || !password) {
+    if (!username || !password || (isSignUp && !email)) {
       toast({
         title: "Missing Information",
-        description: "Please enter both username and password",
+        description: isSignUp ? "Please fill in all fields" : "Please enter both username and password",
         variant: "destructive"
       });
       return;
     }
 
-    const success = await login(username, password);
+    let success = false;
+    if (isSignUp) {
+      success = await signup(username, email, password);
+    } else {
+      success = await login(username, password);
+    }
     
     if (success) {
       toast({
-        title: "Welcome!",
-        description: "You've successfully logged in to ForexAI",
+        title: isSignUp ? "Welcome!" : "Welcome back!",
+        description: isSignUp ? "Your account has been created successfully" : "You've successfully logged in to ForexAI",
       });
       onOpenChange(false);
     } else {
       toast({
-        title: "Login Failed",
-        description: "Invalid username or password",
+        title: isSignUp ? "Signup Failed" : "Login Failed",
+        description: isSignUp ? "Failed to create account. Please try again." : "Invalid username or password",
         variant: "destructive"
       });
     }
   };
 
+  const resetForm = () => {
+    setUsername('');
+    setPassword('');
+    setEmail('');
+    setShowPassword(false);
+  };
+
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+    resetForm();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md glass-card border-purple-500/20 p-0" hideCloseButton>
+      <DialogContent className="sm:max-w-md glass-card border-purple-500/20 p-0">
         <div className="p-6">
           <DialogHeader className="space-y-4">
             <div className="text-center space-y-2">
-              <DialogTitle className="text-2xl font-bold text-white">Welcome to ForexAI</DialogTitle>
-              <p className="text-gray-400">Sign in to access professional trading tools</p>
+              <DialogTitle className="text-2xl font-bold text-white">
+                {isSignUp ? 'Join ForexAI' : 'Welcome to ForexAI'}
+              </DialogTitle>
+              <p className="text-gray-400">
+                {isSignUp ? 'Create your account to access professional trading tools' : 'Sign in to access professional trading tools'}
+              </p>
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleLogin} className="space-y-6 mt-6">
+          <form onSubmit={handleSubmit} className="space-y-6 mt-6">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-gray-300">Email</Label>
+                <div className="relative">
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pr-10"
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="username" className="text-gray-300">Username</Label>
               <div className="relative">
@@ -113,10 +153,10 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
               {isLoading ? (
                 <>
                   <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Signing In...
+                  {isSignUp ? 'Creating Account...' : 'Signing In...'}
                 </>
               ) : (
-                'Sign In'
+                isSignUp ? 'Create Account' : 'Sign In'
               )}
             </Button>
           </form>
@@ -129,19 +169,16 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
 
           <div className="mt-4 pt-4 border-t border-gray-700">
             <div className="text-center space-y-2">
-              <p className="text-sm text-gray-400">Don't have an account?</p>
+              <p className="text-sm text-gray-400">
+                {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+              </p>
               <Button 
                 variant="outline" 
                 className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
                 disabled={isLoading}
-                onClick={() => {
-                  toast({
-                    title: "Demo Mode",
-                    description: "Enter any username and password to try the demo",
-                  });
-                }}
+                onClick={toggleMode}
               >
-                Try Demo
+                {isSignUp ? 'Sign In' : 'Sign Up'}
               </Button>
             </div>
           </div>

@@ -1,25 +1,27 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-
-interface UsageData {
-  signals: number;
-  memeCoins: number;
-  aiMentor: number;
-}
 
 interface DailyLimits {
   signals: number;
   memeCoins: number;
-  aiMentor: number;
+  aiMentorMessages: number;
+}
+
+interface UsageData {
+  signals: number;
+  memeCoins: number;
+  aiMentorMessages: number;
+  lastReset: string;
 }
 
 interface SubscriptionContextType {
   isPremium: boolean;
-  usageToday: UsageData;
   dailyLimits: DailyLimits;
-  canUseFeature: (feature: keyof UsageData) => boolean;
-  incrementUsage: (feature: keyof UsageData) => void;
-  resetDailyUsage: () => void;
+  usage: UsageData;
+  incrementUsage: (type: keyof UsageData) => void;
+  hasUsageRemaining: (type: keyof UsageData) => boolean;
+  getRemainingUsage: (type: keyof UsageData) => number;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -27,85 +29,82 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 const FREE_LIMITS: DailyLimits = {
   signals: 2,
   memeCoins: 2,
-  aiMentor: 10
-};
-
-const PREMIUM_LIMITS: DailyLimits = {
-  signals: Infinity,
-  memeCoins: Infinity,
-  aiMentor: Infinity
+  aiMentorMessages: 10,
 };
 
 export const SubscriptionProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
-  const isPremium = user?.isPremium || false;
-  
-  const [usageToday, setUsageToday] = useState<UsageData>({
+  const [usage, setUsage] = useState<UsageData>({
     signals: 0,
     memeCoins: 0,
-    aiMentor: 0
+    aiMentorMessages: 0,
+    lastReset: new Date().toDateString(),
   });
 
-  const dailyLimits = isPremium ? PREMIUM_LIMITS : FREE_LIMITS;
+  const isPremium = user?.isPremium || false;
 
-  // Load usage data from localStorage on mount and when user changes
+  // Reset usage daily
+  useEffect(() => {
+    const today = new Date().toDateString();
+    if (usage.lastReset !== today) {
+      setUsage({
+        signals: 0,
+        memeCoins: 0,
+        aiMentorMessages: 0,
+        lastReset: today,
+      });
+    }
+  }, [usage.lastReset]);
+
+  // Load usage from localStorage when user changes
   useEffect(() => {
     if (user) {
-      const today = new Date().toDateString();
-      const savedUsage = localStorage.getItem(`usage_${user.id}_${today}`);
-      
+      const savedUsage = localStorage.getItem(`forexai_usage_${user.id}`);
       if (savedUsage) {
         try {
-          setUsageToday(JSON.parse(savedUsage));
+          const parsedUsage = JSON.parse(savedUsage);
+          setUsage(parsedUsage);
         } catch (error) {
-          console.error('Failed to parse usage data:', error);
-          resetDailyUsage();
+          console.error('Error parsing saved usage:', error);
         }
-      } else {
-        resetDailyUsage();
       }
     }
   }, [user]);
 
-  // Save usage data to localStorage whenever it changes
+  // Save usage to localStorage
   useEffect(() => {
     if (user) {
-      const today = new Date().toDateString();
-      localStorage.setItem(`usage_${user.id}_${today}`, JSON.stringify(usageToday));
+      localStorage.setItem(`forexai_usage_${user.id}`, JSON.stringify(usage));
     }
-  }, [usageToday, user]);
+  }, [usage, user]);
 
-  const canUseFeature = (feature: keyof UsageData): boolean => {
-    if (!user) return false;
-    if (isPremium) return true;
-    return usageToday[feature] < dailyLimits[feature];
-  };
-
-  const incrementUsage = (feature: keyof UsageData) => {
-    if (!user) return;
+  const incrementUsage = (type: keyof UsageData) => {
+    if (isPremium) return; // Premium users have unlimited usage
     
-    setUsageToday(prev => ({
+    setUsage(prev => ({
       ...prev,
-      [feature]: prev[feature] + 1
+      [type]: prev[type] + 1,
     }));
   };
 
-  const resetDailyUsage = () => {
-    setUsageToday({
-      signals: 0,
-      memeCoins: 0,
-      aiMentor: 0
-    });
+  const hasUsageRemaining = (type: keyof UsageData): boolean => {
+    if (isPremium) return true;
+    return usage[type] < FREE_LIMITS[type];
+  };
+
+  const getRemainingUsage = (type: keyof UsageData): number => {
+    if (isPremium) return Infinity;
+    return Math.max(0, FREE_LIMITS[type] - usage[type]);
   };
 
   return (
     <SubscriptionContext.Provider value={{
       isPremium,
-      usageToday,
-      dailyLimits,
-      canUseFeature,
+      dailyLimits: FREE_LIMITS,
+      usage,
       incrementUsage,
-      resetDailyUsage
+      hasUsageRemaining,
+      getRemainingUsage,
     }}>
       {children}
     </SubscriptionContext.Provider>

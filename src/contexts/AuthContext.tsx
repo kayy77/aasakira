@@ -12,6 +12,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<boolean>;
+  signup: (username: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -61,6 +62,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return false;
   };
 
+  const signup = async (username: string, email: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    
+    // Simulate API call - in real app, this would be an actual API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // For demo purposes, accept any username/email/password combination
+    if (username && email && password) {
+      const newUser: User = {
+        id: Date.now().toString(),
+        username,
+        email,
+        isPremium: username.toLowerCase().includes('premium') // Demo: users with "premium" in username get premium
+      };
+      
+      setUser(newUser);
+      localStorage.setItem('forexai_user', JSON.stringify(newUser));
+      setIsLoading(false);
+      return true;
+    }
+    
+    setIsLoading(false);
+    return false;
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('forexai_user');
@@ -71,6 +97,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       user,
       isAuthenticated: !!user,
       login,
+      signup,
       logout,
       isLoading
     }}>
