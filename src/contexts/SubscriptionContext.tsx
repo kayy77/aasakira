@@ -22,14 +22,16 @@ interface SubscriptionContextType {
   incrementUsage: (type: keyof Omit<UsageData, 'lastReset'>) => void;
   canUseFeature: (type: keyof Omit<UsageData, 'lastReset'>) => boolean;
   getRemainingUsage: (type: keyof Omit<UsageData, 'lastReset'>) => number;
+  getUsagePercentage: (type: keyof Omit<UsageData, 'lastReset'>) => number;
+  getTimeUntilReset: () => string;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 const FREE_LIMITS: DailyLimits = {
-  signals: 2,
-  memeCoins: 3,
-  aiMentorMessages: 10,
+  signals: 2,        // Reduced from previous
+  memeCoins: 3,      // Limited scans
+  aiMentorMessages: 5, // Reduced from 10
 };
 
 export const SubscriptionProvider = ({ children }: { children: React.ReactNode }) => {
@@ -37,12 +39,31 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
   const isPremium = user?.role === 'premium' || false;
 
-  // Map auth context usage to subscription context format
   const usageToday: UsageData = {
     signals: user?.aiSignalsUsedToday || 0,
     memeCoins: user?.memeScansUsedToday || 0,
     aiMentorMessages: user?.mentorMessagesUsedToday || 0,
     lastReset: user?.resetAt || new Date().toISOString(),
+  };
+
+  const getUsagePercentage = (type: keyof Omit<UsageData, 'lastReset'>): number => {
+    if (isPremium) return 0;
+    const used = usageToday[type];
+    const limit = FREE_LIMITS[type];
+    return Math.min((used / limit) * 100, 100);
+  };
+
+  const getTimeUntilReset = (): string => {
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
+    nextMidnight.setUTCHours(0, 0, 0, 0);
+    
+    const diff = nextMidnight.getTime() - now.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return `${hours}h ${minutes}m`;
   };
 
   return (
@@ -74,6 +95,8 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         };
         return getRemainingUsage(mapping[type]);
       },
+      getUsagePercentage,
+      getTimeUntilReset,
     }}>
       {children}
     </SubscriptionContext.Provider>

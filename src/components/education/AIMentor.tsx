@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import ChatInterface from './ChatInterface';
 import { useAIResponses } from './useAIResponses';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import PremiumUpgrade from '@/components/PremiumUpgrade';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
   id: string;
@@ -20,11 +22,12 @@ const AIMentor = () => {
   const navigate = useNavigate();
   const { generateAIResponse } = useAIResponses();
   const { canUseFeature, incrementUsage, usageToday, dailyLimits, isPremium } = useSubscription();
+  const { user } = useAuth();
   
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Welcome to Aasakira 2.0 — Your AI Trading Mentor ✨\n\nI'm now powered by Google's Gemini AI for even more intelligent and personalized trading education!\n\nReady to level up your trading skills with advanced AI insights?\n\nAsk me anything about trading, or use our professional tools to practice what you learn.",
+      content: "Welcome to Aasakira 2.0 — Your Personal AI Trading Mentor ✨\n\nI'm powered by Google's Gemini AI and designed to guide YOU specifically from beginner to professional trader!\n\n🎯 **What Makes Me Different:**\n• I remember your progress and adapt to your learning style\n• I teach proven strategies: Breakout+Retest, Trend Continuation, Smart Money Concepts\n• I explain the 'WHY' behind every trade, not just rules\n• I build your skills systematically for consistent profitability\n\nReady to start your personalized trading journey? Tell me about your current experience level and what you want to achieve! 📈",
       isUser: false,
       timestamp: new Date(),
       isGeminiPowered: true
@@ -55,7 +58,8 @@ const AIMentor = () => {
     setIsTyping(true);
 
     try {
-      const aiResponse = await generateAIResponse(currentMessage);
+      // Pass user ID for personalization
+      const aiResponse = await generateAIResponse(currentMessage, user?.id);
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -101,7 +105,7 @@ const AIMentor = () => {
                 onClick={() => setShowUpgrade(true)}
                 className="text-xs text-gray-400 hover:text-purple-300 underline"
               >
-                Upgrade for unlimited access
+                Upgrade for unlimited personalized guidance
               </button>
             </div>
           )}

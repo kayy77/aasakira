@@ -13,33 +13,34 @@ import {
   TrendingUp, 
   Sparkles,
   Activity,
-  ArrowLeft,
   Settings,
-  Home
+  Home,
+  MessageCircle,
+  ExternalLink,
+  Lock
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import CherryBlossomBackground from './CherryBlossomBackground';
 import PremiumUpgrade from './PremiumUpgrade';
 import UserProfile from './UserProfile';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 const Dashboard = () => {
-  const { user, getRemainingUsage } = useAuth();
+  const { user } = useAuth();
+  const { usageToday, dailyLimits, isPremium, getUsagePercentage, getTimeUntilReset } = useSubscription();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const navigate = useNavigate();
 
   if (!user) return null;
 
-  const signalsRemaining = getRemainingUsage('signals');
-  const memeScansRemaining = getRemainingUsage('memeScans');
-  const mentorMessagesRemaining = getRemainingUsage('mentorMessages');
-
-  const isPremium = user.role === 'premium';
-
-  const getUsagePercentage = (used: number, limit: number) => {
-    if (isPremium) return 0;
-    return (used / limit) * 100;
+  const handleJoinCommunity = () => {
+    if (isPremium) {
+      window.open('https://t.me/+BVlQ6Le1ORtiZTU0', '_blank');
+    } else {
+      setShowUpgrade(true);
+    }
   };
 
   if (showProfile) {
@@ -55,7 +56,7 @@ const Dashboard = () => {
               variant="ghost"
               className="text-gray-300 hover:text-white hover:bg-white/10"
             >
-              <ArrowLeft className="w-5 h-5 mr-2" />
+              <Home className="w-5 h-5 mr-2" />
               Back to Dashboard
             </Button>
           </div>
@@ -102,7 +103,7 @@ const Dashboard = () => {
             Your AI-powered trading companion dashboard
           </p>
           
-          {/* Simple Back to Home Navigation */}
+          {/* Navigation */}
           <div className="flex justify-center mb-8">
             <Button
               onClick={() => navigate('/')}
@@ -115,7 +116,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Usage Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
           {/* AI Signals Usage */}
           <Card className="glass-card hover-glow border-purple-500/20">
@@ -130,17 +131,17 @@ const Dashboard = () => {
                 {isPremium ? (
                   <span className="text-green-400">Unlimited</span>
                 ) : (
-                  `${signalsRemaining}/2`
+                  `${usageToday.signals}/${dailyLimits.signals}`
                 )}
               </div>
               {!isPremium && (
                 <Progress 
-                  value={getUsagePercentage(user.aiSignalsUsedToday, 2)} 
+                  value={getUsagePercentage('signals')} 
                   className="w-full h-2 mb-2"
                 />
               )}
               <p className="text-xs text-gray-400">
-                {isPremium ? 'Premium access active' : 'Signals remaining today'}
+                {isPremium ? 'Premium access active' : 'Daily limit'}
               </p>
             </CardContent>
           </Card>
@@ -158,17 +159,17 @@ const Dashboard = () => {
                 {isPremium ? (
                   <span className="text-green-400">Unlimited</span>
                 ) : (
-                  `${memeScansRemaining}/3`
+                  `${usageToday.memeCoins}/${dailyLimits.memeCoins}`
                 )}
               </div>
               {!isPremium && (
                 <Progress 
-                  value={getUsagePercentage(user.memeScansUsedToday, 3)} 
+                  value={getUsagePercentage('memeCoins')} 
                   className="w-full h-2 mb-2"
                 />
               )}
               <p className="text-xs text-gray-400">
-                {isPremium ? 'Premium access active' : 'Scans remaining today'}
+                {isPremium ? 'Premium access active' : 'Daily limit'}
               </p>
             </CardContent>
           </Card>
@@ -186,17 +187,17 @@ const Dashboard = () => {
                 {isPremium ? (
                   <span className="text-green-400">Unlimited</span>
                 ) : (
-                  `${mentorMessagesRemaining}/10`
+                  `${usageToday.aiMentorMessages}/${dailyLimits.aiMentorMessages}`
                 )}
               </div>
               {!isPremium && (
                 <Progress 
-                  value={getUsagePercentage(user.mentorMessagesUsedToday, 10)} 
+                  value={getUsagePercentage('aiMentorMessages')} 
                   className="w-full h-2 mb-2"
                 />
               )}
               <p className="text-xs text-gray-400">
-                {isPremium ? 'Premium access active' : 'Messages remaining today'}
+                {isPremium ? 'Premium access active' : `Resets in ${getTimeUntilReset()}`}
               </p>
             </CardContent>
           </Card>
@@ -204,46 +205,109 @@ const Dashboard = () => {
 
         {/* Feature Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+          {/* Premium Community */}
+          <Card className="glass-card hover-glow border-purple-500/20">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-white flex items-center">
+                <Users className="w-6 h-6 mr-2 text-purple-400" />
+                Elite Trading Community
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-300">
+                Join our exclusive Telegram community with elite traders:
+              </p>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li className="flex items-center">
+                  <MessageCircle className="w-4 h-4 mr-2 text-purple-400" />
+                  Real-time trade alerts & setups
+                </li>
+                <li className="flex items-center">
+                  <TrendingUp className="w-4 h-4 mr-2 text-purple-400" />
+                  Live market analysis discussions
+                </li>
+                <li className="flex items-center">
+                  <Brain className="w-4 h-4 mr-2 text-purple-400" />
+                  Direct access to pro traders
+                </li>
+                <li className="flex items-center">
+                  <Sparkles className="w-4 h-4 mr-2 text-purple-400" />
+                  Exclusive premium strategies
+                </li>
+              </ul>
+              
+              <Button 
+                onClick={handleJoinCommunity}
+                className={`w-full font-semibold py-3 hover-lift ${
+                  isPremium 
+                    ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
+                    : 'bg-gray-700 text-gray-300 cursor-not-allowed'
+                }`}
+                disabled={!isPremium}
+              >
+                {isPremium ? (
+                  <>
+                    <ExternalLink className="w-5 h-5 mr-2" />
+                    Join Premium Community
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-5 h-5 mr-2" />
+                    Premium Members Only
+                  </>
+                )}
+              </Button>
+              
+              {!isPremium && (
+                <p className="text-xs text-center text-gray-500">
+                  Upgrade to Premium to unlock community access
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Premium Features */}
           <Card className="glass-card hover-glow border-purple-500/20">
             <CardHeader>
               <CardTitle className="text-xl font-bold text-white flex items-center">
-                <Sparkles className="w-6 h-6 mr-2 text-purple-400" />
-                Premium Features
+                <Crown className="w-6 h-6 mr-2 text-purple-400" />
+                Premium Benefits
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Unlimited AI Signals</span>
-                {isPremium ? (
-                  <Badge className="bg-green-500/20 text-green-400">Active</Badge>
-                ) : (
-                  <Badge variant="outline" className="border-gray-600 text-gray-400">Locked</Badge>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Unlimited Meme Coin Scans</span>
-                {isPremium ? (
-                  <Badge className="bg-green-500/20 text-green-400">Active</Badge>
-                ) : (
-                  <Badge variant="outline" className="border-gray-600 text-gray-400">Locked</Badge>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Community Access</span>
-                {isPremium ? (
-                  <Badge className="bg-green-500/20 text-green-400">Active</Badge>
-                ) : (
-                  <Badge variant="outline" className="border-gray-600 text-gray-400">Locked</Badge>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Priority Support</span>
-                {isPremium ? (
-                  <Badge className="bg-green-500/20 text-green-400">Active</Badge>
-                ) : (
-                  <Badge variant="outline" className="border-gray-600 text-gray-400">Locked</Badge>
-                )}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Unlimited AI Signals</span>
+                  {isPremium ? (
+                    <Badge className="bg-green-500/20 text-green-400">Active</Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-gray-600 text-gray-400">2/day</Badge>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Unlimited AI Mentor</span>
+                  {isPremium ? (
+                    <Badge className="bg-green-500/20 text-green-400">Active</Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-gray-600 text-gray-400">5/day</Badge>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Premium Community</span>
+                  {isPremium ? (
+                    <Badge className="bg-green-500/20 text-green-400">Active</Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-gray-600 text-gray-400">Locked</Badge>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Priority Support</span>
+                  {isPremium ? (
+                    <Badge className="bg-green-500/20 text-green-400">Active</Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-gray-600 text-gray-400">Locked</Badge>
+                  )}
+                </div>
               </div>
               
               {!isPremium && (
@@ -253,58 +317,6 @@ const Dashboard = () => {
                 >
                   <Crown className="w-5 h-5 mr-2" />
                   Upgrade to Premium
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Community Access */}
-          <Card className="glass-card hover-glow border-purple-500/20">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold text-white flex items-center">
-                <Users className="w-6 h-6 mr-2 text-purple-400" />
-                Elite Community
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-gray-300">
-                Join our exclusive premium trading community with:
-              </p>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li className="flex items-center">
-                  <Activity className="w-4 h-4 mr-2 text-purple-400" />
-                  Real-time trade alerts
-                </li>
-                <li className="flex items-center">
-                  <TrendingUp className="w-4 h-4 mr-2 text-purple-400" />
-                  Market analysis discussions
-                </li>
-                <li className="flex items-center">
-                  <Brain className="w-4 h-4 mr-2 text-purple-400" />
-                  Expert trader insights
-                </li>
-                <li className="flex items-center">
-                  <Users className="w-4 h-4 mr-2 text-purple-400" />
-                  Direct access to our team
-                </li>
-              </ul>
-              
-              {isPremium ? (
-                <Button 
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 hover-lift"
-                  onClick={() => window.open('https://discord.gg/aasakira', '_blank')}
-                >
-                  <Users className="w-5 h-5 mr-2" />
-                  Join Premium Community
-                </Button>
-              ) : (
-                <Button 
-                  onClick={() => setShowUpgrade(true)}
-                  variant="outline"
-                  className="w-full border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-                >
-                  <Crown className="w-5 h-5 mr-2" />
-                  Unlock Community Access
                 </Button>
               )}
             </CardContent>
