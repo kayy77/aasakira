@@ -17,14 +17,15 @@ import {
   MessageCircle,
   ChevronRight,
   Upload,
-  Swords
+  Swords,
+  Crown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMentorMemory } from './useMentorMemory';
 import ProgressChart from './ProgressChart';
 import ImageUpload from './ImageUpload';
 import ChatInterface from './ChatInterface';
-import CombatMode from './CombatMode';
+import EnhancedCombatMode from './EnhancedCombatMode';
 import { useAIResponses } from './useAIResponses';
 
 interface EnhancedAIMentorProps {
@@ -138,6 +139,10 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
             <Badge className="ml-2 bg-gradient-to-r from-purple-500 to-pink-500">
               Level {mentorData.userLevel}
             </Badge>
+            <Badge className="ml-2 bg-gradient-to-r from-red-500 to-orange-500 animate-pulse">
+              <Crown className="w-3 h-3 mr-1" />
+              Combat Ready
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -172,15 +177,15 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="chat" className="w-full">
+      <Tabs defaultValue="combat" className="w-full">
         <TabsList className="grid w-full grid-cols-5 bg-gray-800/50">
+          <TabsTrigger value="combat" className="data-[state=active]:bg-red-600">
+            <Swords className="w-4 h-4 mr-2" />
+            Combat Arena V2
+          </TabsTrigger>
           <TabsTrigger value="chat" className="data-[state=active]:bg-purple-600">
             <MessageCircle className="w-4 h-4 mr-2" />
             Chat
-          </TabsTrigger>
-          <TabsTrigger value="combat" className="data-[state=active]:bg-red-600">
-            <Swords className="w-4 h-4 mr-2" />
-            Combat
           </TabsTrigger>
           <TabsTrigger value="upload" className="data-[state=active]:bg-purple-600">
             <Camera className="w-4 h-4 mr-2" />
@@ -196,6 +201,10 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="combat" className="space-y-6">
+          <EnhancedCombatMode onFeatureUse={onFeatureUse} />
+        </TabsContent>
+
         <TabsContent value="chat" className="space-y-6">
           <ChatInterface 
             messages={chatMessages}
@@ -204,10 +213,6 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
             onInputChange={setMessage}
             onSendMessage={handleSendMessage}
           />
-        </TabsContent>
-
-        <TabsContent value="combat" className="space-y-6">
-          <CombatMode />
         </TabsContent>
 
         <TabsContent value="upload" className="space-y-6">
