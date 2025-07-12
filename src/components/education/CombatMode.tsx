@@ -17,7 +17,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import TradingViewChart from '@/components/features/TradingViewChart';
+import CombatChart from './combat/CombatChart';
 import AvatarGenerator from './combat/AvatarGenerator';
 
 interface CombatMatch {
@@ -282,17 +282,24 @@ const CombatMode = () => {
         </div>
       </div>
 
-      {/* Live Mini Chart */}
-      <div className="relative z-10 h-32">
-        <TradingViewChart 
-          symbol={`FX:${activeMatch?.currency?.replace('/', '')}`}
-          height="128"
-          interval="1"
-          theme="dark"
-          style="3"
-          toolbar_bg="transparent"
-          enable_publishing={false}
-          allow_symbol_change={false}
+      {/* Custom Combat Chart */}
+      <div className="relative z-10">
+        <CombatChart
+          candles={marketData.priceHistory.map((price, index) => ({
+            timestamp: Date.now() - (marketData.priceHistory.length - index) * 60000,
+            open: index === 0 ? price : marketData.priceHistory[index - 1],
+            high: price + Math.random() * 0.001,
+            low: price - Math.random() * 0.001,
+            close: price,
+            volume: Math.random() * 1000
+          }))}
+          currentPrice={marketData.currentPrice}
+          bullPower={marketData.bullPower}
+          bearPower={marketData.bearPower}
+          volatilityAlert={marketData.volatilityAlert}
+          priceDirection={marketData.priceDirection}
+          width={400}
+          height={160}
         />
       </div>
 
