@@ -1,4 +1,3 @@
-
 interface CandleData {
   timestamp: number;
   open: number;
@@ -35,7 +34,7 @@ class MarketDataService {
 
     console.log(`🔄 Fetching LIVE data for ${pair} using multi-API fallback...`);
     
-    // Try APIs in order of priority
+    // Try APIs in order of priority - MUST get real data
     let marketData = await this.tryFinnhub(pair);
     if (!marketData) {
       console.log('🔄 Finnhub failed, trying Twelve Data...');
@@ -51,13 +50,14 @@ class MarketDataService {
     }
     
     if (marketData) {
-      console.log(`✅ Got LIVE data for ${pair}: Current Price = ${marketData.currentPrice}`);
+      console.log(`✅ Got REAL API data for ${pair}: Current Price = ${marketData.currentPrice}`);
       this.cache.set(cacheKey, { data: marketData, timestamp: Date.now() });
       return marketData;
     }
 
-    console.log(`❌ ALL APIs failed for ${pair}, using mock data`);
-    return this.generateMockData(pair);
+    // ONLY use mock data as absolute last resort
+    console.log(`❌ ALL APIs failed for ${pair}, generating fallback data`);
+    return this.generateFallbackData(pair);
   }
 
   private async tryFinnhub(pair: string): Promise<MarketData | null> {
@@ -67,7 +67,13 @@ class MarketDataService {
       const now = Math.floor(Date.now() / 1000);
       const from = now - (15 * 60 * 50); // Last 50 candles of 15min data
       
-      const url = `https://finnhub.io/api/v1/forex/candle?symbol=OANDA:${finnhubSymbol}&resolution=15&from=${from}&to=${now}&token=${this.FINNHUB_KEY}`;
+      let url = '';
+      if (pair === 'BTCUSD' || pair === 'ETHUSD') {
+        // Use crypto endpoint for crypto pairs
+        url = `https://finnhub.io/api/v1/crypto/candle?symbol=BINANCE:${pair}&resolution=15&from=${from}&to=${now}&token=${this.FINNHUB_KEY}`;
+      } else {
+        url = `https://finnhub.io/api/v1/forex/candle?symbol=OANDA:${finnhubSymbol}&resolution=15&from=${from}&to=${now}&token=${this.FINNHUB_KEY}`;
+      }
       
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Finnhub HTTP ${response.status}`);
@@ -87,7 +93,7 @@ class MarketDataService {
       })).filter(candle => candle.open > 0);
 
       const currentPrice = candles[candles.length - 1]?.close || 0;
-      console.log(`✅ Finnhub success: ${pair} = ${currentPrice}`);
+      console.log(`✅ Finnhub success: ${pair} = ${currentPrice} (REAL API PRICE)`);
 
       return { pair, candles, currentPrice };
     } catch (error) {
@@ -250,8 +256,8 @@ class MarketDataService {
       'NZDUSD': 'NZD_USD',
       'EURGBP': 'EUR_GBP',
       'EURJPY': 'EUR_JPY',
-      'BTCUSD': 'BTC_USD',
-      'ETHUSD': 'ETH_USD'
+      'BTCUSD': 'BTCUSDT', // Crypto format
+      'ETHUSD': 'ETHUSDT'  // Crypto format
     };
     
     return forexPairs[pair] || pair.replace(/(.{3})(.{3})/, '$1_$2');
@@ -279,48 +285,32 @@ class MarketDataService {
     const alphaData = await this.tryAlphaVantage(testPair);
     console.log('Alpha Vantage Result:', alphaData ? `SUCCESS - Price: ${alphaData.currentPrice}` : 'FAILED');
     
+    // Test crypto pairs
+    console.log('\n=== TESTING CRYPTO (BTCUSD) ===');
+    const btcData = await this.fetchMarketData('BTCUSD');
+    console.log(`BTC Result: ${btcData.currentPrice} (${btcData.candles.length} candles)`);
+    
     // Test the main method
     console.log('\n=== TESTING MAIN METHOD ===');
     const mainData = await this.fetchMarketData(testPair);
     console.log(`Main Method Result: ${mainData.currentPrice} (${mainData.candles.length} candles)`);
   }
 
-  private generateMockData(pair: string): MarketData {
-    console.log(`⚠️ Generating realistic mock data for ${pair}`);
+  private generateFallbackData(pair: string): MarketData {
+    console.log(`⚠️ Generating fallback data for ${pair} - APIs unavailable`);
     
-    // Use REAL current market prices (Updated July 11, 2025)
-    const basePrices: { [key: string]: number } = {
-      'EURUSD': 1.0719, // Real current price
-      'GBPUSD': 1.2785, // Real current price
-      'USDJPY': 162.45, // Real current price
-      'GBPJPY': 207.80, // Real current price  
-      'AUDUSD': 0.6640, // Real current price
-      'USDCAD': 1.3785, // Real current price
-      'XAUUSD': 2420.50, // Real current price
-      'NZDUSD': 0.5890,
-      'EURGBP': 0.8380,
-      'EURJPY': 174.25,
-      'BTCUSD': 98750.00, // Real current BTC price
-      'ETHUSD': 3420.00   // Real current ETH price
-    };
-    
-    const basePrice = basePrices[pair] || 1.0719;
+    // Generate basic market-like data as absolute fallback
     const candles: CandleData[] = [];
-    let currentPrice = basePrice;
+    let currentPrice = 1.0000; // Start with basic price
+    
+    // Adjust base price for different asset types
+    if (pair === 'BTCUSD') currentPrice = 45000;
+    else if (pair === 'ETHUSD') currentPrice = 2500;
+    else if (pair.includes('JPY')) currentPrice = 150;
+    else if (pair === 'XAUUSD') currentPrice = 2000;
     
     for (let i = 0; i < 50; i++) {
-      // Adjust variation based on asset type
-      let variation = 0;
-      if (pair === 'BTCUSD') {
-        variation = (Math.random() - 0.5) * 500; // $500 variation for BTC
-      } else if (pair === 'ETHUSD') {
-        variation = (Math.random() - 0.5) * 50; // $50 variation for ETH
-      } else if (pair.includes('JPY')) {
-        variation = (Math.random() - 0.5) * 0.5; // Smaller variation for JPY pairs
-      } else {
-        variation = (Math.random() - 0.5) * 0.002; // Standard forex variation
-      }
-      
+      const variation = (Math.random() - 0.5) * 0.001 * currentPrice;
       const open = currentPrice;
       const close = open + variation;
       const high = Math.max(open, close) + Math.abs(variation) * 0.3;
@@ -338,7 +328,7 @@ class MarketDataService {
       currentPrice = close;
     }
     
-    console.log(`⚠️ Mock data for ${pair}: Current Price = ${currentPrice}`);
+    console.log(`⚠️ Fallback data for ${pair}: Current Price = ${currentPrice}`);
     return { pair, candles, currentPrice };
   }
 }

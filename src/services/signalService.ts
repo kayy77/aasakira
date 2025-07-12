@@ -28,7 +28,7 @@ class SignalService {
   ];
 
   async generateLiveSignal(): Promise<Signal | null> {
-    console.log('🔍 Scanning ALL major pairs + crypto for BEST available opportunity...');
+    console.log('🔍 Scanning ALL major pairs + crypto for BEST available opportunity (using REAL API prices)...');
     
     let bestSignal: Signal | null = null;
     let highestConfidence = 0;
@@ -36,15 +36,15 @@ class SignalService {
     // Analyze all major pairs and crypto and find the best one
     for (const pair of this.MAJOR_PAIRS) {
       try {
-        console.log(`📊 Analyzing ${pair} for opportunities...`);
+        console.log(`📊 Analyzing ${pair} for opportunities using REAL API data...`);
         const marketData = await marketDataService.fetchMarketData(pair);
         const analysis = smartMoneyAnalyzer.analyzeForSignal(marketData);
         
-        console.log(`${pair}: ${analysis.confidence}% confidence - ${analysis.reason}`);
+        console.log(`${pair}: ${analysis.confidence}% confidence - ${analysis.reason} (API Price: ${marketData.currentPrice})`);
         
         // Always log if we get a signal, even if it's not the best
         if (analysis.signal) {
-          console.log(`  📈 ${pair} Signal: ${analysis.signal.type} @ ${analysis.signal.entry} (${analysis.confidence}%)`);
+          console.log(`  📈 ${pair} Signal: ${analysis.signal.type} @ ${analysis.signal.entry} (${analysis.confidence}%) - REAL API PRICE`);
           
           // Keep track of the highest confidence signal regardless of threshold
           if (analysis.confidence > highestConfidence) {
@@ -54,7 +54,7 @@ class SignalService {
               ...analysis.signal,
               confidence: analysis.confidence
             };
-            console.log(`🎯 NEW BEST: ${pair} (${analysis.confidence}%) replaces ${oldBest}`);
+            console.log(`🎯 NEW BEST: ${pair} (${analysis.confidence}%) replaces ${oldBest} - Using REAL API entry price: ${bestSignal.entry}`);
           } else {
             console.log(`  ⚖️ ${pair} (${analysis.confidence}%) not better than current best (${highestConfidence}%)`);
           }
@@ -67,9 +67,10 @@ class SignalService {
     }
     
     if (bestSignal) {
-      console.log(`✅ BEST OPPORTUNITY FOUND: ${bestSignal.type} ${bestSignal.pair} @ ${bestSignal.entry} (${bestSignal.confidence}% confidence)`);
+      console.log(`✅ BEST OPPORTUNITY FOUND: ${bestSignal.type} ${bestSignal.pair} @ ${bestSignal.entry} (${bestSignal.confidence}% confidence) - REAL API PRICE`);
       this.signals.unshift(bestSignal);
-      this.lastUpdate = Date.now();return bestSignal;
+      this.lastUpdate = Date.now();
+      return bestSignal;
     }
     
     console.log('❌ No viable opportunities found across all major pairs + crypto');

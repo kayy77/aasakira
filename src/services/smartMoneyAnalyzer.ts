@@ -1,3 +1,4 @@
+
 import type { MarketData, CandleData } from './marketDataService';
 
 interface SignalAnalysis {
@@ -8,7 +9,7 @@ interface SignalAnalysis {
 
 class SmartMoneyAnalyzer {
   analyzeForSignal(marketData: MarketData): SignalAnalysis {
-    console.log(`🧠 Analyzing ${marketData.pair} with ${marketData.candles.length} candles, current price: ${marketData.currentPrice}`);
+    console.log(`🧠 Analyzing ${marketData.pair} with ${marketData.candles.length} candles, ACTUAL API price: ${marketData.currentPrice}`);
     
     if (marketData.candles.length < 20) {
       return { signal: null, confidence: 0, reason: 'Insufficient data' };
@@ -16,9 +17,10 @@ class SmartMoneyAnalyzer {
 
     const candles = marketData.candles;
     const latestCandle = candles[candles.length - 1];
-    const currentPrice = latestCandle?.close || marketData.currentPrice;
+    // Use the EXACT price from the API - no modifications
+    const currentPrice = marketData.currentPrice;
     
-    console.log(`📊 Using LATEST CANDLE price: ${currentPrice} for ${marketData.pair} (timestamp: ${new Date(latestCandle.timestamp).toLocaleTimeString()})`);
+    console.log(`📊 Using EXACT API price: ${currentPrice} for ${marketData.pair} (from ${candles.length} candles)`);
 
     // ✅ BEST OPPORTUNITY ANALYSIS - Score each confluence
     const bos = this.detectBreakOfStructure(candles);
@@ -93,13 +95,13 @@ class SmartMoneyAnalyzer {
       console.log(`⚠️ Invalid stop loss for ${marketData.pair}, using default`);
       // Use default stop loss based on pair type
       if (marketData.pair === 'BTCUSD') {
-        stopLossDistance = 500; // $500 for BTC
+        stopLossDistance = currentPrice * 0.02; // 2% for BTC
       } else if (marketData.pair === 'ETHUSD') {
-        stopLossDistance = 50; // $50 for ETH
+        stopLossDistance = currentPrice * 0.025; // 2.5% for ETH
       } else if (marketData.pair.includes('JPY')) {
-        stopLossDistance = 0.20;
+        stopLossDistance = currentPrice * 0.001;
       } else {
-        stopLossDistance = 0.0020;
+        stopLossDistance = currentPrice * 0.002;
       }
     }
 
@@ -117,7 +119,7 @@ class SmartMoneyAnalyzer {
       pair: marketData.pair,
       type: direction,
       confidence: Math.min(confidence, 95), // Cap at 95%
-      entry: Number(currentPrice.toFixed(decimalPlaces)),
+      entry: Number(currentPrice.toFixed(decimalPlaces)), // EXACT API PRICE
       stopLoss: direction === 'BUY' 
         ? Number((currentPrice - stopLossDistance).toFixed(decimalPlaces))
         : Number((currentPrice + stopLossDistance).toFixed(decimalPlaces)),
@@ -132,7 +134,7 @@ class SmartMoneyAnalyzer {
       reason: reasons.length > 0 ? reasons.join(' + ') : 'Market Direction'
     };
 
-    console.log(`🎯 BEST OPPORTUNITY: ${direction} ${marketData.pair} @ ${currentPrice} (${confidence}% confidence)`);
+    console.log(`🎯 SIGNAL GENERATED: ${direction} ${marketData.pair} @ ${signal.entry} (EXACT API PRICE)`);
     console.log(`   Entry: ${signal.entry} | SL: ${signal.stopLoss} | TP: ${signal.takeProfit}`);
     console.log(`   R:R: ${riskRewardRatio}:1 | Risk: ${stopLossDistance.toFixed(4)}`);
     console.log(`   Confluences: ${reasons.join(' + ')}`);

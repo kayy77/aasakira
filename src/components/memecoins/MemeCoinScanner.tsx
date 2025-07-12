@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,13 +31,13 @@ export const MemeCoinScanner: React.FC = () => {
 
   useEffect(() => {
     const fetchTopCoins = async () => {
-      if (!canUseFeature('memecoins')) {
+      if (!canUseFeature('memeCoins')) {
         setShowUpgrade(true);
         return;
       }
       setIsLoading(true);
       try {
-        const coins = await memeCoinsService.getTopMemeCoins();
+        const coins = await memeCoinsService.getTopTokens();
         setTopCoins(coins);
       } catch (e: any) {
         setError(e.message || 'Failed to fetch meme coins.');
@@ -90,15 +91,22 @@ export const MemeCoinScanner: React.FC = () => {
             </Alert>
           ) : (
             <>
-              {topCoins.map((coin) => (
-                <TokenCard key={coin.id} coin={coin} />
+              {topCoins.map((token) => (
+                <TokenCard key={token.id} token={token} />
               ))}
             </>
           )}
         </CardContent>
       </Card>
 
-      <RiskProfileCard />
+      <RiskProfileCard 
+        profile="Aggressive"
+        tokenCount={topCoins.length}
+        isSelected={true}
+        onClick={() => {}}
+      />
     </div>
   );
 };
+
+export default MemeCoinScanner;
