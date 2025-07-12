@@ -30,7 +30,7 @@ const Navigation = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 hover-lift">
             <img 
-              src="/lovable-uploads/498e8a21-904f-4329-8f36-e14d3bb86155.png" 
+              src="/lovable-uploads/b8d9ec60-b2f7-4ad0-9d21-dbc7e5d67c6e.png" 
               alt="Aasakira Logo" 
               className="h-8 w-auto object-contain"
             />

@@ -71,12 +71,12 @@ const Dashboard = () => {
       <CherryBlossomBackground />
       
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header with Logo and Back Navigation */}
+        {/* Header with Logo and Navigation */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
-            {/* Aasakira Logo - Clean without background */}
+            {/* New Aasakira Logo */}
             <img 
-              src="/lovable-uploads/498e8a21-904f-4329-8f36-e14d3bb86155.png" 
+              src="/lovable-uploads/b8d9ec60-b2f7-4ad0-9d21-dbc7e5d67c6e.png" 
               alt="Aasakira Logo" 
               className="h-16 w-auto object-contain mr-4"
             />
