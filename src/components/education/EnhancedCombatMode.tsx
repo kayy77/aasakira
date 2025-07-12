@@ -153,6 +153,7 @@ const EnhancedCombatMode = ({ onFeatureUse }: EnhancedCombatModeProps) => {
             selectedPerk={null}
             onPerkSelect={handlePerkSelect}
             isSelectionPhase={true}
+            showOpponentPerk={false}
           />
         </TabsContent>
 
