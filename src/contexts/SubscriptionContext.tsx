@@ -19,9 +19,9 @@ interface SubscriptionContextType {
   isPremium: boolean;
   dailyLimits: DailyLimits;
   usageToday: UsageData;
-  incrementUsage: (type: keyof UsageData) => void;
-  canUseFeature: (type: keyof UsageData) => boolean;
-  getRemainingUsage: (type: keyof UsageData) => number;
+  incrementUsage: (type: keyof Omit<UsageData, 'lastReset'>) => void;
+  canUseFeature: (type: keyof Omit<UsageData, 'lastReset'>) => boolean;
+  getRemainingUsage: (type: keyof Omit<UsageData, 'lastReset'>) => number;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -78,23 +78,23 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     }
   }, [usage, user]);
 
-  const incrementUsage = (type: keyof UsageData) => {
+  const incrementUsage = (type: keyof Omit<UsageData, 'lastReset'>) => {
     if (isPremium) return; // Premium users have unlimited usage
     
     setUsage(prev => ({
       ...prev,
-      [type]: prev[type] + 1,
+      [type]: Number(prev[type]) + 1,
     }));
   };
 
-  const canUseFeature = (type: keyof UsageData): boolean => {
+  const canUseFeature = (type: keyof Omit<UsageData, 'lastReset'>): boolean => {
     if (isPremium) return true;
-    return usage[type] < FREE_LIMITS[type];
+    return Number(usage[type]) < FREE_LIMITS[type];
   };
 
-  const getRemainingUsage = (type: keyof UsageData): number => {
+  const getRemainingUsage = (type: keyof Omit<UsageData, 'lastReset'>): number => {
     if (isPremium) return Infinity;
-    return Math.max(0, FREE_LIMITS[type] - usage[type]);
+    return Math.max(0, FREE_LIMITS[type] - Number(usage[type]));
   };
 
   return (

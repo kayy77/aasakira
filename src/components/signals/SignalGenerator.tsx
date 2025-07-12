@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signalService } from '@/services/signalService';
 import { marketDataService } from '@/services/marketDataService';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { PremiumUpgrade } from '@/components/PremiumUpgrade';
+import PremiumUpgrade from '@/components/PremiumUpgrade';
 
 interface SignalGeneratorProps {
   onSignalGenerated: (signal: any) => void;
@@ -114,7 +114,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
   const remainingSignals = dailyLimits.signals - usageToday.signals;
 
   if (showUpgrade) {
-    return <PremiumUpgrade feature="Signals" onClose={() => setShowUpgrade(false)} />;
+    return <PremiumUpgrade open={true} onOpenChange={setShowUpgrade} />;
   }
 
   return (
