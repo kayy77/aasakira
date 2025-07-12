@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -108,17 +107,18 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
     setConnectionStatus('Initializing...');
     setConnectionDetails('Preparing to connect to MetaAPI');
 
+    // Define accountCredentials at the beginning of the function scope
+    const accountCredentials: AccountCredentials = {
+      accountId: `acc-${Date.now()}`,
+      login: formData.loginId,
+      password: formData.password,
+      server: formData.server,
+      broker: formData.broker,
+      platform: formData.platform
+    };
+
     try {
       console.log('🔄 Attempting to connect account via MetaAPI...');
-      
-      const accountCredentials: AccountCredentials = {
-        accountId: `acc-${Date.now()}`,
-        login: formData.loginId,
-        password: formData.password,
-        server: formData.server,
-        broker: formData.broker,
-        platform: formData.platform
-      };
 
       // Add temporary account to show connecting status
       const tempAccount: LinkedAccount = {
@@ -395,7 +395,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                   onChange={(e) => handleInputChange('loginId', e.target.value)}
                   className="bg-gray-800 border-gray-600 text-white"
                 />
-                <p className="text-xs text-gray-500 mt-1">Your MetaTrader login ID (not account number)</p>
+                <p className="text-xs text-gray-500 mt-1">Your MetaTrader login ID (the actual login number, not account number)</p>
               </div>
 
               <div>
