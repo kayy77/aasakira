@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import CombatChart from './combat/CombatChart';
-import AvatarGenerator from './combat/AvatarGenerator';
+import ComprehensiveAvatarSystem from './combat/ComprehensiveAvatarSystem';
 
 interface CombatMatch {
   id: string;
@@ -51,8 +51,10 @@ const CombatMode = () => {
     streak: 5,
     points: 1847,
     rank: 23,
-    title: 'Rising Samurai'
+    title: 'Rising Samurai',
+    xp: 1250 // Added XP for comprehensive system
   });
+  const [selectedClass, setSelectedClass] = useState<string>('');
   const [marketData, setMarketData] = useState({
     currentPrice: 1.0850,
     priceHistory: [1.0845, 1.0847, 1.0849, 1.0850],
@@ -187,7 +189,8 @@ const CombatMode = () => {
       wins: isWin ? prev.wins + 1 : prev.wins,
       losses: !isWin ? prev.losses + 1 : prev.losses,
       streak: isWin ? prev.streak + 1 : 0,
-      points: prev.points + points
+      points: prev.points + points,
+      xp: prev.xp + (isWin ? 25 : 10) // Award XP
     }));
     
     toast({
@@ -324,47 +327,12 @@ const CombatMode = () => {
 
   return (
     <div className="space-y-6">
-      {/* AI-Generated Avatar System */}
-      <AvatarGenerator 
-        userStats={{
-          ...userStats,
-          averageDecisionTime: 12, // Example: Fast decision making
-          riskTaken: 65, // Example: Medium-high risk
-          accuracy: userStats.wins / (userStats.wins + userStats.losses)
-        }}
-        tradingHistory={[]} // Could track actual trading history in future
+      {/* Comprehensive Avatar System */}
+      <ComprehensiveAvatarSystem 
+        userStats={userStats}
+        selectedClass={selectedClass}
+        onClassSelect={setSelectedClass}
       />
-
-      {/* Combat Stats Header - Simplified since avatar shows main stats */}
-      <Card className="glass-card border-red-500/20 bg-gradient-to-r from-red-900/10 to-orange-900/10">
-        <CardHeader>
-          <CardTitle className="flex items-center text-red-400">
-            <Swords className="w-6 h-6 mr-2" />
-            Combat Arena
-            <Badge className="ml-2 bg-gradient-to-r from-red-500 to-orange-500">
-              Active Battle Zone
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-xl font-bold text-yellow-400">{userStats.streak}</div>
-              <div className="text-sm text-gray-400">Current Streak</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-blue-400">#{userStats.rank}</div>
-              <div className="text-sm text-gray-400">Global Rank</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-purple-400">
-                {userStats.wins > 0 ? Math.round((userStats.wins / (userStats.wins + userStats.losses)) * 100) : 0}%
-              </div>
-              <div className="text-sm text-gray-400">Win Rate</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Combat Arena */}

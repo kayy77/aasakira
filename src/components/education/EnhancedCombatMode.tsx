@@ -11,7 +11,7 @@ import {
   Trophy,
   Gamepad2
 } from 'lucide-react';
-import AvatarSystem from './combat/AvatarSystem';
+import ComprehensiveAvatarSystem from './combat/ComprehensiveAvatarSystem';
 import SkillTree from './combat/SkillTree';
 import BattlefieldVisualization from './combat/BattlefieldVisualization';
 import BluffMechanics from './combat/BluffMechanics';
@@ -27,9 +27,11 @@ const EnhancedCombatMode = ({ onFeatureUse }: EnhancedCombatModeProps) => {
     losses: 3,
     streak: 5,
     points: 1847,
+    xp: 1250, // Added XP for the comprehensive system
     tradingStyle: 'Day Trader'
   });
-
+  
+  const [selectedClass, setSelectedClass] = useState<string>('');
   const [skillPoints, setSkillPoints] = useState(25);
   const [unlockedSkills, setUnlockedSkills] = useState(['pattern_recognition', 'quick_strike', 'mental_fortress', 'risk_mastery']);
 
@@ -58,8 +60,12 @@ const EnhancedCombatMode = ({ onFeatureUse }: EnhancedCombatModeProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Avatar & Stats Header */}
-      <AvatarSystem userStats={userStats} />
+      {/* Comprehensive Avatar System */}
+      <ComprehensiveAvatarSystem 
+        userStats={userStats}
+        selectedClass={selectedClass}
+        onClassSelect={setSelectedClass}
+      />
 
       <Tabs defaultValue="arena" className="w-full">
         <TabsList className="grid w-full grid-cols-5 bg-gray-800/50">
@@ -93,7 +99,7 @@ const EnhancedCombatMode = ({ onFeatureUse }: EnhancedCombatModeProps) => {
                   🏛️ AASAKIRA COMBAT ARENA V2
                 </h2>
                 <p className="text-gray-400">
-                  The ultimate AI trading battle experience with avatars, skill trees, and cinematic combat
+                  The ultimate AI trading battle experience with evolving avatars, comprehensive gear system, and battle companions
                 </p>
               </div>
               
@@ -101,26 +107,26 @@ const EnhancedCombatMode = ({ onFeatureUse }: EnhancedCombatModeProps) => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="text-center p-4 bg-gradient-to-br from-red-900/20 to-orange-900/20 rounded-lg border border-red-500/20">
                   <User className="w-8 h-8 mx-auto mb-2 text-red-400" />
-                  <h3 className="font-semibold text-white mb-1">Avatar Evolution</h3>
-                  <p className="text-xs text-gray-400">Ronin → Shinobi → Strategist → Shogun AI</p>
+                  <h3 className="font-semibold text-white mb-1">Avatar Classes</h3>
+                  <p className="text-xs text-gray-400">Monk → Samurai → Phantom with unique evolutions</p>
                 </div>
                 
                 <div className="text-center p-4 bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-lg border border-purple-500/20">
                   <Brain className="w-8 h-8 mx-auto mb-2 text-purple-400" />
-                  <h3 className="font-semibold text-white mb-1">Skill Tree RPG</h3>
-                  <p className="text-xs text-gray-400">Unlock passive abilities & trading perks</p>
+                  <h3 className="font-semibold text-white mb-1">Gear Progression</h3>
+                  <p className="text-xs text-gray-400">Unlock weapons, armor & mythic items</p>
                 </div>
                 
                 <div className="text-center p-4 bg-gradient-to-br from-blue-900/20 to-cyan-900/20 rounded-lg border border-blue-500/20">
                   <Target className="w-8 h-8 mx-auto mb-2 text-blue-400" />
-                  <h3 className="font-semibold text-white mb-1">Battle Simulation</h3>
-                  <p className="text-xs text-gray-400">Cinematic price action combat</p>
+                  <h3 className="font-semibold text-white mb-1">Battle Companions</h3>
+                  <p className="text-xs text-gray-400">Spirit Fox, Dragon Pup, Trade Tanuki</p>
                 </div>
                 
                 <div className="text-center p-4 bg-gradient-to-br from-green-900/20 to-emerald-900/20 rounded-lg border border-green-500/20">
                   <Eye className="w-8 h-8 mx-auto mb-2 text-green-400" />
-                  <h3 className="font-semibold text-white mb-1">Mind Games</h3>
-                  <p className="text-xs text-gray-400">Bluff mechanics & strategy perks</p>
+                  <h3 className="font-semibold text-white mb-1">XP System</h3>
+                  <p className="text-xs text-gray-400">Earn through battles & unlock new content</p>
                 </div>
               </div>
             </CardContent>
