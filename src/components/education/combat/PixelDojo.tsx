@@ -40,10 +40,14 @@ interface PixelDojoProps {
 const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
   const [activeTab, setActiveTab] = useState('battle');
   const [showCharacterCustomizer, setShowCharacterCustomizer] = useState(false);
+  
+  // Updated player character with all required properties
   const [playerCharacter, setPlayerCharacter] = useState({
-    class: 'monk',
+    name: 'Shadow Warrior',
+    class: 'monk' as 'monk' | 'samurai' | 'phantom',
     level: Math.floor(userStats.xp / 100) + 1,
     xp: userStats.xp,
+    maxXp: (Math.floor(userStats.xp / 100) + 1) * 100,
     equipment: {
       weapon: 'mystic_staff',
       armor: 'silk_robe',
@@ -53,13 +57,18 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
       wisdom: 85,
       stealth: 60,
       aggression: 35
-    }
+    },
+    titles: ['Novice Trader', 'Market Observer'],
+    rank: 'Ronin'
   });
 
+  // Updated opponent character with all required properties
   const [opponentCharacter, setOpponentCharacter] = useState({
-    class: 'samurai',
+    name: 'Steel Blade',
+    class: 'samurai' as 'monk' | 'samurai' | 'phantom',
     level: Math.floor(userStats.xp / 100) + 1,
     xp: userStats.xp + 200,
+    maxXp: (Math.floor(userStats.xp / 100) + 1) * 100,
     equipment: {
       weapon: 'katana',
       armor: 'battle_gi',
@@ -69,7 +78,9 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
       wisdom: 60,
       stealth: 35,
       aggression: 85
-    }
+    },
+    titles: ['Battle Tested', 'Swift Strike'],
+    rank: 'Samurai'
   });
 
   // Battle state
@@ -84,6 +95,38 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
     priceHistory: [1.0845, 1.0847, 1.0850],
     aiHint: 'Price is testing resistance at 1.0855. Watch for breakout confirmation.'
   });
+
+  // Sample quests for TrainingHall
+  const [quests] = useState([
+    {
+      id: 'basic_support_resistance',
+      title: 'Support & Resistance Master',
+      description: 'Learn to identify key levels where price bounces',
+      type: 'education' as 'education' | 'battle' | 'mastery',
+      difficulty: 'Beginner' as 'Beginner' | 'Intermediate' | 'Advanced' | 'Master',
+      xpReward: 100,
+      statBonus: { wisdom: 5 },
+      requirements: ['Complete tutorial'],
+      progress: 0,
+      maxProgress: 3,
+      completed: false,
+      locked: false
+    },
+    {
+      id: 'market_structure',
+      title: 'Market Structure Analysis',
+      description: 'Master the art of reading market flow and structure',
+      type: 'education' as 'education' | 'battle' | 'mastery',
+      difficulty: 'Intermediate' as 'Beginner' | 'Intermediate' | 'Advanced' | 'Master',
+      xpReward: 250,
+      statBonus: { wisdom: 10, stealth: 5 },
+      requirements: ['Complete Support & Resistance Master'],
+      progress: 0,
+      maxProgress: 5,
+      completed: false,
+      locked: true
+    }
+  ]);
 
   // Timer for battle phases
   useEffect(() => {
@@ -125,9 +168,25 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
       ...prev,
       ...character,
       level: Math.floor(userStats.xp / 100) + 1,
-      xp: userStats.xp
+      xp: userStats.xp,
+      maxXp: (Math.floor(userStats.xp / 100) + 1) * 100
     }));
     setShowCharacterCustomizer(false);
+    onFeatureUse?.();
+  };
+
+  const handleStartQuest = (questId: string) => {
+    console.log(`Starting quest: ${questId}`);
+    onFeatureUse?.();
+  };
+
+  const handleClaimReward = (questId: string) => {
+    console.log(`Claiming reward for quest: ${questId}`);
+    onFeatureUse?.();
+  };
+
+  const handlePurchase = (itemId: string) => {
+    console.log(`Purchasing item: ${itemId}`);
     onFeatureUse?.();
   };
 
@@ -304,11 +363,7 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
             </Button>
           </div>
           
-          <CharacterStats
-            character={playerCharacter}
-            userStats={userStats}
-            onFeatureUse={onFeatureUse}
-          />
+          <CharacterStats character={playerCharacter} />
         </TabsContent>
 
         {/* Training Hall */}
@@ -323,8 +378,9 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
           </div>
           
           <TrainingHall
-            userStats={userStats}
-            onFeatureUse={onFeatureUse}
+            quests={quests}
+            onStartQuest={handleStartQuest}
+            onClaimReward={handleClaimReward}
           />
         </TabsContent>
 
@@ -340,8 +396,11 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
           </div>
           
           <ItemShop
-            userStats={userStats}
-            onFeatureUse={onFeatureUse}
+            userCurrency={{
+              xp: userStats.xp,
+              legendPoints: userStats.points
+            }}
+            onPurchase={handlePurchase}
           />
         </TabsContent>
 
@@ -458,12 +517,7 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
             </h2>
           </div>
           
-          <CharacterStats
-            character={playerCharacter}
-            userStats={userStats}
-            onFeatureUse={onFeatureUse}
-            showDetailedStats={true}
-          />
+          <CharacterStats character={playerCharacter} />
         </TabsContent>
       </Tabs>
 
