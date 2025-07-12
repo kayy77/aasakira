@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +44,7 @@ const Dashboard = () => {
 
   const handleBackToHome = () => {
     console.log('Navigating back to home...');
-    navigate('/');
+    window.location.href = '/';
   };
 
   if (showProfile) {
