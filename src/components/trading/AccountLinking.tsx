@@ -48,9 +48,8 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
 
   const [formData, setFormData] = useState({
     broker: '',
-    accountNumber: '',
     server: '',
-    username: '',
+    loginId: '',
     password: '',
     accountName: '',
     platform: 'mt4' as 'mt4' | 'mt5'
@@ -86,7 +85,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
   };
 
   const handleConnect = async () => {
-    if (!formData.broker || !formData.accountNumber || !formData.username || !formData.password) {
+    if (!formData.broker || !formData.loginId || !formData.password) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -112,9 +111,9 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
     try {
       console.log('🔄 Attempting to connect account via MetaAPI...');
       
-      const credentials: AccountCredentials = {
+      const accountCredentials: AccountCredentials = {
         accountId: `acc-${Date.now()}`,
-        login: formData.username,
+        login: formData.loginId,
         password: formData.password,
         server: formData.server,
         broker: formData.broker,
@@ -123,10 +122,10 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
 
       // Add temporary account to show connecting status
       const tempAccount: LinkedAccount = {
-        id: credentials.accountId,
+        id: accountCredentials.accountId,
         name: formData.accountName || `${formData.broker} Account`,
         broker: formData.broker,
-        accountNumber: formData.accountNumber,
+        accountNumber: formData.loginId,
         status: 'connecting',
         lastSync: new Date().toISOString(),
         statusMessage: 'Connecting...'
@@ -135,7 +134,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
       setLinkedAccounts(prev => [...prev, tempAccount]);
 
       const accountData = await metaApiService.connectAccount(
-        credentials,
+        accountCredentials,
         (status: string, details?: string) => {
           console.log(`📊 Connection status: ${status} - ${details || ''}`);
           setConnectionStatus(status);
@@ -143,7 +142,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
           
           // Update the temporary account status
           setLinkedAccounts(prev => prev.map(acc => 
-            acc.id === credentials.accountId 
+            acc.id === accountCredentials.accountId 
               ? { ...acc, status: 'connecting', statusMessage: status }
               : acc
           ));
@@ -155,14 +154,14 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
         id: accountData.id,
         name: formData.accountName || accountData.name,
         broker: accountData.broker,
-        accountNumber: formData.accountNumber,
+        accountNumber: formData.loginId,
         status: 'connected',
         lastSync: new Date().toISOString(),
         statusMessage: 'Connected successfully'
       };
 
       setLinkedAccounts(prev => prev.map(acc => 
-        acc.id === credentials.accountId ? newLinkedAccount : acc
+        acc.id === accountCredentials.accountId ? newLinkedAccount : acc
       ));
       
       onAccountLinked(accountData);
@@ -175,9 +174,8 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
       // Reset form
       setFormData({
         broker: '',
-        accountNumber: '',
         server: '',
-        username: '',
+        loginId: '',
         password: '',
         accountName: '',
         platform: 'mt4'
@@ -189,7 +187,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
       
       // Update account with error status
       setLinkedAccounts(prev => prev.map(acc => 
-        acc.id === credentials.accountId 
+        acc.id === accountCredentials.accountId 
           ? { ...acc, status: 'error', statusMessage: `Error: ${errorMessage}` }
           : acc
       ));
@@ -304,7 +302,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                     <div>
                       <h3 className="font-semibold text-white">{account.name}</h3>
                       <p className="text-sm text-gray-400">
-                        {account.broker} • Account #{account.accountNumber}
+                        {account.broker} • Login ID: {account.accountNumber}
                       </p>
                       <p className="text-xs text-gray-500">
                         Last sync: {new Date(account.lastSync).toLocaleString()}
@@ -388,15 +386,16 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
               </div>
 
               <div>
-                <Label htmlFor="accountNumber" className="text-gray-300">Account Number *</Label>
+                <Label htmlFor="loginId" className="text-gray-300">Trading Account Login ID *</Label>
                 <Input
-                  id="accountNumber"
+                  id="loginId"
                   type="text"
-                  placeholder="123456789"
-                  value={formData.accountNumber}
-                  onChange={(e) => handleInputChange('accountNumber', e.target.value)}
+                  placeholder="12345678"
+                  value={formData.loginId}
+                  onChange={(e) => handleInputChange('loginId', e.target.value)}
                   className="bg-gray-800 border-gray-600 text-white"
                 />
+                <p className="text-xs text-gray-500 mt-1">Your MetaTrader login ID (not account number)</p>
               </div>
 
               <div>
@@ -425,18 +424,6 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="username" className="text-gray-300">MT4/MT5 Login *</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Your MetaTrader Login"
-                  value={formData.username}
-                  onChange={(e) => handleInputChange('username', e.target.value)}
-                  className="bg-gray-800 border-gray-600 text-white"
-                />
-              </div>
-
               <div className="md:col-span-2">
                 <Label htmlFor="password" className="text-gray-300">MT4/MT5 Password *</Label>
                 <div className="relative">
@@ -458,6 +445,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </Button>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">Use your trading password, not investor password</p>
               </div>
             </div>
 
@@ -469,6 +457,7 @@ const AccountLinking = ({ onAccountLinked }: AccountLinkingProps) => {
                   <p>• Your credentials are processed through MetaAPI's secure infrastructure</p>
                   <p>• For IC Markets, select "IC Markets" as broker (not MetaQuotes Demo)</p>
                   <p>• Server will auto-fill to ICMarkets-Demo02 for proper connection</p>
+                  <p>• Use your trading login ID and password (not account number)</p>
                   <p>• Read-only access ensures maximum security</p>
                 </div>
               </div>
