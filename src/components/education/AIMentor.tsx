@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import QuickStartSection from './QuickStartSection';
 import ChatInterface from './ChatInterface';
 import { useAIResponses } from './useAIResponses';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { PremiumUpgrade } from '@/components/PremiumUpgrade';
+import PremiumUpgrade from '@/components/PremiumUpgrade';
 
 interface Message {
   id: string;
@@ -37,7 +38,7 @@ const AIMentor = () => {
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
-    if (!canUseFeature('aiMentor')) {
+    if (!canUseFeature('aiMentorMessages')) {
       setShowUpgrade(true);
       return;
     }
@@ -66,7 +67,7 @@ const AIMentor = () => {
       };
       
       setMessages(prev => [...prev, aiMessage]);
-      incrementUsage('aiMentor');
+      incrementUsage('aiMentorMessages');
     } finally {
       setIsTyping(false);
     }
@@ -78,24 +79,6 @@ const AIMentor = () => {
   };
 
   const remainingMessages = dailyLimits.aiMentorMessages - usageToday.aiMentorMessages;
-
-  if (showUpgrade) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 p-6">
-        <div className="max-w-7xl mx-auto mb-6">
-          <Button
-            onClick={() => setShowUpgrade(false)}
-            variant="outline"
-            className="flex items-center space-x-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to AI Mentor</span>
-          </Button>
-        </div>
-        <PremiumUpgrade feature="AI Mentor" onClose={() => setShowUpgrade(false)} />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 p-6">
@@ -139,6 +122,8 @@ const AIMentor = () => {
           />
         </div>
       </div>
+
+      <PremiumUpgrade open={showUpgrade} onOpenChange={setShowUpgrade} />
     </div>
   );
 };

@@ -18,9 +18,9 @@ interface UsageData {
 interface SubscriptionContextType {
   isPremium: boolean;
   dailyLimits: DailyLimits;
-  usage: UsageData;
+  usageToday: UsageData;
   incrementUsage: (type: keyof UsageData) => void;
-  hasUsageRemaining: (type: keyof UsageData) => boolean;
+  canUseFeature: (type: keyof UsageData) => boolean;
   getRemainingUsage: (type: keyof UsageData) => number;
 }
 
@@ -59,7 +59,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   // Load usage from localStorage when user changes
   useEffect(() => {
     if (user) {
-      const savedUsage = localStorage.getItem(`forexai_usage_${user.id}`);
+      const savedUsage = localStorage.getItem(`aasakira_usage_${user.id}`);
       if (savedUsage) {
         try {
           const parsedUsage = JSON.parse(savedUsage);
@@ -74,7 +74,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   // Save usage to localStorage
   useEffect(() => {
     if (user) {
-      localStorage.setItem(`forexai_usage_${user.id}`, JSON.stringify(usage));
+      localStorage.setItem(`aasakira_usage_${user.id}`, JSON.stringify(usage));
     }
   }, [usage, user]);
 
@@ -87,7 +87,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     }));
   };
 
-  const hasUsageRemaining = (type: keyof UsageData): boolean => {
+  const canUseFeature = (type: keyof UsageData): boolean => {
     if (isPremium) return true;
     return usage[type] < FREE_LIMITS[type];
   };
@@ -101,9 +101,9 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     <SubscriptionContext.Provider value={{
       isPremium,
       dailyLimits: FREE_LIMITS,
-      usage,
+      usageToday: usage,
       incrementUsage,
-      hasUsageRemaining,
+      canUseFeature,
       getRemainingUsage,
     }}>
       {children}

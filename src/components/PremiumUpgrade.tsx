@@ -38,7 +38,7 @@ const PremiumUpgrade = ({ open, onOpenChange }: PremiumUpgradeProps) => {
             Upgrade to Premium
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Unlock unlimited access to all ForexAI features
+            Unlock unlimited access to all AASAKIRA features
           </DialogDescription>
         </DialogHeader>
 

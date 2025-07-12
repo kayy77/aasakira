@@ -49,7 +49,7 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
     if (success) {
       toast({
         title: isSignUp ? "Welcome!" : "Welcome back!",
-        description: isSignUp ? "Your account has been created successfully" : "You've successfully logged in to ForexAI",
+        description: isSignUp ? "Your account has been created successfully" : "You've successfully logged in to AASAKIRA",
       });
       onOpenChange(false);
     } else {
@@ -80,7 +80,7 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
           <DialogHeader className="space-y-4">
             <div className="text-center space-y-2">
               <DialogTitle className="text-2xl font-bold text-white">
-                {isSignUp ? 'Join ForexAI' : 'Welcome to ForexAI'}
+                {isSignUp ? 'Join AASAKIRA' : 'Welcome to AASAKIRA'}
               </DialogTitle>
               <p className="text-gray-400">
                 {isSignUp ? 'Create your account to access professional trading tools' : 'Sign in to access professional trading tools'}

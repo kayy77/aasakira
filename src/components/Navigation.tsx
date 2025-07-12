@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, LogOut } from 'lucide-react';
@@ -22,9 +23,9 @@ const Navigation = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 hover-lift">
             <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">FX</span>
+              <span className="text-white font-bold text-sm">A</span>
             </div>
-            <span className="text-xl font-bold gradient-text">ForexAI</span>
+            <span className="text-xl font-bold gradient-text">AASAKIRA</span>
           </Link>
 
           {/* Desktop Navigation */}
