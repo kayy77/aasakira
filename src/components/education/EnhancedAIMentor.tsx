@@ -1,186 +1,262 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Brain, BookOpen, Target, TrendingUp, Star, Award } from 'lucide-react';
-import ChatInterface from './ChatInterface';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Brain, 
+  Send, 
+  Camera, 
+  TrendingUp, 
+  BookOpen, 
+  Target,
+  Star,
+  MessageCircle,
+  ChevronRight,
+  Upload
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useMentorMemory } from './MentorMemory';
 import ProgressChart from './ProgressChart';
 import ImageUpload from './ImageUpload';
-import { useMentorMemory } from './MentorMemory';
-import { useSubscription } from '@/contexts/SubscriptionContext';
+import ChatInterface from './ChatInterface';
+import { useAIResponses } from './useAIResponses';
 
-const EnhancedAIMentor = () => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'progress' | 'analysis'>('chat');
-  const [messages, setMessages] = useState<any[]>([]);
-  const { userProgress, updateProgress, getPersonalizedContent } = useMentorMemory();
-  const { canUseFeature, incrementUsage } = useSubscription();
+interface EnhancedAIMentorProps {
+  onFeatureUse?: () => void;
+}
 
-  useEffect(() => {
-    // Initialize with personalized welcome message
-    const personalizedContent = getPersonalizedContent();
-    const welcomeMessage = {
-      id: Date.now(),
-      type: 'ai',
-      content: `Welcome back! Based on your ${userProgress.level} level and progress, here's what we should focus on today:\n\n${personalizedContent.slice(0, 3).map(item => `• ${item}`).join('\n')}\n\nWhat would you like to work on first?`,
-      timestamp: new Date()
-    };
-    
-    setMessages([welcomeMessage]);
-  }, [userProgress.level]);
+const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
+  const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const { 
+    mentorData, 
+    addInteraction, 
+    updateProgress, 
+    addGoal, 
+    markGoalComplete 
+  } = useMentorMemory();
+  const { getAIResponse } = useAIResponses();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSendMessage = async (message: string) => {
-    if (!canUseFeature('mentorMessages')) {
-      return;
-    }
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
 
-    incrementUsage('mentorMessages');
+    setIsLoading(true);
+    onFeatureUse?.();
 
-    const userMessage = {
-      id: Date.now(),
-      type: 'user',
-      content: message,
-      timestamp: new Date()
-    };
+    try {
+      const response = await getAIResponse(message, {
+        userLevel: mentorData.userLevel,
+        recentTopics: mentorData.recentTopics,
+        learningStyle: mentorData.learningStyle,
+        goals: mentorData.goals
+      });
 
-    setMessages(prev => [...prev, userMessage]);
-
-    // Enhanced AI response with memory context
-    setTimeout(() => {
-      const aiResponse = generatePersonalizedResponse(message, userProgress);
-      const aiMessage = {
-        id: Date.now() + 1,
-        type: 'ai',
-        content: aiResponse,
+      addInteraction({
+        type: 'message',
+        content: message,
+        response: response,
         timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMessage]);
-    }, 1500);
+      });
+
+      // Update progress based on interaction
+      updateProgress('messages', 1);
+      
+      setMessage('');
+      
+      toast({
+        title: "AI Mentor Response",
+        description: "Your personalized lesson has been generated!"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to get AI response. Please try again.",
+        variant: "destructive"
+      });
+    }
+
+    setIsLoading(false);
   };
 
-  const generatePersonalizedResponse = (message: string, progress: typeof userProgress): string => {
-    const lowerMessage = message.toLowerCase();
-    
-    // Context-aware responses based on user's level and history
-    if (lowerMessage.includes('risk') || lowerMessage.includes('management')) {
-      if (progress.level === 'Beginner') {
-        return `Great question about risk management! Since you're at the ${progress.level} level, let's start with the fundamentals:\n\n• **2% Rule**: Never risk more than 2% of your account on a single trade\n• **Position Sizing**: Calculate your position size before entering any trade\n• **Stop Losses**: Always set your stop loss BEFORE entering a position\n\n**Your personalized tip**: I notice you haven't completed the risk management basics yet. Would you like me to create a custom lesson plan for you?`;
-      } else {
-        return `Excellent! As an ${progress.level} trader, you're ready for advanced risk management:\n\n• **Kelly Criterion**: Optimize position sizing based on win rate and average R:R\n• **Portfolio Heat**: Monitor total risk across all open positions\n• **Correlation Risk**: Avoid taking multiple trades on correlated pairs\n\n**Based on your progress**: You've mastered the basics. Let's work on portfolio-level risk management next.`;
-      }
-    }
-
-    if (lowerMessage.includes('strategy') || lowerMessage.includes('trading plan')) {
-      const tradingStyle = progress.tradingStyle || 'Day Trader';
-      return `Perfect timing! Let's build a strategy that matches your ${tradingStyle} style:\n\n**For ${tradingStyle}s like you:**\n• **Timeframes**: Focus on 15M-1H charts for entries\n• **Session Focus**: ${tradingStyle === 'Scalper' ? 'London/NY overlap' : 'Major sessions with high volatility'}\n• **Risk-Reward**: Target minimum 1:2 R:R ratios\n\n**Personalized for you**: Based on your ${progress.level} level, I recommend starting with 1-2 setups you can master completely. Quality over quantity!`;
-    }
-
-    if (lowerMessage.includes('psychology') || lowerMessage.includes('emotions')) {
-      return `Trading psychology is crucial, especially at your ${progress.level} level! Here's what I recommend:\n\n• **Journaling**: Track your emotional state for each trade\n• **Meditation**: Just 5 minutes daily can improve decision-making\n• **Acceptance**: Losses are part of the game - focus on process over profits\n\n**Your personal challenge**: Try keeping an emotion log for the next 10 trades. Rate your confidence and fear levels 1-10 before each trade.`;
-    }
-
-    // Default personalized response
-    return `That's a great question! As a ${progress.level} trader with ${progress.completedLessons.length} completed lessons, here's my personalized advice:\n\n${getPersonalizedContent().slice(0, 2).map(item => `• ${item}`).join('\n')}\n\nRemember, consistent progress beats perfection. You're doing great - keep building on what you've learned!\n\nWhat specific aspect would you like to dive deeper into?`;
-  };
-
-  const handleImageAnalysis = (analysis: string) => {
-    const analysisMessage = {
-      id: Date.now(),
-      type: 'ai',
-      content: `📊 **Chart Analysis Complete:**\n\n${analysis}\n\n**Personalized Note**: Based on your ${userProgress.level} level, ${userProgress.level === 'Beginner' ? 'focus on understanding the pattern first before risking real money' : 'this looks like a solid setup that matches your trading style'}. \n\nWould you like me to explain any part of this analysis in more detail?`,
+  const handleImageUpload = (file: File) => {
+    addInteraction({
+      type: 'image',
+      content: `Uploaded screenshot: ${file.name}`,
+      response: 'Analyzing your chart... I can see you\'re working on identifying key support and resistance levels. Let me provide some insights...',
       timestamp: new Date()
-    };
+    });
     
-    setMessages(prev => [...prev, analysisMessage]);
+    updateProgress('screenshots', 1);
+    onFeatureUse?.();
   };
 
-  const tabs = [
-    { id: 'chat', label: 'AI Mentor', icon: Brain },
-    { id: 'progress', label: 'Progress', icon: TrendingUp },
-    { id: 'analysis', label: 'Chart Analysis', icon: Target },
+  const learningPaths = [
+    {
+      title: 'Smart Money Concepts',
+      level: mentorData.userLevel,
+      progress: mentorData.progress.concepts || 0,
+      lessons: ['Market Structure', 'Order Blocks', 'Fair Value Gaps', 'Liquidity Zones']
+    },
+    {
+      title: 'Risk Management',
+      level: mentorData.userLevel,
+      progress: mentorData.progress.risk || 0,
+      lessons: ['Position Sizing', 'Stop Loss Strategy', 'Risk/Reward Ratios', 'Portfolio Management']
+    },
+    {
+      title: 'Psychology & Discipline',
+      level: mentorData.userLevel,
+      progress: mentorData.progress.psychology || 0,
+      lessons: ['Emotional Control', 'Trading Plan', 'Journal Analysis', 'Mindset Development']
+    }
   ];
 
   return (
-    <div className="space-y-6">
-      {/* User Progress Summary */}
-      <Card className="glass-card border-purple-500/20">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                <Award className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">AI Trading Mentor</h3>
-                <p className="text-gray-400">Personalized guidance for your trading journey</p>
-              </div>
-            </div>
-            <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-              {userProgress.level}
+    <div className="space-y-8">
+      {/* Mentor Status Card */}
+      <Card className="glass-card hover-glow border-purple-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center text-white">
+            <Brain className="w-6 h-6 mr-2 text-purple-400" />
+            AI Trading Mentor
+            <Badge className="ml-2 bg-gradient-to-r from-purple-500 to-pink-500">
+              Level {mentorData.userLevel}
             </Badge>
-          </div>
-
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <div className="flex items-center space-x-2">
-                <BookOpen className="w-5 h-5 text-blue-400" />
-                <span className="text-gray-300">Lessons Completed</span>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-400">
+                {mentorData.interactions.length}
               </div>
-              <p className="text-2xl font-bold text-white mt-2">{userProgress.completedLessons.length}</p>
+              <div className="text-sm text-gray-400">Total Interactions</div>
             </div>
-
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <div className="flex items-center space-x-2">
-                <Star className="w-5 h-5 text-yellow-400" />
-                <span className="text-gray-300">Strengths</span>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-400">
+                {mentorData.goals.filter(g => g.completed).length}
               </div>
-              <p className="text-2xl font-bold text-white mt-2">{userProgress.strengths.length}</p>
+              <div className="text-sm text-gray-400">Goals Completed</div>
             </div>
-
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <div className="flex items-center space-x-2">
-                <Target className="w-5 h-5 text-purple-400" />
-                <span className="text-gray-300">Active Goals</span>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-400">
+                {mentorData.progress.screenshots || 0}
               </div>
-              <p className="text-2xl font-bold text-white mt-2">{userProgress.goals.length}</p>
+              <div className="text-sm text-gray-400">Charts Analyzed</div>
             </div>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-300">Learning Progress</span>
+              <span className="text-purple-400">{Math.round((mentorData.progress.messages || 0) * 2)}%</span>
+            </div>
+            <Progress value={(mentorData.progress.messages || 0) * 2} className="h-2" />
           </div>
         </CardContent>
       </Card>
 
-      {/* Navigation Tabs */}
-      <div className="flex space-x-1 bg-gray-800/50 p-1 rounded-lg">
-        {tabs.map((tab) => (
-          <Button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            variant={activeTab === tab.id ? "default" : "ghost"}
-            className={`flex-1 ${
-              activeTab === tab.id 
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" 
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <tab.icon className="w-4 h-4 mr-2" />
-            {tab.label}
-          </Button>
-        ))}
-      </div>
+      <Tabs defaultValue="chat" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 bg-gray-800/50">
+          <TabsTrigger value="chat" className="data-[state=active]:bg-purple-600">
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Chat
+          </TabsTrigger>
+          <TabsTrigger value="upload" className="data-[state=active]:bg-purple-600">
+            <Camera className="w-4 h-4 mr-2" />
+            Screenshot
+          </TabsTrigger>
+          <TabsTrigger value="progress" className="data-[state=active]:bg-purple-600">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Progress
+          </TabsTrigger>
+          <TabsTrigger value="lessons" className="data-[state=active]:bg-purple-600">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Lessons
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Tab Content */}
-      {activeTab === 'chat' && (
-        <ChatInterface 
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          placeholder="Ask me anything about trading, strategies, risk management..."
-        />
-      )}
+        <TabsContent value="chat" className="space-y-6">
+          <ChatInterface 
+            interactions={mentorData.interactions}
+            isLoading={isLoading}
+          />
+          
+          <Card className="glass-card border-purple-500/20">
+            <CardContent className="p-4">
+              <div className="flex space-x-2">
+                <Input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Ask your AI mentor anything about trading..."
+                  className="flex-1 bg-gray-800/50 border-purple-500/30 text-white"
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                />
+                <Button 
+                  onClick={handleSendMessage}
+                  disabled={isLoading || !message.trim()}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {activeTab === 'progress' && <ProgressChart />}
+        <TabsContent value="upload" className="space-y-6">
+          <ImageUpload onImageUpload={handleImageUpload} />
+        </TabsContent>
 
-      {activeTab === 'analysis' && (
-        <ImageUpload onImageAnalysis={handleImageAnalysis} />
-      )}
+        <TabsContent value="progress" className="space-y-6">
+          <ProgressChart mentorData={mentorData} />
+        </TabsContent>
+
+        <TabsContent value="lessons" className="space-y-6">
+          <div className="grid gap-6">
+            {learningPaths.map((path, index) => (
+              <Card key={index} className="glass-card hover-glow border-purple-500/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between text-white">
+                    <div className="flex items-center">
+                      <Target className="w-5 h-5 mr-2 text-purple-400" />
+                      {path.title}
+                    </div>
+                    <Badge variant="outline" className="border-purple-500/30 text-purple-400">
+                      {path.progress}% Complete
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Progress value={path.progress} className="h-2" />
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    {path.lessons.map((lesson, lessonIndex) => (
+                      <div
+                        key={lessonIndex}
+                        className="flex items-center justify-between p-2 rounded-lg bg-gray-800/30"
+                      >
+                        <span className="text-sm text-gray-300">{lesson}</span>
+                        {lessonIndex < path.progress / 25 ? (
+                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-gray-500" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
