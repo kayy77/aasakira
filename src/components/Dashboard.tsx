@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,16 +12,22 @@ import {
   Users, 
   TrendingUp, 
   Sparkles,
-  Cherry,
-  Activity
+  Activity,
+  ArrowLeft,
+  Settings,
+  Cherry
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import CherryBlossomBackground from './CherryBlossomBackground';
 import PremiumUpgrade from './PremiumUpgrade';
+import UserProfile from './UserProfile';
 
 const Dashboard = () => {
   const { user, getRemainingUsage } = useAuth();
-  const [showUpgrade, setShowUpgrade] = React.useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const navigate = useNavigate();
 
   if (!user) return null;
 
@@ -36,16 +42,45 @@ const Dashboard = () => {
     return (used / limit) * 100;
   };
 
+  if (showProfile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative overflow-hidden">
+        <CherryBlossomBackground />
+        
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {/* Back Navigation */}
+          <div className="flex items-center mb-8">
+            <Button
+              onClick={() => setShowProfile(false)}
+              variant="ghost"
+              className="text-gray-300 hover:text-white hover:bg-white/10"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back to Dashboard
+            </Button>
+          </div>
+
+          <UserProfile />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative overflow-hidden">
       <CherryBlossomBackground />
       
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Welcome Header */}
+        {/* Header with Logo and Navigation */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mr-4">
-              <Cherry className="w-8 h-8 text-white" />
+            {/* Aasakira Logo */}
+            <div className="w-20 h-20 mr-4 flex items-center justify-center">
+              <img 
+                src="/lovable-uploads/68ed1ae9-42f1-4e05-9393-155056ac2672.png" 
+                alt="Aasakira Logo" 
+                className="w-16 h-16 object-contain filter brightness-0 invert"
+              />
             </div>
             <div>
               <h1 className="text-4xl font-bold gradient-text">
@@ -68,6 +103,39 @@ const Dashboard = () => {
           <p className="text-gray-400 text-lg">
             Your AI-powered trading companion dashboard
           </p>
+          
+          {/* Quick Navigation */}
+          <div className="flex flex-wrap items-center justify-center gap-4 mt-6">
+            <Button
+              onClick={() => navigate('/signals')}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover-lift"
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              AI Signals
+            </Button>
+            <Button
+              onClick={() => navigate('/memecoins')}
+              className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 hover-lift"
+            >
+              <Target className="w-4 h-4 mr-2" />
+              Meme Scanner
+            </Button>
+            <Button
+              onClick={() => navigate('/education')}
+              className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 hover-lift"
+            >
+              <Brain className="w-4 h-4 mr-2" />
+              AI Mentor
+            </Button>
+            <Button
+              onClick={() => setShowProfile(true)}
+              variant="outline"
+              className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Profile Settings
+            </Button>
+          </div>
         </div>
 
         {/* Stats Grid */}

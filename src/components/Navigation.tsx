@@ -28,9 +28,13 @@ const Navigation = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 hover-lift">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">A</span>
+          <Link to="/" className="flex items-center space-x-3 hover-lift">
+            <div className="w-8 h-8 flex items-center justify-center">
+              <img 
+                src="/lovable-uploads/68ed1ae9-42f1-4e05-9393-155056ac2672.png" 
+                alt="Aasakira Logo" 
+                className="w-8 h-8 object-contain filter brightness-0 invert"
+              />
             </div>
             <span className="text-xl font-bold gradient-text">AASAKIRA</span>
           </Link>
@@ -177,7 +181,7 @@ const Navigation = () => {
                     to="/education" 
                     className={`px-2 py-1 transition-colors ${
                       location.pathname === '/education' 
-                        ? 'text-purple-400 font-semibored' 
+                        ? 'text-purple-400 font-semibold' 
                         : 'text-gray-300 hover:text-white'
                     }`}
                     onClick={() => setIsMobileMenuOpen(false)}

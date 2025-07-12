@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface User {
@@ -11,6 +10,14 @@ interface User {
   mentorMessagesUsedToday: number;
   resetAt: string;
   createdAt: string;
+  avatar?: string;
+  social?: {
+    instagram?: string;
+    twitter?: string;
+  };
+  preferences?: {
+    newsletter: boolean;
+  };
 }
 
 interface AuthContextType {
@@ -24,6 +31,7 @@ interface AuthContextType {
   canUseFeature: (feature: 'signals' | 'memeScans' | 'mentorMessages') => boolean;
   getRemainingUsage: (feature: 'signals' | 'memeScans' | 'mentorMessages') => number;
   upgradeToPremium: () => void;
+  updateUserProfile: (profileData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,7 +46,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if usage should be reset (daily reset at midnight UTC)
   const shouldResetUsage = (resetAt: string) => {
     const resetTime = new Date(resetAt);
     const now = new Date();
@@ -47,7 +54,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return now >= resetTime;
   };
 
-  // Reset daily usage
   const resetDailyUsage = (currentUser: User) => {
     const nextMidnight = new Date();
     nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
@@ -100,6 +106,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       mentorMessagesUsedToday: 0,
       resetAt: nextMidnight.toISOString(),
       createdAt: new Date().toISOString(),
+      preferences: {
+        newsletter: false,
+      },
     };
   };
 
@@ -209,6 +218,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem('aasakira_user', JSON.stringify(updatedUser));
   };
 
+  const updateUserProfile = (profileData: Partial<User>) => {
+    if (!user) return;
+    
+    const updatedUser = { ...user, ...profileData };
+    setUser(updatedUser);
+    localStorage.setItem('aasakira_user', JSON.stringify(updatedUser));
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -221,6 +238,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       canUseFeature,
       getRemainingUsage,
       upgradeToPremium,
+      updateUserProfile,
     }}>
       {children}
     </AuthContext.Provider>
