@@ -19,7 +19,7 @@ import {
   Upload
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useMentorMemory } from './MentorMemory';
+import { useMentorMemory } from './useMentorMemory';
 import ProgressChart from './ProgressChart';
 import ImageUpload from './ImageUpload';
 import ChatInterface from './ChatInterface';
@@ -41,7 +41,6 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
     markGoalComplete 
   } = useMentorMemory();
   const { generateAIResponse } = useAIResponses();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
@@ -79,11 +78,11 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
     setIsLoading(false);
   };
 
-  const handleImageUpload = (file: File) => {
+  const handleImageAnalysis = (analysis: string) => {
     addInteraction({
       type: 'image',
-      content: `Uploaded screenshot: ${file.name}`,
-      response: 'Analyzing your chart... I can see you\'re working on identifying key support and resistance levels. Let me provide some insights...',
+      content: 'Chart analysis completed',
+      response: analysis,
       timestamp: new Date()
     });
     
@@ -178,10 +177,7 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         </TabsList>
 
         <TabsContent value="chat" className="space-y-6">
-          <ChatInterface 
-            messages={mentorData.interactions}
-            isLoading={isLoading}
-          />
+          <ChatInterface messages={mentorData.interactions} />
           
           <Card className="glass-card border-purple-500/20">
             <CardContent className="p-4">
@@ -206,7 +202,7 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         </TabsContent>
 
         <TabsContent value="upload" className="space-y-6">
-          <ImageUpload onUpload={handleImageUpload} />
+          <ImageUpload onImageAnalysis={handleImageAnalysis} />
         </TabsContent>
 
         <TabsContent value="progress" className="space-y-6">

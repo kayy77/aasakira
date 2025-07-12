@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const location = useLocation();
   const { user } = useAuth();
 
@@ -51,7 +52,11 @@ const Navigation = () => {
             })}
             
             <div className="flex items-center space-x-4">
-              {user ? <UserProfile /> : <LoginDialog />}
+              {user ? (
+                <UserProfile />
+              ) : (
+                <LoginDialog open={showLogin} onOpenChange={setShowLogin} />
+              )}
             </div>
           </div>
 
@@ -91,7 +96,11 @@ const Navigation = () => {
                 );
               })}
               <div className="pt-4">
-                {user ? <UserProfile /> : <LoginDialog />}
+                {user ? (
+                  <UserProfile />
+                ) : (
+                  <LoginDialog open={showLogin} onOpenChange={setShowLogin} />
+                )}
               </div>
             </div>
           </div>
