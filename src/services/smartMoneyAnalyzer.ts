@@ -85,28 +85,45 @@ class SmartMoneyAnalyzer {
     // Always generate a signal with the available confluences
     
     // Calculate proper risk:reward ratio
-    let stopLossDistance = this.calculateStopLoss(candles, direction);
+    let stopLossDistance = this.calculateStopLoss(candles, direction, marketData.pair);
     const riskRewardRatio = 2.1; // Minimum 2:1 R:R
     
     // Verify R:R is adequate
     if (stopLossDistance <= 0) {
       console.log(`⚠️ Invalid stop loss for ${marketData.pair}, using default`);
       // Use default stop loss based on pair type
-      stopLossDistance = marketData.pair.includes('JPY') ? 0.20 : 0.0020;
+      if (marketData.pair === 'BTCUSD') {
+        stopLossDistance = 500; // $500 for BTC
+      } else if (marketData.pair === 'ETHUSD') {
+        stopLossDistance = 50; // $50 for ETH
+      } else if (marketData.pair.includes('JPY')) {
+        stopLossDistance = 0.20;
+      } else {
+        stopLossDistance = 0.0020;
+      }
     }
+
+    // Get proper decimal places for the pair
+    const getDecimalPlaces = (pair: string): number => {
+      if (pair === 'BTCUSD' || pair === 'ETHUSD') return 2;
+      if (pair.includes('JPY')) return 2;
+      return 4;
+    };
+
+    const decimalPlaces = getDecimalPlaces(marketData.pair);
     
     const signal = {
       id: Date.now(),
       pair: marketData.pair,
       type: direction,
       confidence: Math.min(confidence, 95), // Cap at 95%
-      entry: Number(currentPrice.toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
+      entry: Number(currentPrice.toFixed(decimalPlaces)),
       stopLoss: direction === 'BUY' 
-        ? Number((currentPrice - stopLossDistance).toFixed(marketData.pair.includes('JPY') ? 2 : 4))
-        : Number((currentPrice + stopLossDistance).toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
+        ? Number((currentPrice - stopLossDistance).toFixed(decimalPlaces))
+        : Number((currentPrice + stopLossDistance).toFixed(decimalPlaces)),
       takeProfit: direction === 'BUY' 
-        ? Number((currentPrice + (stopLossDistance * riskRewardRatio)).toFixed(marketData.pair.includes('JPY') ? 2 : 4))
-        : Number((currentPrice - (stopLossDistance * riskRewardRatio)).toFixed(marketData.pair.includes('JPY') ? 2 : 4)),
+        ? Number((currentPrice + (stopLossDistance * riskRewardRatio)).toFixed(decimalPlaces))
+        : Number((currentPrice - (stopLossDistance * riskRewardRatio)).toFixed(decimalPlaces)),
       status: 'active' as const,
       timestamp: new Date().toISOString(),
       timeframe: 'M15',
@@ -281,12 +298,19 @@ class SmartMoneyAnalyzer {
     return { atLevel: nearResistance || nearSupport };
   }
 
-  private calculateStopLoss(candles: CandleData[], direction: 'BUY' | 'SELL'): number {
+  private calculateStopLoss(candles: CandleData[], direction: 'BUY' | 'SELL', pair: string): number {
     const recent = candles.slice(-10);
     const atr = this.calculateATR(recent);
     
-    // Stop loss based on ATR and direction
-    return atr * 1.5;
+    // Adjust stop loss based on asset type
+    let multiplier = 1.5;
+    if (pair === 'BTCUSD') {
+      multiplier = 2.0; // Wider stops for crypto volatility
+    } else if (pair === 'ETHUSD') {
+      multiplier = 1.8;
+    }
+    
+    return atr * multiplier;
   }
 
   private calculateATR(candles: CandleData[]): number {

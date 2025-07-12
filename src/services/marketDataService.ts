@@ -238,7 +238,7 @@ class MarketDataService {
   }
 
   private convertToFinnhubSymbol(pair: string): string {
-    // Complete mapping for all major forex pairs
+    // Complete mapping for all major forex pairs + crypto
     const forexPairs: { [key: string]: string } = {
       'EURUSD': 'EUR_USD',
       'GBPUSD': 'GBP_USD', 
@@ -299,7 +299,9 @@ class MarketDataService {
       'XAUUSD': 2420.50, // Real current price
       'NZDUSD': 0.5890,
       'EURGBP': 0.8380,
-      'EURJPY': 174.25
+      'EURJPY': 174.25,
+      'BTCUSD': 98750.00, // Real current BTC price
+      'ETHUSD': 3420.00   // Real current ETH price
     };
     
     const basePrice = basePrices[pair] || 1.0719;
@@ -307,11 +309,22 @@ class MarketDataService {
     let currentPrice = basePrice;
     
     for (let i = 0; i < 50; i++) {
-      const variation = (Math.random() - 0.5) * 0.002;
+      // Adjust variation based on asset type
+      let variation = 0;
+      if (pair === 'BTCUSD') {
+        variation = (Math.random() - 0.5) * 500; // $500 variation for BTC
+      } else if (pair === 'ETHUSD') {
+        variation = (Math.random() - 0.5) * 50; // $50 variation for ETH
+      } else if (pair.includes('JPY')) {
+        variation = (Math.random() - 0.5) * 0.5; // Smaller variation for JPY pairs
+      } else {
+        variation = (Math.random() - 0.5) * 0.002; // Standard forex variation
+      }
+      
       const open = currentPrice;
       const close = open + variation;
-      const high = Math.max(open, close) + Math.random() * 0.001;
-      const low = Math.min(open, close) - Math.random() * 0.001;
+      const high = Math.max(open, close) + Math.abs(variation) * 0.3;
+      const low = Math.min(open, close) - Math.abs(variation) * 0.3;
       
       candles.push({
         timestamp: Date.now() - (50 - i) * 15 * 60 * 1000,

@@ -1,3 +1,4 @@
+
 import { marketDataService } from './marketDataService';
 import { smartMoneyAnalyzer } from './smartMoneyAnalyzer';
 
@@ -21,15 +22,18 @@ class SignalService {
   private signals: Signal[] = [];
   private lastUpdate: number = 0;
   private readonly UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes for more frequent updates
-  private readonly MAJOR_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'GBPJPY', 'AUDUSD', 'USDCAD', 'XAUUSD', 'NZDUSD', 'EURGBP', 'EURJPY'];
+  private readonly MAJOR_PAIRS = [
+    'EURUSD', 'GBPUSD', 'USDJPY', 'GBPJPY', 'AUDUSD', 'USDCAD', 'XAUUSD', 
+    'NZDUSD', 'EURGBP', 'EURJPY', 'BTCUSD', 'ETHUSD'
+  ];
 
   async generateLiveSignal(): Promise<Signal | null> {
-    console.log('🔍 Scanning ALL major pairs for BEST available opportunity...');
+    console.log('🔍 Scanning ALL major pairs + crypto for BEST available opportunity...');
     
     let bestSignal: Signal | null = null;
     let highestConfidence = 0;
     
-    // Analyze all major pairs and find the best one
+    // Analyze all major pairs and crypto and find the best one
     for (const pair of this.MAJOR_PAIRS) {
       try {
         console.log(`📊 Analyzing ${pair} for opportunities...`);
@@ -65,11 +69,10 @@ class SignalService {
     if (bestSignal) {
       console.log(`✅ BEST OPPORTUNITY FOUND: ${bestSignal.type} ${bestSignal.pair} @ ${bestSignal.entry} (${bestSignal.confidence}% confidence)`);
       this.signals.unshift(bestSignal);
-      this.lastUpdate = Date.now();
-      return bestSignal;
+      this.lastUpdate = Date.now();return bestSignal;
     }
     
-    console.log('❌ No viable opportunities found across all major pairs');
+    console.log('❌ No viable opportunities found across all major pairs + crypto');
     return null;
   }
 
