@@ -16,17 +16,13 @@ import {
   Star,
   MessageCircle,
   ChevronRight,
-  Upload,
-  Swords,
-  Crown,
-  Gamepad2
+  Upload
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMentorMemory } from './useMentorMemory';
 import ProgressChart from './ProgressChart';
 import ImageUpload from './ImageUpload';
 import ChatInterface from './ChatInterface';
-import EnhancedCombatMode from './EnhancedCombatMode';
 import LearningProgress from './combat/LearningProgress';
 import { useAIResponses } from './useAIResponses';
 
@@ -137,18 +133,14 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         <CardHeader>
           <CardTitle className="flex items-center text-white">
             <Brain className="w-6 h-6 mr-2 text-purple-400" />
-            AI Trading Mentor V2
+            AI Trading Mentor
             <Badge className="ml-2 bg-gradient-to-r from-purple-500 to-pink-500">
               Level {mentorData.userLevel}
-            </Badge>
-            <Badge className="ml-2 bg-gradient-to-r from-red-500 to-orange-500 animate-pulse">
-              <Crown className="w-3 h-3 mr-1" />
-              Combat Arena Active
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-400">
                 {mentorData.interactions.length}
@@ -167,17 +159,11 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
               </div>
               <div className="text-sm text-gray-400">Charts Analyzed</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-400">
-                12
-              </div>
-              <div className="text-sm text-gray-400">Arena Victories</div>
-            </div>
           </div>
           
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-300">Combat & Learning Progress</span>
+              <span className="text-gray-300">Learning Progress</span>
               <span className="text-purple-400">{Math.round((mentorData.progress.messages || 0) * 2)}%</span>
             </div>
             <Progress value={(mentorData.progress.messages || 0) * 2} className="h-2" />
@@ -185,12 +171,8 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="combat" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 bg-gray-800/50">
-          <TabsTrigger value="combat" className="data-[state=active]:bg-red-600">
-            <Swords className="w-4 h-4 mr-2" />
-            Combat Arena V2
-          </TabsTrigger>
+      <Tabs defaultValue="learning" className="w-full">
+        <TabsList className="grid w-full grid-cols-5 bg-gray-800/50">
           <TabsTrigger value="learning" className="data-[state=active]:bg-green-600">
             <Target className="w-4 h-4 mr-2" />
             Learning Hub
@@ -212,10 +194,6 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
             Courses
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="combat" className="space-y-6">
-          <EnhancedCombatMode onFeatureUse={onFeatureUse} />
-        </TabsContent>
 
         <TabsContent value="learning" className="space-y-6">
           <LearningProgress 
