@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +11,7 @@ import {
   TrendingUp,
   TrendingDown,
   Crown,
-  Fire,
+  Flame,
   Zap,
   Users
 } from 'lucide-react';
@@ -335,7 +334,7 @@ const CombatMode = () => {
                     </div>
                     <div className="flex items-center space-x-2">
                       {entry.rank === 1 && <Crown className="w-4 h-4 text-yellow-400" />}
-                      {entry.streak >= 10 && <Fire className="w-4 h-4 text-red-400" />}
+                      {entry.streak >= 10 && <Flame className="w-4 h-4 text-red-400" />}
                       <div>
                         <div className="font-semibold text-white">{entry.username}</div>
                         <div className="text-xs text-gray-400">{entry.title}</div>
@@ -376,7 +375,7 @@ const CombatMode = () => {
               <div className="text-sm text-gray-400">Exclusive Badge</div>
             </div>
             <div className="text-center p-4 border border-purple-500/20 rounded-lg bg-purple-900/10">
-              <Fire className="w-8 h-8 mx-auto text-purple-400 mb-2" />
+              <Flame className="w-8 h-8 mx-auto text-purple-400 mb-2" />
               <div className="font-semibold text-purple-400">Daily Champion</div>
               <div className="text-sm text-gray-400">Premium Features</div>
             </div>
