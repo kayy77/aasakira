@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,10 +11,17 @@ import {
   Target,
   Gamepad2,
   Palette,
-  Mountain
+  Mountain,
+  ShoppingCart,
+  BookOpen,
+  BarChart3,
+  User
 } from 'lucide-react';
 import PixelAvatarDesigner from './PixelAvatarDesigner';
 import EnhancedPixelBattle from './EnhancedPixelBattle';
+import CharacterStats from './CharacterStats';
+import ItemShop from './ItemShop';
+import TrainingHall from './TrainingHall';
 
 interface PixelDojoProps {
   userStats: {
@@ -29,19 +35,97 @@ interface PixelDojoProps {
 }
 
 const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
-  const [playerCharacter, setPlayerCharacter] = useState<any>(null);
+  const [playerCharacter, setPlayerCharacter] = useState<any>({
+    name: 'Shadow Trader',
+    class: 'monk',
+    level: 13,
+    xp: 1250,
+    maxXp: 1500,
+    stats: {
+      wisdom: 75,
+      aggression: 45,
+      stealth: 60
+    },
+    titles: ['Market Phantom', 'Pattern Seeker'],
+    rank: 'Samurai'
+  });
+  
   const [currentBattle, setCurrentBattle] = useState<any>(null);
   const [isSearchingMatch, setIsSearchingMatch] = useState(false);
+  const [userCurrency, setUserCurrency] = useState({
+    xp: 2450,
+    legendPoints: 15
+  });
+
+  // Sample quests data
+  const sampleQuests = [
+    {
+      id: 'liquidity_basics',
+      title: 'Understanding Liquidity',
+      description: 'Learn to identify liquidity pools and their significance in trading',
+      type: 'education' as const,
+      difficulty: 'Beginner' as const,
+      xpReward: 100,
+      statBonus: { wisdom: 5 },
+      requirements: ['Complete tutorial'],
+      progress: 3,
+      maxProgress: 5,
+      completed: false,
+      locked: false
+    },
+    {
+      id: 'battle_wins',
+      title: 'Victory Streak',
+      description: 'Win 3 consecutive battles using SMC principles',
+      type: 'battle' as const,
+      difficulty: 'Intermediate' as const,
+      xpReward: 250,
+      statBonus: { aggression: 10, wisdom: 5 },
+      requirements: ['Complete Liquidity Basics'],
+      progress: 1,
+      maxProgress: 3,
+      completed: false,
+      locked: false
+    },
+    {
+      id: 'master_smc',
+      title: 'Smart Money Mastery',
+      description: 'Demonstrate advanced understanding of market structure',
+      type: 'mastery' as const,
+      difficulty: 'Master' as const,
+      xpReward: 500,
+      statBonus: { wisdom: 20, stealth: 15 },
+      requirements: ['Level 15+', 'Win 10 battles'],
+      progress: 0,
+      maxProgress: 1,
+      completed: false,
+      locked: true
+    }
+  ];
 
   const handleCharacterCreate = (character: any) => {
     setPlayerCharacter(character);
     onFeatureUse?.();
   };
 
+  const handlePurchase = (itemId: string) => {
+    console.log('Purchasing item:', itemId);
+    onFeatureUse?.();
+  };
+
+  const handleStartQuest = (questId: string) => {
+    console.log('Starting quest:', questId);
+    onFeatureUse?.();
+  };
+
+  const handleClaimReward = (questId: string) => {
+    console.log('Claiming reward for quest:', questId);
+    onFeatureUse?.();
+  };
+
   const findMatch = () => {
     setIsSearchingMatch(true);
     
-    // Simulate finding a match
     setTimeout(() => {
       const opponents = [
         { name: 'DragonPips', class: 'samurai', level: 12, xp: 1200 },
@@ -77,9 +161,8 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
       timeLeft: 10
     }));
     
-    // Simulate battle result
     setTimeout(() => {
-      const isWin = Math.random() > 0.3; // 70% win rate for demo
+      const isWin = Math.random() > 0.3;
       setCurrentBattle(prev => ({
         ...prev,
         battlePhase: 'result',
@@ -90,37 +173,11 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
         }
       }));
       
-      // Auto-close battle after 5 seconds
       setTimeout(() => {
         setCurrentBattle(null);
       }, 5000);
     }, 10000);
   };
-
-  if (!playerCharacter) {
-    return (
-      <div className="space-y-6">
-        <Card className="glass-card border-purple-500/20">
-          <CardContent className="p-6 text-center">
-            <Crown className="w-16 h-16 mx-auto text-purple-400 mb-4" />
-            <h2 className="text-2xl font-bold gradient-text mb-4">Welcome to the Pixel Dojo</h2>
-            <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
-              Create your unique pixel warrior and enter the ultimate trading battle arena. 
-              Choose your class, customize your appearance, and prove your skills against other traders.
-            </p>
-            <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 text-lg">
-              🏮 AASAKIRA PIXEL DOJO 🏮
-            </Badge>
-          </CardContent>
-        </Card>
-
-        <PixelAvatarDesigner
-          userStats={userStats}
-          onCharacterCreate={handleCharacterCreate}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -130,11 +187,11 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-gradient-to-br from-red-700 to-orange-800 rounded-lg flex items-center justify-center">
-                <Swords className="w-8 h-8 text-white" />
+                <Crown className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold gradient-text">Pixel Battle Dojo</h2>
-                <p className="text-gray-400">Your warrior awaits combat</p>
+                <h2 className="text-2xl font-bold gradient-text">Aasakira Trading Dojo</h2>
+                <p className="text-gray-400">Master the markets, forge your legend</p>
               </div>
             </div>
             
@@ -143,26 +200,45 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
               <div className="text-sm text-gray-400">
                 {userStats.wins}W / {userStats.losses}L
               </div>
+              <Badge className="bg-gradient-to-r from-yellow-600 to-orange-600 text-white mt-1">
+                {playerCharacter.rank}
+              </Badge>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="battle" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-gray-800/50">
+      <Tabs defaultValue="character" className="w-full">
+        <TabsList className="grid w-full grid-cols-6 bg-gray-800/50">
+          <TabsTrigger value="character" className="data-[state=active]:bg-cyan-600">
+            <User className="w-4 h-4 mr-2" />
+            Character
+          </TabsTrigger>
           <TabsTrigger value="battle" className="data-[state=active]:bg-red-600">
             <Swords className="w-4 h-4 mr-2" />
-            Battle Arena
+            Battle
           </TabsTrigger>
-          <TabsTrigger value="customize" className="data-[state=active]:bg-purple-600">
+          <TabsTrigger value="training" className="data-[state=active]:bg-blue-600">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Training
+          </TabsTrigger>
+          <TabsTrigger value="shop" className="data-[state=active]:bg-purple-600">
+            <ShoppingCart className="w-4 h-4 mr-2" />
+            Shop
+          </TabsTrigger>
+          <TabsTrigger value="customize" className="data-[state=active]:bg-green-600">
             <Palette className="w-4 h-4 mr-2" />
             Customize
           </TabsTrigger>
           <TabsTrigger value="leaderboard" className="data-[state=active]:bg-yellow-600">
             <Trophy className="w-4 h-4 mr-2" />
-            Leaderboard
+            Rankings
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="character" className="space-y-6">
+          <CharacterStats character={playerCharacter} />
+        </TabsContent>
 
         <TabsContent value="battle" className="space-y-6">
           {currentBattle ? (
@@ -194,17 +270,6 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
                       </p>
                     </div>
                     
-                    {/* Character Preview */}
-                    <div className="inline-block p-4 bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-lg border border-purple-500/20">
-                      <div className="text-center">
-                        <div className="w-16 h-16 bg-gradient-to-br from-amber-700 to-orange-800 rounded-lg flex items-center justify-center mx-auto mb-2">
-                          <Crown className="w-8 h-8 text-white" />
-                        </div>
-                        <div className="text-white font-semibold">{playerCharacter.name}</div>
-                        <div className="text-xs text-gray-400">Level {playerCharacter.level}</div>
-                      </div>
-                    </div>
-                    
                     <Button
                       onClick={findMatch}
                       className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-semibold px-8 py-3 text-lg"
@@ -217,6 +282,21 @@ const PixelDojo = ({ userStats, onFeatureUse }: PixelDojoProps) => {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="training" className="space-y-6">
+          <TrainingHall 
+            quests={sampleQuests}
+            onStartQuest={handleStartQuest}
+            onClaimReward={handleClaimReward}
+          />
+        </TabsContent>
+
+        <TabsContent value="shop" className="space-y-6">
+          <ItemShop 
+            userCurrency={userCurrency}
+            onPurchase={handlePurchase}
+          />
         </TabsContent>
 
         <TabsContent value="customize" className="space-y-6">
