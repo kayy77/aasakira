@@ -1,7 +1,8 @@
 
 import React from 'react';
 import Navigation from '@/components/Navigation';
-import AIMentor from '@/components/education/AIMentor';
+import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
+import { MentorMemoryProvider } from '@/components/education/MentorMemory';
 import FeatureGate from '@/components/FeatureGate';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 
@@ -18,13 +19,15 @@ const Education = () => {
               AI Trading Mentor
             </h1>
             <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-              Learn from your personal AI trading mentor with advanced market knowledge and personalized guidance
+              Your personalized AI mentor that remembers your progress, analyzes your charts, and adapts to your learning style
             </p>
           </div>
 
-          <FeatureGate feature="mentorMessages" featureName="AI Mentor Messages">
-            <AIMentor />
-          </FeatureGate>
+          <MentorMemoryProvider>
+            <FeatureGate feature="aiMentorMessages" featureName="AI Mentor Messages">
+              <EnhancedAIMentor />
+            </FeatureGate>
+          </MentorMemoryProvider>
         </div>
       </div>
     </div>
