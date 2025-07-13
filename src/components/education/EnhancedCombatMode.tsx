@@ -12,13 +12,8 @@ import {
   Crown,
   TrendingUp
 } from 'lucide-react';
-import ComprehensiveAvatarSystem from './combat/ComprehensiveAvatarSystem';
-import SkillTree from './combat/SkillTree';
-import BattlefieldVisualization from './combat/BattlefieldVisualization';
-import BluffMechanics from './combat/BluffMechanics';
-import CombatMode from './CombatMode';
-import PixelDojo from './combat/PixelDojo';
 import SimplifiedTradingBattle from './combat/SimplifiedTradingBattle';
+import DrillMode from './DrillMode';
 
 interface EnhancedCombatModeProps {
   onFeatureUse?: () => void;
@@ -107,78 +102,37 @@ const EnhancedCombatMode = ({ onFeatureUse }: EnhancedCombatModeProps) => {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="trading-battle" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 bg-gray-800/50">
-          <TabsTrigger value="trading-battle" className="data-[state=active]:bg-green-600">
+      <Tabs defaultValue="battle-arena" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 bg-gray-800/50">
+          <TabsTrigger value="battle-arena" className="data-[state=active]:bg-green-600">
             <TrendingUp className="w-4 h-4 mr-2" />
             Battle Arena
           </TabsTrigger>
-          <TabsTrigger value="avatar" className="data-[state=active]:bg-purple-600">
-            <User className="w-4 h-4 mr-2" />
-            Avatar
-          </TabsTrigger>
-          <TabsTrigger value="skills" className="data-[state=active]:bg-blue-600">
+          <TabsTrigger value="drill-mode" className="data-[state=active]:bg-blue-600">
             <Brain className="w-4 h-4 mr-2" />
-            Skills
+            Drill Mode
           </TabsTrigger>
-          <TabsTrigger value="battlefield" className="data-[state=active]:bg-yellow-600">
-            <Target className="w-4 h-4 mr-2" />
-            Battlefield
-          </TabsTrigger>
-          <TabsTrigger value="tactics" className="data-[state=active]:bg-orange-600">
-            <Eye className="w-4 h-4 mr-2" />
-            Tactics
-          </TabsTrigger>
-          <TabsTrigger value="pixel-dojo" className="data-[state=active]:bg-red-600">
-            <Crown className="w-4 h-4 mr-2" />
-            Pixel Dojo
+          <TabsTrigger value="progress" className="data-[state=active]:bg-purple-600">
+            <Trophy className="w-4 h-4 mr-2" />
+            Progress
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="trading-battle" className="space-y-6">
+        <TabsContent value="battle-arena" className="space-y-6">
           <SimplifiedTradingBattle onFeatureUse={onFeatureUse} />
         </TabsContent>
 
-        <TabsContent value="avatar" className="space-y-6">
-          <ComprehensiveAvatarSystem 
-            userStats={userStats}
-            selectedClass={selectedClass}
-            onClassSelect={setSelectedClass}
-          />
+        <TabsContent value="drill-mode" className="space-y-6">
+          <DrillMode onFeatureUse={onFeatureUse} />
         </TabsContent>
 
-        <TabsContent value="skills" className="space-y-6">
-          <SkillTree 
-            availablePoints={skillPoints}
-            unlockedSkills={unlockedSkills}
-            onSkillUnlock={handleSkillUnlock}
-          />
-        </TabsContent>
-
-        <TabsContent value="battlefield" className="space-y-6">
-          <BattlefieldVisualization 
-            currentPrice={battlefieldData.currentPrice}
-            priceHistory={battlefieldData.priceHistory}
-            supportLevel={battlefieldData.supportLevel}
-            resistanceLevel={battlefieldData.resistanceLevel}
-            isActive={battlefieldData.isActive}
-            playerPrediction="up"
-            opponentPrediction="down"
-          />
-        </TabsContent>
-
-        <TabsContent value="tactics" className="space-y-6">
-          <BluffMechanics
-            availablePerks={[]}
-            selectedPerk={null}
-            onPerkSelect={handlePerkSelect}
-            isSelectionPhase={true}
-            showOpponentPerk={false}
-          />
-        </TabsContent>
-
-        <TabsContent value="pixel-dojo" className="space-y-6">
-          <PixelDojo userStats={userStats} onFeatureUse={onFeatureUse} />
+        <TabsContent value="progress" className="space-y-6">
+          {/* Progress tracking will be built next */}
+          <div className="text-center py-12">
+            <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
+            <h3 className="text-xl font-bold text-white mb-2">Progress Tracking</h3>
+            <p className="text-gray-400">Coming next - Detailed performance analytics</p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
