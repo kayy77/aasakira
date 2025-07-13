@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,7 +9,8 @@ import {
   Eye,
   Trophy,
   Gamepad2,
-  Crown
+  Crown,
+  TrendingUp
 } from 'lucide-react';
 import ComprehensiveAvatarSystem from './combat/ComprehensiveAvatarSystem';
 import SkillTree from './combat/SkillTree';
@@ -18,6 +18,7 @@ import BattlefieldVisualization from './combat/BattlefieldVisualization';
 import BluffMechanics from './combat/BluffMechanics';
 import CombatMode from './CombatMode';
 import PixelDojo from './combat/PixelDojo';
+import SimplifiedTradingBattle from './combat/SimplifiedTradingBattle';
 
 interface EnhancedCombatModeProps {
   onFeatureUse?: () => void;
@@ -66,51 +67,51 @@ const EnhancedCombatMode = ({ onFeatureUse }: EnhancedCombatModeProps) => {
           <div className="text-center mb-6">
             <h2 className="text-3xl font-bold gradient-text mb-2 flex items-center justify-center">
               <Crown className="w-8 h-8 mr-3 text-yellow-400" />
-              AASAKIRA COMBAT ARENA V2
+              AASAKIRA TRADING BATTLE ARENA
               <Crown className="w-8 h-8 ml-3 text-yellow-400" />
             </h2>
             <p className="text-gray-300 text-lg max-w-3xl mx-auto">
-              The ultimate pixel trading battle experience with evolving avatars, comprehensive gear systems, and battle companions
+              Master trading through gamified battles. Analyze real market scenarios, make predictions, and level up your skills.
             </p>
-            <div className="mt-4 px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white text-sm rounded-full inline-block animate-pulse">
-              🔥 NOW WITH PIXEL ART WARRIORS 🔥
+            <div className="mt-4 px-4 py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white text-sm rounded-full inline-block animate-pulse">
+              🎯 FOCUSED TRADING EDUCATION 🎯
             </div>
           </div>
           
           {/* Feature Preview Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-gradient-to-br from-red-900/20 to-orange-900/20 rounded-lg border border-red-500/20">
-              <User className="w-8 h-8 mx-auto mb-2 text-red-400" />
-              <h3 className="font-semibold text-white mb-1">Pixel Warriors</h3>
-              <p className="text-xs text-gray-400">Custom pixel art avatars with unique evolutions</p>
+            <div className="text-center p-4 bg-gradient-to-br from-green-900/20 to-blue-900/20 rounded-xl border border-green-500/20">
+              <TrendingUp className="w-8 h-8 mx-auto mb-2 text-green-400" />
+              <h3 className="font-semibold text-white mb-1">Trading Battles</h3>
+              <p className="text-xs text-gray-400">Real market scenarios with instant feedback</p>
             </div>
             
-            <div className="text-center p-4 bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-lg border border-purple-500/20">
+            <div className="text-center p-4 bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-xl border border-purple-500/20">
               <Brain className="w-8 h-8 mx-auto mb-2 text-purple-400" />
-              <h3 className="font-semibold text-white mb-1">Epic Gear System</h3>
-              <p className="text-xs text-gray-400">Unlock legendary weapons, armor & mythic items</p>
+              <h3 className="font-semibold text-white mb-1">Master's Wisdom</h3>
+              <p className="text-xs text-gray-400">Learn SMC, liquidity hunts, and advanced concepts</p>
             </div>
             
-            <div className="text-center p-4 bg-gradient-to-br from-blue-900/20 to-cyan-900/20 rounded-lg border border-blue-500/20">
+            <div className="text-center p-4 bg-gradient-to-br from-blue-900/20 to-cyan-900/20 rounded-xl border border-blue-500/20">
               <Target className="w-8 h-8 mx-auto mb-2 text-blue-400" />
-              <h3 className="font-semibold text-white mb-1">Battle Companions</h3>
-              <p className="text-xs text-gray-400">Spirit Fox, Dragon Pup, Trade Tanuki pets</p>
+              <h3 className="font-semibold text-white mb-1">Live Analysis</h3>
+              <p className="text-xs text-gray-400">Practice with EUR/USD, GBP/USD, and more</p>
             </div>
             
-            <div className="text-center p-4 bg-gradient-to-br from-green-900/20 to-emerald-900/20 rounded-lg border border-green-500/20">
-              <Eye className="w-8 h-8 mx-auto mb-2 text-green-400" />
-              <h3 className="font-semibold text-white mb-1">Live Battles</h3>
-              <p className="text-xs text-gray-400">Real-time trading predictions with AI hints</p>
+            <div className="text-center p-4 bg-gradient-to-br from-yellow-900/20 to-orange-900/20 rounded-xl border border-yellow-500/20">
+              <Trophy className="w-8 h-8 mx-auto mb-2 text-yellow-400" />
+              <h3 className="font-semibold text-white mb-1">XP & Levels</h3>
+              <p className="text-xs text-gray-400">Track accuracy and trading improvement</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="pixel-dojo" className="w-full">
+      <Tabs defaultValue="trading-battle" className="w-full">
         <TabsList className="grid w-full grid-cols-6 bg-gray-800/50">
-          <TabsTrigger value="pixel-dojo" className="data-[state=active]:bg-red-600">
-            <Crown className="w-4 h-4 mr-2" />
-            Pixel Dojo
+          <TabsTrigger value="trading-battle" className="data-[state=active]:bg-green-600">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Battle Arena
           </TabsTrigger>
           <TabsTrigger value="avatar" className="data-[state=active]:bg-purple-600">
             <User className="w-4 h-4 mr-2" />
@@ -120,22 +121,22 @@ const EnhancedCombatMode = ({ onFeatureUse }: EnhancedCombatModeProps) => {
             <Brain className="w-4 h-4 mr-2" />
             Skills
           </TabsTrigger>
-          <TabsTrigger value="battlefield" className="data-[state=active]:bg-green-600">
+          <TabsTrigger value="battlefield" className="data-[state=active]:bg-yellow-600">
             <Target className="w-4 h-4 mr-2" />
             Battlefield
           </TabsTrigger>
-          <TabsTrigger value="tactics" className="data-[state=active]:bg-yellow-600">
+          <TabsTrigger value="tactics" className="data-[state=active]:bg-orange-600">
             <Eye className="w-4 h-4 mr-2" />
             Tactics
           </TabsTrigger>
-          <TabsTrigger value="classic" className="data-[state=active]:bg-orange-600">
-            <Gamepad2 className="w-4 h-4 mr-2" />
-            Classic
+          <TabsTrigger value="pixel-dojo" className="data-[state=active]:bg-red-600">
+            <Crown className="w-4 h-4 mr-2" />
+            Pixel Dojo
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pixel-dojo" className="space-y-6">
-          <PixelDojo userStats={userStats} onFeatureUse={onFeatureUse} />
+        <TabsContent value="trading-battle" className="space-y-6">
+          <SimplifiedTradingBattle onFeatureUse={onFeatureUse} />
         </TabsContent>
 
         <TabsContent value="avatar" className="space-y-6">
@@ -176,8 +177,8 @@ const EnhancedCombatMode = ({ onFeatureUse }: EnhancedCombatModeProps) => {
           />
         </TabsContent>
 
-        <TabsContent value="classic" className="space-y-6">
-          <CombatMode />
+        <TabsContent value="pixel-dojo" className="space-y-6">
+          <PixelDojo userStats={userStats} onFeatureUse={onFeatureUse} />
         </TabsContent>
       </Tabs>
     </div>
