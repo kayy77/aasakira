@@ -32,7 +32,7 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --radius: 1rem;
   }
 }
 
@@ -46,12 +46,13 @@
   }
 }
 
-/* Glass Card Effect */
+/* Glass Card Effect with Rounded Corners */
 .glass-card {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-radius: 1.5rem;
 }
 
 /* Enhanced Gradient Text */
@@ -74,21 +75,25 @@
   text-shadow: 0 0 10px currentColor;
 }
 
-/* Hover Effects */
+/* Hover Effects with Smooth Transitions */
 .hover-lift {
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 1rem;
 }
 
 .hover-lift:hover {
   transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
 }
 
 .hover-glow:hover {
   box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+  border-radius: 1rem;
 }
 
 .cyber-glow {
   box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+  border-radius: 1rem;
 }
 
 /* Basic Animations */
@@ -139,6 +144,7 @@
   background: 
     radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%);
+  border-radius: 1.5rem;
 }
 
 /* Character Animations - Only applied within battle components */
@@ -161,12 +167,32 @@
   animation: characterBreathe 3s ease-in-out infinite;
 }
 
-/* Rarity Colors for Game Items */
-.rarity-common { border-color: #9CA3AF; color: #9CA3AF; }
-.rarity-rare { border-color: #3B82F6; color: #3B82F6; }
-.rarity-epic { border-color: #8B5CF6; color: #8B5CF6; }
-.rarity-legendary { border-color: #F59E0B; color: #F59E0B; }
-.rarity-mythic { border-color: #EC4899; color: #EC4899; }
+/* Rarity Colors for Game Items with Rounded Borders */
+.rarity-common { 
+  border-color: #9CA3AF; 
+  color: #9CA3AF; 
+  border-radius: 0.75rem;
+}
+.rarity-rare { 
+  border-color: #3B82F6; 
+  color: #3B82F6; 
+  border-radius: 0.75rem;
+}
+.rarity-epic { 
+  border-color: #8B5CF6; 
+  color: #8B5CF6; 
+  border-radius: 0.75rem;
+}
+.rarity-legendary { 
+  border-color: #F59E0B; 
+  color: #F59E0B; 
+  border-radius: 0.75rem;
+}
+.rarity-mythic { 
+  border-color: #EC4899; 
+  color: #EC4899; 
+  border-radius: 0.75rem;
+}
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
