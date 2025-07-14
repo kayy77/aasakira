@@ -25,8 +25,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { UserTrackingService } from '@/services/userTrackingService';
-import { getGroqService, initializeGroqService } from '@/services/groqService';
-import { getOpenAIService, initializeOpenAIService } from '@/services/enhancedOpenAIService';
+import { hybridAIService } from '@/services/hybridAIService';
+import VisualExplainer from './VisualExplainer';
 
 interface Message {
   id: string;
@@ -59,23 +59,9 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Initialize API services
+  // Initialize services (APIs are now managed internally)
   useEffect(() => {
-    const initializeAPIs = async () => {
-      try {
-        // Initialize Groq
-        const groqKey = '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';
-        const openaiKey = 'sk-proj-1zVlyGVGYxfvqyrNWMVfuv5xArRbwx_8Y95I8BVtY0RzJRpsioJxJTMA';
-        
-        initializeGroqService(groqKey);
-        initializeOpenAIService(openaiKey);
-        setApiKeysSet(true);
-      } catch (error) {
-        console.error('Failed to initialize AI services:', error);
-      }
-    };
-
-    initializeAPIs();
+    setApiKeysSet(true); // Hybrid service manages API keys internally
   }, []);
 
   // Load user progress and start session
@@ -157,32 +143,14 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
       // Get comprehensive user context
       const userContext = await UserTrackingService.getUserContextForAI(user.id);
       
-      // Generate response using Groq for fast, conversational responses
-      const groqService = getGroqService();
-      let aiResponse: string;
+      // Generate response using hybrid AI service
+      const aiResponseData = await hybridAIService.generateComprehensiveResponse(
+        inputMessage,
+        userContext?.progress,
+        false // Don't generate visual for regular chat
+      );
 
-      try {
-        aiResponse = await groqService.generateTradingAnalysis(
-          inputMessage,
-          userContext?.progress,
-          messages.slice(-10).map(m => ({
-            role: m.isUser ? 'user' : 'assistant',
-            content: m.content
-          }))
-        );
-      } catch (groqError) {
-        console.warn('Groq failed, falling back to OpenAI:', groqError);
-        // Fallback to OpenAI for complex queries
-        const openaiService = getOpenAIService();
-        aiResponse = await openaiService.generateAdvancedAnalysis(
-          inputMessage,
-          userContext?.progress,
-          messages.slice(-10).map(m => ({
-            role: m.isUser ? 'user' : 'assistant',
-            content: m.content
-          }))
-        );
-      }
+      const aiResponse = aiResponseData.text;
 
       // Store AI memory
       await UserTrackingService.storeAIMemory({
