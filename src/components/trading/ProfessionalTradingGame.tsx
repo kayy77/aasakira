@@ -154,7 +154,7 @@ const ProfessionalTradingGame = () => {
         },
       });
 
-      candlestickSeries.current = chart.current.addCandlestickSeries({
+      candlestickSeries.current = chart.current.addSeries('Candlestick', {
         upColor: '#4ade80',
         downColor: '#f87171',
         borderDownColor: '#f87171',
