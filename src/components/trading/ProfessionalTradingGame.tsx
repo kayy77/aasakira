@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,8 @@ const ProfessionalTradingGame = () => {
   const [accuracy, setAccuracy] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [isRunning, setIsRunning] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState(1.20500);
+  const [sampleData, setSampleData] = useState<TradingData[]>([]);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const candlestickSeries = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -85,8 +88,6 @@ const ProfessionalTradingGame = () => {
       return;
     }
 
-    const currentPrice =
-      candlestickSeries.current?.lastValue()?.close || 1.20500;
     const investment = balance * 0.1;
     const potentialProfit = investment * 0.005;
 
@@ -112,8 +113,6 @@ const ProfessionalTradingGame = () => {
       return;
     }
 
-    const currentPrice =
-      candlestickSeries.current?.lastValue()?.close || 1.20500;
     const investment = balance * 0.1;
     const potentialProfit = investment * 0.005;
 
@@ -155,7 +154,6 @@ const ProfessionalTradingGame = () => {
         },
       });
 
-      // Fix: Use addCandlestickSeries method correctly
       candlestickSeries.current = chart.current.addCandlestickSeries({
         upColor: '#4ade80',
         downColor: '#f87171',
@@ -166,8 +164,14 @@ const ProfessionalTradingGame = () => {
       });
 
       // Generate sample data
-      const sampleData = generateSampleData();
-      candlestickSeries.current.setData(sampleData);
+      const data = generateSampleData();
+      setSampleData(data);
+      candlestickSeries.current.setData(data);
+      
+      // Set current price from the last data point
+      if (data.length > 0) {
+        setCurrentPrice(data[data.length - 1].close);
+      }
 
       return () => {
         if (chart.current) {

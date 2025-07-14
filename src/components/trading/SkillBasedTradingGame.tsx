@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ const SkillBasedTradingGame = () => {
   const [entryPrice, setEntryPrice] = useState(0);
   const [tradingActive, setTradingActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(60);
+  const [gameData, setGameData] = useState<TradingData[]>([]);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const candleSeries = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -56,7 +58,6 @@ const SkillBasedTradingGame = () => {
         height: 400,
       });
 
-      // Fix: Use addCandlestickSeries method correctly
       candleSeries.current = chart.current.addCandlestickSeries({
         upColor: '#4ade80',
         downColor: '#f87171',
@@ -68,6 +69,7 @@ const SkillBasedTradingGame = () => {
 
       // Generate sample data for the game
       const data = generateGameData();
+      setGameData(data);
       candleSeries.current.setData(data);
 
       return () => {
@@ -158,8 +160,10 @@ const SkillBasedTradingGame = () => {
   };
 
   const getCurrentPrice = (): number => {
-    const data = generateGameData();
-    return data[data.length - 1].close;
+    if (gameData.length > 0) {
+      return gameData[gameData.length - 1].close;
+    }
+    return 100;
   };
 
   const handleGameEnd = () => {
