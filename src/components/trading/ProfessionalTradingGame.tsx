@@ -91,7 +91,7 @@ const ProfessionalTradingGame: React.FC = () => {
     chartRef.current = chart;
 
     // Add candlestick series using the correct method
-    const candlestickSeries = chart.addCandlestickSeries({
+    const candlestickSeries = chart.addSeries('candlestick', {
       upColor: '#00ff88',
       downColor: '#ff4757',
       borderDownColor: '#ff4757',
@@ -100,7 +100,7 @@ const ProfessionalTradingGame: React.FC = () => {
       wickUpColor: '#00ff88',
     });
 
-    candlestickSeriesRef.current = candlestickSeries;
+    candlestickSeriesRef.current = candlestickSeries as ISeriesApi<"Candlestick">;
 
     // Generate sample data
     const generateSampleData = (): CandlestickData[] => {
