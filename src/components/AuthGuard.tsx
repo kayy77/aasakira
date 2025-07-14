@@ -34,17 +34,12 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     return <Dashboard />;
   }
 
-  // If user is authenticated but on a non-dashboard route, redirect to home
-  if (isAuthenticated && !isPublicRoute && location.pathname !== '/') {
-    return <Navigate to="/" replace />;
-  }
-
-  // If user is not authenticated and trying to access protected route
+  // If user is not authenticated and trying to access protected route, show login
   if (!isAuthenticated && !isPublicRoute) {
     return <LoginDialog open={true} onOpenChange={() => {}} />;
   }
 
-  // For all other cases, show the children
+  // For all other cases (authenticated users on any route, or public routes), show the children
   return <>{children}</>;
 };
 
