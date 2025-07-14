@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,6 @@ import {
   Trophy,
   AlertCircle,
   Image,
-  Volume2,
   Sparkles,
   Zap
 } from 'lucide-react';
@@ -33,7 +31,6 @@ interface Message {
   timestamp: Date;
   type?: 'text' | 'analysis' | 'lesson';
   visualUrl?: string;
-  audioUrl?: string;
   analysis?: any;
 }
 
@@ -50,9 +47,7 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
   const [userProgress, setUserProgress] = useState<any>(null);
   const [currentSession, setCurrentSession] = useState<string | null>(null);
   const [includeVisuals, setIncludeVisuals] = useState(false);
-  const [includeVoice, setIncludeVoice] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,7 +57,6 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Load user progress and start session
   useEffect(() => {
     const loadUserData = async () => {
       if (!user?.id) return;
@@ -155,8 +149,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
         data: {
           message_length: currentInput.length,
           session_id: currentSession,
-          includes_visuals: includeVisuals,
-          includes_voice: includeVoice
+          includes_visuals: includeVisuals
         }
       });
 
@@ -178,8 +171,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
           currentStreak: userProgress?.current_streak || 0,
           messagesSent: userProgress?.messages_sent || 0
         },
-        includeVisuals,
-        includeVoice
+        includeVisuals
       );
 
       // Store AI memory with enhanced context
@@ -193,7 +185,6 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
           timestamp: new Date().toISOString(),
           ai_source: aiResponse.source,
           has_visual: !!aiResponse.visualUrl,
-          has_audio: !!aiResponse.audioUrl,
           trading_analysis: aiResponse.analysis
         }
       });
@@ -205,7 +196,6 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
         timestamp: new Date(),
         type: 'analysis',
         visualUrl: aiResponse.visualUrl,
-        audioUrl: aiResponse.audioUrl,
         analysis: aiResponse.analysis
       };
 
@@ -235,13 +225,6 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const playAudio = (audioUrl: string) => {
-    if (audioRef.current) {
-      audioRef.current.src = audioUrl;
-      audioRef.current.play();
     }
   };
 
@@ -314,7 +297,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
         </CardContent>
       </Card>
 
-      {/* Enhanced Controls */}
+      {/* Visual Controls */}
       <Card className="border-blue-500/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-400">
@@ -330,14 +313,6 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
           >
             <Image className="h-4 w-4 mr-2" />
             Visual Charts {includeVisuals && "✓"}
-          </Button>
-          <Button
-            onClick={() => setIncludeVoice(!includeVoice)}
-            variant={includeVoice ? "default" : "outline"}
-            className={includeVoice ? "bg-green-600 hover:bg-green-700" : ""}
-          >
-            <Volume2 className="h-4 w-4 mr-2" />
-            Voice Lessons {includeVoice && "✓"}
           </Button>
         </CardContent>
       </Card>
@@ -376,23 +351,6 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
                         />
                         <Badge className="mt-2 bg-purple-500/20 text-purple-400">
                           AI Generated Chart
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Audio Controls */}
-                    {message.audioUrl && (
-                      <div className="mt-3 flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => playAudio(message.audioUrl!)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <Volume2 className="h-4 w-4 mr-2" />
-                          Play Lesson
-                        </Button>
-                        <Badge className="bg-green-500/20 text-green-400">
-                          Voice Narration Available
                         </Badge>
                       </div>
                     )}
@@ -456,14 +414,11 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
             </div>
             <div className="text-xs text-center mt-2 text-purple-400">
               <Sparkles className="h-3 w-3 inline mr-1" />
-              Powered by GPT-4o, Replicate AI, and ElevenLabs
+              Powered by GPT-4o and Replicate AI
             </div>
           </div>
         </CardContent>
       </Card>
-
-      {/* Hidden audio element for voice playback */}
-      <audio ref={audioRef} className="hidden" />
 
       {/* Activity Dashboard */}
       {userProgress && (

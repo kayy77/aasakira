@@ -4,7 +4,6 @@ interface AIResponse {
   text: string;
   analysis?: TradingAnalysis;
   visualUrl?: string;
-  audioUrl?: string;
   confidence: number;
   source: 'gpt4o';
 }
@@ -44,8 +43,7 @@ class HybridAIService {
   async generateComprehensiveResponse(
     message: string, 
     context: any = {},
-    includeVisual: boolean = false,
-    includeVoice: boolean = false
+    includeVisual: boolean = false
   ): Promise<AIResponse> {
     try {
       await this.checkRateLimit();
@@ -79,21 +77,10 @@ class HybridAIService {
         }
       }
 
-      // Generate voice narration if requested
-      let audioUrl: string | undefined;
-      if (includeVoice) {
-        try {
-          audioUrl = await this.generateVoiceNarration(response);
-        } catch (voiceError) {
-          console.warn('Voice generation failed:', voiceError);
-        }
-      }
-
       return {
         text: response,
         analysis,
         visualUrl,
-        audioUrl,
         confidence: analysis?.confidence || 0.9,
         source: 'gpt4o'
       };
@@ -124,31 +111,6 @@ class HybridAIService {
       console.error('GPT-4o call error:', error);
       // Fallback to local response if API fails
       return this.getFallbackResponse(prompt);
-    }
-  }
-
-  private async generateVoiceNarration(text: string): Promise<string> {
-    try {
-      const response = await fetch('/api/text-to-speech', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          text: text.substring(0, 1000), // Limit for voice generation
-          voice: 'alloy' // Professional voice
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Voice generation failed');
-      }
-
-      const data = await response.json();
-      return data.audioUrl;
-    } catch (error) {
-      console.error('Voice generation error:', error);
-      throw error;
     }
   }
 
