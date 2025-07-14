@@ -19,17 +19,20 @@ import {
   CheckCircle,
   AlertTriangle,
   XCircle,
-  Wifi
+  Wifi,
+  RefreshCw
 } from 'lucide-react';
 import type { InstitutionalSignal } from '@/services/institutionalSignalService';
 
 interface InstitutionalSignalCardProps {
   signal: InstitutionalSignal;
   onAnalyze?: (signal: InstitutionalSignal) => void;
+  onPriceUpdate?: (newPrice: number, source: string) => void;
 }
 
-const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signal, onAnalyze }) => {
+const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signal, onAnalyze, onPriceUpdate }) => {
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [isUpdatingPrice, setIsUpdatingPrice] = useState(false);
 
   const getConfidenceColor = (confidence: string) => {
     switch (confidence) {
@@ -57,6 +60,21 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
   const handleAnalyze = () => {
     setShowAnalysis(true);
     onAnalyze?.(signal);
+  };
+
+  const updateLivePrice = async () => {
+    if (!onPriceUpdate) return;
+    
+    setIsUpdatingPrice(true);
+    try {
+      const enhancedPriceService = await import('@/services/enhancedPriceService');
+      const priceData = await enhancedPriceService.enhancedPriceService.getLivePrice(signal.pair);
+      onPriceUpdate(priceData.price, priceData.source);
+    } catch (error) {
+      console.error('Failed to update live price:', error);
+    } finally {
+      setIsUpdatingPrice(false);
+    }
   };
 
   return (
@@ -109,6 +127,25 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
                 </span>
               </div>
             </div>
+            <Button
+              onClick={updateLivePrice}
+              disabled={isUpdatingPrice}
+              variant="outline"
+              size="sm"
+              className="border-blue-500/30 hover:bg-blue-500/20"
+            >
+              {isUpdatingPrice ? (
+                <>
+                  <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Refresh
+                </>
+              )}
+            </Button>
             <div className="flex items-center gap-1">
               {signal.priceAccuracy === 'VERIFIED' && <CheckCircle className="w-4 h-4 text-green-400" />}
               {signal.priceAccuracy === 'WARNING' && <AlertTriangle className="w-4 h-4 text-yellow-400" />}

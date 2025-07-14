@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { enhancedSignalService, EnhancedSignal } from '@/services/enhancedSignalService';
 import { institutionalSignalService } from '@/services/institutionalSignalService';
+import { enhancedPriceService } from '@/services/enhancedPriceService';
 import { webhookService } from '@/services/webhookService';
 import { motion, AnimatePresence } from 'framer-motion';
 import InstitutionalSignalCard from './InstitutionalSignalCard';
@@ -143,16 +144,46 @@ const LiveSignalsDashboard: React.FC = () => {
     );
   };
 
-  // Auto-refresh signals every 10 seconds
+  const handleInstitutionalPriceUpdate = (signalId: string, newPrice: number, source: string) => {
+    setInstitutionalSignals(prevSignals => 
+      prevSignals.map(signal => 
+        signal.id === signalId 
+          ? { 
+              ...signal, 
+              entry: newPrice.toFixed(signal.pair.includes('JPY') ? 3 : 5),
+              priceSource: source, 
+              priceTimestamp: new Date().toISOString(),
+              priceAccuracy: source === 'Enhanced Fallback' ? 'FALLBACK' : 'VERIFIED'
+            }
+          : signal
+      )
+    );
+  };
+
+  // Auto-refresh signals and update live prices every 5 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       if (signals.length > 0) {
         setSignals([...enhancedSignalService.getSignals()]);
       }
-    }, 10000);
+      
+      // Update live prices for institutional signals
+      if (institutionalSignals.length > 0) {
+        for (const signal of institutionalSignals) {
+          if (signal.status === 'ACTIVE') {
+            try {
+              const priceData = await enhancedPriceService.getLivePrice(signal.pair);
+              handleInstitutionalPriceUpdate(signal.id, priceData.price, priceData.source);
+            } catch (error) {
+              console.error(`Failed to update price for ${signal.pair}:`, error);
+            }
+          }
+        }
+      }
+    }, 5000); // Every 5 seconds for better real-time feel
 
     return () => clearInterval(interval);
-  }, [signals.length]);
+  }, [signals.length, institutionalSignals.length]);
 
   return (
     <div className="space-y-6">
@@ -225,6 +256,7 @@ const LiveSignalsDashboard: React.FC = () => {
             <InstitutionalSignalCard
               signal={signal}
               onAnalyze={(s) => console.log('Analyzing signal:', s)}
+              onPriceUpdate={(newPrice, source) => handleInstitutionalPriceUpdate(signal.id, newPrice, source)}
             />
           </motion.div>
         ))}
