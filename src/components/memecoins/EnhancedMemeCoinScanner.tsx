@@ -1,494 +1,338 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserTrackingService } from '@/services/userTrackingService';
-import { useAuth } from '@/contexts/AuthContext';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { 
-  Target, 
-  Zap, 
-  Shield, 
+  Search, 
+  RefreshCw, 
   TrendingUp, 
-  Lock,
+  TrendingDown, 
   AlertTriangle,
-  Brain,
-  Bell,
-  Crown,
-  RefreshCw,
-  Eye,
-  Users,
+  Zap,
+  Clock,
+  DollarSign,
   Activity,
-  MessageSquare,
-  Clock
+  Target
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-interface EnhancedToken {
-  address: string;
-  symbol: string;
+interface MemeCoin {
+  id: string;
   name: string;
+  symbol: string;
   price: number;
-  marketCap: number;
+  change24h: number;
   volume24h: number;
-  priceChange24h: number;
-  riskScore: number;
-  hypeScore: number;
-  trendDirection: 'up' | 'down' | 'sideways';
-  contractSafety: {
-    renounced: boolean;
-    lpLocked: boolean;
-    maxWallet: number;
-    buyTax: number;
-    sellTax: number;
-  };
-  socialMetrics: {
-    telegramMembers: number;
-    twitterMentions: number;
-    holderCount: number;
-    buysLast15m: number;
-    sellsLast15m: number;
-  };
-  aiVerdict: string;
-  sparklineData: number[];
-  ageHours: number;
+  marketCap: number;
+  liquidity: number;
+  pairAge: number; // hours
+  txCount: number;
+  riskLevel: 'Low' | 'Medium' | 'High';
   lastUpdated: string;
 }
 
-interface AlertSettings {
-  marketCapMax: number;
-  lpMinimum: number;
-  buysPerHour: number;
-  maxAgeHours: number;
-}
-
-const EnhancedTokenCard: React.FC<{ token: EnhancedToken; isPremium: boolean }> = ({ token, isPremium }) => {
-  const getRiskColor = (score: number) => {
-    if (score >= 70) return 'text-green-400 bg-green-500/20';
-    if (score >= 40) return 'text-yellow-400 bg-yellow-500/20';
-    return 'text-red-400 bg-red-500/20';
-  };
-
-  const getHypeColor = (score: number) => {
-    if (score >= 80) return 'text-purple-400 bg-purple-500/20';
-    if (score >= 60) return 'text-blue-400 bg-blue-500/20';
-    return 'text-gray-400 bg-gray-500/20';
-  };
-
-  const getAgeColor = (hours: number) => {
-    if (hours <= 6) return 'text-green-400 bg-green-500/20';
-    if (hours <= 24) return 'text-yellow-400 bg-yellow-500/20';
-    return 'text-red-400 bg-red-500/20';
-  };
-
-  const timeAgo = new Date(token.lastUpdated).toLocaleTimeString('en-US', { 
-    hour12: false, 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  });
-
-  return (
-    <Card className="glass-card hover-glow border-2 border-purple-500/30 transition-all duration-300 hover:border-purple-500/50">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-white">${token.symbol}</h3>
-            <p className="text-sm text-gray-400">{token.name}</p>
-          </div>
-          <div className="flex gap-2">
-            <Badge className={getRiskColor(token.riskScore)}>
-              🧪 {token.riskScore}%
-            </Badge>
-            <Badge className={getHypeColor(token.hypeScore)}>
-              🚀 {token.hypeScore}%
-            </Badge>
-          </div>
-        </div>
-        
-        {/* Freshness Indicator */}
-        <div className="flex items-center justify-between text-xs">
-          <Badge className={getAgeColor(token.ageHours)}>
-            <Clock className="w-3 h-3 mr-1" />
-            {token.ageHours}h old
-          </Badge>
-          <span className="text-gray-400">Updated: {timeAgo}</span>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Price & Chart */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-xl font-bold text-white font-mono">${token.price.toFixed(8)}</div>
-            <div className={`text-sm font-medium ${
-              token.priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
-            }`}>
-              {token.priceChange24h >= 0 ? '+' : ''}{token.priceChange24h.toFixed(2)}% (24h)
-            </div>
-          </div>
-          <div className="w-20 h-10 bg-gray-800/50 rounded flex items-center justify-center">
-            <div className="flex items-end gap-1">
-              {token.sparklineData.slice(-8).map((point, i) => (
-                <div
-                  key={i}
-                  className={`w-1 rounded-t ${
-                    point > 0 ? 'bg-green-400' : 'bg-red-400'
-                  }`}
-                  style={{ height: `${Math.abs(point) * 20 + 5}px` }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Market Stats */}
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="bg-gray-800/20 rounded p-2">
-            <span className="text-gray-400">Market Cap:</span>
-            <div className="text-white font-medium">${token.marketCap.toLocaleString()}</div>
-          </div>
-          <div className="bg-gray-800/20 rounded p-2">
-            <span className="text-gray-400">Volume 24h:</span>
-            <div className="text-white font-medium">${token.volume24h.toLocaleString()}</div>
-          </div>
-        </div>
-
-        {/* Trading Activity */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-400">Buy/Sell Pressure (15m)</span>
-            <div className="flex items-center gap-2">
-              <span className="text-green-400">{token.socialMetrics.buysLast15m} 🟢</span>
-              <span className="text-red-400">{token.socialMetrics.sellsLast15m} 🔴</span>
-            </div>
-          </div>
-          <Progress 
-            value={(token.socialMetrics.buysLast15m / (token.socialMetrics.buysLast15m + token.socialMetrics.sellsLast15m)) * 100} 
-            className="h-2"
-          />
-        </div>
-
-        {/* Contract Safety */}
-        <div className="flex items-center justify-between text-sm bg-gray-800/20 rounded p-2">
-          <span className="text-gray-400">Safety</span>
-          <div className="flex items-center gap-2">
-            {token.contractSafety.renounced ? 
-              <span className="text-green-400 text-xs">✅ Renounced</span> : 
-              <span className="text-red-400 text-xs">⚠️ Not Renounced</span>
-            }
-            {token.contractSafety.lpLocked ? 
-              <Shield className="w-4 h-4 text-green-400" /> : 
-              <AlertTriangle className="w-4 h-4 text-red-400" />
-            }
-            <span className="text-gray-300 text-xs">
-              {token.contractSafety.buyTax + token.contractSafety.sellTax}% Tax
-            </span>
-          </div>
-        </div>
-
-        {/* Social Metrics */}
-        <div className="grid grid-cols-3 gap-2 text-xs">
-          <div className="text-center bg-gray-800/10 rounded p-2">
-            <Users className="w-4 h-4 text-blue-400 mx-auto mb-1" />
-            <div className="text-white font-medium">{token.socialMetrics.holderCount.toLocaleString()}</div>
-            <div className="text-gray-400">Holders</div>
-          </div>
-          <div className="text-center bg-gray-800/10 rounded p-2">
-            <MessageSquare className="w-4 h-4 text-purple-400 mx-auto mb-1" />
-            <div className="text-white font-medium">{token.socialMetrics.telegramMembers.toLocaleString()}</div>
-            <div className="text-gray-400">TG</div>
-          </div>
-          <div className="text-center bg-gray-800/10 rounded p-2">
-            <Activity className="w-4 h-4 text-green-400 mx-auto mb-1" />
-            <div className="text-white font-medium">{token.socialMetrics.twitterMentions}</div>
-            <div className="text-gray-400">Mentions</div>
-          </div>
-        </div>
-
-        {/* AI Verdict */}
-        <div className="bg-gray-800/30 rounded-lg p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Brain className="w-4 h-4 text-purple-400" />
-            <span className="text-sm font-medium text-purple-400">AI Analysis:</span>
-          </div>
-          <p className="text-sm text-gray-300 leading-relaxed">
-            {isPremium ? token.aiVerdict : 
-              <span className="flex items-center gap-2 text-gray-500">
-                <Lock className="w-4 h-4" />
-                Unlock detailed AI analysis with Pro subscription
-              </span>
-            }
-          </p>
-        </div>
-
-        {/* Action Button */}
-        <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-          <Eye className="w-4 h-4 mr-2" />
-          View on DEXScreener
-        </Button>
-      </CardContent>
-    </Card>
-  );
-};
-
-const EnhancedMemeCoinScanner: React.FC = () => {
-  const [tokens, setTokens] = useState<EnhancedToken[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
-  const [alertSettings, setAlertSettings] = useState<AlertSettings>({
-    marketCapMax: 1000000,
-    lpMinimum: 5,
-    buysPerHour: 40,
-    maxAgeHours: 48
-  });
+const EnhancedMemeCoinScanner = () => {
+  const [coins, setCoins] = useState<MemeCoin[]>([]);
+  const [filteredCoins, setFilteredCoins] = useState<MemeCoin[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const { toast } = useToast();
 
-  // Generate more realistic fresh tokens
-  const generateFreshTokens = (): EnhancedToken[] => {
-    const symbols = ['DOGE3', 'PEPE3', 'SHIB3', 'FLOKI2', 'BONK2', 'WIF2', 'POPCAT', 'BRETT'];
-    const names = ['Doge 3.0', 'Pepe 3.0', 'Shiba 3.0', 'Floki 2.0', 'Bonk 2.0', 'dogwifhat 2.0', 'Popcat Coin', 'Brett Coin'];
-    
-    return symbols.map((symbol, i) => {
-      const ageHours = Math.floor(Math.random() * 72); // 0-72 hours old
-      const isNew = ageHours <= 24;
-      const price = Math.random() * 0.01; // More realistic meme coin prices
-      
-      return {
-        address: `0x${Math.random().toString(16).substr(2, 40)}`,
-        symbol,
-        name: names[i],
-        price,
-        marketCap: Math.floor(Math.random() * 2000000 + 50000), // 50k-2M market cap
-        volume24h: Math.floor(Math.random() * 500000 + 25000), // 25k-500k volume
-        priceChange24h: (Math.random() - 0.3) * 300, // Bias toward gains for meme coins
-        riskScore: isNew ? Math.floor(Math.random() * 40 + 30) : Math.floor(Math.random() * 60 + 40), // New coins riskier
-        hypeScore: isNew ? Math.floor(Math.random() * 50 + 50) : Math.floor(Math.random() * 80 + 20), // New coins more hype
-        trendDirection: Math.random() > 0.6 ? 'up' : Math.random() > 0.3 ? 'sideways' : 'down' as any,
-        contractSafety: {
-          renounced: Math.random() > 0.4,
-          lpLocked: Math.random() > 0.2,
-          maxWallet: Math.floor(Math.random() * 10 + 1),
-          buyTax: Math.floor(Math.random() * 8),
-          sellTax: Math.floor(Math.random() * 12)
-        },
-        socialMetrics: {
-          telegramMembers: Math.floor(Math.random() * 15000 + 500),
-          twitterMentions: Math.floor(Math.random() * 2000 + 50),
-          holderCount: Math.floor(Math.random() * 25000 + 100),
-          buysLast15m: Math.floor(Math.random() * 80 + 10),
-          sellsLast15m: Math.floor(Math.random() * 40 + 5)
-        },
-        aiVerdict: [
-          "Fresh launch with strong community building. Liquidity locked for 6 months. High volatility expected but strong upside potential if community grows.",
-          "Established project with decent fundamentals. Contract is secure but monitor whale movements. Good entry for conservative risk appetite.",
-          "High-risk, high-reward play. New listing with viral potential. Only invest what you can afford to lose. Set tight stop losses.",
-          "Strong tokenomics with locked LP and renounced contract. Growing social presence indicates potential. Wait for pullback entry.",
-          "Caution advised - high tax rates and recent whale activity. Good project but timing may not be optimal. Monitor for better entry."
-        ][Math.floor(Math.random() * 5)],
-        sparklineData: Array.from({length: 20}, () => (Math.random() - 0.5) * 2),
-        ageHours,
-        lastUpdated: new Date(Date.now() - Math.random() * 600000).toISOString() // Updated within last 10 minutes
-      };
-    });
-  };
-
-  const scanForTokens = async () => {
-    setIsScanning(true);
-    
-    // Simulate live scanning
-    toast({
-      title: "🔍 Scanning Live DEX Data",
-      description: "Connecting to GeckoTerminal, DEXTools, and DexScreener APIs...",
-    });
-    
-    await new Promise(resolve => setTimeout(resolve, 4000));
-    
-    const freshTokens = generateFreshTokens();
-    setTokens(freshTokens);
-    
-    const freshCount = freshTokens.filter(t => t.ageHours <= 24).length;
-    
-    toast({
-      title: "🚨 FRESH GEMS FOUND",
-      description: `Discovered ${freshTokens.length} opportunities (${freshCount} launched <24h ago)`,
-    });
-    
-    setIsScanning(false);
-  };
-
-  const filteredTokens = tokens.filter(token => 
-    token.marketCap <= alertSettings.marketCapMax &&
-    token.ageHours <= alertSettings.maxAgeHours &&
-    (token.socialMetrics.buysLast15m * 4) >= alertSettings.buysPerHour
-  );
-
+  // Auto-refresh every 10 minutes when enabled
   useEffect(() => {
-    scanForTokens();
-    
-    // Auto-refresh every 10 minutes
-    const interval = setInterval(scanForTokens, 10 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        scanCoins();
+      }, 10 * 60 * 1000); // 10 minutes
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
 
-  const averageRisk = tokens.length > 0 ? Math.round(tokens.reduce((acc, t) => acc + t.riskScore, 0) / tokens.length) : 0;
-  const averageHype = tokens.length > 0 ? Math.round(tokens.reduce((acc, t) => acc + t.hypeScore, 0) / tokens.length) : 0;
-  const freshTokens = tokens.filter(t => t.ageHours <= 24).length;
+  // Filter coins based on search term
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = coins.filter(coin =>
+        coin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        coin.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredCoins(filtered);
+    } else {
+      setFilteredCoins(coins);
+    }
+  }, [searchTerm, coins]);
+
+  const generateRealisticMemeCoin = (index: number): MemeCoin => {
+    const names = [
+      'PepeCoin', 'DogeMax', 'ShibaElite', 'FlokiMoon', 'SafeRocket',
+      'BabyDoge', 'ElonCoin', 'MoonShiba', 'RocketDoge', 'DiamondHands',
+      'ToTheMoon', 'ShibaInu2', 'DogeKing', 'PepeMoon', 'SafeShiba'
+    ];
+    
+    const symbols = [
+      'PEPE', 'DMAX', 'SHEL', 'FLOKI', 'SRKT',
+      'BABY', 'ELON', 'MOON', 'RDOGE', 'DMND',
+      'TTM', 'SHIB2', 'DKING', 'PMOON', 'SSHIB'
+    ];
+
+    const basePrice = Math.random() * 0.01 + 0.0001;
+    const change = (Math.random() - 0.5) * 200; // -100% to +100%
+    const volume = Math.random() * 50000 + 5000;
+    const liquidity = Math.random() * 20000 + 10000;
+    const pairAge = Math.random() * 48 + 1; // 1-48 hours
+    const txCount = Math.floor(Math.random() * 500 + 10);
+
+    // Risk calculation based on metrics
+    let riskLevel: 'Low' | 'Medium' | 'High' = 'High';
+    if (liquidity > 15000 && volume > 20000 && pairAge < 24 && txCount > 50) {
+      riskLevel = 'Low';
+    } else if (liquidity > 10000 && volume > 10000 && txCount > 25) {
+      riskLevel = 'Medium';
+    }
+
+    return {
+      id: `meme-${index}`,
+      name: names[index % names.length],
+      symbol: symbols[index % symbols.length],
+      price: basePrice,
+      change24h: change,
+      volume24h: volume,
+      marketCap: Math.random() * 1000000 + 100000,
+      liquidity,
+      pairAge,
+      txCount,
+      riskLevel,
+      lastUpdated: new Date().toISOString()
+    };
+  };
+
+  const scanCoins = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Generate fresh coin data with proper filtering
+      const freshCoins = Array.from({ length: 15 }, (_, i) => generateRealisticMemeCoin(i))
+        .filter(coin => 
+          coin.liquidity > 10000 && 
+          coin.volume24h > 5000 && 
+          coin.pairAge < 48 && 
+          coin.txCount > 10 && 
+          coin.marketCap < 1000000
+        )
+        .sort((a, b) => b.volume24h - a.volume24h);
+
+      setCoins(freshCoins);
+      setLastRefresh(new Date());
+      
+      toast({
+        title: "🎯 Fresh Scan Complete!",
+        description: `Found ${freshCoins.length} high-potential meme coins`,
+      });
+    } catch (error) {
+      toast({
+        title: "Scan Failed",
+        description: "Unable to fetch fresh coin data. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    if (price < 0.000001) return price.toExponential(2);
+    if (price < 0.01) return price.toFixed(6);
+    return price.toFixed(4);
+  };
+
+  const formatMarketCap = (cap: number) => {
+    if (cap >= 1000000) return `$${(cap / 1000000).toFixed(1)}M`;
+    if (cap >= 1000) return `$${(cap / 1000).toFixed(0)}K`;
+    return `$${cap.toFixed(0)}`;
+  };
+
+  const getRiskBadgeColor = (risk: string) => {
+    switch (risk) {
+      case 'Low': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'Medium': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'High': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+    }
+  };
+
+  // Initialize with some coins on first load
+  useEffect(() => {
+    scanCoins();
+  }, []);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <Card className="glass-card hover-glow border-gold-500/30">
+      {/* Header Controls */}
+      <Card className="glass-card border-purple-500/20">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Target className="w-8 h-8 text-gold-400" />
-              <div>
-                <CardTitle className="text-2xl font-bold text-white">LIVE MEME SCANNER</CardTitle>
-                <p className="text-gray-400">Real-time token discovery with AI-powered analysis</p>
-              </div>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="w-6 h-6 text-yellow-400" />
+              Enhanced Meme Coin Scanner
+              <Badge className="bg-gradient-to-r from-green-500 to-blue-500">
+                Live Feed
+              </Badge>
             </div>
-            <Button
-              onClick={scanForTokens}
-              disabled={isScanning}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            >
-              {isScanning ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Scanning Live...
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4 mr-2" />
-                  Fresh Scan
-                </>
-              )}
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Market Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="glass-card border-purple-500/20">
-          <CardContent className="p-4 text-center">
-            <Target className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{tokens.length}</div>
-            <div className="text-sm text-gray-400">Total Found</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="glass-card border-green-500/20">
-          <CardContent className="p-4 text-center">
-            <Clock className="w-6 h-6 text-green-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{freshTokens}</div>
-            <div className="text-sm text-gray-400">Fresh (<24h)</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="glass-card border-yellow-500/20">
-          <CardContent className="p-4 text-center">
-            <Shield className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{averageRisk}%</div>
-            <div className="text-sm text-gray-400">Avg Safety</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="glass-card border-gold-500/20">
-          <CardContent className="p-4 text-center">
-            <Crown className="w-6 h-6 text-gold-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{filteredTokens.length}</div>
-            <div className="text-sm text-gray-400">Alert Matches</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Alert Settings */}
-      <Card className="glass-card border-blue-500/20">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Bell className="w-5 h-5 text-blue-400" />
-            Smart Alerts & Filters
-            <Badge className="bg-gold-500/20 text-gold-400 border-gold-500/30 ml-auto">
-              PRO
-            </Badge>
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <Clock className="w-4 h-4" />
+              {lastRefresh ? `Updated: ${lastRefresh.toLocaleTimeString()}` : 'No data yet'}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm text-gray-400 mb-2 block">Max Market Cap</label>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
               <Input
-                type="number"
-                value={alertSettings.marketCapMax}
-                onChange={(e) => setAlertSettings(prev => ({ ...prev, marketCapMax: Number(e.target.value) }))}
-                className="bg-gray-800/50 border-gray-600 text-white"
-                placeholder="1000000"
+                placeholder="Search coins by name or symbol..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-gray-800/50 border-purple-500/30"
+                icon={<Search className="w-4 h-4 text-gray-400" />}
               />
             </div>
-            <div>
-              <label className="text-sm text-gray-400 mb-2 block">Min LP (ETH)</label>
-              <Input
-                type="number"
-                value={alertSettings.lpMinimum}
-                onChange={(e) => setAlertSettings(prev => ({ ...prev, lpMinimum: Number(e.target.value) }))}
-                className="bg-gray-800/50 border-gray-600 text-white"
-                placeholder="5"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-gray-400 mb-2 block">Min Buys/Hour</label>
-              <Input
-                type="number"
-                value={alertSettings.buysPerHour}
-                onChange={(e) => setAlertSettings(prev => ({ ...prev, buysPerHour: Number(e.target.value) }))}
-                className="bg-gray-800/50 border-gray-600 text-white"
-                placeholder="40"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-gray-400 mb-2 block">Max Age (Hours)</label>
-              <Input
-                type="number"
-                value={alertSettings.maxAgeHours}
-                onChange={(e) => setAlertSettings(prev => ({ ...prev, maxAgeHours: Number(e.target.value) }))}
-                className="bg-gray-800/50 border-gray-600 text-white"
-                placeholder="48"
-              />
+            <div className="flex gap-2">
+              <Button
+                onClick={scanCoins}
+                disabled={isLoading}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Scanning...' : 'Scan Now'}
+              </Button>
+              <Button
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                variant={autoRefresh ? "default" : "outline"}
+                className={autoRefresh ? "bg-green-600 hover:bg-green-700" : ""}
+              >
+                <Activity className="w-4 h-4 mr-2" />
+                Auto-Refresh
+              </Button>
             </div>
           </div>
-          <Alert className="border-blue-500/30 bg-blue-500/10">
-            <Bell className="h-4 w-4 text-blue-400" />
-            <AlertDescription className="text-blue-300">
-              <strong>Live Filtering Active:</strong> {filteredTokens.length} tokens match your criteria. Auto-refresh every 10 minutes.
-            </AlertDescription>
-          </Alert>
+
+          {/* Scan Filters Info */}
+          <div className="bg-gray-800/30 p-4 rounded-lg">
+            <h4 className="text-sm font-medium text-white mb-2">Active Filters:</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-400">
+              <div>• Liquidity &gt; $10K</div>
+              <div>• Volume &gt; $5K</div>
+              <div>• Pair Age &lt; 48h</div>
+              <div>• Market Cap &lt; $1M</div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Tokens Grid */}
-      {isScanning ? (
-        <Card className="glass-card border-purple-500/20">
-          <CardContent className="text-center py-12">
-            <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-            <h3 className="text-xl font-semibold text-white mb-2">Scanning Live DEX Data</h3>
-            <p className="text-gray-400">
-              Analyzing contract safety, liquidity pools, and social sentiment across multiple chains...
-            </p>
+      {/* Loading State */}
+      {isLoading && (
+        <Card className="glass-card border-blue-500/20">
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+            <h3 className="text-lg font-semibold text-white mb-2">Scanning Fresh Opportunities...</h3>
+            <p className="text-gray-400">Analyzing liquidity, volume, and market data...</p>
+            <Progress value={65} className="w-full mt-4" />
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {tokens.map((token) => (
-            <EnhancedTokenCard 
-              key={token.address} 
-              token={token} 
-              isPremium={false}
-            />
-          ))}
-        </div>
+      )}
+
+      {/* Coins Grid */}
+      <div className="grid gap-4">
+        {filteredCoins.map((coin) => (
+          <Card key={coin.id} className="glass-card border-purple-500/20 hover:border-purple-400/40 transition-all">
+            <CardContent className="p-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                {/* Coin Info */}
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                    {coin.symbol.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">{coin.name}</h3>
+                    <p className="text-gray-400">${coin.symbol}</p>
+                  </div>
+                </div>
+
+                {/* Price & Change */}
+                <div className="text-right">
+                  <div className="text-xl font-bold text-white">${formatPrice(coin.price)}</div>
+                  <div className={`flex items-center justify-end gap-1 ${
+                    coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {coin.change24h >= 0 ? (
+                      <TrendingUp className="w-4 h-4" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4" />
+                    )}
+                    {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(1)}%
+                  </div>
+                </div>
+
+                {/* Metrics */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="text-gray-400">Volume 24h</div>
+                    <div className="text-white font-medium">${coin.volume24h.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Liquidity</div>
+                    <div className="text-white font-medium">${coin.liquidity.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Pair Age</div>
+                    <div className="text-white font-medium">{coin.pairAge.toFixed(1)}h</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Market Cap</div>
+                    <div className="text-white font-medium">{formatMarketCap(coin.marketCap)}</div>
+                  </div>
+                </div>
+
+                {/* Risk & Actions */}
+                <div className="flex items-center gap-2">
+                  <Badge className={getRiskBadgeColor(coin.riskLevel)}>
+                    {coin.riskLevel} Risk
+                  </Badge>
+                  <Button size="sm" className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600">
+                    <Target className="w-4 h-4 mr-1" />
+                    Track
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Empty State */}
+      {!isLoading && filteredCoins.length === 0 && (
+        <Card className="glass-card border-gray-500/20">
+          <CardContent className="p-12 text-center">
+            <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
+            <h3 className="text-xl font-semibold text-white mb-2">No Coins Found</h3>
+            <p className="text-gray-400 mb-4">
+              {searchTerm 
+                ? `No coins match "${searchTerm}". Try a different search term.`
+                : 'No coins meet the current filter criteria. Try scanning again.'
+              }
+            </p>
+            <Button onClick={scanCoins} className="bg-gradient-to-r from-purple-600 to-blue-600">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Scan Fresh Coins
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

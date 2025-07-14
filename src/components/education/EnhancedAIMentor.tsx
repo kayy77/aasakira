@@ -1,96 +1,43 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Brain, 
-  Send, 
   Camera, 
   TrendingUp, 
   BookOpen, 
   Target,
-  Star,
   MessageCircle,
-  ChevronRight,
-  Upload
+  Gamepad2,
+  BarChart3,
+  Sparkles
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMentorMemory } from './useMentorMemory';
 import ProgressChart from './ProgressChart';
 import ImageUpload from './ImageUpload';
-import ChatInterface from './ChatInterface';
-import LearningProgress from './combat/LearningProgress';
-import { useAIResponses } from './useAIResponses';
 import SuperAIMentor from './SuperAIMentor';
 import RealTimeUserStats from './RealTimeUserStats';
+import InteractiveQuiz from './InteractiveQuiz';
+import AasakiraAIButton from './AasakiraAIButton';
 
 interface EnhancedAIMentorProps {
   onFeatureUse?: () => void;
 }
 
-// Transform MentorInteraction to Message format for ChatInterface
-const transformInteractionsToMessages = (interactions: any[]) => {
-  return interactions.map((interaction, index) => ({
-    id: `msg-${index}`,
-    content: interaction.response || interaction.content,
-    isUser: false,
-    timestamp: interaction.timestamp,
-    isGeminiPowered: true
-  }));
-};
-
 const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
-  const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { 
     state: mentorData, 
     addInteraction, 
-    updateProgress, 
-    addGoal, 
-    markGoalComplete 
+    updateProgress
   } = useMentorMemory();
-  const { generateAIResponse } = useAIResponses();
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
-
-    setIsLoading(true);
-    onFeatureUse?.();
-
-    try {
-      const response = await generateAIResponse(message);
-
-      addInteraction({
-        type: 'message',
-        content: message,
-        response: response,
-        timestamp: new Date()
-      });
-
-      // Update progress based on interaction
-      updateProgress('messages', 1);
-      
-      setMessage('');
-      
-      toast({
-        title: "AI Mentor Response",
-        description: "Your personalized lesson has been generated!"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to get AI response. Please try again.",
-        variant: "destructive"
-      });
-    }
-
-    setIsLoading(false);
-  };
+  const [selectedQuizTopic, setSelectedQuizTopic] = useState('Smart Money Concepts');
 
   const handleImageAnalysis = (analysis: string) => {
     addInteraction({
@@ -104,29 +51,46 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
     onFeatureUse?.();
   };
 
-  const learningPaths = [
+  const handleQuizComplete = (score: number) => {
+    updateProgress('quizzes', 1);
+    onFeatureUse?.();
+    
+    toast({
+      title: "🎯 Quiz Complete!",
+      description: `You scored ${score} points. Great job learning!`
+    });
+  };
+
+  const learningTopics = [
     {
       title: 'Smart Money Concepts',
-      level: mentorData.userLevel,
-      progress: mentorData.progress.concepts || 0,
-      lessons: ['Market Structure', 'Order Blocks', 'Fair Value Gaps', 'Liquidity Zones']
+      description: 'Order blocks, liquidity, market structure',
+      difficulty: 'intermediate' as const,
+      icon: Brain,
+      color: 'purple'
     },
     {
       title: 'Risk Management',
-      level: mentorData.userLevel,
-      progress: mentorData.progress.risk || 0,
-      lessons: ['Position Sizing', 'Stop Loss Strategy', 'Risk/Reward Ratios', 'Portfolio Management']
+      description: 'Position sizing, stop losses, R:R ratios',
+      difficulty: 'beginner' as const,
+      icon: Target,
+      color: 'green'
     },
     {
-      title: 'Psychology & Discipline',
-      level: mentorData.userLevel,
-      progress: mentorData.progress.psychology || 0,
-      lessons: ['Emotional Control', 'Trading Plan', 'Journal Analysis', 'Mindset Development']
+      title: 'Market Structure',
+      description: 'Trends, support/resistance, breakouts',
+      difficulty: 'intermediate' as const,
+      icon: TrendingUp,
+      color: 'blue'
+    },
+    {
+      title: 'Trading Psychology',
+      description: 'Emotions, discipline, mindset',
+      difficulty: 'advanced' as const,
+      icon: Brain,
+      color: 'pink'
     }
   ];
-
-  // Transform interactions for ChatInterface
-  const chatMessages = transformInteractionsToMessages(mentorData.interactions);
 
   return (
     <div className="space-y-8">
@@ -135,14 +99,15 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         <CardHeader>
           <CardTitle className="flex items-center text-white">
             <Brain className="w-6 h-6 mr-2 text-purple-400" />
-            AI Trading Mentor
+            Aasakira AI Education Hub
+            <Sparkles className="w-5 h-5 ml-2 text-yellow-400" />
             <Badge className="ml-2 bg-gradient-to-r from-purple-500 to-pink-500">
               Level {mentorData.userLevel}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-400">
                 {mentorData.interactions.length}
@@ -160,6 +125,12 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
                 {mentorData.progress.screenshots || 0}
               </div>
               <div className="text-sm text-gray-400">Charts Analyzed</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-pink-400">
+                {mentorData.progress.quizzes || 0}
+              </div>
+              <div className="text-sm text-gray-400">Quizzes Completed</div>
             </div>
           </div>
           
@@ -183,26 +154,96 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
             <MessageCircle className="w-4 h-4 mr-2" />
             AI Chat
           </TabsTrigger>
-          <TabsTrigger value="upload" className="data-[state=active]:bg-purple-600">
+          <TabsTrigger value="quiz" className="data-[state=active]:bg-blue-600">
+            <Gamepad2 className="w-4 h-4 mr-2" />
+            Smart Quizzes
+          </TabsTrigger>
+          <TabsTrigger value="upload" className="data-[state=active]:bg-pink-600">
             <Camera className="w-4 h-4 mr-2" />
             Chart Analysis
           </TabsTrigger>
-          <TabsTrigger value="progress" className="data-[state=active]:bg-purple-600">
-            <TrendingUp className="w-4 h-4 mr-2" />
+          <TabsTrigger value="progress" className="data-[state=active]:bg-yellow-600">
+            <BarChart3 className="w-4 h-4 mr-2" />
             Analytics
-          </TabsTrigger>
-          <TabsTrigger value="lessons" className="data-[state=active]:bg-purple-600">
-            <BookOpen className="w-4 h-4 mr-2" />
-            Courses
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="learning" className="space-y-6">
-          <RealTimeUserStats />
+          <div className="grid gap-6">
+            {learningTopics.map((topic, index) => (
+              <Card key={index} className="glass-card hover-glow border-purple-500/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between text-white">
+                    <div className="flex items-center">
+                      <topic.icon className={`w-5 h-5 mr-2 text-${topic.color}-400`} />
+                      {topic.title}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={`border-${topic.color}-500/30 text-${topic.color}-400`}>
+                        {topic.difficulty}
+                      </Badge>
+                      <AasakiraAIButton 
+                        topic={topic.title}
+                        context={topic.description}
+                        userLevel={topic.difficulty}
+                      />
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-gray-300">{topic.description}</p>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        setSelectedQuizTopic(topic.title);
+                        // Switch to quiz tab
+                        const quizTab = document.querySelector('[value="quiz"]') as HTMLElement;
+                        quizTab?.click();
+                      }}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600"
+                    >
+                      <Gamepad2 className="w-4 h-4 mr-1" />
+                      Take Quiz
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </TabsContent>
 
         <TabsContent value="chat" className="space-y-6">
           <SuperAIMentor onFeatureUse={onFeatureUse} />
+        </TabsContent>
+
+        <TabsContent value="quiz" className="space-y-6">
+          <div className="grid gap-4 mb-6">
+            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+              <Gamepad2 className="w-6 h-6 text-blue-400" />
+              Interactive Smart Quizzes
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {learningTopics.map(topic => (
+                <Button
+                  key={topic.title}
+                  onClick={() => setSelectedQuizTopic(topic.title)}
+                  variant={selectedQuizTopic === topic.title ? "default" : "outline"}
+                  size="sm"
+                  className={selectedQuizTopic === topic.title ? `bg-${topic.color}-600` : ''}
+                >
+                  {topic.title}
+                </Button>
+              ))}
+            </div>
+          </div>
+          
+          <InteractiveQuiz
+            key={selectedQuizTopic} // Force re-render when topic changes
+            topic={selectedQuizTopic}
+            difficulty="medium"
+            onComplete={handleQuizComplete}
+          />
         </TabsContent>
 
         <TabsContent value="upload" className="space-y-6">
@@ -210,46 +251,8 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         </TabsContent>
 
         <TabsContent value="progress" className="space-y-6">
+          <RealTimeUserStats />
           <ProgressChart />
-        </TabsContent>
-
-        <TabsContent value="lessons" className="space-y-6">
-          <div className="grid gap-6">
-            {learningPaths.map((path, index) => (
-              <Card key={index} className="glass-card hover-glow border-purple-500/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between text-white">
-                    <div className="flex items-center">
-                      <Target className="w-5 h-5 mr-2 text-purple-400" />
-                      {path.title}
-                    </div>
-                    <Badge variant="outline" className="border-purple-500/30 text-purple-400">
-                      {path.progress}% Complete
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Progress value={path.progress} className="h-2" />
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    {path.lessons.map((lesson, lessonIndex) => (
-                      <div
-                        key={lessonIndex}
-                        className="flex items-center justify-between p-2 rounded-lg bg-gray-800/30"
-                      >
-                        <span className="text-sm text-gray-300">{lesson}</span>
-                        {lessonIndex < path.progress / 25 ? (
-                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-500" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </TabsContent>
       </Tabs>
     </div>
