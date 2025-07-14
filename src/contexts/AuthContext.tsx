@@ -10,16 +10,32 @@ interface UserData extends User {
   memeScansUsedToday?: number;
   mentorMessagesUsedToday?: number;
   resetAt?: string;
+  // Add compatibility properties
+  username?: string;
+  avatar?: string;
+  preferences?: any;
+  social?: any;
+  createdAt?: string;
 }
 
 interface AuthContextType {
   user: UserData | null;
   loading: boolean;
+  // Add compatibility properties
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  // Methods
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  // Subscription and usage methods
+  // Compatibility methods
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  updateUserProfile: (data: any) => Promise<void>;
+  upgradeToPremium: () => Promise<void>;
+  // Usage methods
   canUseFeature: (feature: 'signals' | 'memeScans' | 'mentorMessages') => boolean;
   incrementUsage: (feature: 'signals' | 'memeScans' | 'mentorMessages') => void;
   getRemainingUsage: (feature: 'signals' | 'memeScans' | 'mentorMessages') => number;
@@ -86,7 +102,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return {
       ...authUser,
-      role: 'free', // Default to free, will be updated if user has premium
+      role: 'free', // Default to free
+      username: authUser.email?.split('@')[0] || 'User',
+      avatar: authUser.user_metadata?.avatar_url || '',
+      createdAt: authUser.created_at,
+      preferences: {},
+      social: {},
       ...usageData,
     };
   };
@@ -143,6 +164,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
+  // Compatibility methods
+  const login = signIn;
+  const signup = signUp;
+  const logout = signOut;
+
+  const updateUserProfile = async (data: any) => {
+    if (!user) return;
+    
+    const updatedUser = { ...user, ...data };
+    setUser(updatedUser);
+    
+    toast({
+      title: "Profile updated",
+      description: "Your profile has been updated successfully.",
+    });
+  };
+
+  const upgradeToPremium = async () => {
+    // This will be handled by the Stripe integration
+    toast({
+      title: "Upgrade to Premium",
+      description: "Redirecting to payment...",
+    });
+  };
+
   const canUseFeature = (feature: 'signals' | 'memeScans' | 'mentorMessages'): boolean => {
     if (!user) return false;
     if (user.role === 'premium') return true;
@@ -181,10 +227,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     user,
     loading,
+    isAuthenticated: !!user,
+    isLoading: loading,
     signIn,
     signUp,
     signOut,
     resetPassword,
+    login,
+    signup,
+    logout,
+    updateUserProfile,
+    upgradeToPremium,
     canUseFeature,
     incrementUsage,
     getRemainingUsage,
