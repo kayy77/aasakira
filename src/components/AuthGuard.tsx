@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import LoginDialog from './LoginDialog';
 import Dashboard from './Dashboard';
 
@@ -29,17 +29,22 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     );
   }
 
+  // If user is authenticated and on dashboard route, show dashboard
+  if (isAuthenticated && location.pathname === '/dashboard') {
+    return <Dashboard />;
+  }
+
+  // If user is authenticated but on a non-dashboard route, redirect to home
+  if (isAuthenticated && !isPublicRoute && location.pathname !== '/') {
+    return <Navigate to="/" replace />;
+  }
+
   // If user is not authenticated and trying to access protected route
   if (!isAuthenticated && !isPublicRoute) {
     return <LoginDialog open={true} onOpenChange={() => {}} />;
   }
 
-  // If user is authenticated and specifically on the dashboard route, show dashboard
-  if (isAuthenticated && location.pathname === '/dashboard') {
-    return <Dashboard />;
-  }
-
-  // For all other cases, show the children (including authenticated users on home page)
+  // For all other cases, show the children
   return <>{children}</>;
 };
 

@@ -75,7 +75,12 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
           </CardContent>
         </Card>
         
-        {showUpgrade && <EnhancedPremiumUpgrade />}
+        {showUpgrade && (
+          <EnhancedPremiumUpgrade 
+            open={showUpgrade} 
+            onOpenChange={setShowUpgrade} 
+          />
+        )}
       </div>
     );
   }
@@ -125,7 +130,12 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
         onFeatureUse: handleFeatureUse 
       })}
       
-      {showUpgrade && <EnhancedPremiumUpgrade />}
+      {showUpgrade && (
+        <EnhancedPremiumUpgrade 
+          open={showUpgrade} 
+          onOpenChange={setShowUpgrade} 
+        />
+      )}
     </div>
   );
 };

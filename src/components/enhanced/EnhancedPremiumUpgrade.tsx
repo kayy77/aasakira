@@ -52,7 +52,7 @@ const EnhancedPremiumUpgrade: React.FC<EnhancedPremiumUpgradeProps> = ({ open, o
     {
       id: 'premium',
       name: 'Shogun Premium',
-      price: '$49',
+      price: '$25',
       period: '/month',
       description: 'For serious traders who want unlimited access',
       features: [
@@ -71,9 +71,9 @@ const EnhancedPremiumUpgrade: React.FC<EnhancedPremiumUpgradeProps> = ({ open, o
     {
       id: 'yearly',
       name: 'Sage Lifetime',
-      price: '$497',
+      price: '$200',
       period: '/year',
-      description: 'Best value - Save 2 months!',
+      description: 'Best value - Save $100 per year!',
       features: [
         'Everything in Shogun Premium',
         'Exclusive Sage-only features',

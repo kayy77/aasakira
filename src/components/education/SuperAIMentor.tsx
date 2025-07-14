@@ -20,6 +20,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { UserTrackingService } from '@/services/userTrackingService';
+import { educationAIService } from '@/services/educationAIService';
 
 interface Message {
   id: string;
@@ -70,17 +71,17 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
         setCurrentSession(sessionId);
 
         // Add welcome message with personalized context
-        if (progress) {
-          const welcomeMessage = `Welcome back! 🎯 I can see you've had ${progress.messages_sent} conversations, analyzed ${progress.charts_analyzed} charts, and have a ${progress.win_rate}% success rate. Let's continue building your trading mastery!`;
-          
-          setMessages([{
-            id: Date.now().toString(),
-            content: welcomeMessage,
-            isUser: false,
-            timestamp: new Date(),
-            type: 'text'
-          }]);
-        }
+        const welcomeMessage = progress
+          ? `Welcome back! 🎯 I can see you've had ${progress.messages_sent} conversations, analyzed ${progress.charts_analyzed} charts, and have a ${progress.win_rate}% success rate. Let's continue building your trading mastery! How can I help you today?`
+          : "Welcome to Aasakira AI Mentor! I'm here to help you master trading. Ask me anything about market analysis, trading strategies, or risk management.";
+        
+        setMessages([{
+          id: Date.now().toString(),
+          content: welcomeMessage,
+          isUser: false,
+          timestamp: new Date(),
+          type: 'text'
+        }]);
       } catch (error) {
         console.error('Error loading user data:', error);
         // Add basic welcome message even if progress loading fails
@@ -116,6 +117,7 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputMessage;
     setInputMessage('');
     setIsLoading(true);
 
@@ -125,7 +127,7 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
         user_id: user.id,
         activity_type: 'chat_message',
         data: {
-          message_length: inputMessage.length,
+          message_length: currentInput.length,
           session_id: currentSession
         }
       });
@@ -135,32 +137,25 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
         await UserTrackingService.updateSessionInteractions(currentSession);
       }
 
-      // Simple AI response for now (since hybrid service might be having issues)
-      const responses = [
-        "That's a great question about trading! Based on market structure analysis, I'd recommend focusing on key support/resistance levels and waiting for confirmation before entering any position.",
-        "Excellent observation! In Smart Money Concepts, we always look for liquidity sweeps and fair value gaps. This setup shows strong institutional interest.",
-        "You're thinking like a professional trader! Risk management is crucial - never risk more than 1-2% per trade, and always have a clear exit strategy.",
-        "Smart analysis! The market is showing signs of institutional accumulation. Look for break of structure and order blocks for optimal entry points.",
-        "Perfect timing for this question! Market sentiment is shifting, and we're seeing classic SMC patterns emerge. Stay patient and let the setup develop."
-      ];
-
-      const aiResponse = responses[Math.floor(Math.random() * responses.length)];
+      // Get AI response using the education AI service
+      const aiResponse = await educationAIService.generateResponse(currentInput);
 
       // Store AI memory
       await UserTrackingService.storeAIMemory({
         user_id: user.id,
         memory_type: 'conversation',
-        content: `User: ${inputMessage}\nAI: ${aiResponse}`,
-        importance_score: inputMessage.length > 50 ? 8 : 5,
+        content: `User: ${currentInput}\nAI: ${aiResponse.content}`,
+        importance_score: currentInput.length > 50 ? 8 : 5,
         context: {
           session_id: currentSession,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          topics: aiResponse.topics
         }
       });
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: aiResponse,
+        content: aiResponse.content,
         isUser: false,
         timestamp: new Date(),
         type: 'text'

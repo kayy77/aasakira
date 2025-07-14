@@ -8,6 +8,11 @@ interface AIResponse {
 class EducationAIService {
   private responses = [
     {
+      keywords: ['hello', 'hi', 'hey', 'greetings'],
+      response: "Hello! Welcome to Aasakira AI Mentor. I'm here to help you learn trading and improve your skills. What would you like to know about trading today?",
+      topics: ['Greeting', 'Welcome']
+    },
+    {
       keywords: ['support', 'resistance', 'level'],
       response: "Support and resistance levels are crucial price points where buying or selling pressure tends to emerge. Support acts as a floor where price tends to bounce, while resistance acts as a ceiling where price tends to reverse. These levels are formed by previous price action and represent areas of significant trader interest.",
       topics: ['Technical Analysis', 'Price Action']
@@ -48,12 +53,12 @@ class EducationAIService {
     console.log('🤖 AI Mentor analyzing message:', userMessage);
     
     // Simulate thinking time
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1200));
     
     const messageLower = userMessage.toLowerCase();
     
     // Find best matching response
-    let bestMatch = this.responses[0];
+    let bestMatch = null;
     let highestScore = 0;
     
     for (const responseData of this.responses) {
@@ -71,17 +76,20 @@ class EducationAIService {
     }
     
     // If no keywords match, provide a general trading response
-    if (highestScore === 0) {
+    if (!bestMatch || highestScore === 0) {
       const generalResponses = [
         {
+          keywords: ['general'],
           response: "That's a great question! In trading, continuous learning is key. Focus on understanding market structure, proper risk management, and developing a disciplined approach. What specific aspect of trading would you like to explore further?",
           topics: ['General Trading', 'Education']
         },
         {
+          keywords: ['general'],
           response: "Excellent point! The markets are constantly evolving, so it's important to adapt your strategy. Remember the core principles: follow the trend, manage your risk, and stay disciplined. Which trading concept would you like me to explain in more detail?",
           topics: ['Market Analysis', 'Strategy']
         },
         {
+          keywords: ['general'],
           response: "Great observation! Professional traders focus on process over profits. Develop a solid trading plan, backtest your strategies, and keep detailed records. Consistent execution of a proven plan beats trying to predict every market move.",
           topics: ['Professional Trading', 'Planning']
         }
