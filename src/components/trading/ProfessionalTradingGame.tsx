@@ -1,32 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createChart, IChartApi, ISeriesApi, CandlestickData, Time } from 'lightweight-charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { createChart, IChartApi, ISeriesApi, CandlestickData, Time } from 'lightweight-charts';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Target, 
-  AlertTriangle,
-  Trophy,
-  BarChart3,
-  Play,
-  Pause,
-  RotateCcw
-} from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Target } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Trade {
-  id: number;
-  type: 'BUY' | 'SELL';
+  id: string;
+  symbol: string;
+  type: 'buy' | 'sell';
   entry: number;
-  size: number;
-  timestamp: number;
-  status: 'open' | 'closed';
-  pnl?: number;
-  exitPrice?: number;
+  current: number;
+  pnl: number;
+  timestamp: Date;
 }
 
 interface GameStats {
@@ -34,25 +21,23 @@ interface GameStats {
   totalTrades: number;
   winRate: number;
   totalPnL: number;
-  streak: number;
 }
 
 const ProfessionalTradingGame: React.FC = () => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentPrice, setCurrentPrice] = useState(1.0500);
-  const [trades, setTrades] = useState<Trade[]>([]);
+  const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  
+  const [activeTrades, setActiveTrades] = useState<Trade[]>([]);
   const [gameStats, setGameStats] = useState<GameStats>({
     balance: 10000,
     totalTrades: 0,
     winRate: 0,
-    totalPnL: 0,
-    streak: 0
+    totalPnL: 0
   });
-  const [selectedPair] = useState('EURUSD');
-  const [tradeSize, setTradeSize] = useState(1000);
+  const [currentPrice, setCurrentPrice] = useState(1.1234);
+  const [selectedSymbol] = useState('EURUSD');
+  
   const { toast } = useToast();
 
   // Initialize chart
@@ -63,403 +48,267 @@ const ProfessionalTradingGame: React.FC = () => {
       width: chartContainerRef.current.clientWidth,
       height: 400,
       layout: {
-        background: { color: '#1a1a1a' },
-        textColor: '#d1d5db',
+        background: { color: 'transparent' },
+        textColor: '#ffffff',
       },
       grid: {
-        vertLines: { color: '#374151' },
-        horzLines: { color: '#374151' },
+        vertLines: { color: '#2B2B43' },
+        horzLines: { color: '#2B2B43' },
       },
       crosshair: {
         mode: 1,
       },
       rightPriceScale: {
-        borderColor: '#4B5563',
+        borderColor: '#485158',
       },
       timeScale: {
-        borderColor: '#4B5563',
+        borderColor: '#485158',
         timeVisible: true,
         secondsVisible: false,
       },
     });
 
-    const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#10b981',
-      downColor: '#ef4444',
-      borderDownColor: '#ef4444',
-      borderUpColor: '#10b981',
-      wickDownColor: '#ef4444',
-      wickUpColor: '#10b981',
+    // Create candlestick series using the correct method
+    const candlestickSeries = chart.addSeries('Candlestick', {
+      upColor: '#00D2FF',
+      downColor: '#FF6B6B',
+      borderVisible: false,
+      wickUpColor: '#00D2FF',
+      wickDownColor: '#FF6B6B',
     });
 
     chartRef.current = chart;
-    candlestickSeriesRef.current = candlestickSeries;
+    seriesRef.current = candlestickSeries;
 
-    // Generate initial historical data
-    const historicalData = generateHistoricalData();
-    candlestickSeries.setData(historicalData);
+    // Generate sample data
+    const sampleData: CandlestickData[] = generateSampleData();
+    candlestickSeries.setData(sampleData);
+
+    // Handle resize
+    const handleResize = () => {
+      if (chartContainerRef.current && chart) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
 
     return () => {
+      window.removeEventListener('resize', handleResize);
       chart.remove();
     };
   }, []);
 
-  // Generate realistic historical candlestick data
-  const generateHistoricalData = (): CandlestickData[] => {
+  // Generate sample candlestick data
+  const generateSampleData = (): CandlestickData[] => {
     const data: CandlestickData[] = [];
-    let basePrice = 1.0500;
-    const now = Math.floor(Date.now() / 1000);
+    let basePrice = 1.1234;
+    const now = Date.now();
     
     for (let i = 100; i >= 0; i--) {
-      const time = (now - i * 60) as Time;
-      const volatility = 0.0005;
-      const change = (Math.random() - 0.5) * volatility;
+      const time = (now - i * 60000) / 1000; // 1 minute intervals
+      const volatility = 0.0002;
       
-      const open = basePrice;
-      const close = basePrice + change;
-      const high = Math.max(open, close) + Math.random() * volatility * 0.5;
-      const low = Math.min(open, close) - Math.random() * volatility * 0.5;
+      const open = basePrice + (Math.random() - 0.5) * volatility;
+      const high = open + Math.random() * volatility;
+      const low = open - Math.random() * volatility;
+      const close = low + Math.random() * (high - low);
       
       data.push({
-        time,
-        open: Number(open.toFixed(5)),
-        high: Number(high.toFixed(5)),
-        low: Number(low.toFixed(5)),
-        close: Number(close.toFixed(5)),
+        time: time as Time,
+        open,
+        high,
+        low,
+        close,
       });
       
       basePrice = close;
     }
     
-    setCurrentPrice(basePrice);
+    setCurrentPrice(data[data.length - 1].close);
     return data;
   };
 
-  // Simulate real-time price updates
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    const interval = setInterval(() => {
-      const volatility = 0.0003;
-      const change = (Math.random() - 0.5) * volatility;
-      const newPrice = currentPrice + change;
-      
-      setCurrentPrice(Number(newPrice.toFixed(5)));
-      
-      // Add new candlestick data point
-      if (candlestickSeriesRef.current) {
-        const time = Math.floor(Date.now() / 1000) as Time;
-        const open = currentPrice;
-        const close = newPrice;
-        const high = Math.max(open, close) + Math.random() * 0.0001;
-        const low = Math.min(open, close) - Math.random() * 0.0001;
-        
-        candlestickSeriesRef.current.update({
-          time,
-          open: Number(open.toFixed(5)),
-          high: Number(high.toFixed(5)),
-          low: Number(low.toFixed(5)),
-          close: Number(close.toFixed(5)),
-        });
-      }
-      
-      // Update open trades P&L
-      updateTradesPnL(newPrice);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, currentPrice]);
-
-  const updateTradesPnL = (price: number) => {
-    setTrades(prevTrades => 
-      prevTrades.map(trade => {
-        if (trade.status === 'open') {
-          const pnl = trade.type === 'BUY' 
-            ? (price - trade.entry) * trade.size
-            : (trade.entry - price) * trade.size;
-          return { ...trade, pnl: Number(pnl.toFixed(2)) };
-        }
-        return trade;
-      })
-    );
-  };
-
-  const executeTrade = (type: 'BUY' | 'SELL') => {
-    if (gameStats.balance < tradeSize * 0.01) {
-      toast({
-        title: "Insufficient Balance",
-        description: "You don't have enough margin for this trade",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const openTrade = (type: 'buy' | 'sell') => {
     const newTrade: Trade = {
-      id: Date.now(),
+      id: Math.random().toString(36).substr(2, 9),
+      symbol: selectedSymbol,
       type,
       entry: currentPrice,
-      size: tradeSize,
-      timestamp: Date.now(),
-      status: 'open',
-      pnl: 0
+      current: currentPrice,
+      pnl: 0,
+      timestamp: new Date()
     };
 
-    setTrades(prev => [...prev, newTrade]);
-    
+    setActiveTrades(prev => [...prev, newTrade]);
+    setGameStats(prev => ({
+      ...prev,
+      totalTrades: prev.totalTrades + 1
+    }));
+
     toast({
-      title: "Trade Executed",
-      description: `${type} ${tradeSize} ${selectedPair} at ${currentPrice}`,
+      title: `${type.toUpperCase()} Trade Opened`,
+      description: `${selectedSymbol} at ${currentPrice.toFixed(5)}`
     });
   };
 
-  const closeTrade = (tradeId: number) => {
-    setTrades(prevTrades => {
-      const updatedTrades = prevTrades.map(trade => {
-        if (trade.id === tradeId && trade.status === 'open') {
-          const finalPnL = trade.pnl || 0;
-          
-          // Update game stats
-          setGameStats(prevStats => {
-            const newTotalTrades = prevStats.totalTrades + 1;
-            const newTotalPnL = prevStats.totalPnL + finalPnL;
-            const newBalance = prevStats.balance + finalPnL;
-            const isWin = finalPnL > 0;
-            const newStreak = isWin ? prevStats.streak + 1 : 0;
-            
-            return {
-              ...prevStats,
-              balance: Number(newBalance.toFixed(2)),
-              totalTrades: newTotalTrades,
-              totalPnL: Number(newTotalPnL.toFixed(2)),
-              winRate: newTotalTrades > 0 ? Number(((prevStats.winRate * (newTotalTrades - 1) + (isWin ? 1 : 0)) / newTotalTrades * 100).toFixed(1)) : 0,
-              streak: newStreak
-            };
-          });
+  const closeTrade = (tradeId: string) => {
+    setActiveTrades(prev => {
+      const trade = prev.find(t => t.id === tradeId);
+      if (trade) {
+        const pnl = trade.type === 'buy' 
+          ? (currentPrice - trade.entry) * 10000
+          : (trade.entry - currentPrice) * 10000;
 
-          return {
-            ...trade,
-            status: 'closed' as const,
-            exitPrice: currentPrice,
-            pnl: finalPnL
-          };
-        }
-        return trade;
-      });
-      
-      return updatedTrades;
-    });
+        setGameStats(prevStats => ({
+          ...prevStats,
+          balance: prevStats.balance + pnl,
+          totalPnL: prevStats.totalPnL + pnl,
+          winRate: pnl > 0 ? 
+            ((prevStats.winRate * (prevStats.totalTrades - 1)) + 1) / prevStats.totalTrades * 100 :
+            (prevStats.winRate * (prevStats.totalTrades - 1)) / prevStats.totalTrades * 100
+        }));
 
-    toast({
-      title: "Trade Closed",
-      description: `Position closed at ${currentPrice}`,
+        toast({
+          title: `Trade Closed`,
+          description: `P&L: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} pips`,
+          variant: pnl > 0 ? 'default' : 'destructive'
+        });
+      }
+
+      return prev.filter(t => t.id !== tradeId);
     });
   };
-
-  const resetGame = () => {
-    setGameStats({
-      balance: 10000,
-      totalTrades: 0,
-      winRate: 0,
-      totalPnL: 0,
-      streak: 0
-    });
-    setTrades([]);
-    setIsPlaying(false);
-    
-    toast({
-      title: "Game Reset",
-      description: "Starting fresh with $10,000",
-    });
-  };
-
-  const openTrades = trades.filter(t => t.status === 'open');
-  const totalPnL = openTrades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
 
   return (
     <div className="space-y-6">
       {/* Game Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="glass-card">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="glass-card border-green-500/20">
           <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <DollarSign className="w-5 h-5 text-green-400" />
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-green-400" />
               <div>
-                <p className="text-sm text-gray-400">Balance</p>
-                <p className={`text-lg font-bold ${gameStats.balance >= 10000 ? 'text-green-400' : 'text-red-400'}`}>
-                  ${gameStats.balance.toLocaleString()}
-                </p>
+                <p className="text-xs text-gray-400">Balance</p>
+                <p className="text-lg font-bold text-white">${gameStats.balance.toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="glass-card">
+        <Card className="glass-card border-blue-500/20">
           <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Target className="w-5 h-5 text-blue-400" />
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-blue-400" />
               <div>
-                <p className="text-sm text-gray-400">Win Rate</p>
-                <p className="text-lg font-bold text-white">{gameStats.winRate}%</p>
+                <p className="text-xs text-gray-400">Win Rate</p>
+                <p className="text-lg font-bold text-white">{gameStats.winRate.toFixed(1)}%</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="glass-card">
+        <Card className="glass-card border-purple-500/20">
           <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5 text-purple-400" />
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-purple-400" />
               <div>
-                <p className="text-sm text-gray-400">Total P&L</p>
+                <p className="text-xs text-gray-400">Total P&L</p>
                 <p className={`text-lg font-bold ${gameStats.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  ${gameStats.totalPnL}
+                  {gameStats.totalPnL >= 0 ? '+' : ''}{gameStats.totalPnL.toFixed(2)}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="glass-card">
+        <Card className="glass-card border-yellow-500/20">
           <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Trophy className="w-5 h-5 text-yellow-400" />
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-yellow-400" />
               <div>
-                <p className="text-sm text-gray-400">Streak</p>
-                <p className="text-lg font-bold text-white">{gameStats.streak}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="w-5 h-5 text-orange-400" />
-              <div>
-                <p className="text-sm text-gray-400">Open P&L</p>
-                <p className={`text-lg font-bold ${totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  ${totalPnL.toFixed(2)}
-                </p>
+                <p className="text-xs text-gray-400">Trades</p>
+                <p className="text-lg font-bold text-white">{gameStats.totalTrades}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Trading Controls */}
-      <Card className="glass-card">
+      {/* Chart */}
+      <Card className="glass-card border-purple-500/20">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Professional Trading Simulator</span>
-            <div className="flex items-center space-x-2">
-              <Badge className="bg-green-500/20 text-green-400">
-                {selectedPair}: {currentPrice}
-              </Badge>
-              <Button
-                onClick={() => setIsPlaying(!isPlaying)}
-                variant="outline"
-                size="sm"
-              >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              </Button>
-              <Button
-                onClick={resetGame}
-                variant="outline"
-                size="sm"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
-            </div>
+            <span>{selectedSymbol}</span>
+            <Badge className="bg-green-500/20 text-green-400">
+              {currentPrice.toFixed(5)}
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Chart */}
-            <div className="lg:col-span-2">
-              <div 
-                ref={chartContainerRef}
-                className="w-full h-96 bg-gray-900 rounded-lg"
-              />
-            </div>
-
-            {/* Trading Panel */}
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-gray-400 mb-2 block">Position Size</label>
-                <select 
-                  value={tradeSize}
-                  onChange={(e) => setTradeSize(Number(e.target.value))}
-                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
-                >
-                  <option value={1000}>1,000 units</option>
-                  <option value={5000}>5,000 units</option>
-                  <option value={10000}>10,000 units</option>
-                  <option value={25000}>25,000 units</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  onClick={() => executeTrade('BUY')}
-                  disabled={!isPlaying}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  BUY
-                </Button>
-                <Button
-                  onClick={() => executeTrade('SELL')}
-                  disabled={!isPlaying}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  <TrendingDown className="w-4 h-4 mr-2" />
-                  SELL
-                </Button>
-              </div>
-
-              {/* Open Positions */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-gray-300">Open Positions</h4>
-                {openTrades.length === 0 ? (
-                  <p className="text-xs text-gray-500">No open positions</p>
-                ) : (
-                  openTrades.map(trade => (
-                    <div key={trade.id} className="bg-gray-800 rounded p-3 text-xs">
-                      <div className="flex justify-between items-center mb-2">
-                        <Badge className={trade.type === 'BUY' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
-                          {trade.type} {trade.size}
-                        </Badge>
-                        <Button
-                          onClick={() => closeTrade(trade.id)}
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-xs"
-                        >
-                          Close
-                        </Button>
-                      </div>
-                      <div className="text-gray-400">
-                        Entry: {trade.entry} | Current: {currentPrice}
-                      </div>
-                      <div className={`font-bold ${(trade.pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        P&L: ${(trade.pnl || 0).toFixed(2)}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          <div ref={chartContainerRef} className="w-full h-[400px]" />
         </CardContent>
       </Card>
 
-      {/* Risk Warning */}
-      <Alert>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          This is a simulation for educational purposes. Real trading involves significant risk of loss.
-        </AlertDescription>
-      </Alert>
+      {/* Trading Controls */}
+      <div className="flex gap-4 justify-center">
+        <Button
+          onClick={() => openTrade('buy')}
+          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+        >
+          <TrendingUp className="w-4 h-4 mr-2" />
+          BUY
+        </Button>
+        <Button
+          onClick={() => openTrade('sell')}
+          className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+        >
+          <TrendingDown className="w-4 h-4 mr-2" />
+          SELL
+        </Button>
+      </div>
+
+      {/* Active Trades */}
+      {activeTrades.length > 0 && (
+        <Card className="glass-card border-blue-500/20">
+          <CardHeader>
+            <CardTitle>Active Trades</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {activeTrades.map((trade) => {
+                const pnl = trade.type === 'buy' 
+                  ? (currentPrice - trade.entry) * 10000
+                  : (trade.entry - currentPrice) * 10000;
+
+                return (
+                  <div key={trade.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Badge className={trade.type === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                        {trade.type.toUpperCase()}
+                      </Badge>
+                      <span className="text-white">{trade.symbol}</span>
+                      <span className="text-gray-400">@{trade.entry.toFixed(5)}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {pnl >= 0 ? '+' : ''}{pnl.toFixed(1)} pips
+                      </span>
+                      <Button
+                        size="sm"
+                        onClick={() => closeTrade(trade.id)}
+                        className="bg-gray-600 hover:bg-gray-700"
+                      >
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
