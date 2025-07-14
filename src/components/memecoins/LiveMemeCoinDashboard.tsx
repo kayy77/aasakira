@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { liveMemeCoinService, LiveMemeCoin } from '@/services/liveMemeCoinService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -15,7 +16,10 @@ import {
   Clock,
   DollarSign,
   Shield,
-  Target
+  Target,
+  ExternalLink,
+  HelpCircle,
+  Brain
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -26,6 +30,7 @@ const LiveMemeCoinDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [riskFilter, setRiskFilter] = useState<'All' | 'Low' | 'Medium' | 'High'>('All');
   const [lastScan, setLastScan] = useState<Date | null>(null);
+  const [selectedCoin, setSelectedCoin] = useState<LiveMemeCoin | null>(null);
   const { toast } = useToast();
 
   const scanCoins = async () => {
@@ -113,7 +118,7 @@ const LiveMemeCoinDashboard: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">Live Meme Coin Scanner</h2>
-                <p className="text-sm text-gray-400">Real-time opportunities with live price feeds</p>
+                <p className="text-sm text-gray-400">High-quality opportunities with live price feeds</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -205,7 +210,7 @@ const LiveMemeCoinDashboard: React.FC = () => {
                     {/* Price & Change */}
                     <div className="text-right">
                       <div className="text-xl font-bold text-white">
-                        ${coin.price.toFixed(coin.price < 0.01 ? 6 : 4)}
+                        ${coin.price.toFixed(coin.price < 0.01 ? 8 : 4)}
                       </div>
                       <div className={`flex items-center justify-end gap-1 ${
                         coin.priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
@@ -266,13 +271,25 @@ const LiveMemeCoinDashboard: React.FC = () => {
                       <div className="text-xs text-gray-400">
                         {coin.lastUpdated}
                       </div>
-                      <Button 
-                        size="sm" 
-                        className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
-                      >
-                        <Target className="w-3 h-3 mr-1" />
-                        Track
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setSelectedCoin(coin)}
+                          className="border-blue-500/30 hover:bg-blue-500/20"
+                        >
+                          <HelpCircle className="w-3 h-3 mr-1" />
+                          Why?
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
+                          onClick={() => window.open(coin.exchangeUrl, '_blank')}
+                        >
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          {coin.exchangeName}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -281,6 +298,35 @@ const LiveMemeCoinDashboard: React.FC = () => {
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Coin Explanation Modal */}
+      {selectedCoin && (
+        <Alert className="border-purple-500/30 bg-purple-500/10">
+          <Brain className="h-4 w-4 text-purple-400" />
+          <AlertDescription className="text-purple-300">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-white">Why {selectedCoin.name} Was Selected</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedCoin(null)}
+                  className="text-purple-400 hover:bg-purple-500/20"
+                >
+                  ✕
+                </Button>
+              </div>
+              <p className="text-sm">{selectedCoin.whyChosen}</p>
+              
+              <div className="flex items-center gap-4 text-xs">
+                <span>💰 Volume: ${selectedCoin.volume24h.toLocaleString()}</span>
+                <span>🏊 Liquidity: ${selectedCoin.liquidity.toLocaleString()}</span>
+                <span>📈 Change: {selectedCoin.priceChange24h.toFixed(1)}%</span>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Empty State */}
       {filteredCoins.length === 0 && !isScanning && (

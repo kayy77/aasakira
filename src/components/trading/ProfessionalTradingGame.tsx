@@ -15,7 +15,8 @@ import {
   Zap, 
   Trophy,
   AlertCircle,
-  Brain
+  Brain,
+  RefreshCw
 } from 'lucide-react';
 
 interface TradeEntry {
@@ -47,9 +48,10 @@ const ProfessionalTradingGame: React.FC = () => {
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gameActive, setGameActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (chartContainerRef.current) {
+    if (chartContainerRef.current && !chart) {
       const newChart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
         height: 400,
@@ -85,7 +87,6 @@ const ProfessionalTradingGame: React.FC = () => {
       setChart(newChart);
       setCandlestickSeries(series);
 
-      // Handle resize
       const handleResize = () => {
         if (chartContainerRef.current) {
           newChart.applyOptions({
@@ -101,16 +102,15 @@ const ProfessionalTradingGame: React.FC = () => {
         newChart.remove();
       };
     }
-  }, []);
+  }, [chart]);
 
   const generateGameData = () => {
     const data = [];
-    let currentPrice = 1.0850; // EURUSD base
+    let currentPrice = 1.0850;
     const now = Date.now();
     
-    // Generate 100 candles
     for (let i = 0; i < 100; i++) {
-      const time = (now - (100 - i) * 15 * 60 * 1000) / 1000; // 15-minute candles
+      const time = (now - (100 - i) * 15 * 60 * 1000) / 1000;
       const variation = (Math.random() - 0.5) * 0.002;
       const open = currentPrice;
       const close = open + variation;
@@ -132,21 +132,21 @@ const ProfessionalTradingGame: React.FC = () => {
   };
 
   const startNewGame = () => {
+    setIsLoading(true);
     const data = generateGameData();
     setGameData(data);
     
     if (candlestickSeries) {
-      // Show only first 80 candles initially
       const visibleData = data.slice(0, 80);
       candlestickSeries.setData(visibleData);
       
-      // Set current price from last visible candle
       const currentPrice = visibleData[visibleData.length - 1].close;
       setTradeEntry(prev => ({ ...prev, entry: currentPrice }));
     }
     
     setGameActive(true);
     setGameResult(null);
+    setIsLoading(false);
   };
 
   const submitTrade = async () => {
@@ -155,23 +155,10 @@ const ProfessionalTradingGame: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Show remaining candles to see outcome
       if (candlestickSeries) {
         candlestickSeries.setData(gameData);
-        
-        // Add trade markers
-        const entryMarker = {
-          time: gameData[79].time,
-          position: 'inBar' as const,
-          color: '#3b82f6',
-          shape: 'circle' as const,
-          text: `Entry: ${tradeEntry.entry.toFixed(5)}`,
-        };
-        
-        candlestickSeries.setMarkers([entryMarker]);
       }
       
-      // Calculate trade outcome
       const futureCandles = gameData.slice(80);
       let hitSL = false;
       let hitTP = false;
@@ -191,21 +178,19 @@ const ProfessionalTradingGame: React.FC = () => {
         finalPrice = candle.close;
       }
       
-      // Get AI feedback
       const prompt = `Analyze this EURUSD trade:
 Entry: ${tradeEntry.entry}
 Stop Loss: ${tradeEntry.stopLoss}
 Take Profit: ${tradeEntry.takeProfit}
 Reasoning: "${tradeEntry.reasoning}"
 Outcome: ${hitTP ? 'Hit TP' : hitSL ? 'Hit SL' : 'Still running'}
-Give a score out of 10 and detailed feedback.`;
+Give a score out of 10 and detailed feedback in 2-3 sentences.`;
       
       const aiResponse = await geminiEducationService.getAIResponse(prompt);
       
-      // Calculate score and XP
       const riskReward = Math.abs(tradeEntry.takeProfit - tradeEntry.entry) / 
                         Math.abs(tradeEntry.entry - tradeEntry.stopLoss);
-      let score = 5; // Base score
+      let score = 5;
       
       if (hitTP) score += 3;
       if (riskReward >= 2) score += 1;
@@ -231,6 +216,12 @@ Give a score out of 10 and detailed feedback.`;
       
     } catch (error) {
       console.error('Trade submission failed:', error);
+      setGameResult({
+        score: 5,
+        feedback: "Unable to get AI analysis right now, but your trade structure looks reasonable. Keep practicing!",
+        won: false,
+        xpEarned: 50
+      });
     } finally {
       setIsSubmitting(false);
       setGameActive(false);
@@ -243,7 +234,7 @@ Give a score out of 10 and detailed feedback.`;
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="w-6 h-6 text-purple-400" />
-            Professional Trading Challenge
+            Professional Trading Arena
             <Badge className="bg-green-500/20 text-green-400">
               Live Chart Analysis
             </Badge>
@@ -255,21 +246,30 @@ Give a score out of 10 and detailed feedback.`;
               <Trophy className="w-16 h-16 text-gold-400 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-white mb-2">Ready to Trade?</h3>
               <p className="text-gray-400 mb-4">
-                Analyze the chart, place your trade, and see how it performs against real market data.
+                Analyze the live chart, place your trade, and get AI feedback on your decision.
               </p>
               <Button
                 onClick={startNewGame}
+                disabled={isLoading}
                 className="bg-gradient-to-r from-purple-600 to-blue-600"
               >
-                <Zap className="w-4 h-4 mr-2" />
-                Start New Challenge
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Loading Chart...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 mr-2" />
+                    Start Trading Challenge
+                  </>
+                )}
               </Button>
             </div>
           )}
           
           {gameActive && (
             <>
-              {/* Chart */}
               <div className="bg-gray-900 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-white font-bold">{currentPair} - M15</h4>
@@ -277,10 +277,9 @@ Give a score out of 10 and detailed feedback.`;
                     Live Market Data
                   </Badge>
                 </div>
-                <div ref={chartContainerRef} className="w-full" />
+                <div ref={chartContainerRef} className="w-full h-96" />
               </div>
               
-              {/* Trade Entry Form */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-sm text-gray-400 mb-2 block">Entry Price</label>
@@ -356,7 +355,6 @@ Give a score out of 10 and detailed feedback.`;
             </>
           )}
           
-          {/* Game Result */}
           <AnimatePresence>
             {gameResult && (
               <motion.div

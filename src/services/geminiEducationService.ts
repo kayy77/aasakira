@@ -20,6 +20,17 @@ export class GeminiEducationService {
     this.model = genAI.getGenerativeModel({ model: 'gemini-pro' });
   }
 
+  async getAIResponse(prompt: string): Promise<string> {
+    try {
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      return "I'm having trouble connecting right now. Please try again in a moment.";
+    }
+  }
+
   async explainConcept(concept: string, userLevel: 'beginner' | 'intermediate' | 'advanced' = 'intermediate'): Promise<AIExplanation> {
     try {
       const prompt = `You are Aasakira, an expert forex trading mentor specializing in Smart Money Concepts. 
@@ -41,7 +52,6 @@ Also suggest a visual prompt for chart generation at the end starting with "VISU
       const response = await result.response;
       const text = response.text();
 
-      // Extract visual prompt if present
       const visualMatch = text.match(/VISUAL:\s*(.+?)(?:\n|$)/i);
       const visualPrompt = visualMatch ? visualMatch[1].trim() : null;
       const cleanText = text.replace(/VISUAL:\s*.+/i, '').trim();
@@ -93,7 +103,6 @@ Be encouraging but honest. Focus on education.`;
       const response = await result.response;
       const text = response.text();
 
-      // Extract grade
       const gradeMatch = text.match(/(?:grade|score).*?(\d+(?:\.\d+)?)/i);
       const grade = gradeMatch ? parseFloat(gradeMatch[1]) : undefined;
 
@@ -111,7 +120,7 @@ Be encouraging but honest. Focus on education.`;
     }
   }
 
-  async generateQuizQuestion(topic: string, difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Promise<{
+  async generateQuizQuestion(topic: string, difficulty: 'easy' | 'medium' | 'hard' = 'medium', userProgress?: any): Promise<{
     question: string;
     options: string[];
     correctAnswer: number;
@@ -119,7 +128,13 @@ Be encouraging but honest. Focus on education.`;
     visualPrompt?: string;
   }> {
     try {
-      const prompt = `Create a ${difficulty} quiz question about: ${topic}
+      const progressContext = userProgress ? `User has completed ${userProgress.questionsAnswered || 0} questions with ${userProgress.correctAnswers || 0} correct.` : '';
+      
+      const prompt = `Create a ${difficulty} forex trading quiz question about: ${topic}
+
+${progressContext}
+
+Make it practical and relevant to real trading. Avoid repetitive questions.
 
 Format your response as:
 QUESTION: [the question]
@@ -193,7 +208,7 @@ VISUAL: [chart scenario description for image generation]`;
       }
     });
 
-    return [...new Set(concepts)].slice(0, 5); // Return unique concepts, max 5
+    return [...new Set(concepts)].slice(0, 5);
   }
 }
 
