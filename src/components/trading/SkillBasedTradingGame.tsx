@@ -1,312 +1,217 @@
+
 import React, { useEffect, useRef, useState } from 'react';
+import { createChart, IChartApi, ISeriesApi, CandlestickData } from 'lightweight-charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
-import { Brain, Target, TrendingUp, TrendingDown, Zap } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
-interface TradingChallenge {
+interface Trade {
   id: number;
-  title: string;
-  description: string;
-  timeLimit: number;
-  targetPnL: number;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  type: 'long' | 'short';
+  entry: number;
+  exit?: number;
+  profit?: number;
+  timestamp: number;
 }
 
 const SkillBasedTradingGame = () => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const [chart, setChart] = useState<IChartApi | null>(null);
-  const [candleSeries, setCandleSeries] = useState<ISeriesApi<"Candlestick"> | null>(null);
-  const [currentChallenge, setCurrentChallenge] = useState<TradingChallenge | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [score, setScore] = useState(0);
-  const [level, setLevel] = useState(1);
-
-  const challenges: TradingChallenge[] = [
-    {
-      id: 1,
-      title: "Trend Following",
-      description: "Identify and trade with the trend. Target: +50 pips in 5 minutes",
-      timeLimit: 300,
-      targetPnL: 50,
-      difficulty: 'beginner'
-    },
-    {
-      id: 2,
-      title: "Support & Resistance",
-      description: "Trade bounces from key levels. Target: +75 pips in 3 minutes",
-      timeLimit: 180,
-      targetPnL: 75,
-      difficulty: 'intermediate'
-    },
-    {
-      id: 3,
-      title: "Smart Money Concepts",
-      description: "Find order blocks and trade like institutions. Target: +100 pips in 8 minutes",
-      timeLimit: 480,
-      targetPnL: 100,
-      difficulty: 'advanced'
-    }
-  ];
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const [balance, setBalance] = useState(10000);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [skillLevel, setSkillLevel] = useState(1);
+  const [experience, setExperience] = useState(0);
+  const [activePosition, setActivePosition] = useState<Trade | null>(null);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const chartInstance = createChart(chartContainerRef.current, {
+    const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: 400,
       layout: {
         background: { color: '#1a1a1a' },
-        textColor: '#d1d5db',
+        textColor: '#ffffff',
       },
       grid: {
-        vertLines: { color: '#374151' },
-        horzLines: { color: '#374151' },
-      },
-      timeScale: {
-        borderColor: '#374151',
-      },
-      rightPriceScale: {
-        borderColor: '#374151',
+        vertLines: { color: '#2a2a2a' },
+        horzLines: { color: '#2a2a2a' },
       },
     });
 
-    const series = chartInstance.addSeries('Candlestick', {
-      upColor: '#10b981',
-      downColor: '#ef4444',
-      borderUpColor: '#10b981',
-      borderDownColor: '#ef4444',
-      wickUpColor: '#10b981',
-      wickDownColor: '#ef4444',
+    const candlestickSeries = chart.addCandlestickSeries({
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderVisible: false,
+      wickUpColor: '#26a69a',
+      wickDownColor: '#ef5350',
     });
 
     // Generate sample data
-    const data = [];
-    let time = Date.now() / 1000 - 86400;
-    let price = 1.2500;
-    
+    const data: CandlestickData[] = [];
+    const basePrice = 1.2500;
+    let currentPrice = basePrice;
+
     for (let i = 0; i < 100; i++) {
-      const change = (Math.random() - 0.5) * 0.01;
-      const open = price;
-      const close = price + change;
-      const high = Math.max(open, close) + Math.random() * 0.005;
-      const low = Math.min(open, close) - Math.random() * 0.005;
-      
+      const change = (Math.random() - 0.5) * 0.002;
+      const open = currentPrice;
+      const close = open + change;
+      const high = Math.max(open, close) + Math.random() * 0.001;
+      const low = Math.min(open, close) - Math.random() * 0.001;
+
       data.push({
-        time: time + i * 900,
+        time: Date.now() / 1000 - (100 - i) * 60 as any,
         open,
         high,
         low,
         close,
       });
-      
-      price = close;
+
+      currentPrice = close;
     }
-    
-    series.setData(data);
-    
-    setChart(chartInstance);
-    setCandleSeries(series);
 
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chartInstance.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
+    candlestickSeries.setData(data);
+    chartRef.current = chart;
+    seriesRef.current = candlestickSeries;
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      chartInstance.remove();
+      chart.remove();
     };
   }, []);
 
-  const startChallenge = (challenge: TradingChallenge) => {
-    setCurrentChallenge(challenge);
-    setTimeRemaining(challenge.timeLimit);
-    
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          endChallenge();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+  const openTrade = (type: 'long' | 'short') => {
+    const newTrade: Trade = {
+      id: Date.now(),
+      type,
+      entry: 1.2500 + (Math.random() - 0.5) * 0.01,
+      timestamp: Date.now(),
+    };
+
+    setActivePosition(newTrade);
   };
 
-  const endChallenge = () => {
-    setCurrentChallenge(null);
-    setTimeRemaining(0);
-  };
+  const closeTrade = () => {
+    if (!activePosition) return;
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+    const exitPrice = activePosition.entry + (Math.random() - 0.5) * 0.01;
+    const profit = activePosition.type === 'long' 
+      ? (exitPrice - activePosition.entry) * 10000
+      : (activePosition.entry - exitPrice) * 10000;
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'beginner': return 'bg-green-500/20 text-green-400';
-      case 'intermediate': return 'bg-yellow-500/20 text-yellow-400';
-      case 'advanced': return 'bg-red-500/20 text-red-400';
-      default: return 'bg-gray-500/20 text-gray-400';
+    const completedTrade = {
+      ...activePosition,
+      exit: exitPrice,
+      profit,
+    };
+
+    setTrades(prev => [...prev, completedTrade]);
+    setBalance(prev => prev + profit);
+    setExperience(prev => prev + Math.max(10, Math.abs(profit) / 10));
+    setActivePosition(null);
+
+    // Level up check
+    const newLevel = Math.floor(experience / 1000) + 1;
+    if (newLevel > skillLevel) {
+      setSkillLevel(newLevel);
     }
   };
 
+  const winRate = trades.length > 0 
+    ? (trades.filter(t => (t.profit || 0) > 0).length / trades.length) * 100 
+    : 0;
+
   return (
     <div className="space-y-6">
-      <Card className="glass-card border-purple-500/20">
+      <Card className="glass-card border-purple-500/30">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className="w-6 h-6 text-purple-400" />
-              Skill-Based Trading Challenges
-            </div>
-            <div className="flex items-center gap-4">
-              <Badge className="bg-purple-500/20 text-purple-400">
-                Level {level}
-              </Badge>
-              <Badge className="bg-blue-500/20 text-blue-400">
-                Score: {score}
-              </Badge>
-            </div>
-          </CardTitle>
+          <CardTitle className="text-white">Skill-Based Trading Game</CardTitle>
         </CardHeader>
-        <CardContent>
-          {!currentChallenge ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {challenges.map(challenge => (
-                <Card key={challenge.id} className="glass-card border-gray-500/20 hover:border-purple-500/40 transition-all">
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-white">{challenge.title}</h3>
-                        <Badge className={getDifficultyColor(challenge.difficulty)}>
-                          {challenge.difficulty}
-                        </Badge>
-                      </div>
-                      
-                      <p className="text-sm text-gray-400">{challenge.description}</p>
-                      
-                      <div className="space-y-2 text-xs text-gray-500">
-                        <div className="flex justify-between">
-                          <span>Time Limit:</span>
-                          <span>{formatTime(challenge.timeLimit)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Target P&L:</span>
-                          <span>+{challenge.targetPnL} pips</span>
-                        </div>
-                      </div>
-                      
-                      <Button 
-                        onClick={() => startChallenge(challenge)}
-                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
-                      >
-                        <Zap className="w-4 h-4 mr-2" />
-                        Start Challenge
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+        <CardContent className="space-y-4">
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-400">${balance.toFixed(2)}</div>
+              <div className="text-sm text-gray-400">Balance</div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Chart */}
-              <div className="lg:col-span-2">
-                <div className="mb-4 p-4 bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">{currentChallenge.title}</h3>
-                      <p className="text-sm text-gray-300">{currentChallenge.description}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-white">{formatTime(timeRemaining)}</div>
-                      <Badge className={getDifficultyColor(currentChallenge.difficulty)}>
-                        {currentChallenge.difficulty}
-                      </Badge>
-                    </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-400">{skillLevel}</div>
+              <div className="text-sm text-gray-400">Level</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-400">{trades.length}</div>
+              <div className="text-sm text-gray-400">Trades</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-400">{winRate.toFixed(1)}%</div>
+              <div className="text-sm text-gray-400">Win Rate</div>
+            </div>
+          </div>
+
+          {/* Experience Progress */}
+          <div>
+            <div className="flex justify-between text-sm text-gray-400 mb-2">
+              <span>Experience</span>
+              <span>{experience}/{(skillLevel) * 1000}</span>
+            </div>
+            <Progress value={(experience % 1000) / 10} className="h-2" />
+          </div>
+
+          {/* Chart */}
+          <div ref={chartContainerRef} className="mb-4" />
+
+          {/* Trading Controls */}
+          <div className="flex gap-4">
+            <Button
+              onClick={() => openTrade('long')}
+              disabled={activePosition !== null}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Buy Long
+            </Button>
+            <Button
+              onClick={() => openTrade('short')}
+              disabled={activePosition !== null}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Sell Short
+            </Button>
+            {activePosition && (
+              <Button
+                onClick={closeTrade}
+                variant="outline"
+                className="border-yellow-500/30"
+              >
+                Close Position
+              </Button>
+            )}
+          </div>
+
+          {/* Active Position */}
+          {activePosition && (
+            <div className="p-3 bg-blue-500/10 rounded-lg">
+              <p className="text-blue-400">
+                Active: {activePosition.type.toUpperCase()} @ {activePosition.entry.toFixed(5)}
+              </p>
+            </div>
+          )}
+
+          {/* Recent Trades */}
+          {trades.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-white font-semibold">Recent Trades</h4>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {trades.slice(-5).reverse().map((trade) => (
+                  <div key={trade.id} className="flex justify-between text-sm">
+                    <span className="text-gray-400">
+                      {trade.type.toUpperCase()} @ {trade.entry.toFixed(5)}
+                    </span>
+                    <span className={trade.profit! > 0 ? 'text-green-400' : 'text-red-400'}>
+                      {trade.profit! > 0 ? '+' : ''}{trade.profit!.toFixed(2)}
+                    </span>
                   </div>
-                </div>
-                
-                <div ref={chartContainerRef} className="w-full rounded-lg overflow-hidden" />
-              </div>
-              
-              {/* Challenge Panel */}
-              <div className="space-y-4">
-                <div className="bg-gray-800/50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-white mb-3">Challenge Progress</h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Target:</span>
-                      <span className="text-green-400">+{currentChallenge.targetPnL} pips</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Current P&L:</span>
-                      <span className="text-white">+0 pips</span>
-                    </div>
-                    <div className="w-full bg-gray-700 rounded-full h-2">
-                      <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full" style={{width: '0%'}}></div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-800/50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-white mb-3">Trading Actions</h4>
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <Button className="bg-green-600 hover:bg-green-700">
-                      <TrendingUp className="w-4 h-4 mr-2" />
-                      BUY
-                    </Button>
-                    <Button className="bg-red-600 hover:bg-red-700">
-                      <TrendingDown className="w-4 h-4 mr-2" />
-                      SELL
-                    </Button>
-                  </div>
-                  <Button 
-                    onClick={endChallenge}
-                    variant="outline" 
-                    className="w-full border-gray-600"
-                  >
-                    End Challenge
-                  </Button>
-                </div>
-                
-                <div className="bg-gray-800/50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-white mb-3">Challenge Tips</h4>
-                  <div className="space-y-2 text-sm text-gray-400">
-                    {currentChallenge.difficulty === 'beginner' && (
-                      <>
-                        <p>• Follow the overall trend direction</p>
-                        <p>• Use higher timeframes for confirmation</p>
-                        <p>• Don't fight the trend</p>
-                      </>
-                    )}
-                    {currentChallenge.difficulty === 'intermediate' && (
-                      <>
-                        <p>• Look for bounces at key levels</p>
-                        <p>• Use volume for confirmation</p>
-                        <p>• Watch for false breakouts</p>
-                      </>
-                    )}
-                    {currentChallenge.difficulty === 'advanced' && (
-                      <>
-                        <p>• Identify institutional order blocks</p>
-                        <p>• Look for liquidity sweeps</p>
-                        <p>• Trade market structure breaks</p>
-                      </>
-                    )}
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
