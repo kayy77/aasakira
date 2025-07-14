@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Crown, Zap, Star, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { stripeService } from '@/services/stripeService';
 
 interface EnhancedPremiumUpgradeProps {
   open: boolean;
@@ -29,17 +30,12 @@ const EnhancedPremiumUpgrade: React.FC<EnhancedPremiumUpgradeProps> = ({ open, o
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { plan }
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        // Open Stripe checkout in a new tab
-        window.open(data.url, '_blank');
-        onOpenChange(false);
-      }
+      // Get the checkout URL from our service
+      const checkoutUrl = await stripeService.createCheckoutSession(plan, user.email);
+      
+      // Open Stripe checkout in current window
+      window.location.href = checkoutUrl;
+      
     } catch (error) {
       console.error('Upgrade error:', error);
       toast({
@@ -195,7 +191,7 @@ const EnhancedPremiumUpgrade: React.FC<EnhancedPremiumUpgradeProps> = ({ open, o
                       disabled={isLoading}
                       className={`w-full font-bold py-3 text-white bg-gradient-to-r ${plan.color} hover:opacity-90 transition-opacity`}
                     >
-                      {isLoading ? 'Processing...' : `Upgrade to ${plan.name}`}
+                      {isLoading ? 'Redirecting to Payment...' : `Upgrade to ${plan.name}`}
                     </Button>
                   </CardContent>
                 </Card>
