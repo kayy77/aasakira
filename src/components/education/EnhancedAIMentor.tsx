@@ -25,7 +25,8 @@ interface QuizQuestion {
   options: string[];
   correctAnswer: number;
   explanation: string;
-  visualPrompt?: string;
+  difficulty: string;
+  topic: string;
 }
 
 interface ChatMessage {
@@ -51,6 +52,7 @@ const EnhancedAIMentor: React.FC = () => {
   const [showExplanation, setShowExplanation] = useState(false);
   const [quizScore, setQuizScore] = useState({ correct: 0, total: 0 });
   const [activeSection, setActiveSection] = useState<'chat' | 'quiz'>('chat');
+  const [userLevel, setUserLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
   const { toast } = useToast();
 
   const handleSendMessage = async () => {
@@ -64,11 +66,29 @@ const EnhancedAIMentor: React.FC = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputMessage;
     setInputMessage('');
     setIsLoading(true);
 
     try {
-      const response = await geminiEducationService.getAIResponse(inputMessage);
+      console.log('Sending message to Gemini:', currentInput);
+      
+      const enhancedPrompt = `You are Aasakira, an expert forex trading mentor specializing in Smart Money Concepts and professional trading education.
+
+User level: ${userLevel}
+User question: "${currentInput}"
+
+Provide a helpful, practical response that:
+1. Answers their question directly
+2. Uses real trading examples when possible
+3. Explains concepts in simple terms
+4. Gives actionable advice
+5. Maintains an encouraging, professional tone
+
+Keep responses conversational and educational. Use emojis sparingly but effectively.`;
+
+      const response = await geminiEducationService.getAIResponse(enhancedPrompt);
+      console.log('Received response from Gemini:', response);
       
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -78,15 +98,26 @@ const EnhancedAIMentor: React.FC = () => {
       };
 
       setMessages(prev => [...prev, aiMessage]);
+      
+      toast({
+        title: "✅ AI Response Generated",
+        description: "Aasakira has responded to your question!",
+      });
     } catch (error) {
       console.error('AI response error:', error);
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: 'I apologize, but I\'m having trouble responding right now. Please try asking your question again.',
+        content: 'I apologize, but I\'m having trouble responding right now. Please try asking your question again. Make sure to ask about specific trading topics like order blocks, liquidity, or market structure.',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: "⚠️ AI Response Failed",
+        description: "Please try rephrasing your question or check your connection.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -96,21 +127,42 @@ const EnhancedAIMentor: React.FC = () => {
     setIsLoading(true);
     try {
       const topics = [
-        'Order Blocks',
-        'Fair Value Gaps',
-        'Liquidity Sweeps',
-        'Market Structure',
-        'Smart Money Concepts',
-        'Risk Management',
-        'Position Sizing',
-        'Break of Structure'
+        'Order Blocks and Breaker Blocks',
+        'Fair Value Gaps and Imbalances', 
+        'Liquidity Sweeps and Stop Hunting',
+        'Market Structure and Break of Structure',
+        'Smart Money Concepts and Institutional Trading',
+        'Risk Management and Position Sizing',
+        'Support and Resistance in SMC',
+        'Entry and Exit Strategies'
       ];
       
-      const randomTopic = topics[Math.floor(Math.random() * topics.length)];
-      const difficulties = ['easy', 'medium', 'hard'];
-      const randomDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)] as 'easy' | 'medium' | 'hard';
+      const difficulties: ('easy' | 'medium' | 'hard')[] = 
+        userLevel === 'beginner' ? ['easy', 'medium'] :
+        userLevel === 'intermediate' ? ['medium', 'hard'] :
+        ['medium', 'hard'];
       
-      const quiz = await geminiEducationService.generateQuizQuestion(randomTopic, randomDifficulty, quizScore);
+      const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+      const randomDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
+      
+      console.log(`Generating ${randomDifficulty} quiz on ${randomTopic}`);
+      
+      const quizData = await geminiEducationService.generateQuizQuestion(
+        randomTopic, 
+        randomDifficulty, 
+        { 
+          questionsAnswered: quizScore.total,
+          correctAnswers: quizScore.correct,
+          userLevel 
+        }
+      );
+      
+      const quiz: QuizQuestion = {
+        ...quizData,
+        difficulty: randomDifficulty,
+        topic: randomTopic
+      };
+      
       setCurrentQuiz(quiz);
       setSelectedAnswer(null);
       setShowExplanation(false);
@@ -143,9 +195,19 @@ const EnhancedAIMentor: React.FC = () => {
     
     setShowExplanation(true);
     
+    // Adjust user level based on performance
+    if (quizScore.total >= 5) {
+      const accuracy = (quizScore.correct + (isCorrect ? 1 : 0)) / (quizScore.total + 1);
+      if (accuracy > 0.8 && userLevel === 'beginner') {
+        setUserLevel('intermediate');
+      } else if (accuracy > 0.85 && userLevel === 'intermediate') {
+        setUserLevel('advanced');
+      }
+    }
+    
     toast({
       title: isCorrect ? "🎉 Correct!" : "❌ Incorrect",
-      description: isCorrect ? "+10 XP earned!" : "Better luck next time!",
+      description: isCorrect ? "+10 XP earned!" : "Keep learning, you're improving!",
       variant: isCorrect ? "default" : "destructive"
     });
   };
@@ -173,6 +235,13 @@ const EnhancedAIMentor: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Badge className={`${
+                userLevel === 'beginner' ? 'bg-green-500/20 text-green-400' :
+                userLevel === 'intermediate' ? 'bg-yellow-500/20 text-yellow-400' :
+                'bg-red-500/20 text-red-400'
+              }`}>
+                {userLevel.charAt(0).toUpperCase() + userLevel.slice(1)}
+              </Badge>
               <Button
                 onClick={() => setActiveSection('chat')}
                 variant={activeSection === 'chat' ? 'default' : 'outline'}
@@ -258,8 +327,9 @@ const EnhancedAIMentor: React.FC = () => {
                   animate={{ opacity: 1 }}
                   className="flex justify-start"
                 >
-                  <div className="bg-gray-700 text-gray-100 p-3 rounded-lg">
+                  <div className="bg-gray-700 text-gray-100 p-3 rounded-lg flex items-center gap-2">
                     <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Aasakira is thinking...</span>
                   </div>
                 </motion.div>
               )}
@@ -319,6 +389,19 @@ const EnhancedAIMentor: React.FC = () => {
             {currentQuiz ? (
               <div className="space-y-4">
                 <div className="bg-gray-800/30 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge className="bg-purple-500/20 text-purple-400">
+                      {currentQuiz.topic}
+                    </Badge>
+                    <Badge className={`${
+                      currentQuiz.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
+                      currentQuiz.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-red-500/20 text-red-400'
+                    }`}>
+                      {currentQuiz.difficulty}
+                    </Badge>
+                  </div>
+                  
                   <h3 className="text-lg font-semibold text-white mb-4">
                     {currentQuiz.question}
                   </h3>

@@ -17,106 +17,49 @@ export class GeminiEducationService {
   private model;
 
   constructor() {
-    this.model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    this.model = genAI.getGenerativeModel({ 
+      model: 'gemini-pro',
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 1024,
+      }
+    });
   }
 
   async getAIResponse(prompt: string): Promise<string> {
     try {
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      console.error('Gemini API error:', error);
-      return "I'm having trouble connecting right now. Please try again in a moment.";
-    }
-  }
-
-  async explainConcept(concept: string, userLevel: 'beginner' | 'intermediate' | 'advanced' = 'intermediate'): Promise<AIExplanation> {
-    try {
-      const prompt = `You are Aasakira, an expert forex trading mentor specializing in Smart Money Concepts. 
-
-A ${userLevel} trader wants to understand: "${concept}"
-
-Provide a clear, practical explanation that includes:
-1. Simple definition in plain English
-2. How it works in real trading
-3. Visual example or scenario
-4. Common mistakes to avoid
-5. How professional traders use this
-
-Keep it engaging and practical. Use emojis where appropriate.
-
-Also suggest a visual prompt for chart generation at the end starting with "VISUAL:"`;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-
-      const visualMatch = text.match(/VISUAL:\s*(.+?)(?:\n|$)/i);
-      const visualPrompt = visualMatch ? visualMatch[1].trim() : null;
-      const cleanText = text.replace(/VISUAL:\s*.+/i, '').trim();
-
-      return {
-        explanation: cleanText,
-        concepts: this.extractConcepts(text),
-        visualPrompt: visualPrompt || undefined
-      };
-    } catch (error) {
-      console.error('Gemini API error:', error);
-      return {
-        explanation: "I'm having trouble connecting to my knowledge base right now. Please try asking about specific trading concepts like order blocks, liquidity sweeps, or market structure.",
-        concepts: []
-      };
-    }
-  }
-
-  async gradeTradeAnalysis(
-    entry: number, 
-    stopLoss: number, 
-    takeProfit: number, 
-    reasoning: string,
-    chartContext?: string
-  ): Promise<AIExplanation> {
-    try {
-      const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
+      console.log('Sending request to Gemini API...');
       
-      const prompt = `You are Aasakira, a professional forex trading mentor. Grade this trade analysis:
-
-TRADE SETUP:
-- Entry: ${entry}
-- Stop Loss: ${stopLoss}
-- Take Profit: ${takeProfit}
-- Risk/Reward Ratio: ${riskReward.toFixed(2)}:1
-- Trader's Reasoning: "${reasoning}"
-${chartContext ? `- Chart Context: ${chartContext}` : ''}
-
-Provide:
-1. Grade (1-10) with explanation
-2. What they did well
-3. What could be improved
-4. Smart Money Concepts analysis
-5. Risk management assessment
-
-Be encouraging but honest. Focus on education.`;
-
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-
-      const gradeMatch = text.match(/(?:grade|score).*?(\d+(?:\.\d+)?)/i);
-      const grade = gradeMatch ? parseFloat(gradeMatch[1]) : undefined;
-
-      return {
-        explanation: text,
-        grade,
-        concepts: this.extractConcepts(text)
-      };
+      
+      console.log('Received response from Gemini API');
+      
+      if (!text || text.trim().length === 0) {
+        throw new Error('Empty response from Gemini API');
+      }
+      
+      return text;
     } catch (error) {
-      console.error('Gemini grading error:', error);
-      return {
-        explanation: "Unable to analyze your trade right now. Make sure your entry, stop loss, and take profit levels make sense with current market structure.",
-        concepts: []
-      };
+      console.error('Gemini API error:', error);
+      
+      // Provide a helpful fallback response based on common trading questions
+      const lowerPrompt = prompt.toLowerCase();
+      
+      if (lowerPrompt.includes('order block')) {
+        return "📈 **Order Blocks** are key levels where institutional traders have placed large orders. When price returns to these levels, it often acts as strong support or resistance. Think of them as 'footprints' left by smart money that we can follow for high-probability trades.";
+      } else if (lowerPrompt.includes('liquidity')) {
+        return "💧 **Liquidity** refers to areas where many stop losses are placed - like above/below swing highs and lows. Smart money often 'sweeps' these levels first before reversing, creating excellent entry opportunities for retail traders who understand this concept.";
+      } else if (lowerPrompt.includes('fair value gap')) {
+        return "⚡ **Fair Value Gap (FVG)** is an imbalance in the market shown by a gap between candles with no overlapping wicks. Price often returns to fill these gaps, making them powerful magnets for future price action.";
+      } else if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi')) {
+        return "👋 Hello! I'm here to help you master Smart Money Concepts and forex trading. Ask me about order blocks, liquidity sweeps, market structure, or any trading topic you'd like to learn!";
+      }
+      
+      return "I'm having trouble connecting to my knowledge base right now. Please try asking about specific trading concepts like:\n\n• Order Blocks\n• Liquidity Sweeps\n• Fair Value Gaps\n• Market Structure\n• Risk Management\n\nI'll do my best to help you learn!";
     }
   }
 
@@ -125,26 +68,35 @@ Be encouraging but honest. Focus on education.`;
     options: string[];
     correctAnswer: number;
     explanation: string;
-    visualPrompt?: string;
   }> {
     try {
-      const progressContext = userProgress ? `User has completed ${userProgress.questionsAnswered || 0} questions with ${userProgress.correctAnswers || 0} correct.` : '';
+      const progressContext = userProgress ? 
+        `User has completed ${userProgress.questionsAnswered || 0} questions with ${userProgress.correctAnswers || 0} correct. User level: ${userProgress.userLevel || 'intermediate'}.` : '';
       
-      const prompt = `Create a ${difficulty} forex trading quiz question about: ${topic}
+      const difficultyPrompts = {
+        easy: 'Create a basic, foundational question suitable for beginners',
+        medium: 'Create a practical question that requires understanding of concepts',
+        hard: 'Create an advanced question that requires deep understanding and application'
+      };
+      
+      const prompt = `${difficultyPrompts[difficulty]} about: ${topic}
 
 ${progressContext}
 
-Make it practical and relevant to real trading. Avoid repetitive questions.
+Create a multiple choice question with 4 options where:
+- Question tests practical trading knowledge
+- Options are clearly distinct and realistic
+- One option is clearly correct
+- Include detailed explanation of why the answer is correct
 
-Format your response as:
-QUESTION: [the question]
+Format your response EXACTLY as:
+QUESTION: [your question here]
 A) [option 1]
 B) [option 2] 
 C) [option 3]
 D) [option 4]
 ANSWER: [A, B, C, or D]
-EXPLANATION: [detailed explanation]
-VISUAL: [chart scenario description for image generation]`;
+EXPLANATION: [detailed explanation why this answer is correct and others are wrong]`;
 
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
@@ -153,8 +105,7 @@ VISUAL: [chart scenario description for image generation]`;
       const questionMatch = text.match(/QUESTION:\s*(.+?)(?=\n[A-D]\))/s);
       const optionsMatch = text.match(/([A-D]\)\s*.+?)(?=\n[A-D]\)|ANSWER:|$)/g);
       const answerMatch = text.match(/ANSWER:\s*([A-D])/);
-      const explanationMatch = text.match(/EXPLANATION:\s*(.+?)(?=VISUAL:|$)/s);
-      const visualMatch = text.match(/VISUAL:\s*(.+?)$/s);
+      const explanationMatch = text.match(/EXPLANATION:\s*(.+?)$/s);
 
       if (!questionMatch || !optionsMatch || !answerMatch || !explanationMatch) {
         throw new Error('Failed to parse quiz question');
@@ -167,22 +118,40 @@ VISUAL: [chart scenario description for image generation]`;
         question: questionMatch[1].trim(),
         options,
         correctAnswer,
-        explanation: explanationMatch[1].trim(),
-        visualPrompt: visualMatch ? visualMatch[1].trim() : undefined
+        explanation: explanationMatch[1].trim()
       };
     } catch (error) {
       console.error('Quiz generation error:', error);
-      return {
-        question: "What is the primary purpose of a stop loss in trading?",
-        options: [
-          "To guarantee profits",
-          "To limit potential losses", 
-          "To increase position size",
-          "To predict market direction"
-        ],
-        correctAnswer: 1,
-        explanation: "A stop loss is a risk management tool designed to limit potential losses by automatically closing a position when price moves against you."
+      
+      // Return a fallback quiz based on the topic
+      const fallbackQuizzes = {
+        'Order Blocks': {
+          question: "What is the primary characteristic of a valid order block in Smart Money Concepts?",
+          options: [
+            "It's always the highest or lowest candle on the chart",
+            "It's the last bullish/bearish candle before a strong move in the opposite direction",
+            "It must have a long wick to be considered valid",
+            "It only works on higher timeframes like daily or weekly"
+          ],
+          correctAnswer: 1,
+          explanation: "An order block is identified as the last bullish candle before a strong bearish move (or vice versa). This represents the final push by institutional traders before the reversal, making it a high-probability support/resistance level."
+        },
+        'Liquidity': {
+          question: "Where is liquidity typically found in the market?",
+          options: [
+            "Only at round numbers like 1.2000",
+            "Above swing highs and below swing lows where stop losses cluster",
+            "In the middle of trading ranges",
+            "Only during news events"
+          ],
+          correctAnswer: 1,
+          explanation: "Liquidity pools form where many traders place their stop losses - typically above swing highs (buy stops) and below swing lows (sell stops). Smart money often targets these areas before making their intended move."
+        }
       };
+      
+      const topicKey = Object.keys(fallbackQuizzes).find(key => topic.includes(key)) as keyof typeof fallbackQuizzes;
+      
+      return fallbackQuizzes[topicKey] || fallbackQuizzes['Order Blocks'];
     }
   }
 

@@ -34,7 +34,7 @@ class EnhancedSignalService {
     try {
       console.log(`🎯 Generating LIVE FX signal for ${randomPair}...`);
       
-      // Get real-time price
+      // Get real-time price using the working price service
       const priceData = await realTimePriceService.getLivePrice(randomPair);
       const { price: livePrice, source } = priceData;
       
