@@ -77,8 +77,8 @@ const ProfessionalTradingGame = () => {
         },
       });
 
-      // Fix: Use addSeries method with type and options
-      candlestickSeries.current = chart.current.addSeries('Candlestick', {
+      // Fix: Use addCandlestickSeries method instead of addSeries
+      candlestickSeries.current = chart.current.addCandlestickSeries({
         upColor: '#4ade80',
         downColor: '#f87171',
         borderVisible: false,

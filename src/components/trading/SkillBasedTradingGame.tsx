@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -79,7 +78,6 @@ const SkillBasedTradingGame = () => {
 
   const { toast } = useToast();
 
-  // Generate realistic historical chart data
   const generateChartData = (pair: string): CandlestickData[] => {
     const data: CandlestickData[] = [];
     let basePrice = pair === 'EURUSD' ? 1.0850 : pair === 'XAUUSD' ? 2050.50 : 147.25;
@@ -103,7 +101,6 @@ const SkillBasedTradingGame = () => {
     return data;
   };
 
-  // Initialize chart
   useEffect(() => {
     if (chartRef.current && gameMode === 'game') {
       chart.current = createChart(chartRef.current, {
@@ -119,7 +116,7 @@ const SkillBasedTradingGame = () => {
         height: 400,
       });
 
-      candleSeries.current = chart.current.addSeries('Candlestick', {
+      candleSeries.current = chart.current.addCandlestickSeries({
         upColor: '#4ade80',
         downColor: '#f87171',
         borderVisible: false,
@@ -135,7 +132,6 @@ const SkillBasedTradingGame = () => {
     }
   }, [gameMode]);
 
-  // Update chart data
   useEffect(() => {
     if (candleSeries.current && currentMatch) {
       const data = generateChartData(currentMatch.pair);
@@ -188,7 +184,6 @@ const SkillBasedTradingGame = () => {
 
     setCurrentMatch(prev => prev ? { ...prev, playerPrediction } : null);
     
-    // Simulate game resolution after 3 seconds
     setTimeout(() => {
       resolveMatch(playerPrediction);
     }, 3000);
@@ -197,11 +192,9 @@ const SkillBasedTradingGame = () => {
   const resolveMatch = (playerPrediction: TradePredicton) => {
     if (!currentMatch) return;
 
-    // Simulate price movement and calculate results
     const priceMove = (Math.random() - 0.5) * 0.02; // ±2% movement
     const finalPrice = currentPrice * (1 + priceMove);
     
-    // Calculate accuracy score based on how close predictions were
     const directionCorrect = (priceMove > 0 && playerPrediction.direction === 'long') || 
                            (priceMove < 0 && playerPrediction.direction === 'short');
     
@@ -221,7 +214,6 @@ const SkillBasedTradingGame = () => {
       xpGained
     } : null);
 
-    // Update user stats
     setUserStats(prev => ({
       ...prev,
       xp: prev.xp + xpGained,
@@ -248,7 +240,6 @@ const SkillBasedTradingGame = () => {
   if (gameMode === 'menu') {
     return (
       <div className="space-y-6">
-        {/* User Stats */}
         <Card className="glass-card border-purple-500/20">
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-purple-400">
@@ -281,7 +272,6 @@ const SkillBasedTradingGame = () => {
           </CardContent>
         </Card>
 
-        {/* Game Modes */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="glass-card border-red-500/20 hover:border-red-500/40 transition-colors cursor-pointer">
             <CardHeader>
@@ -324,7 +314,6 @@ const SkillBasedTradingGame = () => {
           </Card>
         </div>
 
-        {/* Leaderboard */}
         <Card className="glass-card border-yellow-500/20">
           <CardHeader>
             <CardTitle className="text-yellow-400 flex items-center">
@@ -391,7 +380,6 @@ const SkillBasedTradingGame = () => {
   if (gameMode === 'game' && currentMatch) {
     return (
       <div className="space-y-6">
-        {/* Match Info */}
         <Card className="glass-card border-green-500/20">
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-white">
@@ -420,7 +408,6 @@ const SkillBasedTradingGame = () => {
           </CardContent>
         </Card>
 
-        {/* Trading Interface */}
         <Card className="glass-card border-blue-500/20">
           <CardHeader>
             <CardTitle className="text-blue-400">Your Trade Prediction</CardTitle>
