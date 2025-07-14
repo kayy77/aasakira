@@ -28,7 +28,7 @@ const ProfessionalTradingGame = () => {
       },
     });
 
-    const candlestickSeries = chart.addSeries('Candlestick', {
+    const candlestickSeries = chart.addCandlestickSeries({
       upColor: '#26a69a',
       downColor: '#ef5350',
       borderVisible: false,
