@@ -3,8 +3,31 @@ import React from 'react';
 import { ArrowRight, Zap, Target, TrendingUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Hero = () => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const handleStartTrading = () => {
+    if (!isAuthenticated) {
+      // Show login dialog by navigating to a route that triggers auth
+      navigate('/education'); // This will trigger AuthGuard to show login
+    } else {
+      navigate('/education');
+    }
+  };
+
+  const handleViewLiveDemo = () => {
+    if (!isAuthenticated) {
+      // Show login dialog by navigating to a route that triggers auth
+      navigate('/signals'); // This will trigger AuthGuard to show login
+    } else {
+      navigate('/signals');
+    }
+  };
+
   const stats = [
     { label: 'Signal Accuracy', value: '95%', icon: Target },
     { label: 'Active Users', value: '10K+', icon: TrendingUp },
@@ -44,6 +67,7 @@ const Hero = () => {
         <div className="mb-16 flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{animationDelay: '0.2s'}}>
           <Button 
             size="lg" 
+            onClick={handleStartTrading}
             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-4 text-lg hover-lift cyber-glow"
           >
             Start Trading Now
@@ -52,6 +76,7 @@ const Hero = () => {
           <Button 
             size="lg" 
             variant="outline" 
+            onClick={handleViewLiveDemo}
             className="border-white/20 text-white hover:bg-white/10 px-8 py-4 text-lg hover-glow"
           >
             View Live Demo
