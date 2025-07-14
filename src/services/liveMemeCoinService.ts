@@ -194,7 +194,7 @@ class LiveMemeCoinService {
     return `${Math.floor(hours / 24)} days ago`;
   }
 
-  private generateMockCoins(): LiveMemeCoinCoin[] {
+  private generateMockCoins(): LiveMemeCoin[] {
     const names = ['PepeCoin Elite', 'DogeMax Pro', 'ShibaElite+', 'FlokiMoon X', 'SafeRocket Ultra'];
     
     return names.map((name, i) => ({

@@ -11,10 +11,6 @@ import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
 const Education = () => {
   const navigate = useNavigate();
 
-  const handleFeatureUse = () => {
-    console.log('Education feature used');
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative">
       <CherryBlossomBackground />
@@ -78,7 +74,7 @@ const Education = () => {
           </div>
 
           {/* Main Education Interface */}
-          <EnhancedAIMentor onFeatureUse={handleFeatureUse} />
+          <EnhancedAIMentor />
         </div>
       </div>
     </div>
