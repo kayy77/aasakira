@@ -24,7 +24,7 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const { login, signup, isLoading } = useAuth();
+  const { signIn, signUp, isLoading } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,23 +39,25 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
       return;
     }
 
-    let success = false;
-    if (isSignUp) {
-      success = await signup(username, email, password);
-    } else {
-      success = await login(username, password);
-    }
-    
-    if (success) {
-      toast({
-        title: isSignUp ? "Welcome!" : "Welcome back!",
-        description: isSignUp ? "Your account has been created successfully" : "You've successfully logged in to AASAKIRA",
-      });
-      onOpenChange(false);
-    } else {
+    try {
+      if (isSignUp) {
+        await signUp(email, password);
+        toast({
+          title: "Welcome!",
+          description: "Your account has been created successfully. Please check your email for confirmation.",
+        });
+      } else {
+        await signIn(username, password);
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully logged in to AASAKIRA",
+        });
+        onOpenChange(false);
+      }
+    } catch (error: any) {
       toast({
         title: isSignUp ? "Signup Failed" : "Login Failed",
-        description: isSignUp ? "Failed to create account. Please try again." : "Invalid username or password",
+        description: error.message || "An error occurred",
         variant: "destructive"
       });
     }
@@ -107,12 +109,14 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-gray-300">Username</Label>
+              <Label htmlFor="username" className="text-gray-300">
+                {isSignUp ? 'Username' : 'Email'}
+              </Label>
               <div className="relative">
                 <Input
                   id="username"
-                  type="text"
-                  placeholder="Enter your username"
+                  type={isSignUp ? "text" : "email"}
+                  placeholder={isSignUp ? "Enter your username" : "Enter your email"}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pr-10"
@@ -184,7 +188,7 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
           </div>
 
           <div className="mt-4 text-xs text-center text-gray-500">
-            Demo: Use any username/password. Add "premium" to username for premium features.
+            Demo: Use any email/password combination to test the system
           </div>
         </div>
       </DialogContent>

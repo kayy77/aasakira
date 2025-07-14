@@ -10,7 +10,6 @@ interface UserData extends User {
   memeScansUsedToday?: number;
   mentorMessagesUsedToday?: number;
   resetAt?: string;
-  // Add compatibility properties
   username?: string;
   avatar?: string;
   preferences?: any;
@@ -21,21 +20,17 @@ interface UserData extends User {
 interface AuthContextType {
   user: UserData | null;
   loading: boolean;
-  // Add compatibility properties
   isAuthenticated: boolean;
   isLoading: boolean;
-  // Methods
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  // Compatibility methods
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (data: any) => Promise<void>;
   upgradeToPremium: () => Promise<void>;
-  // Usage methods
   canUseFeature: (feature: 'signals' | 'memeScans' | 'mentorMessages') => boolean;
   incrementUsage: (feature: 'signals' | 'memeScans' | 'mentorMessages') => void;
   getRemainingUsage: (feature: 'signals' | 'memeScans' | 'mentorMessages') => number;
@@ -135,6 +130,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`
+      }
     });
     if (error) throw error;
     
