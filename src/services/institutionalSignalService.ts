@@ -1,4 +1,5 @@
 import { marketDataService } from './marketDataService';
+import { enhancedPriceService, type PriceData } from './enhancedPriceService';
 
 interface InstitutionalSignal {
   id: string;
@@ -17,6 +18,9 @@ interface InstitutionalSignal {
   confidence: 'INSTITUTIONAL' | 'HIGH' | 'MEDIUM';
   session: string;
   timeframe: string;
+  priceSource: string;
+  priceTimestamp: string;
+  priceAccuracy: 'VERIFIED' | 'WARNING' | 'FALLBACK';
 }
 
 interface FilterCriteria {
@@ -60,21 +64,35 @@ class InstitutionalSignalService {
     }
 
     try {
-      const marketData = await marketDataService.fetchMarketData(selectedPair);
-      const price = marketData.currentPrice;
-      const analysis = this.performInstitutionalAnalysis(selectedPair, price);
+      // ✅ FETCH LIVE PRICE WITH FALLBACK CHAIN
+      console.log(`🎯 Fetching LIVE price for ${selectedPair} using priority API stack...`);
+      const priceData = await this.fetchLivePriceWithValidation(selectedPair);
       
-      // Must pass at least 3 filters
-      if (analysis.filtersPassedCount < this.MIN_FILTERS_REQUIRED) {
+      if (!priceData) {
+        console.log(`❌ Failed to get valid price for ${selectedPair}, skipping signal`);
         return null;
       }
 
-      // Generate signal with institutional logic
-      const signal = this.createInstitutionalSignal(selectedPair, price, analysis);
+      // Validate price accuracy before proceeding
+      if (priceData.accuracy === 'FALLBACK') {
+        console.log(`⚠️ Using fallback price for ${selectedPair}, signal marked as lower confidence`);
+      }
+
+      const analysis = this.performInstitutionalAnalysis(selectedPair, priceData.price);
+      
+      // Must pass at least 3 filters
+      if (analysis.filtersPassedCount < this.MIN_FILTERS_REQUIRED) {
+        console.log(`❌ Signal for ${selectedPair} failed filter requirements: ${analysis.filtersPassedCount}/6`);
+        return null;
+      }
+
+      // Generate signal with institutional logic and live price data
+      const signal = this.createInstitutionalSignal(selectedPair, priceData, analysis);
       
       if (signal) {
         this.lastSignalTime[selectedPair] = new Date();
         this.signals.push(signal);
+        console.log(`✅ Generated INSTITUTIONAL signal for ${selectedPair} using ${priceData.source} @ ${priceData.price}`);
         return signal;
       }
 
@@ -83,6 +101,46 @@ class InstitutionalSignalService {
       console.error('Error generating institutional signal:', error);
       return null;
     }
+  }
+
+  private async fetchLivePriceWithValidation(symbol: string): Promise<PriceData & { accuracy: 'VERIFIED' | 'WARNING' | 'FALLBACK' } | null> {
+    try {
+      // Try enhanced price service with multiple APIs
+      const priceData = await enhancedPriceService.getLivePrice(symbol);
+      
+      // Validate price accuracy
+      const accuracy = this.validatePriceAccuracy(priceData, symbol);
+      
+      console.log(`💰 Live price for ${symbol}: ${priceData.price} from ${priceData.source} (${accuracy})`);
+      
+      return {
+        ...priceData,
+        accuracy
+      };
+    } catch (error) {
+      console.error(`❌ Failed to fetch live price for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  private validatePriceAccuracy(priceData: PriceData, symbol: string): 'VERIFIED' | 'WARNING' | 'FALLBACK' {
+    // Check if price source is reliable
+    if (priceData.source === 'Enhanced Fallback') {
+      return 'FALLBACK';
+    }
+
+    // Check price freshness (within last 30 seconds)
+    const priceAge = Date.now() - priceData.timestamp;
+    if (priceAge > 30000) { // 30 seconds
+      return 'WARNING';
+    }
+
+    // Price from reliable APIs
+    if (['TwelveData', 'Polygon', 'Deriv', 'CoinGecko'].includes(priceData.source)) {
+      return 'VERIFIED';
+    }
+
+    return 'WARNING';
   }
 
   private performInstitutionalAnalysis(pair: string, price: number) {
@@ -270,7 +328,7 @@ class InstitutionalSignalService {
     return reasons[Math.floor(Math.random() * reasons.length)];
   }
 
-  private createInstitutionalSignal(pair: string, price: number, analysis: any): InstitutionalSignal | null {
+  private createInstitutionalSignal(pair: string, priceData: PriceData & { accuracy: 'VERIFIED' | 'WARNING' | 'FALLBACK' }, analysis: any): InstitutionalSignal | null {
     // Determine direction based on filters (simplified logic)
     const bullishFilters = ['Break of Structure (BOS)', 'Volume Spike', 'RSI Divergence'];
     const bearishFilters = ['Liquidity Sweep', 'Fair Value Gap (FVG)'];
@@ -280,7 +338,7 @@ class InstitutionalSignalService {
     
     const direction: 'buy' | 'sell' = bullishCount >= bearishCount ? 'buy' : 'sell';
     
-    // Calculate institutional-grade levels
+    // Calculate institutional-grade levels using LIVE PRICE
     const pipValue = this.getPipValue(pair);
     const atr = 30 + Math.random() * 40; // Simulated ATR in pips
     
@@ -291,7 +349,7 @@ class InstitutionalSignalService {
     const rrRatio = this.MIN_RISK_REWARD + Math.random() * 2; // 2.0-4.0 RR
     const tpDistance = stopDistance * rrRatio;
     
-    const entry = price;
+    const entry = priceData.price; // Use LIVE price
     const stopLoss = direction === 'buy' 
       ? entry - (stopDistance * pipValue)
       : entry + (stopDistance * pipValue);
@@ -314,7 +372,10 @@ class InstitutionalSignalService {
       confidence: analysis.filtersPassedCount >= 5 ? 'INSTITUTIONAL' : 
                   analysis.filtersPassedCount >= 4 ? 'HIGH' : 'MEDIUM',
       session: this.getCurrentSession(),
-      timeframe: '15M/5M'
+      timeframe: '15M/5M',
+      priceSource: priceData.source,
+      priceTimestamp: new Date(priceData.timestamp).toISOString(),
+      priceAccuracy: priceData.accuracy
     };
   }
 
@@ -366,42 +427,49 @@ class InstitutionalSignalService {
     return recentSignals.some(s => s.direction !== direction);
   }
 
-  // Real-time signal validation
+  // Real-time signal validation using LIVE PRICES
   async validateSignalRealtime(signalId: string): Promise<boolean> {
     const signal = this.signals.find(s => s.id === signalId);
     if (!signal) return false;
 
     try {
-      const marketData = await marketDataService.fetchMarketData(signal.pair);
-      const currentPrice = marketData.currentPrice;
+      // Use enhanced price service for validation
+      const priceData = await enhancedPriceService.getLivePrice(signal.pair);
+      const currentPrice = priceData.price;
       const entry = parseFloat(signal.entry);
       const sl = parseFloat(signal.stop_loss);
       const tp = parseFloat(signal.take_profit);
+      
+      console.log(`🔍 Validating signal ${signalId} for ${signal.pair}: Current=${currentPrice}, Entry=${entry}, SL=${sl}, TP=${tp}`);
       
       // Check if TP or SL hit
       if (signal.direction === 'buy') {
         if (currentPrice >= tp) {
           signal.status = 'HIT_TP';
+          console.log(`✅ Signal ${signalId} HIT TAKE PROFIT at ${currentPrice}`);
           return true;
         }
         if (currentPrice <= sl) {
           signal.status = 'HIT_SL';
+          console.log(`❌ Signal ${signalId} HIT STOP LOSS at ${currentPrice}`);
           return false;
         }
       } else {
         if (currentPrice <= tp) {
           signal.status = 'HIT_TP';
+          console.log(`✅ Signal ${signalId} HIT TAKE PROFIT at ${currentPrice}`);
           return true;
         }
         if (currentPrice >= sl) {
           signal.status = 'HIT_SL';
+          console.log(`❌ Signal ${signalId} HIT STOP LOSS at ${currentPrice}`);
           return false;
         }
       }
 
       return true; // Still active
     } catch (error) {
-      console.error('Error validating signal:', error);
+      console.error('Error validating signal with live prices:', error);
       return false;
     }
   }

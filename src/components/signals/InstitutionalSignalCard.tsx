@@ -15,7 +15,11 @@ import {
   Crown,
   Brain,
   CheckCircle2,
-  Building2
+  Building2,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Wifi
 } from 'lucide-react';
 import type { InstitutionalSignal } from '@/services/institutionalSignalService';
 
@@ -92,6 +96,32 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
         </CardHeader>
         
         <CardContent className="space-y-4">
+          {/* Live Price Source Display */}
+          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Wifi className="w-4 h-4 text-blue-400" />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-blue-400">
+                  Live Price: {signal.priceSource}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {new Date(signal.priceTimestamp).toLocaleString()}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {signal.priceAccuracy === 'VERIFIED' && <CheckCircle className="w-4 h-4 text-green-400" />}
+              {signal.priceAccuracy === 'WARNING' && <AlertTriangle className="w-4 h-4 text-yellow-400" />}
+              {signal.priceAccuracy === 'FALLBACK' && <XCircle className="w-4 h-4 text-red-400" />}
+              <Badge variant={
+                signal.priceAccuracy === 'VERIFIED' ? 'default' : 
+                signal.priceAccuracy === 'WARNING' ? 'secondary' : 'destructive'
+              } className="text-xs">
+                {signal.priceAccuracy}
+              </Badge>
+            </div>
+          </div>
+
           {/* Filters Passed */}
           <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-3">
@@ -203,6 +233,48 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
                     <p className="text-gray-300 text-sm">{reason}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Price Source Info */}
+            <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-4">
+              <h4 className="text-blue-400 font-medium mb-3 flex items-center gap-2">
+                <Wifi className="w-4 h-4" />
+                Live Price Data
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Source:</span>
+                    <span className="text-blue-400 font-medium">{signal.priceSource}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Accuracy:</span>
+                    <div className="flex items-center gap-1">
+                      {signal.priceAccuracy === 'VERIFIED' && <CheckCircle className="w-3 h-3 text-green-400" />}
+                      {signal.priceAccuracy === 'WARNING' && <AlertTriangle className="w-3 h-3 text-yellow-400" />}
+                      {signal.priceAccuracy === 'FALLBACK' && <XCircle className="w-3 h-3 text-red-400" />}
+                      <span className={
+                        signal.priceAccuracy === 'VERIFIED' ? 'text-green-400' :
+                        signal.priceAccuracy === 'WARNING' ? 'text-yellow-400' : 'text-red-400'
+                      }>
+                        {signal.priceAccuracy}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Fetched:</span>
+                    <span className="text-gray-300 text-xs">
+                      {new Date(signal.priceTimestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Entry:</span>
+                    <span className="text-white font-mono font-bold">{signal.entry}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
