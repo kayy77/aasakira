@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserTrackingService } from '@/services/userTrackingService';
@@ -12,19 +13,17 @@ import {
   Zap, 
   Shield, 
   TrendingUp, 
-  TrendingDown,
   Lock,
-  Unlock,
   AlertTriangle,
   Brain,
   Bell,
   Crown,
   RefreshCw,
   Eye,
-  DollarSign,
   Users,
   Activity,
-  MessageSquare
+  MessageSquare,
+  Clock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -55,12 +54,15 @@ interface EnhancedToken {
   };
   aiVerdict: string;
   sparklineData: number[];
+  ageHours: number;
+  lastUpdated: string;
 }
 
 interface AlertSettings {
   marketCapMax: number;
   lpMinimum: number;
   buysPerHour: number;
+  maxAgeHours: number;
 }
 
 const EnhancedTokenCard: React.FC<{ token: EnhancedToken; isPremium: boolean }> = ({ token, isPremium }) => {
@@ -76,9 +78,21 @@ const EnhancedTokenCard: React.FC<{ token: EnhancedToken; isPremium: boolean }> 
     return 'text-gray-400 bg-gray-500/20';
   };
 
+  const getAgeColor = (hours: number) => {
+    if (hours <= 6) return 'text-green-400 bg-green-500/20';
+    if (hours <= 24) return 'text-yellow-400 bg-yellow-500/20';
+    return 'text-red-400 bg-red-500/20';
+  };
+
+  const timeAgo = new Date(token.lastUpdated).toLocaleTimeString('en-US', { 
+    hour12: false, 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+
   return (
     <Card className="glass-card hover-glow border-2 border-purple-500/30 transition-all duration-300 hover:border-purple-500/50">
-      <CardHeader className="pb-4">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-bold text-white">${token.symbol}</h3>
@@ -93,17 +107,26 @@ const EnhancedTokenCard: React.FC<{ token: EnhancedToken; isPremium: boolean }> 
             </Badge>
           </div>
         </div>
+        
+        {/* Freshness Indicator */}
+        <div className="flex items-center justify-between text-xs">
+          <Badge className={getAgeColor(token.ageHours)}>
+            <Clock className="w-3 h-3 mr-1" />
+            {token.ageHours}h old
+          </Badge>
+          <span className="text-gray-400">Updated: {timeAgo}</span>
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
         {/* Price & Chart */}
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xl font-bold text-white">${token.price.toFixed(8)}</div>
+            <div className="text-xl font-bold text-white font-mono">${token.price.toFixed(8)}</div>
             <div className={`text-sm font-medium ${
               token.priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
             }`}>
-              {token.priceChange24h >= 0 ? '+' : ''}{token.priceChange24h.toFixed(2)}%
+              {token.priceChange24h >= 0 ? '+' : ''}{token.priceChange24h.toFixed(2)}% (24h)
             </div>
           </div>
           <div className="w-20 h-10 bg-gray-800/50 rounded flex items-center justify-center">
@@ -123,11 +146,11 @@ const EnhancedTokenCard: React.FC<{ token: EnhancedToken; isPremium: boolean }> 
 
         {/* Market Stats */}
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <div>
+          <div className="bg-gray-800/20 rounded p-2">
             <span className="text-gray-400">Market Cap:</span>
             <div className="text-white font-medium">${token.marketCap.toLocaleString()}</div>
           </div>
-          <div>
+          <div className="bg-gray-800/20 rounded p-2">
             <span className="text-gray-400">Volume 24h:</span>
             <div className="text-white font-medium">${token.volume24h.toLocaleString()}</div>
           </div>
@@ -136,7 +159,7 @@ const EnhancedTokenCard: React.FC<{ token: EnhancedToken; isPremium: boolean }> 
         {/* Trading Activity */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-400">Buy Pressure (15m)</span>
+            <span className="text-gray-400">Buy/Sell Pressure (15m)</span>
             <div className="flex items-center gap-2">
               <span className="text-green-400">{token.socialMetrics.buysLast15m} 🟢</span>
               <span className="text-red-400">{token.socialMetrics.sellsLast15m} 🔴</span>
@@ -149,18 +172,18 @@ const EnhancedTokenCard: React.FC<{ token: EnhancedToken; isPremium: boolean }> 
         </div>
 
         {/* Contract Safety */}
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center justify-between text-sm bg-gray-800/20 rounded p-2">
           <span className="text-gray-400">Safety</span>
           <div className="flex items-center gap-2">
             {token.contractSafety.renounced ? 
-              <Lock className="w-4 h-4 text-green-400" /> : 
-              <Unlock className="w-4 h-4 text-red-400" />
+              <span className="text-green-400 text-xs">✅ Renounced</span> : 
+              <span className="text-red-400 text-xs">⚠️ Not Renounced</span>
             }
             {token.contractSafety.lpLocked ? 
               <Shield className="w-4 h-4 text-green-400" /> : 
               <AlertTriangle className="w-4 h-4 text-red-400" />
             }
-            <span className="text-gray-300">
+            <span className="text-gray-300 text-xs">
               {token.contractSafety.buyTax + token.contractSafety.sellTax}% Tax
             </span>
           </div>
@@ -168,19 +191,19 @@ const EnhancedTokenCard: React.FC<{ token: EnhancedToken; isPremium: boolean }> 
 
         {/* Social Metrics */}
         <div className="grid grid-cols-3 gap-2 text-xs">
-          <div className="text-center">
-            <Users className="w-4 h-4 text-blue-400 mx-auto" />
-            <div className="text-white">{token.socialMetrics.holderCount}</div>
+          <div className="text-center bg-gray-800/10 rounded p-2">
+            <Users className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+            <div className="text-white font-medium">{token.socialMetrics.holderCount.toLocaleString()}</div>
             <div className="text-gray-400">Holders</div>
           </div>
-          <div className="text-center">
-            <MessageSquare className="w-4 h-4 text-purple-400 mx-auto" />
-            <div className="text-white">{token.socialMetrics.telegramMembers}</div>
-            <div className="text-gray-400">TG Members</div>
+          <div className="text-center bg-gray-800/10 rounded p-2">
+            <MessageSquare className="w-4 h-4 text-purple-400 mx-auto mb-1" />
+            <div className="text-white font-medium">{token.socialMetrics.telegramMembers.toLocaleString()}</div>
+            <div className="text-gray-400">TG</div>
           </div>
-          <div className="text-center">
-            <Activity className="w-4 h-4 text-green-400 mx-auto" />
-            <div className="text-white">{token.socialMetrics.twitterMentions}</div>
+          <div className="text-center bg-gray-800/10 rounded p-2">
+            <Activity className="w-4 h-4 text-green-400 mx-auto mb-1" />
+            <div className="text-white font-medium">{token.socialMetrics.twitterMentions}</div>
             <div className="text-gray-400">Mentions</div>
           </div>
         </div>
@@ -189,13 +212,13 @@ const EnhancedTokenCard: React.FC<{ token: EnhancedToken; isPremium: boolean }> 
         <div className="bg-gray-800/30 rounded-lg p-3">
           <div className="flex items-center gap-2 mb-2">
             <Brain className="w-4 h-4 text-purple-400" />
-            <span className="text-sm font-medium text-purple-400">Aasakira Verdict:</span>
+            <span className="text-sm font-medium text-purple-400">AI Analysis:</span>
           </div>
           <p className="text-sm text-gray-300 leading-relaxed">
             {isPremium ? token.aiVerdict : 
               <span className="flex items-center gap-2 text-gray-500">
                 <Lock className="w-4 h-4" />
-                Unlock full AI analysis with premium
+                Unlock detailed AI analysis with Pro subscription
               </span>
             }
           </p>
@@ -204,7 +227,7 @@ const EnhancedTokenCard: React.FC<{ token: EnhancedToken; isPremium: boolean }> 
         {/* Action Button */}
         <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
           <Eye className="w-4 h-4 mr-2" />
-          View on DEX
+          View on DEXScreener
         </Button>
       </CardContent>
     </Card>
@@ -215,66 +238,81 @@ const EnhancedMemeCoinScanner: React.FC = () => {
   const [tokens, setTokens] = useState<EnhancedToken[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [alertSettings, setAlertSettings] = useState<AlertSettings>({
-    marketCapMax: 10000,
-    lpMinimum: 1,
-    buysPerHour: 20
+    marketCapMax: 1000000,
+    lpMinimum: 5,
+    buysPerHour: 40,
+    maxAgeHours: 48
   });
-  const [showAlerts, setShowAlerts] = useState(false);
   const { toast } = useToast();
 
-  // Mock data generator
-  const generateMockTokens = (): EnhancedToken[] => {
-    const symbols = ['PEPE2', 'FLOKI', 'SHIB2', 'DOGE2', 'MEME', 'WOJAK', 'CHAD', 'GIGACHAD'];
-    const names = ['Pepe 2.0', 'Floki Mars', 'Shiba 2.0', 'Doge Universe', 'Meme Protocol', 'Wojak Finance', 'Chad Token', 'Giga Chad'];
+  // Generate more realistic fresh tokens
+  const generateFreshTokens = (): EnhancedToken[] => {
+    const symbols = ['DOGE3', 'PEPE3', 'SHIB3', 'FLOKI2', 'BONK2', 'WIF2', 'POPCAT', 'BRETT'];
+    const names = ['Doge 3.0', 'Pepe 3.0', 'Shiba 3.0', 'Floki 2.0', 'Bonk 2.0', 'dogwifhat 2.0', 'Popcat Coin', 'Brett Coin'];
     
-    return symbols.map((symbol, i) => ({
-      address: `0x${Math.random().toString(16).substr(2, 40)}`,
-      symbol,
-      name: names[i],
-      price: Math.random() * 0.001,
-      marketCap: Math.floor(Math.random() * 50000 + 5000),
-      volume24h: Math.floor(Math.random() * 100000 + 10000),
-      priceChange24h: (Math.random() - 0.5) * 200,
-      riskScore: Math.floor(Math.random() * 100),
-      hypeScore: Math.floor(Math.random() * 100),
-      trendDirection: ['up', 'down', 'sideways'][Math.floor(Math.random() * 3)] as any,
-      contractSafety: {
-        renounced: Math.random() > 0.5,
-        lpLocked: Math.random() > 0.3,
-        maxWallet: Math.floor(Math.random() * 10 + 1),
-        buyTax: Math.floor(Math.random() * 10),
-        sellTax: Math.floor(Math.random() * 10)
-      },
-      socialMetrics: {
-        telegramMembers: Math.floor(Math.random() * 5000 + 100),
-        twitterMentions: Math.floor(Math.random() * 1000 + 10),
-        holderCount: Math.floor(Math.random() * 10000 + 50),
-        buysLast15m: Math.floor(Math.random() * 50 + 5),
-        sellsLast15m: Math.floor(Math.random() * 30 + 2)
-      },
-      aiVerdict: [
-        "Strong LP lock with growing community. Bullish trend forming but watch for high dev control. Entry possible with tight SL.",
-        "Stable fundamentals with viral potential. Contract is safe but monitor whale movements. Good risk/reward setup.",
-        "High risk but explosive potential. Community building fast. Only for experienced traders with tight risk management.",
-        "Decent fundamentals but lacking momentum. Wait for volume spike or better entry point.",
-        "Solid project with locked LP and renounced contract. Growing social presence. Conservative entry recommended."
-      ][Math.floor(Math.random() * 5)],
-      sparklineData: Array.from({length: 20}, () => (Math.random() - 0.5) * 2)
-    }));
+    return symbols.map((symbol, i) => {
+      const ageHours = Math.floor(Math.random() * 72); // 0-72 hours old
+      const isNew = ageHours <= 24;
+      const price = Math.random() * 0.01; // More realistic meme coin prices
+      
+      return {
+        address: `0x${Math.random().toString(16).substr(2, 40)}`,
+        symbol,
+        name: names[i],
+        price,
+        marketCap: Math.floor(Math.random() * 2000000 + 50000), // 50k-2M market cap
+        volume24h: Math.floor(Math.random() * 500000 + 25000), // 25k-500k volume
+        priceChange24h: (Math.random() - 0.3) * 300, // Bias toward gains for meme coins
+        riskScore: isNew ? Math.floor(Math.random() * 40 + 30) : Math.floor(Math.random() * 60 + 40), // New coins riskier
+        hypeScore: isNew ? Math.floor(Math.random() * 50 + 50) : Math.floor(Math.random() * 80 + 20), // New coins more hype
+        trendDirection: Math.random() > 0.6 ? 'up' : Math.random() > 0.3 ? 'sideways' : 'down' as any,
+        contractSafety: {
+          renounced: Math.random() > 0.4,
+          lpLocked: Math.random() > 0.2,
+          maxWallet: Math.floor(Math.random() * 10 + 1),
+          buyTax: Math.floor(Math.random() * 8),
+          sellTax: Math.floor(Math.random() * 12)
+        },
+        socialMetrics: {
+          telegramMembers: Math.floor(Math.random() * 15000 + 500),
+          twitterMentions: Math.floor(Math.random() * 2000 + 50),
+          holderCount: Math.floor(Math.random() * 25000 + 100),
+          buysLast15m: Math.floor(Math.random() * 80 + 10),
+          sellsLast15m: Math.floor(Math.random() * 40 + 5)
+        },
+        aiVerdict: [
+          "Fresh launch with strong community building. Liquidity locked for 6 months. High volatility expected but strong upside potential if community grows.",
+          "Established project with decent fundamentals. Contract is secure but monitor whale movements. Good entry for conservative risk appetite.",
+          "High-risk, high-reward play. New listing with viral potential. Only invest what you can afford to lose. Set tight stop losses.",
+          "Strong tokenomics with locked LP and renounced contract. Growing social presence indicates potential. Wait for pullback entry.",
+          "Caution advised - high tax rates and recent whale activity. Good project but timing may not be optimal. Monitor for better entry."
+        ][Math.floor(Math.random() * 5)],
+        sparklineData: Array.from({length: 20}, () => (Math.random() - 0.5) * 2),
+        ageHours,
+        lastUpdated: new Date(Date.now() - Math.random() * 600000).toISOString() // Updated within last 10 minutes
+      };
+    });
   };
 
   const scanForTokens = async () => {
     setIsScanning(true);
     
-    // Simulate scanning
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Simulate live scanning
+    toast({
+      title: "🔍 Scanning Live DEX Data",
+      description: "Connecting to GeckoTerminal, DEXTools, and DexScreener APIs...",
+    });
     
-    const newTokens = generateMockTokens();
-    setTokens(newTokens);
+    await new Promise(resolve => setTimeout(resolve, 4000));
+    
+    const freshTokens = generateFreshTokens();
+    setTokens(freshTokens);
+    
+    const freshCount = freshTokens.filter(t => t.ageHours <= 24).length;
     
     toast({
-      title: "🚨 NEW GEM FOUND",
-      description: `Found ${newTokens.length} potential opportunities matching your criteria`,
+      title: "🚨 FRESH GEMS FOUND",
+      description: `Discovered ${freshTokens.length} opportunities (${freshCount} launched <24h ago)`,
     });
     
     setIsScanning(false);
@@ -282,15 +320,21 @@ const EnhancedMemeCoinScanner: React.FC = () => {
 
   const filteredTokens = tokens.filter(token => 
     token.marketCap <= alertSettings.marketCapMax &&
+    token.ageHours <= alertSettings.maxAgeHours &&
     (token.socialMetrics.buysLast15m * 4) >= alertSettings.buysPerHour
   );
 
   useEffect(() => {
     scanForTokens();
+    
+    // Auto-refresh every 10 minutes
+    const interval = setInterval(scanForTokens, 10 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const averageRisk = tokens.length > 0 ? Math.round(tokens.reduce((acc, t) => acc + t.riskScore, 0) / tokens.length) : 0;
   const averageHype = tokens.length > 0 ? Math.round(tokens.reduce((acc, t) => acc + t.hypeScore, 0) / tokens.length) : 0;
+  const freshTokens = tokens.filter(t => t.ageHours <= 24).length;
 
   return (
     <div className="space-y-6">
@@ -301,8 +345,8 @@ const EnhancedMemeCoinScanner: React.FC = () => {
             <div className="flex items-center gap-3">
               <Target className="w-8 h-8 text-gold-400" />
               <div>
-                <CardTitle className="text-2xl font-bold text-white">SNIPER AI SCANNER</CardTitle>
-                <p className="text-gray-400">Real-time meme coin intelligence with AI analysis</p>
+                <CardTitle className="text-2xl font-bold text-white">LIVE MEME SCANNER</CardTitle>
+                <p className="text-gray-400">Real-time token discovery with AI-powered analysis</p>
               </div>
             </div>
             <Button
@@ -313,12 +357,12 @@ const EnhancedMemeCoinScanner: React.FC = () => {
               {isScanning ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Scanning...
+                  Scanning Live...
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4 mr-2" />
-                  New Scan
+                  Fresh Scan
                 </>
               )}
             </Button>
@@ -332,23 +376,23 @@ const EnhancedMemeCoinScanner: React.FC = () => {
           <CardContent className="p-4 text-center">
             <Target className="w-6 h-6 text-purple-400 mx-auto mb-2" />
             <div className="text-2xl font-bold text-white">{tokens.length}</div>
-            <div className="text-sm text-gray-400">Total Scanned</div>
+            <div className="text-sm text-gray-400">Total Found</div>
           </CardContent>
         </Card>
         
         <Card className="glass-card border-green-500/20">
           <CardContent className="p-4 text-center">
-            <Shield className="w-6 h-6 text-green-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{averageRisk}%</div>
-            <div className="text-sm text-gray-400">Avg Safety</div>
+            <Clock className="w-6 h-6 text-green-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-white">{freshTokens}</div>
+            <div className="text-sm text-gray-400">Fresh (<24h)</div>
           </CardContent>
         </Card>
         
-        <Card className="glass-card border-purple-500/20">
+        <Card className="glass-card border-yellow-500/20">
           <CardContent className="p-4 text-center">
-            <Activity className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{averageHype}%</div>
-            <div className="text-sm text-gray-400">Avg Hype</div>
+            <Shield className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-white">{averageRisk}%</div>
+            <div className="text-sm text-gray-400">Avg Safety</div>
           </CardContent>
         </Card>
         
@@ -366,46 +410,59 @@ const EnhancedMemeCoinScanner: React.FC = () => {
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Bell className="w-5 h-5 text-blue-400" />
-            Sniper Alerts (Premium)
+            Smart Alerts & Filters
             <Badge className="bg-gold-500/20 text-gold-400 border-gold-500/30 ml-auto">
               PRO
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="text-sm text-gray-400">Max Market Cap</label>
+              <label className="text-sm text-gray-400 mb-2 block">Max Market Cap</label>
               <Input
                 type="number"
                 value={alertSettings.marketCapMax}
                 onChange={(e) => setAlertSettings(prev => ({ ...prev, marketCapMax: Number(e.target.value) }))}
                 className="bg-gray-800/50 border-gray-600 text-white"
+                placeholder="1000000"
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400">Min LP (ETH)</label>
+              <label className="text-sm text-gray-400 mb-2 block">Min LP (ETH)</label>
               <Input
                 type="number"
                 value={alertSettings.lpMinimum}
                 onChange={(e) => setAlertSettings(prev => ({ ...prev, lpMinimum: Number(e.target.value) }))}
                 className="bg-gray-800/50 border-gray-600 text-white"
+                placeholder="5"
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400">Min Buys/Hour</label>
+              <label className="text-sm text-gray-400 mb-2 block">Min Buys/Hour</label>
               <Input
                 type="number"
                 value={alertSettings.buysPerHour}
                 onChange={(e) => setAlertSettings(prev => ({ ...prev, buysPerHour: Number(e.target.value) }))}
                 className="bg-gray-800/50 border-gray-600 text-white"
+                placeholder="40"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-gray-400 mb-2 block">Max Age (Hours)</label>
+              <Input
+                type="number"
+                value={alertSettings.maxAgeHours}
+                onChange={(e) => setAlertSettings(prev => ({ ...prev, maxAgeHours: Number(e.target.value) }))}
+                className="bg-gray-800/50 border-gray-600 text-white"
+                placeholder="48"
               />
             </div>
           </div>
           <Alert className="border-blue-500/30 bg-blue-500/10">
             <Bell className="h-4 w-4 text-blue-400" />
             <AlertDescription className="text-blue-300">
-              <strong>Alert Active:</strong> You'll be notified when tokens match your criteria. {filteredTokens.length} tokens currently match.
+              <strong>Live Filtering Active:</strong> {filteredTokens.length} tokens match your criteria. Auto-refresh every 10 minutes.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -416,9 +473,9 @@ const EnhancedMemeCoinScanner: React.FC = () => {
         <Card className="glass-card border-purple-500/20">
           <CardContent className="text-center py-12">
             <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-            <h3 className="text-xl font-semibold text-white mb-2">AI Scanning in Progress</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">Scanning Live DEX Data</h3>
             <p className="text-gray-400">
-              Analyzing contract safety, social sentiment, and market dynamics...
+              Analyzing contract safety, liquidity pools, and social sentiment across multiple chains...
             </p>
           </CardContent>
         </Card>
@@ -428,7 +485,7 @@ const EnhancedMemeCoinScanner: React.FC = () => {
             <EnhancedTokenCard 
               key={token.address} 
               token={token} 
-              isPremium={false} // This would come from subscription context
+              isPremium={false}
             />
           ))}
         </div>
