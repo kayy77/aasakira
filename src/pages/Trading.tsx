@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
-import ProfessionalTradingGame from '@/components/trading/ProfessionalTradingGame';
+import SkillBasedTradingGame from '@/components/trading/SkillBasedTradingGame';
 
 const Trading = () => {
   const navigate = useNavigate();
@@ -30,14 +30,14 @@ const Trading = () => {
 
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold gradient-text mb-4">
-              Professional Trading Arena
+              Skill-Based Trading Arena
             </h1>
             <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-              Face real market challenges with professional charts, AI analysis, and competitive scoring
+              Test your trading skills in real 1v1 duels with live charts, accurate predictions, and competitive ranking
             </p>
           </div>
 
-          <ProfessionalTradingGame />
+          <SkillBasedTradingGame />
         </div>
       </div>
     </div>
