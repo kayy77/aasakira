@@ -1,4 +1,3 @@
-
 interface PriceData {
   price: number;
   timestamp: number;
@@ -16,7 +15,7 @@ interface PriceAPI {
 class EnhancedPriceService {
   private cache = new Map<string, { data: PriceData; timestamp: number }>();
   private readonly CACHE_DURATION = 3000; // 3 seconds
-  private priceWatchers = new Map<string, number>();
+  private priceWatchers = new Map<string, NodeJS.Timeout>();
   private lastPrices = new Map<string, number>();
 
   // API Keys (these should be moved to environment variables in production)
@@ -84,7 +83,8 @@ class EnhancedPriceService {
       console.log(`📡 Trying Polygon for ${symbol} (${polygonSymbol})`);
       
       const response = await fetch(
-        `https://api.polygon.io/v2/aggs/ticker/${polygonSymbol}/prev?adjusted=true&apikey=${this.POLYGON_KEY}`
+        `https://api.polygon.io/v2/aggs/ticker/${polygonSymbol}/prev?adjusted=true&apikey=${this.POLYGON_KEY}`,
+        { cache: "no-store" }
       );
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -113,7 +113,11 @@ class EnhancedPriceService {
       console.log(`📡 Trying TwelveData for ${symbol} (${twelveSymbol})`);
       
       const response = await fetch(
-        `https://api.twelvedata.com/price?symbol=${twelveSymbol}&apikey=${this.TWELVE_DATA_KEY}`
+        `https://api.twelvedata.com/price?symbol=${twelveSymbol}&apikey=${this.TWELVE_DATA_KEY}`,
+        { 
+          cache: "no-store",
+          headers: { 'Cache-Control': 'no-cache' }
+        }
       );
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -141,7 +145,8 @@ class EnhancedPriceService {
       console.log(`📡 Trying CoinGecko for ${symbol} (${coinId})`);
       
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`
+        `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`,
+        { cache: "no-store" }
       );
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -266,7 +271,10 @@ class EnhancedPriceService {
   startPriceMonitoring(symbols: string[], intervalMs: number = 5000): void {
     symbols.forEach(symbol => {
       if (this.priceWatchers.has(symbol)) {
-        clearInterval(this.priceWatchers.get(symbol));
+        const existingInterval = this.priceWatchers.get(symbol);
+        if (existingInterval) {
+          clearTimeout(existingInterval);
+        }
       }
 
       const intervalId = setInterval(async () => {
@@ -275,7 +283,7 @@ class EnhancedPriceService {
         } catch (error) {
           console.error(`Error monitoring ${symbol}:`, error);
         }
-      }, intervalMs);
+      }, intervalMs) as NodeJS.Timeout;
 
       this.priceWatchers.set(symbol, intervalId);
       console.log(`👁️ Started price monitoring for ${symbol} (${intervalMs}ms interval)`);
@@ -287,14 +295,14 @@ class EnhancedPriceService {
     if (symbol) {
       const intervalId = this.priceWatchers.get(symbol);
       if (intervalId) {
-        clearInterval(intervalId);
+        clearTimeout(intervalId);
         this.priceWatchers.delete(symbol);
         console.log(`🛑 Stopped price monitoring for ${symbol}`);
       }
     } else {
       // Stop all monitoring
       this.priceWatchers.forEach((intervalId, symbol) => {
-        clearInterval(intervalId);
+        clearTimeout(intervalId);
         console.log(`🛑 Stopped price monitoring for ${symbol}`);
       });
       this.priceWatchers.clear();
