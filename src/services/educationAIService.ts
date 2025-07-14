@@ -8,56 +8,180 @@ interface AIResponse {
 class EducationAIService {
   private responses = [
     {
-      keywords: ['hello', 'hi', 'hey', 'greetings'],
-      response: "Hello! Welcome to Aasakira AI Mentor. I'm here to help you learn trading and improve your skills. What would you like to know about trading today?",
-      topics: ['Greeting', 'Welcome']
+      keywords: ['hello', 'hi', 'hey', 'greetings', 'welcome'],
+      response: `🎯 **Hello! Welcome to Aasakira AI Mentor!** 
+
+I'm here to help you become a professional trader. I can teach you:
+
+📈 **Smart Money Concepts** - Understanding institutional flow
+🛡️ **Risk Management** - Protecting your capital like a pro  
+🧠 **Trading Psychology** - Mastering your emotions
+📊 **Technical Analysis** - Reading charts like institutions
+⚡ **Market Structure** - Following the smart money
+
+What specific aspect of trading would you like to learn about today?`,
+      topics: ['Greeting', 'Welcome', 'Introduction']
     },
     {
-      keywords: ['support', 'resistance', 'level'],
-      response: "Support and resistance levels are crucial price points where buying or selling pressure tends to emerge. Support acts as a floor where price tends to bounce, while resistance acts as a ceiling where price tends to reverse. These levels are formed by previous price action and represent areas of significant trader interest.",
-      topics: ['Technical Analysis', 'Price Action']
+      keywords: ['trade', 'trading', 'how to trade', 'start trading'],
+      response: `📊 **Getting Started with Professional Trading**
+
+🎯 **Step-by-Step Trading Process:**
+
+1️⃣ **Market Analysis** - Identify trend direction on higher timeframes
+2️⃣ **Entry Setup** - Find confluence zones on lower timeframes  
+3️⃣ **Risk Management** - Set stop loss and position size BEFORE entering
+4️⃣ **Trade Management** - Let profits run, cut losses quickly
+5️⃣ **Review & Learn** - Journal every trade for continuous improvement
+
+💡 **Pro Tip:** Start with demo trading to practice without risk. Focus on process over profits - the money follows naturally when you master the process.
+
+What specific trading setup would you like me to explain?`,
+      topics: ['Trading Basics', 'Getting Started', 'Process']
     },
     {
-      keywords: ['risk', 'management', 'position', 'sizing'],
-      response: "Risk management is the foundation of successful trading. Never risk more than 1-2% of your account on any single trade. Use proper position sizing, set stop losses before entering trades, and maintain a risk-reward ratio of at least 1:2. Remember: protecting your capital is more important than making profits.",
-      topics: ['Risk Management', 'Money Management']
+      keywords: ['support', 'resistance', 'levels', 'key levels'],
+      response: `📊 **Support & Resistance - The Foundation of Trading**
+
+🎯 **What Are These Levels?**
+• **Support** = Price floor where buying pressure emerges
+• **Resistance** = Price ceiling where selling pressure appears
+• **Key Levels** = Areas where price historically reacted strongly
+
+🧠 **Smart Money Perspective:**
+Institutions use these levels to:
+• Accumulate positions at support
+• Distribute positions at resistance  
+• Create liquidity sweeps before real moves
+
+💡 **Trading These Levels:**
+✅ Wait for confirmation (don't blindly buy support)
+✅ Look for multiple touches = stronger level
+✅ Watch for volume confirmation
+✅ Use proper risk management
+
+Would you like me to explain how to identify these levels on charts?`,
+      topics: ['Technical Analysis', 'Support Resistance', 'Key Levels']
     },
     {
-      keywords: ['smart', 'money', 'institutional', 'liquidity'],
-      response: "Smart Money Concepts focus on understanding how institutional traders move the market. Look for liquidity sweeps, fair value gaps (FVGs), and order blocks. Institutions often create false breakouts to grab liquidity before moving price in the intended direction. Follow the smart money, not the retail crowd.",
-      topics: ['Smart Money Concepts', 'Market Structure']
+      keywords: ['risk', 'management', 'position', 'sizing', 'stop', 'loss'],
+      response: `🛡️ **Risk Management - Your Trading Lifeline**
+
+🎯 **The Golden Rules:**
+
+1️⃣ **Position Sizing**
+• Never risk more than 1-2% per trade
+• Use proper lot size calculation
+• Account size ÷ (stop loss in pips × pip value) = max lot size
+
+2️⃣ **Stop Loss Strategy**
+• Set stops at logical market structure levels
+• NOT arbitrary percentages or dollar amounts
+• Place beyond recent swing highs/lows
+
+3️⃣ **Risk-Reward Ratios**
+• Minimum 1:2 risk-reward ratio
+• Many pros aim for 1:3 or higher
+• This allows you to be wrong 60% of the time and still profit
+
+💡 **Pro Secret:** Institutions focus on protecting capital first, making profits second. Copy this mindset!
+
+Want me to show you how to calculate position sizes for your account?`,
+      topics: ['Risk Management', 'Position Sizing', 'Capital Protection']
     },
     {
-      keywords: ['psychology', 'emotion', 'discipline', 'fear', 'greed'],
-      response: "Trading psychology is often the difference between success and failure. Fear and greed are your biggest enemies. Develop a trading plan and stick to it. Don't chase trades or revenge trade after losses. Keep a trading journal to identify emotional patterns and work on mental discipline through meditation and proper risk management.",
-      topics: ['Trading Psychology', 'Discipline']
+      keywords: ['smart', 'money', 'institutional', 'smc', 'liquidity', 'order', 'block'],
+      response: `🧠 **Smart Money Concepts - Trading Like Institutions**
+
+🎯 **Core SMC Principles:**
+
+📊 **Market Structure**
+• Higher Highs + Higher Lows = Uptrend (follow institutions UP)
+• Lower Highs + Lower Lows = Downtrend (follow institutions DOWN)
+• Break of Structure (BOS) = Trend change signal
+
+💧 **Liquidity Concepts**
+• Institutions need liquidity for large orders
+• They sweep stops above/below key levels first
+• Then move price in intended direction
+
+🏗️ **Order Blocks**
+• Areas where institutions placed large orders
+• Price often returns to these levels
+• Look for rejection from these zones
+
+💡 **The Big Picture:** Retail traders get trapped, institutions profit from this. Learn to think like them!
+
+Which SMC concept would you like me to break down further?`,
+      topics: ['Smart Money Concepts', 'Institutional Trading', 'Market Structure']
     },
     {
-      keywords: ['trend', 'momentum', 'direction'],
-      response: "The trend is your friend! Identify the overall market direction using higher timeframes, then look for entries in the direction of the trend on lower timeframes. Use moving averages, trendlines, and market structure to determine trend direction. Remember: it's easier to go with the flow than against it.",
-      topics: ['Trend Analysis', 'Market Direction']
+      keywords: ['psychology', 'emotions', 'discipline', 'fear', 'greed', 'mindset'],
+      response: `🧠 **Trading Psychology - Your Mental Edge**
+
+🎯 **The Mental Game:**
+
+😨 **Fear Management**
+• Fear of losing = Taking profits too early
+• Fear of missing out = Chasing bad setups
+• Solution: Follow your trading plan religiously
+
+🤑 **Greed Control**  
+• Wanting "just a bit more" = Giving back profits
+• Overleveraging = Account destruction
+• Solution: Set targets and stick to them
+
+💪 **Building Discipline**
+• Journal every trade (wins AND losses)
+• Review your psychology, not just P&L
+• Practice mindfulness/meditation
+• Start with smaller position sizes
+
+📈 **Professional Mindset**
+• Focus on process, not profits
+• Treat losses as tuition fees
+• Stay humble in wins, analytical in losses
+
+What specific psychological challenge are you facing in your trading?`,
+      topics: ['Trading Psychology', 'Discipline', 'Mental Game']
     },
     {
-      keywords: ['entry', 'exit', 'timing'],
-      response: "Timing is everything in trading. Look for confluence of multiple factors before entering: trend direction, support/resistance levels, momentum indicators, and volume confirmation. For exits, stick to your predetermined targets and stop losses. Don't let emotions override your trading plan.",
-      topics: ['Entry Strategy', 'Exit Strategy']
-    },
-    {
-      keywords: ['chart', 'pattern', 'analysis'],
-      response: "Chart patterns tell the story of market sentiment. Learn to identify key patterns like double tops/bottoms, head and shoulders, triangles, and flags. But remember: patterns work best when combined with volume analysis and market context. Always confirm patterns with price action before trading.",
-      topics: ['Chart Patterns', 'Technical Analysis']
+      keywords: ['chart', 'analysis', 'technical', 'patterns', 'indicators'],
+      response: `📊 **Chart Analysis - Reading Market Language**
+
+🎯 **Professional Chart Reading:**
+
+📈 **Price Action First**
+• Candlestick patterns show market sentiment
+• Support/resistance levels reveal key areas
+• Trend lines connect significant highs/lows
+
+🔍 **Multi-Timeframe Analysis**
+• Higher timeframes = trend direction
+• Lower timeframes = precise entry timing
+• Never trade against higher timeframe trend
+
+⚙️ **Indicators (Use Sparingly)**
+• Moving averages for trend confirmation
+• RSI for overbought/oversold conditions
+• Volume to confirm price movements
+
+💡 **Pro Approach:** Price action + market structure beats fancy indicators every time. Keep it simple!
+
+Would you like me to explain how to analyze a specific chart pattern?`,
+      topics: ['Chart Analysis', 'Technical Analysis', 'Price Action']
     }
   ];
 
   async generateResponse(userMessage: string): Promise<AIResponse> {
-    console.log('🤖 AI Mentor analyzing message:', userMessage);
+    console.log('🤖 Enhanced AI Mentor analyzing message:', userMessage);
     
-    // Simulate thinking time
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1200));
+    // Simulate advanced AI thinking time  
+    await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 1800));
     
     const messageLower = userMessage.toLowerCase();
     
-    // Find best matching response
+    // Find best matching response with improved scoring
     let bestMatch = null;
     let highestScore = 0;
     
@@ -65,7 +189,7 @@ class EducationAIService {
       let score = 0;
       for (const keyword of responseData.keywords) {
         if (messageLower.includes(keyword)) {
-          score += 1;
+          score += keyword.length; // Longer keywords get higher scores
         }
       }
       
@@ -75,32 +199,66 @@ class EducationAIService {
       }
     }
     
-    // If no keywords match, provide a general trading response
+    // Enhanced fallback responses for unmatched queries
     if (!bestMatch || highestScore === 0) {
-      const generalResponses = [
+      const advancedFallbacks = [
         {
           keywords: ['general'],
-          response: "That's a great question! In trading, continuous learning is key. Focus on understanding market structure, proper risk management, and developing a disciplined approach. What specific aspect of trading would you like to explore further?",
-          topics: ['General Trading', 'Education']
+          response: `🎯 **Great Question! Here's My Professional Take:**
+
+In trading, success comes from mastering these core pillars:
+
+📊 **Market Analysis** - Understanding price movement and structure
+🧠 **Risk Management** - Protecting your capital above all else  
+💭 **Psychology** - Controlling emotions and staying disciplined
+📈 **Strategy** - Having a clear, tested approach
+
+🚀 **Next Steps:**
+1. Define your trading style (scalping, day trading, swing trading)
+2. Learn proper risk management (1-2% risk per trade)
+3. Practice on demo before risking real money
+4. Keep a detailed trading journal
+
+Which of these areas would you like me to dive deeper into? I can provide specific, actionable guidance!`,
+          topics: ['Trading Education', 'Professional Development']
         },
         {
           keywords: ['general'],
-          response: "Excellent point! The markets are constantly evolving, so it's important to adapt your strategy. Remember the core principles: follow the trend, manage your risk, and stay disciplined. Which trading concept would you like me to explain in more detail?",
-          topics: ['Market Analysis', 'Strategy']
-        },
-        {
-          keywords: ['general'],
-          response: "Great observation! Professional traders focus on process over profits. Develop a solid trading plan, backtest your strategies, and keep detailed records. Consistent execution of a proven plan beats trying to predict every market move.",
-          topics: ['Professional Trading', 'Planning']
+          response: `💡 **Excellent Point! Let Me Share Some Professional Insights:**
+
+The markets reward those who:
+• Think like institutions, not retail traders
+• Focus on process over profits  
+• Manage risk religiously
+• Stay emotionally disciplined
+• Continuously learn and adapt
+
+🎯 **Key Success Factors:**
+✅ Master ONE strategy completely before learning others
+✅ Trade with the trend, not against it
+✅ Risk only what you can afford to lose
+✅ Keep detailed records of every trade
+✅ Learn from both wins AND losses
+
+📚 **What I Can Teach You:**
+• Smart Money Concepts (SMC)
+• Advanced risk management
+• Market structure analysis
+• Trading psychology mastery
+• Professional chart reading
+
+What specific trading topic interests you most right now?`,
+          topics: ['Professional Trading', 'Market Education']
         }
       ];
       
-      bestMatch = generalResponses[Math.floor(Math.random() * generalResponses.length)];
+      bestMatch = advancedFallbacks[Math.floor(Math.random() * advancedFallbacks.length)];
+      highestScore = 5; // Give fallbacks a moderate score
     }
     
-    const confidence = Math.min(90, 60 + (highestScore * 10));
+    const confidence = Math.min(95, 65 + (highestScore * 5));
     
-    console.log(`✅ AI Response generated with ${confidence}% confidence`);
+    console.log(`✅ Enhanced AI Response generated with ${confidence}% confidence`);
     
     return {
       content: bestMatch.response,
@@ -110,24 +268,74 @@ class EducationAIService {
   }
 
   async analyzeChart(chartDescription: string): Promise<AIResponse> {
-    console.log('📊 AI analyzing chart:', chartDescription);
+    console.log('📊 Advanced AI analyzing chart:', chartDescription);
     
-    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
+    await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2500));
     
-    const analyses = [
-      "I can see strong support forming at this level. The multiple touches suggest institutional interest. Look for a potential bounce here, but wait for confirmation with volume and price action before entering.",
-      "This chart shows a clear break of structure to the upside. The previous resistance has now become support. This is a bullish sign, but watch for a retest of the breakout level for a lower-risk entry.",
-      "The price action here indicates accumulation by smart money. Notice how the selling pressure is being absorbed. This could be setting up for a significant move higher once the accumulation phase completes.",
-      "I see a potential fair value gap (FVG) in this area. These gaps often act as magnets for price. The market may return to fill this gap before continuing in the primary trend direction.",
-      "This looks like a liquidity sweep pattern. The sharp move likely grabbed stop losses before reversing. This is classic smart money behavior - creating false signals to trap retail traders."
+    const advancedAnalyses = [
+      `📊 **Professional Chart Analysis:**
+
+🎯 **Market Structure Assessment:**
+I can see strong institutional interest at this level. The multiple touches suggest this is a key decision point where smart money is positioning.
+
+🧠 **Smart Money Perspective:**
+• This level likely contains order blocks from institutional traders
+• The reaction here indicates significant liquidity
+• Watch for a potential liquidity sweep before the real move
+
+⚡ **Trading Strategy:**
+• Wait for confirmation with volume
+• Set stops beyond recent structure
+• Target next major structure level
+• Risk only 1-2% of account
+
+💡 **Pro Tip:** This type of price action often precedes significant moves. Be patient and let the market show its hand!`,
+
+      `📈 **Advanced Technical Assessment:**
+
+🎯 **What I'm Seeing:**
+This chart displays classic institutional accumulation patterns. The price action suggests smart money is building positions while retail traders are likely getting shaken out.
+
+🔍 **Key Observations:**
+• Break of structure indicates trend change potential  
+• Fair Value Gap (FVG) visible - price may return to fill this
+• Volume profile shows where institutions are most active
+• Multiple timeframe alignment needed for high-probability setup
+
+🛡️ **Risk Management Protocol:**
+• Entry only on lower timeframe confirmation
+• Stop loss beyond recent swing structure
+• Position size based on account risk (1-2% max)
+• Multiple take profit levels for optimal risk-reward
+
+This is exactly the type of setup professional traders look for!`,
+
+      `🧠 **Smart Money Concepts Analysis:**
+
+🎯 **Institutional Flow Reading:**
+The market structure here tells a clear story of institutional involvement. I can identify several key SMC elements that reveal the bigger picture.
+
+📊 **SMC Elements Present:**
+• Order Block formation where institutions placed orders
+• Liquidity sweeps targeting retail stop losses
+• Break of Structure (BOS) signaling trend change
+• Fair Value Gaps showing imbalanced price action
+
+⚡ **Professional Approach:**
+• Follow the institutional money flow
+• Use market structure for entry/exit decisions
+• Avoid trading against clear SMC signals
+• Focus on high-probability confluence zones
+
+💡 **The Bigger Picture:** Retail sees chaos, institutions see opportunity. This chart shows exactly why understanding SMC gives you a massive edge!`
     ];
     
-    const analysis = analyses[Math.floor(Math.random() * analyses.length)];
+    const analysis = advancedAnalyses[Math.floor(Math.random() * advancedAnalyses.length)];
     
     return {
       content: analysis,
-      confidence: 75 + Math.random() * 20,
-      topics: ['Chart Analysis', 'Technical Analysis', 'Market Structure']
+      confidence: 80 + Math.random() * 15,
+      topics: ['Advanced Chart Analysis', 'Smart Money Concepts', 'Professional Trading']
     };
   }
 }

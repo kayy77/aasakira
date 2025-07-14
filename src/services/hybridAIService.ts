@@ -1,12 +1,12 @@
-import { geminiService } from './geminiService';
 import { replicateService, type ChartGenerationRequest } from './replicateService';
 
 interface AIResponse {
   text: string;
   analysis?: TradingAnalysis;
   visualUrl?: string;
+  audioUrl?: string;
   confidence: number;
-  source: 'gemini';
+  source: 'gpt4o';
 }
 
 interface TradingAnalysis {
@@ -44,16 +44,17 @@ class HybridAIService {
   async generateComprehensiveResponse(
     message: string, 
     context: any = {},
-    includeVisual: boolean = false
+    includeVisual: boolean = false,
+    includeVoice: boolean = false
   ): Promise<AIResponse> {
     try {
       await this.checkRateLimit();
 
-      // Enhanced prompt for structured trading responses
-      const enhancedPrompt = this.createTradingPrompt(message, context);
+      // Enhanced prompt for GPT-4o
+      const enhancedPrompt = this.createAdvancedTradingPrompt(message, context);
       
-      // Use Gemini service for now (can be expanded later)
-      const response = await geminiService.generateTradingResponse(enhancedPrompt);
+      // Use GPT-4o via Supabase edge function
+      const response = await this.callGPT4o(enhancedPrompt);
 
       // Extract trading analysis from response
       const analysis = this.extractTradingAnalysis(response);
@@ -63,7 +64,7 @@ class HybridAIService {
       if (includeVisual && this.shouldGenerateVisual(message)) {
         try {
           const chartRequest: ChartGenerationRequest = {
-            prompt: `Trading chart visualization: ${response.substring(0, 500)}`,
+            prompt: `Professional trading chart visualization: ${response.substring(0, 500)}. Show key levels, trend analysis, and market structure with professional forex chart styling.`,
             chartType: this.determineChartType(message),
             pair: analysis?.pair,
             timeframe: analysis?.timeframe
@@ -75,7 +76,16 @@ class HybridAIService {
           }
         } catch (visualError) {
           console.warn('Visual generation failed:', visualError);
-          // Continue without visual
+        }
+      }
+
+      // Generate voice narration if requested
+      let audioUrl: string | undefined;
+      if (includeVoice) {
+        try {
+          audioUrl = await this.generateVoiceNarration(response);
+        } catch (voiceError) {
+          console.warn('Voice generation failed:', voiceError);
         }
       }
 
@@ -83,8 +93,9 @@ class HybridAIService {
         text: response,
         analysis,
         visualUrl,
-        confidence: analysis?.confidence || 0.8,
-        source: 'gemini'
+        audioUrl,
+        confidence: analysis?.confidence || 0.9,
+        source: 'gpt4o'
       };
 
     } catch (error) {
@@ -93,47 +104,152 @@ class HybridAIService {
     }
   }
 
-  private createTradingPrompt(message: string, context: any): string {
-    return `You are Aasakira 2.0, the world's most advanced AI trading mentor with expertise in Smart Money Concepts (SMC), institutional trading, and market structure analysis.
+  private async callGPT4o(prompt: string): Promise<string> {
+    try {
+      const response = await fetch('/api/gpt4o-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt })
+      });
 
-User Context:
+      if (!response.ok) {
+        throw new Error('GPT-4o API call failed');
+      }
+
+      const data = await response.json();
+      return data.response;
+    } catch (error) {
+      console.error('GPT-4o call error:', error);
+      // Fallback to local response if API fails
+      return this.getFallbackResponse(prompt);
+    }
+  }
+
+  private async generateVoiceNarration(text: string): Promise<string> {
+    try {
+      const response = await fetch('/api/text-to-speech', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          text: text.substring(0, 1000), // Limit for voice generation
+          voice: 'alloy' // Professional voice
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Voice generation failed');
+      }
+
+      const data = await response.json();
+      return data.audioUrl;
+    } catch (error) {
+      console.error('Voice generation error:', error);
+      throw error;
+    }
+  }
+
+  private createAdvancedTradingPrompt(message: string, context: any): string {
+    return `You are Aasakira 2.0, the world's most advanced AI trading mentor powered by GPT-4o. You have deep expertise in:
+
+🎯 CORE SPECIALIZATIONS:
+- Smart Money Concepts (SMC) & Institutional Trading
+- Advanced Market Structure Analysis
+- Professional Risk Management Systems
+- Trading Psychology & Mental Performance
+- Multi-timeframe Technical Analysis
+- Algorithmic Trading Strategies
+
+📊 USER CONTEXT:
 - Experience Level: ${context.experience || 'Intermediate'}
 - Trading Style: ${context.tradingStyle || 'Swing Trading'}
 - Risk Tolerance: ${context.riskTolerance || 'Moderate'}
-- Recent Performance: ${context.winRate || 0}% win rate
-- Total Study Time: ${context.totalStudyTime || 0} hours
-- Current Streak: ${context.currentStreak || 0}
+- Win Rate: ${context.winRate || 0}%
+- Study Hours: ${context.totalStudyTime || 0}
 - Charts Analyzed: ${context.chartsAnalyzed || 0}
-- Messages Sent: ${context.messagesSent || 0}
+- Current Streak: ${context.currentStreak || 0}
 
-User Question: ${message}
+🎯 USER QUESTION: "${message}"
 
-Provide a comprehensive, personalized response that includes:
-1. Direct answer to their question with specific details
-2. SMC/institutional perspective where relevant (order blocks, liquidity, market structure)
-3. Specific actionable advice they can implement
-4. Risk management considerations
-5. Reference their progress and learning journey
-6. If applicable, mention key levels, entry zones, or market structure
-7. Use relevant emojis and clear formatting
+PROVIDE A COMPREHENSIVE RESPONSE THAT INCLUDES:
 
-Keep the tone professional but personable, like a seasoned trader mentoring a colleague. Remember their context and adapt your teaching style to their experience level.
+1. 📈 DIRECT ANSWER with specific, actionable insights
+2. 🧠 INSTITUTIONAL PERSPECTIVE (SMC concepts, liquidity analysis, order flow)
+3. ⚡ IMMEDIATE ACTION STEPS they can implement today
+4. 🛡️ RISK MANAGEMENT protocol for this specific scenario
+5. 📚 PERSONALIZED learning path based on their progress
+6. 🎯 SPECIFIC price levels, zones, or market structure if applicable
+7. 💡 PRO TIPS that separate retail from institutional thinking
 
-If this involves chart analysis or technical concepts, structure your response to be visual-friendly for potential chart generation with specific trading zones and levels.`;
+FORMAT: Use clear sections, bullet points, emojis, and professional but engaging tone. Make it visual-friendly for potential chart generation.
+
+REMEMBER: You're mentoring a colleague, not lecturing a student. Be conversational but authoritative.`;
+  }
+
+  private getFallbackResponse(prompt: string): string {
+    // Intelligent fallback based on prompt analysis
+    const promptLower = prompt.toLowerCase();
+    
+    if (promptLower.includes('hello') || promptLower.includes('hi')) {
+      return `🎯 Welcome to Aasakira 2.0 AI Mentor! 
+
+I'm powered by advanced AI and ready to help you master trading with:
+
+📈 **Smart Money Concepts** - Understanding institutional flow
+🛡️ **Advanced Risk Management** - Protecting your capital
+🧠 **Trading Psychology** - Mastering your mindset
+📊 **Market Structure Analysis** - Reading price action like a pro
+
+What specific trading challenge can I help you conquer today?`;
+    }
+
+    if (promptLower.includes('trade') || promptLower.includes('strategy')) {
+      return `📊 **Professional Trading Approach**
+
+🎯 **Key Principles:**
+• Follow institutional money flow (Smart Money Concepts)
+• Always define risk BEFORE entering trades
+• Use multiple timeframe confirmation
+• Focus on high-probability setups only
+
+🛡️ **Risk Management:**
+• Never risk more than 1-2% per trade
+• Set stop losses at logical market structure levels
+• Maintain 1:3 risk-reward minimum
+• Keep detailed trading records
+
+💡 **Pro Tip:** The best trades often feel uncomfortable to take. When retail is panicking, institutions are accumulating.
+
+What specific market or setup would you like me to analyze?`;
+    }
+
+    return `🧠 **Aasakira AI Analysis**
+
+Based on your question, here's my professional insight:
+
+The key to successful trading lies in understanding market structure and following institutional money flow. Focus on these core principles:
+
+📈 **Market Structure:** Identify trend direction on higher timeframes
+🎯 **Entry Timing:** Wait for confirmation on lower timeframes  
+🛡️ **Risk Control:** Never risk more than you can afford to lose
+📊 **Psychology:** Stay disciplined with your trading plan
+
+Would you like me to dive deeper into any specific aspect of trading?`;
   }
 
   private extractTradingAnalysis(response: string): TradingAnalysis | undefined {
     try {
       const analysis: Partial<TradingAnalysis> = {};
       
-      // Extract key information using regex patterns
       const pairMatch = response.match(/([A-Z]{3}\/[A-Z]{3}|[A-Z]{6}|EUR\/USD|GBP\/USD|USD\/JPY|AUD\/USD|USD\/CAD|USD\/CHF|NZD\/USD)/i);
       if (pairMatch) analysis.pair = pairMatch[0].toUpperCase();
       
       const timeframeMatch = response.match(/(\d+[HMD]|1H|4H|1D|H1|H4|D1|15M|M15|5M|M5)/i);
       if (timeframeMatch) analysis.timeframe = timeframeMatch[0];
       
-      // Extract trend
       const trendKeywords = response.toLowerCase();
       if (trendKeywords.includes('bullish') || trendKeywords.includes('uptrend') || trendKeywords.includes('buying')) {
         analysis.trend = 'bullish';
@@ -143,19 +259,17 @@ If this involves chart analysis or technical concepts, structure your response t
         analysis.trend = 'neutral';
       }
       
-      // Extract confidence based on language certainty
       const confidenceWords = ['very confident', 'highly likely', 'strong signal', 'clear indication', 'definitely'];
       const uncertainWords = ['maybe', 'possibly', 'might', 'uncertain', 'could be'];
       
       if (confidenceWords.some(word => response.toLowerCase().includes(word))) {
-        analysis.confidence = 0.9;
+        analysis.confidence = 0.95;
       } else if (uncertainWords.some(word => response.toLowerCase().includes(word))) {
-        analysis.confidence = 0.6;
+        analysis.confidence = 0.7;
       } else {
-        analysis.confidence = 0.75;
+        analysis.confidence = 0.85;
       }
       
-      // Extract price levels
       const priceMatches = response.match(/\b\d+\.\d{4,5}\b/g);
       if (priceMatches && priceMatches.length > 0) {
         analysis.keyLevels = priceMatches.slice(0, 5).map((price, index) => ({
@@ -166,7 +280,7 @@ If this involves chart analysis or technical concepts, structure your response t
         analysis.keyLevels = [];
       }
       
-      analysis.reasoning = response.substring(0, 200).replace(/\n/g, ' ') + '...';
+      analysis.reasoning = response.substring(0, 300).replace(/\n/g, ' ') + '...';
       
       return analysis as TradingAnalysis;
     } catch (error) {

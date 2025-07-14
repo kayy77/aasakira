@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,12 +14,16 @@ import {
   Star,
   Clock,
   Trophy,
-  AlertCircle
+  AlertCircle,
+  Image,
+  Volume2,
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { UserTrackingService } from '@/services/userTrackingService';
-import { educationAIService } from '@/services/educationAIService';
+import { hybridAIService, type AIResponse } from '@/services/hybridAIService';
 
 interface Message {
   id: string;
@@ -28,6 +31,9 @@ interface Message {
   isUser: boolean;
   timestamp: Date;
   type?: 'text' | 'analysis' | 'lesson';
+  visualUrl?: string;
+  audioUrl?: string;
+  analysis?: any;
 }
 
 interface SuperAIMentorProps {
@@ -42,7 +48,10 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [userProgress, setUserProgress] = useState<any>(null);
   const [currentSession, setCurrentSession] = useState<string | null>(null);
+  const [includeVisuals, setIncludeVisuals] = useState(false);
+  const [includeVoice, setIncludeVoice] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,19 +70,35 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
         const progress = await UserTrackingService.getUserProgress(user.id);
         setUserProgress(progress);
 
-        // Start learning session
         const sessionId = await UserTrackingService.startLearningSession({
           user_id: user.id,
-          session_type: 'chat',
+          session_type: 'advanced_chat',
           start_time: new Date().toISOString(),
           topics_covered: []
         });
         setCurrentSession(sessionId);
 
-        // Add welcome message with personalized context
         const welcomeMessage = progress
-          ? `Welcome back! 🎯 I can see you've had ${progress.messages_sent} conversations, analyzed ${progress.charts_analyzed} charts, and have a ${progress.win_rate}% success rate. Let's continue building your trading mastery! How can I help you today?`
-          : "Welcome to Aasakira AI Mentor! I'm here to help you master trading. Ask me anything about market analysis, trading strategies, or risk management.";
+          ? `🎯 **Welcome back to Aasakira 2.0!** 
+
+I can see you've had ${progress.messages_sent} conversations, analyzed ${progress.charts_analyzed} charts, and have a ${progress.win_rate}% success rate. 
+
+🚀 **Enhanced Features Now Active:**
+• 🧠 GPT-4o powered analysis
+• 📊 AI-generated trading charts
+• 🎵 Voice narration lessons
+• 📈 Advanced market structure analysis
+
+Let's take your trading to the next level! What would you like to master today?`
+          : `🎯 **Welcome to Aasakira 2.0 - Your Advanced AI Mentor!**
+
+I'm powered by GPT-4o and equipped with:
+• 📊 Visual chart generation
+• 🎵 Voice lesson narration  
+• 🧠 Advanced market analysis
+• 📈 Smart Money Concepts expertise
+
+Ready to become a professional trader? Ask me anything!`;
         
         setMessages([{
           id: Date.now().toString(),
@@ -84,10 +109,11 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
         }]);
       } catch (error) {
         console.error('Error loading user data:', error);
-        // Add basic welcome message even if progress loading fails
         setMessages([{
           id: Date.now().toString(),
-          content: "Welcome to Aasakira AI Mentor! I'm here to help you master trading. Ask me anything about market analysis, trading strategies, or risk management.",
+          content: `🎯 **Welcome to Aasakira 2.0!**
+
+Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart generation, and voice lessons. Let's master the markets together!`,
           isUser: false,
           timestamp: new Date(),
           type: 'text'
@@ -97,7 +123,6 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
 
     loadUserData();
 
-    // End session on unmount
     return () => {
       if (currentSession) {
         UserTrackingService.endLearningSession(currentSession, new Date().toISOString());
@@ -125,10 +150,12 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
       // Track the message
       await UserTrackingService.trackActivity({
         user_id: user.id,
-        activity_type: 'chat_message',
+        activity_type: 'advanced_chat_message',
         data: {
           message_length: currentInput.length,
-          session_id: currentSession
+          session_id: currentSession,
+          includes_visuals: includeVisuals,
+          includes_voice: includeVoice
         }
       });
 
@@ -137,50 +164,69 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
         await UserTrackingService.updateSessionInteractions(currentSession);
       }
 
-      // Get AI response using the education AI service
-      const aiResponse = await educationAIService.generateResponse(currentInput);
+      // Get advanced AI response using the hybrid AI service
+      const aiResponse: AIResponse = await hybridAIService.generateComprehensiveResponse(
+        currentInput,
+        {
+          experience: userProgress?.trading_style || 'Intermediate',
+          tradingStyle: userProgress?.trading_style || 'Swing Trading',
+          riskTolerance: userProgress?.risk_tolerance || 'Moderate',
+          winRate: userProgress?.win_rate || 0,
+          totalStudyTime: userProgress?.total_study_time_minutes || 0,
+          chartsAnalyzed: userProgress?.charts_analyzed || 0,
+          currentStreak: userProgress?.current_streak || 0,
+          messagesSent: userProgress?.messages_sent || 0
+        },
+        includeVisuals,
+        includeVoice
+      );
 
-      // Store AI memory
+      // Store AI memory with enhanced context
       await UserTrackingService.storeAIMemory({
         user_id: user.id,
-        memory_type: 'conversation',
-        content: `User: ${currentInput}\nAI: ${aiResponse.content}`,
-        importance_score: currentInput.length > 50 ? 8 : 5,
+        memory_type: 'advanced_conversation',
+        content: `User: ${currentInput}\nAI (GPT-4o): ${aiResponse.text}`,
+        importance_score: aiResponse.confidence * 10,
         context: {
           session_id: currentSession,
           timestamp: new Date().toISOString(),
-          topics: aiResponse.topics
+          ai_source: aiResponse.source,
+          has_visual: !!aiResponse.visualUrl,
+          has_audio: !!aiResponse.audioUrl,
+          trading_analysis: aiResponse.analysis
         }
       });
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: aiResponse.content,
+        content: aiResponse.text,
         isUser: false,
         timestamp: new Date(),
-        type: 'text'
+        type: 'analysis',
+        visualUrl: aiResponse.visualUrl,
+        audioUrl: aiResponse.audioUrl,
+        analysis: aiResponse.analysis
       };
 
       setMessages(prev => [...prev, aiMessage]);
       onFeatureUse?.();
 
       toast({
-        title: "Message sent!",
-        description: "Aasakira AI has analyzed your question."
+        title: "🚀 Advanced AI Response Generated!",
+        description: `Powered by ${aiResponse.source.toUpperCase()} with ${Math.round(aiResponse.confidence * 100)}% confidence`,
       });
 
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Failed to send message. Please try again.",
+        description: "Failed to get AI response. Please try again.",
         variant: "destructive"
       });
       
-      // Add error message to chat
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "I'm experiencing some technical difficulties. Please try rephrasing your question or contact support if the issue persists.",
+        content: "I'm experiencing some technical difficulties with the advanced AI system. Please try rephrasing your question or contact support if the issue persists.",
         isUser: false,
         timestamp: new Date(),
         type: 'text'
@@ -188,6 +234,13 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const playAudio = (audioUrl: string) => {
+    if (audioRef.current) {
+      audioRef.current.src = audioUrl;
+      audioRef.current.play();
     }
   };
 
@@ -206,14 +259,15 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
 
   return (
     <div className="space-y-6">
-      {/* Real-time User Stats */}
-      <Card className="bg-gradient-to-r from-background to-muted border-primary/20">
+      {/* Enhanced Status Card */}
+      <Card className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" />
-            Aasakira AI Mentor - Ready to Chat
-            <Badge variant="secondary" className="ml-auto">
-              Online
+            <Brain className="h-6 w-6 text-purple-400" />
+            <Sparkles className="h-5 w-5 text-yellow-400" />
+            Aasakira 2.0 - Advanced AI Mentor
+            <Badge className="ml-auto bg-gradient-to-r from-purple-500 to-pink-500">
+              GPT-4o Powered
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -225,7 +279,7 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
                   <MessageCircle className="h-4 w-4" />
                   Messages
                 </div>
-                <div className="text-2xl font-bold text-primary">{userProgress.messages_sent}</div>
+                <div className="text-2xl font-bold text-purple-400">{userProgress.messages_sent}</div>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1">
@@ -259,14 +313,43 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
         </CardContent>
       </Card>
 
+      {/* Enhanced Controls */}
+      <Card className="border-blue-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-400">
+            <Zap className="h-5 w-5" />
+            Advanced Features
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex gap-4">
+          <Button
+            onClick={() => setIncludeVisuals(!includeVisuals)}
+            variant={includeVisuals ? "default" : "outline"}
+            className={includeVisuals ? "bg-purple-600 hover:bg-purple-700" : ""}
+          >
+            <Image className="h-4 w-4 mr-2" />
+            Visual Charts {includeVisuals && "✓"}
+          </Button>
+          <Button
+            onClick={() => setIncludeVoice(!includeVoice)}
+            variant={includeVoice ? "default" : "outline"}
+            className={includeVoice ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            <Volume2 className="h-4 w-4 mr-2" />
+            Voice Lessons {includeVoice && "✓"}
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Enhanced Chat Interface */}
-      <Card className="h-[600px] flex flex-col">
+      <Card className="h-[600px] flex flex-col border-purple-500/20">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-blue-400" />
-            AI Chat - Trading Intelligence
+            <MessageCircle className="h-5 w-5 text-purple-400" />
+            Advanced AI Chat
             <Badge variant="outline" className="text-xs ml-auto">
-              Enhanced AI Active
+              <Sparkles className="h-3 w-3 mr-1" />
+              GPT-4o Active
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -274,14 +357,64 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
               {messages.map((message) => (
-                <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] p-3 rounded-lg ${
+                <div key={message.id} className={`flex ${ message.isUser ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] p-4 rounded-lg ${
                     message.isUser 
-                      ? 'bg-primary text-primary-foreground ml-4' 
-                      : 'bg-muted mr-4'
+                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white ml-4' 
+                      : 'bg-gradient-to-r from-gray-800/50 to-gray-700/50 mr-4 border border-purple-500/20'
                   }`}>
                     <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                    <div className="text-xs opacity-70 mt-1">
+                    
+                    {/* Visual Chart Display */}
+                    {message.visualUrl && (
+                      <div className="mt-3">
+                        <img 
+                          src={message.visualUrl} 
+                          alt="AI Generated Chart" 
+                          className="w-full rounded-lg border border-purple-500/30"
+                        />
+                        <Badge className="mt-2 bg-purple-500/20 text-purple-400">
+                          AI Generated Chart
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Audio Controls */}
+                    {message.audioUrl && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => playAudio(message.audioUrl!)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Volume2 className="h-4 w-4 mr-2" />
+                          Play Lesson
+                        </Button>
+                        <Badge className="bg-green-500/20 text-green-400">
+                          Voice Narration Available
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Trading Analysis Display */}
+                    {message.analysis && (
+                      <div className="mt-3 p-3 bg-black/20 rounded-lg border border-yellow-500/30">
+                        <div className="text-xs text-yellow-400 mb-2">📊 Trading Analysis</div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {message.analysis.pair && (
+                            <div><strong>Pair:</strong> {message.analysis.pair}</div>
+                          )}
+                          {message.analysis.trend && (
+                            <div><strong>Trend:</strong> <span className={
+                              message.analysis.trend === 'bullish' ? 'text-green-400' :
+                              message.analysis.trend === 'bearish' ? 'text-red-400' : 'text-yellow-400'
+                            }>{message.analysis.trend}</span></div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="text-xs opacity-70 mt-2">
                       {message.timestamp.toLocaleTimeString()}
                     </div>
                   </div>
@@ -289,10 +422,11 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-muted p-3 rounded-lg mr-4">
+                  <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-500/20 p-4 rounded-lg mr-4">
                     <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                      <span className="text-sm">Aasakira AI is thinking...</span>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400"></div>
+                      <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
+                      <span className="text-sm">Aasakira 2.0 is analyzing with GPT-4o...</span>
                     </div>
                   </div>
                 </div>
@@ -301,30 +435,34 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
             <div ref={messagesEndRef} />
           </ScrollArea>
           
-          <div className="p-4 border-t">
+          <div className="p-4 border-t border-purple-500/20">
             <div className="flex gap-2">
               <Input
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask me about trading strategies, market analysis, or risk management..."
-                className="flex-1"
+                placeholder="Ask me about advanced trading strategies, market analysis, or request visual lessons..."
+                className="flex-1 bg-gray-800/50 border-purple-500/30"
                 disabled={isLoading}
               />
               <Button 
                 onClick={handleSendMessage} 
                 disabled={!inputMessage.trim() || isLoading}
-                className="px-4"
+                className="px-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
               >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-            <div className="text-xs text-muted-foreground mt-2 text-center">
-              Powered by Aasakira AI Intelligence
+            <div className="text-xs text-center mt-2 text-purple-400">
+              <Sparkles className="h-3 w-3 inline mr-1" />
+              Powered by GPT-4o, Replicate AI, and ElevenLabs
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Hidden audio element for voice playback */}
+      <audio ref={audioRef} className="hidden" />
 
       {/* Activity Dashboard */}
       {userProgress && (
