@@ -1,227 +1,146 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Crown, Zap, Star, Check } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { stripeService } from '@/services/stripeService';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Check, Zap, Crown, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface EnhancedPremiumUpgradeProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const EnhancedPremiumUpgrade: React.FC<EnhancedPremiumUpgradeProps> = ({ open, onOpenChange }) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleUpgrade = async (plan: 'premium' | 'yearly') => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to upgrade your account",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      
-      // Get the checkout URL from our service
-      const checkoutUrl = await stripeService.createCheckoutSession(plan, user.email);
-      
-      // Open Stripe checkout in current window
-      window.location.href = checkoutUrl;
-      
-    } catch (error) {
-      console.error('Upgrade error:', error);
-      toast({
-        title: "Upgrade Failed",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+const EnhancedPremiumUpgrade: React.FC<EnhancedPremiumUpgradeProps> = ({
+  open,
+  onOpenChange,
+}) => {
   const plans = [
     {
-      id: 'premium',
-      name: 'Shogun Premium',
-      price: '$25',
-      period: '/month',
-      description: 'For serious traders who want unlimited access',
+      name: 'Aasakira Basic',
+      price: 'Free',
+      description: 'Get started with essential trading tools',
       features: [
-        'Unlimited AI Trading Signals',
-        'Unlimited Meme Coin Scans',
-        'Unlimited AI Mentor Sessions',
-        'Elite Trading Community Access',
-        'Real-time Trade Alerts',
-        'Advanced Chart Analysis',
-        'Priority Customer Support',
-        'Mobile App Access'
+        '3 AI signals per day',
+        '5 meme coin scans per day',
+        'Basic education content',
+        '1 trading game per day',
+        'Community access'
       ],
-      recommended: true,
-      color: 'from-purple-600 to-pink-600'
+      icon: Sparkles,
+      color: 'from-gray-600 to-gray-500',
+      borderColor: 'border-gray-500/30',
+      current: true
     },
     {
-      id: 'yearly',
-      name: 'Sage Lifetime',
-      price: '$200',
-      period: '/year',
-      description: 'Best value - Save $100 per year!',
+      name: 'Aasakira Elite',
+      price: '$19.99/month',
+      description: 'Professional trading with unlimited access',
       features: [
-        'Everything in Shogun Premium',
-        'Exclusive Sage-only features',
-        'Direct access to platform creators',
-        'Alpha testing new features',
-        'Custom trading strategies',
-        'One-on-one mentorship calls',
-        'Exclusive market reports',
-        'Lifetime updates & support'
+        'Unlimited AI signals',
+        'Unlimited meme coin scanning',
+        'Advanced AI education with visuals',
+        'Unlimited trading games',
+        'Live market data feeds',
+        'Priority support',
+        'Advanced analytics',
+        'Custom alerts'
       ],
-      recommended: false,
-      color: 'from-yellow-500 to-orange-600'
+      icon: Crown,
+      color: 'from-gold-600 to-gold-500',
+      borderColor: 'border-gold-500/50',
+      popular: true
     }
   ];
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-        <Card className="bg-black/60 backdrop-blur-sm border-white/20">
-          <CardHeader className="text-center space-y-4">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <CardTitle className="text-3xl font-bold gradient-text flex items-center justify-center gap-2">
-                  <Crown className="h-8 w-8 text-yellow-400" />
-                  Unlock Your Trading Potential
-                </CardTitle>
-                <p className="text-gray-400 mt-2">
-                  Join elite traders and crush the markets with unlimited access to all Aasakira features
-                </p>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl bg-black/90 border-purple-500/30">
+        <DialogHeader>
+          <DialogTitle className="text-center">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <div className="p-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg">
+                <Crown className="w-6 h-6 text-gold-400" />
               </div>
-              <Button
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                ✕
-              </Button>
+              <span className="text-2xl font-bold gradient-text">Upgrade to Elite</span>
             </div>
-          </CardHeader>
+            <p className="text-gray-400 text-base font-normal">
+              Unlock the full power of Aasakira's AI trading platform
+            </p>
+          </DialogTitle>
+        </DialogHeader>
 
-          <CardContent>
-            {/* Feature Comparison */}
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-white mb-4 text-center">What You're Missing as a Free User</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="text-center">
-                  <div className="bg-red-500/20 rounded-lg p-4 border border-red-500/30">
-                    <Zap className="h-8 w-8 text-red-400 mx-auto mb-2" />
-                    <h4 className="font-bold text-white">AI Signals</h4>
-                    <p className="text-red-400 text-2xl font-bold">2/day</p>
-                    <p className="text-xs text-gray-400">Limited access</p>
+        <div className="grid md:grid-cols-2 gap-6 mt-6">
+          {plans.map((plan, index) => (
+            <motion.div
+              key={plan.name}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <Card className={`relative glass-card border-2 ${plan.borderColor} ${
+                plan.popular ? 'ring-2 ring-gold-500/30' : ''
+              }`}>
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <Badge className="bg-gradient-to-r from-gold-500 to-gold-400 text-black font-bold px-3 py-1">
+                      Most Popular
+                    </Badge>
                   </div>
-                </div>
-                <div className="text-center">
-                  <div className="bg-yellow-500/20 rounded-lg p-4 border border-yellow-500/30">
-                    <Star className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
-                    <h4 className="font-bold text-white">Meme Scans</h4>
-                    <p className="text-yellow-400 text-2xl font-bold">3/day</p>
-                    <p className="text-xs text-gray-400">Basic scanning</p>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="bg-purple-500/20 rounded-lg p-4 border border-purple-500/30">
-                    <Crown className="h-8 w-8 text-purple-400 mx-auto mb-2" />
-                    <h4 className="font-bold text-white">Community</h4>
-                    <p className="text-purple-400 text-2xl font-bold">Locked</p>
-                    <p className="text-xs text-gray-400">No access</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Pricing Plans */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {plans.map((plan) => (
-                <Card
-                  key={plan.id}
-                  className={`relative overflow-hidden ${
-                    plan.recommended
-                      ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-purple-500/50'
-                      : 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/30'
-                  }`}
-                >
-                  {plan.recommended && (
-                    <div className="absolute top-0 right-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                      MOST POPULAR
+                )}
+                
+                <CardContent className="p-6">
+                  <div className="text-center mb-6">
+                    <div className={`inline-flex p-3 rounded-xl bg-gradient-to-r ${plan.color} mb-4`}>
+                      <plan.icon className="w-8 h-8 text-white" />
                     </div>
-                  )}
-                  
-                  <CardHeader className="text-center">
-                    <CardTitle className={`text-2xl font-bold bg-gradient-to-r ${plan.color} bg-clip-text text-transparent`}>
-                      {plan.name}
-                    </CardTitle>
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-4xl font-bold text-white">{plan.price}</span>
-                      <span className="text-gray-400">{plan.period}</span>
-                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+                    <div className="text-3xl font-bold text-white mb-2">{plan.price}</div>
                     <p className="text-gray-400 text-sm">{plan.description}</p>
-                  </CardHeader>
+                  </div>
 
-                  <CardContent className="space-y-4">
-                    <ul className="space-y-3">
-                      {plan.features.map((feature, index) => (
-                        <li key={index} className="flex items-center gap-3">
-                          <Check className="h-5 w-5 text-green-400 flex-shrink-0" />
-                          <span className="text-gray-300 text-sm">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="space-y-3 mb-6">
+                    {plan.features.map((feature, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+                          <Check className="w-3 h-3 text-green-400" />
+                        </div>
+                        <span className="text-gray-300 text-sm">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
 
-                    <Button
-                      onClick={() => handleUpgrade(plan.id as 'premium' | 'yearly')}
-                      disabled={isLoading}
-                      className={`w-full font-bold py-3 text-white bg-gradient-to-r ${plan.color} hover:opacity-90 transition-opacity`}
-                    >
-                      {isLoading ? 'Redirecting to Payment...' : `Upgrade to ${plan.name}`}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  <Button
+                    className={`w-full ${
+                      plan.current 
+                        ? 'bg-gray-600 cursor-not-allowed' 
+                        : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
+                    }`}
+                    disabled={plan.current}
+                  >
+                    {plan.current ? (
+                      'Current Plan'
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 mr-2" />
+                        Upgrade to Elite
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
 
-            {/* Trust Indicators */}
-            <div className="mt-8 text-center space-y-4">
-              <div className="flex justify-center items-center gap-8 text-sm text-gray-400">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  Secure Payments
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  Cancel Anytime
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                  30-Day Guarantee
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                Powered by Stripe • Your payment information is secure and encrypted
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+        <div className="text-center mt-6 pt-6 border-t border-gray-700">
+          <p className="text-gray-400 text-sm">
+            🔒 Secure payment • Cancel anytime • 7-day money-back guarantee
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

@@ -1,8 +1,7 @@
 
 import React from 'react';
 import Navigation from '@/components/Navigation';
-import MemeCoinScanner from '@/components/memecoins/MemeCoinScanner';
-import FeatureGate from '@/components/FeatureGate';
+import LiveMemeCoinDashboard from '@/components/memecoins/LiveMemeCoinDashboard';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 
 const MemeCoins = () => {
@@ -15,16 +14,14 @@ const MemeCoins = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold gradient-text mb-4">
-              Meme Coin Scanner
+              Live Meme Coin Scanner
             </h1>
             <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-              Discover high-potential meme coins with AI-powered analysis and real-time market scanning
+              Discover high-potential meme coins with real-time analysis and live market scanning
             </p>
           </div>
 
-          <FeatureGate feature="memeScans" featureName="Meme Coin Scans">
-            <MemeCoinScanner />
-          </FeatureGate>
+          <LiveMemeCoinDashboard />
         </div>
       </div>
     </div>
