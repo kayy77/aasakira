@@ -58,7 +58,7 @@ const SkillBasedTradingGame = () => {
         height: 400,
       });
 
-      candleSeries.current = chart.current.addSeries('Candlestick', {
+      candleSeries.current = chart.current.addCandlestickSeries({
         upColor: '#4ade80',
         downColor: '#f87171',
         borderDownColor: '#f87171',
