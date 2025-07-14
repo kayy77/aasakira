@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,7 +73,7 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
 
         const sessionId = await UserTrackingService.startLearningSession({
           user_id: user.id,
-          session_type: 'advanced_chat',
+          session_type: 'chat',
           start_time: new Date().toISOString(),
           topics_covered: []
         });
@@ -150,7 +151,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
       // Track the message
       await UserTrackingService.trackActivity({
         user_id: user.id,
-        activity_type: 'advanced_chat_message',
+        activity_type: 'chat_message',
         data: {
           message_length: currentInput.length,
           session_id: currentSession,
@@ -184,7 +185,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
       // Store AI memory with enhanced context
       await UserTrackingService.storeAIMemory({
         user_id: user.id,
-        memory_type: 'advanced_conversation',
+        memory_type: 'conversation',
         content: `User: ${currentInput}\nAI (GPT-4o): ${aiResponse.text}`,
         importance_score: aiResponse.confidence * 10,
         context: {
