@@ -141,10 +141,10 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence and visual cha
     setIsLoading(true);
 
     try {
-      // Track the message
+      // Track the message with correct activity type
       await UserTrackingService.trackActivity({
         user_id: user.id,
-        activity_type: 'chat',
+        activity_type: 'chat_message',
         data: {
           message_length: currentInput.length,
           session_id: currentSession,

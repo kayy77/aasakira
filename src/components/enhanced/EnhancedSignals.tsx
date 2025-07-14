@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserTrackingService } from '@/services/userTrackingService';
@@ -21,6 +22,7 @@ import {
 import { signalService, Signal } from '@/services/signalService';
 import UsageLimits from '@/components/features/UsageLimits';
 import EnhancedPremiumUpgrade from '@/components/enhanced/EnhancedPremiumUpgrade';
+import MobileSignalCard from '@/components/enhanced/MobileSignalCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
@@ -69,15 +71,15 @@ const SignalCard: React.FC<SignalCardProps> = ({ signal, isPremium, onExplain, o
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div>
             <div className="text-gray-400">Entry</div>
-            <div className="text-white font-bold">{signal.entry}</div>
+            <div className="text-white font-bold">{Number(signal.entry).toFixed(signal.pair.includes('JPY') ? 3 : 5)}</div>
           </div>
           <div>
             <div className="text-gray-400">Stop Loss</div>
-            <div className="text-red-400 font-bold">{signal.stopLoss}</div>
+            <div className="text-red-400 font-bold">{Number(signal.stopLoss).toFixed(signal.pair.includes('JPY') ? 3 : 5)}</div>
           </div>
           <div>
             <div className="text-gray-400">Take Profit</div>
-            <div className="text-green-400 font-bold">{signal.takeProfit}</div>
+            <div className="text-green-400 font-bold">{Number(signal.takeProfit).toFixed(signal.pair.includes('JPY') ? 3 : 5)}</div>
           </div>
         </div>
 
@@ -143,7 +145,19 @@ const EnhancedSignals = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [replayMode, setReplayMode] = useState<Signal | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const { toast } = useToast();
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const generateSignal = async () => {
     if (!canUseFeature('signals') && !isPremium) {
@@ -158,6 +172,11 @@ const EnhancedSignals = () => {
       if (newSignal) {
         setSignals(prev => [newSignal, ...prev.slice(0, 4)]);
         incrementUsage('signals');
+        
+        // Track signal view properly
+        if (user?.id) {
+          await UserTrackingService.trackSignalView(user.id, newSignal);
+        }
         
         toast({
           title: "🎯 High-Probability Signal Detected",
@@ -182,6 +201,11 @@ const EnhancedSignals = () => {
   };
 
   const handleExplain = (signal: Signal) => {
+    // Track signal interaction
+    if (user?.id) {
+      UserTrackingService.trackSignalView(user.id, signal);
+    }
+    
     const explanations = {
       'Smart_Money': `This OB is valid because price swept liquidity and formed a clean 15M BOS. FVG was left unmitigated. Entry is set at the most probable reaction point with SL above inefficiency sweep.`,
       'Breakout+Retest': `Clean break of structure followed by institutional retest. Smart money accumulated during pullback, creating optimal entry conditions.`,
@@ -193,6 +217,11 @@ const EnhancedSignals = () => {
   };
 
   const handleReplay = (signal: Signal) => {
+    // Track signal interaction
+    if (user?.id) {
+      UserTrackingService.trackSignalView(user.id, signal);
+    }
+    
     setReplayMode(signal);
     toast({
       title: "Replay Mode",
@@ -206,6 +235,9 @@ const EnhancedSignals = () => {
   useEffect(() => {
     // Auto-start signal service
     signalService.startAutoRefresh();
+    
+    // Load existing signals
+    signalService.getLatestSignals().then(setSignals);
   }, []);
 
   return (
@@ -287,13 +319,23 @@ const EnhancedSignals = () => {
           
           <div className="grid gap-4">
             {signals.map((signal) => (
-              <SignalCard 
-                key={signal.id}
-                signal={signal}
-                isPremium={isPremium}
-                onExplain={handleExplain}
-                onReplay={handleReplay}
-              />
+              isMobile ? (
+                <MobileSignalCard 
+                  key={signal.id}
+                  signal={signal}
+                  isPremium={isPremium}
+                  onExplain={handleExplain}
+                  onReplay={handleReplay}
+                />
+              ) : (
+                <SignalCard 
+                  key={signal.id}
+                  signal={signal}
+                  isPremium={isPremium}
+                  onExplain={handleExplain}
+                  onReplay={handleReplay}
+                />
+              )
             ))}
           </div>
         </div>
