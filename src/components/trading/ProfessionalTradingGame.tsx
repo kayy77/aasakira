@@ -1,12 +1,24 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
-import { TrendingUp, TrendingDown, Target, DollarSign, Brain, Zap } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Target, 
+  Brain, 
+  Zap,
+  Trophy,
+  BarChart3,
+  DollarSign,
+  Clock,
+  Star
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import confetti from 'canvas-confetti';
+import { createChart, IChartApi, ISeriesApi, CandlestickData } from 'lightweight-charts';
 
 interface Trade {
   id: number;
@@ -14,56 +26,40 @@ interface Trade {
   type: 'BUY' | 'SELL';
   entry: number;
   exit?: number;
-  profit?: number;
+  pnl?: number;
   status: 'open' | 'closed';
   timestamp: Date;
 }
 
+interface GameStats {
+  balance: number;
+  totalTrades: number;
+  winRate: number;
+  xp: number;
+  level: number;
+  achievement?: string;
+}
+
 const ProfessionalTradingGame: React.FC = () => {
+  const [gameStats, setGameStats] = useState<GameStats>({
+    balance: 10000,
+    totalTrades: 0,
+    winRate: 0,
+    xp: 0,
+    level: 1
+  });
+  
+  const [currentTrade, setCurrentTrade] = useState<Trade | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [marketAnalysis, setMarketAnalysis] = useState<string>('');
+  const [selectedPair, setSelectedPair] = useState('EURUSD');
+  const [currentPrice, setCurrentPrice] = useState(1.0892);
+  
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
-  
-  const [currentPair] = useState('EURUSD');
-  const [currentPrice, setCurrentPrice] = useState(1.0845);
-  const [balance, setBalance] = useState(10000);
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [xp, setXp] = useState(0);
-  const [level, setLevel] = useState(1);
-  const [aiAnalysis, setAiAnalysis] = useState('');
+  const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   
   const { toast } = useToast();
-
-  // Generate realistic candlestick data
-  const generateCandlestickData = () => {
-    const data = [];
-    let price = 1.0845;
-    const startTime = Math.floor(Date.now() / 1000) - (100 * 60); // 100 minutes ago
-    
-    for (let i = 0; i < 100; i++) {
-      const time = startTime + (i * 60); // 1-minute intervals
-      const volatility = 0.0002;
-      const change = (Math.random() - 0.5) * volatility;
-      
-      const open = price;
-      const close = price + change;
-      const high = Math.max(open, close) + Math.random() * volatility * 0.5;
-      const low = Math.min(open, close) - Math.random() * volatility * 0.5;
-      
-      data.push({
-        time: time,
-        open: Number(open.toFixed(5)),
-        high: Number(high.toFixed(5)),
-        low: Number(low.toFixed(5)),
-        close: Number(close.toFixed(5))
-      });
-      
-      price = close;
-    }
-    
-    setCurrentPrice(Number(price.toFixed(5)));
-    return data;
-  };
 
   // Initialize chart
   useEffect(() => {
@@ -73,45 +69,77 @@ const ProfessionalTradingGame: React.FC = () => {
       width: chartContainerRef.current.clientWidth,
       height: 400,
       layout: {
-        background: { color: 'transparent' },
+        background: { color: '#1a1a1a' },
         textColor: '#ffffff',
       },
       grid: {
-        vertLines: { color: 'rgba(255, 255, 255, 0.1)' },
-        horzLines: { color: 'rgba(255, 255, 255, 0.1)' },
+        vertLines: { color: '#2a2a2a' },
+        horzLines: { color: '#2a2a2a' },
       },
       crosshair: {
         mode: 1,
       },
       rightPriceScale: {
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: '#485c7b',
       },
       timeScale: {
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: '#485c7b',
         timeVisible: true,
         secondsVisible: false,
       },
     });
 
+    chartRef.current = chart;
+
+    // Add candlestick series
     const candlestickSeries = chart.addCandlestickSeries({
       upColor: '#00ff88',
-      downColor: '#ff4444',
-      borderDownColor: '#ff4444',
+      downColor: '#ff4757',
+      borderDownColor: '#ff4757',
       borderUpColor: '#00ff88',
-      wickDownColor: '#ff4444',
+      wickDownColor: '#ff4757',
       wickUpColor: '#00ff88',
     });
 
-    const data = generateCandlestickData();
-    candlestickSeries.setData(data);
-
-    chartRef.current = chart;
     candlestickSeriesRef.current = candlestickSeries;
+
+    // Generate sample data
+    const generateSampleData = (): CandlestickData[] => {
+      const data: CandlestickData[] = [];
+      let price = 1.0892;
+      const now = new Date();
+      
+      for (let i = 100; i >= 0; i--) {
+        const time = Math.floor((now.getTime() - i * 60000) / 1000) as any;
+        const open = price;
+        const change = (Math.random() - 0.5) * 0.002;
+        const close = open + change;
+        const high = Math.max(open, close) + Math.random() * 0.001;
+        const low = Math.min(open, close) - Math.random() * 0.001;
+        
+        data.push({
+          time,
+          open: Number(open.toFixed(5)),
+          high: Number(high.toFixed(5)),
+          low: Number(low.toFixed(5)),
+          close: Number(close.toFixed(5))
+        });
+        
+        price = close;
+      }
+      
+      return data;
+    };
+
+    candlestickSeries.setData(generateSampleData());
+    setCurrentPrice(1.0892);
 
     // Handle resize
     const handleResize = () => {
-      if (chartContainerRef.current && chart) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      if (chartContainerRef.current && chartRef.current) {
+        chartRef.current.applyOptions({ 
+          width: chartContainerRef.current.clientWidth 
+        });
       }
     };
 
@@ -123,224 +151,279 @@ const ProfessionalTradingGame: React.FC = () => {
     };
   }, []);
 
-  // Generate AI analysis
-  const generateAIAnalysis = () => {
+  const generateMarketAnalysis = async () => {
+    setIsAnalyzing(true);
+    
+    // Simulate AI analysis with realistic trading insights
     const analyses = [
-      "Strong bullish momentum detected with higher highs forming. Consider long positions with tight stop loss.",
-      "Price is approaching key resistance level. Watch for breakout or reversal signals.",
-      "Consolidation pattern suggests potential breakout. Wait for clear direction before entering.",
-      "RSI showing oversold conditions. Potential bounce expected from current support level.",
-      "Volume increasing with price action. Trend continuation likely in current direction."
+      "📈 BULLISH MOMENTUM: Strong uptrend with higher highs and higher lows. RSI shows room for more upside. Consider BUY on pullbacks to support.",
+      "📉 BEARISH PRESSURE: Price breaking below key support levels. Volume increasing on down moves. SELL opportunities on any bounces to resistance.",
+      "⚖️ RANGE-BOUND: Market consolidating between 1.0850-1.0920. Trade the range - BUY at support, SELL at resistance.",
+      "🎯 BREAKOUT SETUP: Price approaching key resistance. If broken with volume, expect strong continuation. Wait for confirmation.",
+      "💥 REVERSAL PATTERN: Double top forming at resistance. Look for SELL signals if price fails to break higher."
     ];
     
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     const randomAnalysis = analyses[Math.floor(Math.random() * analyses.length)];
-    setAiAnalysis(randomAnalysis);
+    setMarketAnalysis(randomAnalysis);
+    setIsAnalyzing(false);
   };
 
-  // Execute trade
   const executeTrade = (type: 'BUY' | 'SELL') => {
-    const newTrade: Trade = {
+    if (currentTrade) {
+      toast({
+        title: "Trade Already Open",
+        description: "Close your current trade first!",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const trade: Trade = {
       id: Date.now(),
-      pair: currentPair,
+      pair: selectedPair,
       type,
       entry: currentPrice,
       status: 'open',
       timestamp: new Date()
     };
 
-    setTrades(prev => [newTrade, ...prev]);
-    generateAIAnalysis();
+    setCurrentTrade(trade);
     
-    // Simulate trade outcome after 3 seconds
-    setTimeout(() => {
-      const outcome = Math.random() > 0.4; // 60% win rate
-      const pips = Math.random() * 20 + 5; // 5-25 pips
-      const profit = outcome ? pips * 10 : -pips * 10; // $10 per pip
-      
-      setTrades(prev => prev.map(trade => 
-        trade.id === newTrade.id 
-          ? { ...trade, status: 'closed', profit, exit: currentPrice + (outcome ? 0.0001 : -0.0001) }
-          : trade
-      ));
-      
-      setBalance(prev => prev + profit);
-      setXp(prev => prev + (outcome ? 50 : 10));
-      
-      if (outcome) {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-        toast({
-          title: "🎉 Winning Trade!",
-          description: `Profit: $${profit.toFixed(2)}`,
-        });
-      } else {
-        toast({
-          title: "📉 Trade Closed",
-          description: `Loss: $${Math.abs(profit).toFixed(2)}`,
-          variant: "destructive"
-        });
-      }
-    }, 3000);
-
     toast({
-      title: "🎯 Trade Executed",
-      description: `${type} ${currentPair} at ${currentPrice}`,
+      title: `🎯 ${type} Trade Opened`,
+      description: `${selectedPair} @ ${currentPrice}`,
+    });
+
+    // Simulate price movement
+    setTimeout(() => {
+      const priceChange = (Math.random() - 0.5) * 0.004;
+      const newPrice = currentPrice + priceChange;
+      setCurrentPrice(Number(newPrice.toFixed(5)));
+    }, 3000);
+  };
+
+  const closeTrade = () => {
+    if (!currentTrade) return;
+
+    const pnl = currentTrade.type === 'BUY' 
+      ? (currentPrice - currentTrade.entry) * 10000
+      : (currentTrade.entry - currentPrice) * 10000;
+
+    const isWin = pnl > 0;
+    const xpGained = isWin ? 50 : 10;
+
+    setGameStats(prev => {
+      const newStats = {
+        ...prev,
+        balance: prev.balance + pnl,
+        totalTrades: prev.totalTrades + 1,
+        winRate: isWin ? 
+          (prev.winRate * prev.totalTrades + 100) / (prev.totalTrades + 1) :
+          (prev.winRate * prev.totalTrades) / (prev.totalTrades + 1),
+        xp: prev.xp + xpGained,
+        level: Math.floor((prev.xp + xpGained) / 100) + 1
+      };
+
+      // Check for achievements
+      if (newStats.totalTrades === 10) {
+        newStats.achievement = "First 10 Trades!";
+      } else if (newStats.winRate >= 70 && newStats.totalTrades >= 5) {
+        newStats.achievement = "Consistent Trader!";
+      }
+
+      return newStats;
+    });
+
+    setCurrentTrade(null);
+    
+    toast({
+      title: isWin ? "🎉 Winning Trade!" : "📉 Trade Closed",
+      description: `P&L: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} | +${xpGained} XP`,
+      variant: isWin ? "default" : "destructive"
     });
   };
 
-  // Update level based on XP
-  useEffect(() => {
-    const newLevel = Math.floor(xp / 200) + 1;
-    if (newLevel > level) {
-      setLevel(newLevel);
-      confetti({
-        particleCount: 150,
-        spread: 80,
-        origin: { y: 0.5 }
-      });
-      toast({
-        title: "🌟 Level Up!",
-        description: `You've reached Level ${newLevel}!`,
-      });
-    }
-  }, [xp, level]);
-
-  const winRate = trades.length > 0 
-    ? (trades.filter(t => t.profit && t.profit > 0).length / trades.filter(t => t.status === 'closed').length * 100) 
-    : 0;
-
   return (
     <div className="space-y-6">
-      {/* Stats Header */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="glass-card border-green-500/30">
-          <CardContent className="p-4 text-center">
-            <DollarSign className="w-6 h-6 mx-auto mb-2 text-green-400" />
-            <div className="text-2xl font-bold text-white">${balance.toLocaleString()}</div>
-            <div className="text-xs text-gray-400">Balance</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="glass-card border-purple-500/30">
-          <CardContent className="p-4 text-center">
-            <Zap className="w-6 h-6 mx-auto mb-2 text-purple-400" />
-            <div className="text-2xl font-bold text-white">{xp}</div>
-            <div className="text-xs text-gray-400">XP Points</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="glass-card border-blue-500/30">
-          <CardContent className="p-4 text-center">
-            <Target className="w-6 h-6 mx-auto mb-2 text-blue-400" />
-            <div className="text-2xl font-bold text-white">{winRate.toFixed(1)}%</div>
-            <div className="text-xs text-gray-400">Win Rate</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="glass-card border-yellow-500/30">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-white">Lv.{level}</div>
-            <div className="text-xs text-gray-400">Trader Level</div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Game Stats Header */}
+      <Card className="glass-card border-purple-500/30">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-500/20 rounded-lg">
+                <BarChart3 className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Professional Trading Simulator</h2>
+                <p className="text-sm text-gray-400">Practice with real market conditions</p>
+              </div>
+            </div>
+            <Badge className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border-purple-500/30">
+              Level {gameStats.level}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-400">
+                ${gameStats.balance.toLocaleString()}
+              </div>
+              <div className="text-xs text-gray-400">Balance</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-400">
+                {gameStats.totalTrades}
+              </div>
+              <div className="text-xs text-gray-400">Total Trades</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-400">
+                {gameStats.winRate.toFixed(1)}%
+              </div>
+              <div className="text-xs text-gray-400">Win Rate</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-400">
+                {gameStats.xp}
+              </div>
+              <div className="text-xs text-gray-400">XP Points</div>
+            </div>
+          </div>
+          
+          {/* XP Progress */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-sm text-gray-400 mb-1">
+              <span>Progress to Level {gameStats.level + 1}</span>
+              <span>{gameStats.xp % 100}/100 XP</span>
+            </div>
+            <Progress value={(gameStats.xp % 100)} className="h-2" />
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Trading Interface */}
+      {/* Chart and Trading Interface */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart */}
-        <Card className="lg:col-span-2 glass-card border-purple-500/30">
+        <Card className="lg:col-span-2 glass-card border-blue-500/20">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-xl font-bold text-white">{currentPair}</span>
-                <Badge className="bg-blue-500/20 text-blue-400">
-                  {currentPrice}
-                </Badge>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-blue-400" />
+                {selectedPair} Chart
               </div>
-              <Badge className="bg-green-500/20 text-green-400">
-                LIVE
-              </Badge>
+              <div className="text-lg font-mono text-white">
+                {currentPrice}
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div ref={chartContainerRef} className="w-full h-[400px]" />
+            <div ref={chartContainerRef} className="w-full h-96 bg-gray-900/50 rounded-lg" />
           </CardContent>
         </Card>
 
         {/* Trading Panel */}
-        <div className="space-y-4">
-          {/* AI Analysis */}
-          <Card className="glass-card border-blue-500/30">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Brain className="w-4 h-4 text-blue-400" />
-                AI Analysis
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-300 mb-4">
-                {aiAnalysis || "Execute a trade to get AI analysis"}
-              </p>
-              <Button 
-                onClick={generateAIAnalysis}
-                variant="outline" 
-                size="sm" 
-                className="w-full border-blue-500/30"
+        <Card className="glass-card border-green-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-green-400" />
+              Trading Panel
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Current Trade */}
+            {currentTrade && (
+              <Alert className="border-purple-500/30 bg-purple-500/10">
+                <Clock className="h-4 w-4 text-purple-400" />
+                <AlertDescription className="text-purple-300">
+                  <div className="font-semibold">
+                    {currentTrade.type} {currentTrade.pair}
+                  </div>
+                  <div className="text-sm">
+                    Entry: {currentTrade.entry} | Current: {currentPrice}
+                  </div>
+                  <div className="text-sm">
+                    P&L: {currentTrade.type === 'BUY' 
+                      ? ((currentPrice - currentTrade.entry) * 10000).toFixed(2)
+                      : ((currentTrade.entry - currentPrice) * 10000).toFixed(2)} pips
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* AI Analysis */}
+            <div className="space-y-2">
+              <Button
+                onClick={generateMarketAnalysis}
+                disabled={isAnalyzing}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
               >
-                Get Analysis
+                {isAnalyzing ? (
+                  <>
+                    <Brain className="w-4 h-4 mr-2 animate-pulse" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-4 h-4 mr-2" />
+                    AI Market Analysis
+                  </>
+                )}
               </Button>
-            </CardContent>
-          </Card>
 
-          {/* Trading Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              onClick={() => executeTrade('BUY')}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 h-12"
-            >
-              <TrendingUp className="w-4 h-4 mr-2" />
-              BUY
-            </Button>
-            <Button
-              onClick={() => executeTrade('SELL')}
-              className="bg-gradient-to-r from-red-600 to-rose-600 h-12"
-            >
-              <TrendingDown className="w-4 h-4 mr-2" />
-              SELL
-            </Button>
-          </div>
-
-          {/* Recent Trades */}
-          <Card className="glass-card border-gray-500/30">
-            <CardHeader>
-              <CardTitle className="text-sm">Recent Trades</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 max-h-40 overflow-y-auto">
-              {trades.slice(0, 5).map((trade) => (
-                <div key={trade.id} className="flex justify-between items-center text-xs">
-                  <span className={`font-medium ${
-                    trade.type === 'BUY' ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    {trade.type} {trade.pair}
-                  </span>
-                  <span className={`${
-                    trade.profit && trade.profit > 0 ? 'text-green-400' : 
-                    trade.profit && trade.profit < 0 ? 'text-red-400' : 'text-yellow-400'
-                  }`}>
-                    {trade.status === 'open' ? 'OPEN' : 
-                     trade.profit ? `$${trade.profit.toFixed(2)}` : 'CLOSED'}
-                  </span>
+              {marketAnalysis && (
+                <div className="bg-gray-800/40 p-3 rounded-lg border border-gray-600">
+                  <div className="text-sm text-gray-300 leading-relaxed">
+                    {marketAnalysis}
+                  </div>
                 </div>
-              ))}
-              {trades.length === 0 && (
-                <p className="text-gray-400 text-xs text-center">No trades yet</p>
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+
+            {/* Trade Buttons */}
+            <div className="space-y-2">
+              {!currentTrade ? (
+                <>
+                  <Button
+                    onClick={() => executeTrade('BUY')}
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600"
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    BUY {selectedPair}
+                  </Button>
+                  <Button
+                    onClick={() => executeTrade('SELL')}
+                    className="w-full bg-gradient-to-r from-red-600 to-rose-600"
+                  >
+                    <TrendingDown className="w-4 h-4 mr-2" />
+                    SELL {selectedPair}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={closeTrade}
+                  className="w-full bg-gradient-to-r from-orange-600 to-yellow-600"
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Close Trade
+                </Button>
+              )}
+            </div>
+
+            {/* Achievement */}
+            {gameStats.achievement && (
+              <Alert className="border-yellow-500/30 bg-yellow-500/10">
+                <Trophy className="h-4 w-4 text-yellow-400" />
+                <AlertDescription className="text-yellow-300">
+                  <div className="font-semibold">Achievement Unlocked!</div>
+                  <div className="text-sm">{gameStats.achievement}</div>
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

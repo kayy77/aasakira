@@ -1,178 +1,139 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-interface QuizQuestion {
+export interface AIExplanation {
+  explanation: string;
+  visualPrompt: string;
+  concepts: string[];
+}
+
+export interface QuizQuestion {
   question: string;
   options: string[];
   correctAnswer: number;
   explanation: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  topic: string;
-}
-
-interface ChatResponse {
-  message: string;
-  timestamp: string;
 }
 
 class GeminiEducationService {
   private genAI: GoogleGenerativeAI;
   private model: any;
-  private conversationHistory: { role: string; parts: string }[] = [];
 
   constructor() {
-    const apiKey = 'AIzaSyBTzQ7uCNpGUoGRzEW8_vF-rgE-J6WVDX8';
+    // Using a public demo key - in production, this should be handled via Supabase Edge Functions
+    const apiKey = 'AIzaSyDdI0hCZtE6vIWnG02_-3StdDOHiE4iUuY';
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+    this.model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
   }
 
-  async sendMessage(message: string): Promise<ChatResponse> {
+  async getAIResponse(prompt: string): Promise<string> {
     try {
-      console.log('🤖 Sending message to Gemini:', message);
+      console.log('🤖 Sending prompt to Gemini:', prompt);
       
-      // Add user message to history
-      this.conversationHistory.push({
-        role: 'user',
-        parts: message
-      });
-
-      const chat = this.model.startChat({
-        history: this.conversationHistory.slice(0, -1),
-        generationConfig: {
-          maxOutputTokens: 1000,
-          temperature: 0.7,
-        },
-      });
-
-      const result = await chat.sendMessage(message);
+      const result = await this.model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-
-      console.log('✅ Gemini response received:', text);
-
-      // Add AI response to history
-      this.conversationHistory.push({
-        role: 'model',
-        parts: text
-      });
-
-      return {
-        message: text,
-        timestamp: new Date().toISOString()
-      };
+      
+      console.log('✅ Gemini response received:', text.substring(0, 100) + '...');
+      return text;
     } catch (error) {
       console.error('❌ Gemini API error:', error);
+      throw new Error('Failed to get AI response');
+    }
+  }
+
+  async explainConcept(concept: string, userLevel: string = 'intermediate'): Promise<AIExplanation> {
+    const prompt = `Explain the trading concept "${concept}" for a ${userLevel} trader. 
+    
+    Provide:
+    1. A clear, practical explanation
+    2. Real trading examples
+    3. Key concepts to remember
+    
+    Format your response as a JSON object with:
+    - explanation: detailed explanation
+    - visualPrompt: description for a chart visualization
+    - concepts: array of key concepts
+    
+    Keep it practical and actionable.`;
+
+    try {
+      const response = await this.getAIResponse(prompt);
+      
+      // Try to parse as JSON, fallback to structured response
+      try {
+        return JSON.parse(response);
+      } catch {
+        return {
+          explanation: response,
+          visualPrompt: `Chart showing ${concept} in action`,
+          concepts: [concept, 'Risk Management', 'Entry Strategy']
+        };
+      }
+    } catch (error) {
+      console.error('Failed to explain concept:', error);
       return {
-        message: "I'm having trouble connecting right now. Please try again in a moment.",
-        timestamp: new Date().toISOString()
+        explanation: `${concept} is an important trading concept that requires proper understanding and practice.`,
+        visualPrompt: `Basic chart example of ${concept}`,
+        concepts: [concept]
       };
     }
   }
 
-  async explainConcept(concept: string): Promise<string> {
-    try {
-      const prompt = `Explain the trading concept "${concept}" in simple terms that a beginner can understand. Include practical examples and why it's important for traders to know.`;
-      
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      console.error('Error explaining concept:', error);
-      return `I'm having trouble explaining "${concept}" right now. Please try asking again.`;
-    }
-  }
+  async generateQuizQuestion(
+    topic: string, 
+    difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+    context?: any
+  ): Promise<QuizQuestion> {
+    const prompt = `Create a ${difficulty} level quiz question about "${topic}" for forex traders.
 
-  async generateQuiz(userLevel: string = 'beginner', topic: string = 'general'): Promise<QuizQuestion[]> {
-    try {
-      console.log(`🎯 Generating ${userLevel} quiz for topic: ${topic}`);
-      
-      const prompt = `Generate 5 unique trading quiz questions for ${userLevel} level on topic: ${topic}. 
-      Return ONLY a JSON array with this exact format:
-      [
-        {
-          "question": "What is...",
-          "options": ["Option A", "Option B", "Option C", "Option D"],
-          "correctAnswer": 0,
-          "explanation": "Detailed explanation...",
-          "difficulty": "${userLevel}",
-          "topic": "${topic}"
-        }
-      ]
-      
-      Make questions progressively harder and cover different aspects of trading like:
-      - Technical analysis
-      - Risk management  
-      - Market psychology
-      - Chart patterns
-      - Trading strategies
-      
-      Ensure each question is unique and educational.`;
+    Requirements:
+    - Make it practical and realistic
+    - Include 4 multiple choice options
+    - Provide a detailed explanation
+    - Focus on real trading scenarios
+    
+    Format as JSON:
+    {
+      "question": "Question text",
+      "options": ["A", "B", "C", "D"],
+      "correctAnswer": 0,
+      "explanation": "Detailed explanation"
+    }`;
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+    try {
+      const response = await this.getAIResponse(prompt);
       
-      console.log('📝 Raw quiz response:', text);
-      
-      // Extract JSON from response
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const questions = JSON.parse(jsonMatch[0]);
-        console.log('✅ Generated quiz questions:', questions);
-        return questions;
+      try {
+        const parsed = JSON.parse(response);
+        return {
+          question: parsed.question || "What is the most important factor in forex trading?",
+          options: parsed.options || ["Risk Management", "Indicators", "Leverage", "News"],
+          correctAnswer: parsed.correctAnswer || 0,
+          explanation: parsed.explanation || "Risk management is fundamental to long-term trading success."
+        };
+      } catch {
+        // Fallback question
+        return {
+          question: `What is a key principle of ${topic}?`,
+          options: [
+            "Follow the trend",
+            "Trade against the trend", 
+            "Ignore market structure",
+            "Use maximum leverage"
+          ],
+          correctAnswer: 0,
+          explanation: "Following the trend is a fundamental principle in trading that aligns with market momentum."
+        };
       }
-      
-      // Fallback questions
-      return this.getFallbackQuestions(userLevel, topic);
     } catch (error) {
-      console.error('❌ Quiz generation error:', error);
-      return this.getFallbackQuestions(userLevel, topic);
+      console.error('Failed to generate quiz:', error);
+      return {
+        question: "What should traders prioritize first?",
+        options: ["Risk Management", "Profit", "Speed", "Complexity"],
+        correctAnswer: 0,
+        explanation: "Risk management should always be the top priority for any trader."
+      };
     }
-  }
-
-  private getFallbackQuestions(level: string, topic: string): QuizQuestion[] {
-    const fallbackQuestions = {
-      beginner: [
-        {
-          question: "What does 'Bull Market' mean?",
-          options: ["Market going down", "Market going up", "Flat market", "Volatile market"],
-          correctAnswer: 1,
-          explanation: "A bull market refers to a period of rising prices and investor optimism.",
-          difficulty: 'beginner' as const,
-          topic: topic
-        },
-        {
-          question: "What is a 'Stop Loss'?",
-          options: ["A profit target", "A risk management tool", "A trading indicator", "A market order"],
-          correctAnswer: 1,
-          explanation: "A stop loss is used to limit potential losses by automatically closing a position.",
-          difficulty: 'beginner' as const,
-          topic: topic
-        }
-      ],
-      intermediate: [
-        {
-          question: "What is the Risk-Reward ratio in trading?",
-          options: ["Profit vs Loss", "Risk vs Potential Profit", "Win vs Lose rate", "Entry vs Exit"],
-          correctAnswer: 1,
-          explanation: "Risk-reward ratio compares potential loss to potential profit in a trade.",
-          difficulty: 'intermediate' as const,
-          topic: topic
-        }
-      ],
-      advanced: [
-        {
-          question: "What is algorithmic trading?",
-          options: ["Manual trading", "Automated trading systems", "Chart analysis", "News trading"],
-          correctAnswer: 1,
-          explanation: "Algorithmic trading uses computer programs to execute trades automatically.",
-          difficulty: 'advanced' as const,
-          topic: topic
-        }
-      ]
-    };
-
-    return fallbackQuestions[level as keyof typeof fallbackQuestions] || fallbackQuestions.beginner;
   }
 }
 
