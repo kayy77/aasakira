@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -81,7 +82,6 @@ I can see you've had ${progress.messages_sent} conversations, analyzed ${progres
 🚀 **Enhanced Features Now Active:**
 • 🧠 GPT-4o powered analysis
 • 📊 AI-generated trading charts
-• 🎵 Voice narration lessons
 • 📈 Advanced market structure analysis
 
 Let's take your trading to the next level! What would you like to master today?`
@@ -89,7 +89,6 @@ Let's take your trading to the next level! What would you like to master today?`
 
 I'm powered by GPT-4o and equipped with:
 • 📊 Visual chart generation
-• 🎵 Voice lesson narration  
 • 🧠 Advanced market analysis
 • 📈 Smart Money Concepts expertise
 
@@ -108,7 +107,7 @@ Ready to become a professional trader? Ask me anything!`;
           id: Date.now().toString(),
           content: `🎯 **Welcome to Aasakira 2.0!**
 
-Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart generation, and voice lessons. Let's master the markets together!`,
+Your advanced AI trading mentor is ready with GPT-4o intelligence and visual chart generation. Let's master the markets together!`,
           isUser: false,
           timestamp: new Date(),
           type: 'text'
@@ -126,7 +125,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
   }, [user]);
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !user?.id) return;
+    if (!inputMessage.trim() || !user?.id || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -145,7 +144,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
       // Track the message
       await UserTrackingService.trackActivity({
         user_id: user.id,
-        activity_type: 'chat_message',
+        activity_type: 'chat',
         data: {
           message_length: currentInput.length,
           session_id: currentSession,
@@ -179,7 +178,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
         user_id: user.id,
         memory_type: 'conversation',
         content: `User: ${currentInput}\nAI (GPT-4o): ${aiResponse.text}`,
-        importance_score: aiResponse.confidence * 10,
+        importance_score: Math.round(aiResponse.confidence * 10),
         context: {
           session_id: currentSession,
           timestamp: new Date().toISOString(),
@@ -242,7 +241,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative z-10">
       {/* Enhanced Status Card */}
       <Card className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/30">
         <CardHeader>
@@ -317,8 +316,8 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
         </CardContent>
       </Card>
 
-      {/* Enhanced Chat Interface */}
-      <Card className="h-[600px] flex flex-col border-purple-500/20">
+      {/* Enhanced Chat Interface - Fixed positioning and z-index */}
+      <Card className="border-purple-500/20 relative z-20">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-purple-400" />
@@ -329,92 +328,96 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
             </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col p-0">
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <div key={message.id} className={`flex ${ message.isUser ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] p-4 rounded-lg ${
-                    message.isUser 
-                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white ml-4' 
-                      : 'bg-gradient-to-r from-gray-800/50 to-gray-700/50 mr-4 border border-purple-500/20'
-                  }`}>
-                    <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                    
-                    {/* Visual Chart Display */}
-                    {message.visualUrl && (
-                      <div className="mt-3">
-                        <img 
-                          src={message.visualUrl} 
-                          alt="AI Generated Chart" 
-                          className="w-full rounded-lg border border-purple-500/30"
-                        />
-                        <Badge className="mt-2 bg-purple-500/20 text-purple-400">
-                          AI Generated Chart
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Trading Analysis Display */}
-                    {message.analysis && (
-                      <div className="mt-3 p-3 bg-black/20 rounded-lg border border-yellow-500/30">
-                        <div className="text-xs text-yellow-400 mb-2">📊 Trading Analysis</div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          {message.analysis.pair && (
-                            <div><strong>Pair:</strong> {message.analysis.pair}</div>
-                          )}
-                          {message.analysis.trend && (
-                            <div><strong>Trend:</strong> <span className={
-                              message.analysis.trend === 'bullish' ? 'text-green-400' :
-                              message.analysis.trend === 'bearish' ? 'text-red-400' : 'text-yellow-400'
-                            }>{message.analysis.trend}</span></div>
-                          )}
+        <CardContent className="p-0">
+          {/* Fixed height chat area with proper scrolling */}
+          <div className="h-[500px] flex flex-col">
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] p-4 rounded-xl ${
+                      message.isUser 
+                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' 
+                        : 'bg-gradient-to-r from-gray-800/80 to-gray-700/80 border border-purple-500/20 text-gray-100'
+                    }`}>
+                      <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                      
+                      {/* Visual Chart Display */}
+                      {message.visualUrl && (
+                        <div className="mt-3">
+                          <img 
+                            src={message.visualUrl} 
+                            alt="AI Generated Chart" 
+                            className="w-full rounded-lg border border-purple-500/30 max-w-md"
+                          />
+                          <Badge className="mt-2 bg-purple-500/20 text-purple-400">
+                            AI Generated Chart
+                          </Badge>
                         </div>
+                      )}
+
+                      {/* Trading Analysis Display */}
+                      {message.analysis && (
+                        <div className="mt-3 p-3 bg-black/20 rounded-lg border border-yellow-500/30">
+                          <div className="text-xs text-yellow-400 mb-2">📊 Trading Analysis</div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {message.analysis.pair && (
+                              <div><strong>Pair:</strong> {message.analysis.pair}</div>
+                            )}
+                            {message.analysis.trend && (
+                              <div><strong>Trend:</strong> <span className={
+                                message.analysis.trend === 'bullish' ? 'text-green-400' :
+                                message.analysis.trend === 'bearish' ? 'text-red-400' : 'text-yellow-400'
+                              }>{message.analysis.trend}</span></div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="text-xs opacity-70 mt-2">
+                        {message.timestamp.toLocaleTimeString()}
                       </div>
-                    )}
-                    
-                    <div className="text-xs opacity-70 mt-2">
-                      {message.timestamp.toLocaleTimeString()}
                     </div>
                   </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-500/20 p-4 rounded-lg mr-4">
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400"></div>
-                      <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
-                      <span className="text-sm">Aasakira 2.0 is analyzing with GPT-4o...</span>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/20 p-4 rounded-xl max-w-[80%]">
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400"></div>
+                        <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
+                        <span className="text-sm text-gray-300">Aasakira 2.0 is analyzing with GPT-4o...</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-            <div ref={messagesEndRef} />
-          </ScrollArea>
-          
-          <div className="p-4 border-t border-purple-500/20">
-            <div className="flex gap-2">
-              <Input
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me about advanced trading strategies, market analysis, or request visual lessons..."
-                className="flex-1 bg-gray-800/50 border-purple-500/30"
-                disabled={isLoading}
-              />
-              <Button 
-                onClick={handleSendMessage} 
-                disabled={!inputMessage.trim() || isLoading}
-                className="px-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="text-xs text-center mt-2 text-purple-400">
-              <Sparkles className="h-3 w-3 inline mr-1" />
-              Powered by GPT-4o and Replicate AI
+                )}
+              </div>
+              <div ref={messagesEndRef} />
+            </ScrollArea>
+            
+            {/* Fixed input area */}
+            <div className="p-4 border-t border-purple-500/20 bg-gray-900/50">
+              <div className="flex gap-2">
+                <Input
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask me about advanced trading strategies, market analysis, or request visual lessons..."
+                  className="flex-1 bg-gray-800/50 border-purple-500/30 text-white placeholder:text-gray-400"
+                  disabled={isLoading}
+                />
+                <Button 
+                  onClick={handleSendMessage} 
+                  disabled={!inputMessage.trim() || isLoading}
+                  className="px-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="text-xs text-center mt-2 text-purple-400">
+                <Sparkles className="h-3 w-3 inline mr-1" />
+                Powered by GPT-4o and Replicate AI
+              </div>
             </div>
           </div>
         </CardContent>
@@ -422,7 +425,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence, visual chart 
 
       {/* Activity Dashboard */}
       {userProgress && (
-        <Card>
+        <Card className="border-gray-700/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-primary" />
