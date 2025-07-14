@@ -83,7 +83,7 @@ const ProfessionalTradingGame: React.FC = () => {
       },
     });
 
-    const candlestickSeries = chart.addSeries('Candlestick', {
+    const candlestickSeries = chart.addCandlestickSeries({
       upColor: '#10b981',
       downColor: '#ef4444',
       borderDownColor: '#ef4444',

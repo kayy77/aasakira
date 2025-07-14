@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { enhancedSignalService, EnhancedSignal } from '@/services/enhancedSignalService';
 import { webhookService } from '@/services/webhookService';
-import { enhancedPriceService } from '@/services/enhancedPriceService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Zap, 
@@ -19,10 +18,13 @@ import {
   HelpCircle,
   Brain,
   Settings,
-  Webhook
+  Webhook,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LivePriceVerification from './LivePriceVerification';
+import PriceAccuracyCheck from './PriceAccuracyCheck';
 import WebhookManager from './WebhookManager';
 
 const LiveSignalsDashboard: React.FC = () => {
@@ -38,6 +40,7 @@ const LiveSignalsDashboard: React.FC = () => {
     setIsGenerating(true);
     
     try {
+      console.log('🔴 GENERATING REAL-TIME SIGNAL WITH ZERO CACHE...');
       const newSignal = await enhancedSignalService.generateLiveSignal();
       if (newSignal) {
         setSignals(enhancedSignalService.getSignals());
@@ -47,8 +50,8 @@ const LiveSignalsDashboard: React.FC = () => {
         await webhookService.triggerSignalAlert(newSignal);
         
         toast({
-          title: "🎯 Live FX Signal Generated",
-          description: `${newSignal.pair} ${newSignal.type} at ${newSignal.livePrice} (${newSignal.priceSource})`,
+          title: "🔴 LIVE Real-Time Signal Generated",
+          description: `${newSignal.pair} ${newSignal.type} @ ${newSignal.entry} | Live: ${newSignal.livePrice} | ${newSignal.priceAccuracy.status}`,
         });
       }
     } catch (error) {
@@ -123,18 +126,6 @@ const LiveSignalsDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [signals.length]);
 
-  // Start price monitoring for active signals
-  useEffect(() => {
-    if (signals.length > 0) {
-      const pairs = signals.map(s => s.pair);
-      enhancedPriceService.startPriceMonitoring(pairs, 5000);
-    }
-
-    return () => {
-      enhancedPriceService.stopPriceMonitoring();
-    };
-  }, [signals]);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -142,12 +133,12 @@ const LiveSignalsDashboard: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/20 rounded-lg">
-                <Activity className="w-6 h-6 text-green-400" />
+              <div className="p-2 bg-red-500/20 rounded-lg">
+                <Activity className="w-6 h-6 text-red-400 animate-pulse" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Enhanced Live FX Signals</h2>
-                <p className="text-sm text-gray-400">Multi-API price feeds with webhook integration</p>
+                <h2 className="text-xl font-bold text-white">🔴 ZERO-CACHE Real-Time FX Signals</h2>
+                <p className="text-sm text-gray-400">Live price feeds with accuracy verification & webhook alerts</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -169,17 +160,17 @@ const LiveSignalsDashboard: React.FC = () => {
               <Button
                 onClick={generateSignal}
                 disabled={isGenerating}
-                className="bg-gradient-to-r from-green-600 to-blue-600"
+                className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
               >
                 {isGenerating ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Analyzing...
+                    Fetching LIVE Price...
                   </>
                 ) : (
                   <>
                     <Zap className="w-4 h-4 mr-2" />
-                    Generate Live Signal
+                    Generate REAL-TIME Signal
                   </>
                 )}
               </Button>
@@ -225,11 +216,22 @@ const LiveSignalsDashboard: React.FC = () => {
                             <Badge className={`${
                               signal.type === 'BUY' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                             } border-0`}>
-                              {signal.type}
+                              🔴 {signal.type}
                             </Badge>
                             <Badge className="bg-purple-500/20 text-purple-400 border-0">
                               {signal.confidence}%
                             </Badge>
+                            {signal.priceAccuracy.isAccurate ? (
+                              <Badge className="bg-green-500/20 text-green-400 border-0">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Accurate
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-yellow-500/20 text-yellow-400 border-0">
+                                <AlertTriangle className="w-3 h-3 mr-1" />
+                                {signal.priceAccuracy.pips}p spread
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-gray-400">{signal.strategy.replace('_', ' ')}</p>
                         </div>
@@ -317,6 +319,9 @@ const LiveSignalsDashboard: React.FC = () => {
                 </CardContent>
               </Card>
 
+              {/* Price Accuracy Verification */}
+              <PriceAccuracyCheck signal={signal} />
+
               {/* Live Price Verification */}
               <LivePriceVerification
                 signal={signal}
@@ -334,7 +339,7 @@ const LiveSignalsDashboard: React.FC = () => {
           <AlertDescription className="text-blue-300">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="font-bold text-white">Enhanced Signal Analysis</h4>
+                <h4 className="font-bold text-white">🔴 LIVE Enhanced Signal Analysis</h4>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -376,14 +381,14 @@ const LiveSignalsDashboard: React.FC = () => {
             <Activity className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-white mb-2">No Active Signals</h3>
             <p className="text-gray-400 mb-4">
-              Generate a live forex signal with enhanced multi-API price verification
+              Generate a live forex signal with ZERO CACHE real-time price verification
             </p>
             <Button
               onClick={generateSignal}
-              className="bg-gradient-to-r from-purple-600 to-blue-600"
+              className="bg-gradient-to-r from-red-600 to-orange-600"
             >
               <Zap className="w-4 h-4 mr-2" />
-              Generate Enhanced Signal
+              Generate REAL-TIME Signal
             </Button>
           </CardContent>
         </Card>
