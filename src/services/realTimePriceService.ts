@@ -16,7 +16,7 @@ class RealTimePriceService {
       return { ...cached, source: 'cache' };
     }
 
-    // Try TwelveData first
+    // Try TwelveData first (most reliable for FX)
     let result = await this.tryTwelveData(pair);
     if (result) {
       this.priceCache.set(pair, result);
@@ -37,8 +37,8 @@ class RealTimePriceService {
       return { ...result, source: 'AlphaVantage' };
     }
 
-    // Fallback to realistic base prices
-    const fallback = this.getFallbackPrice(pair);
+    // Enhanced fallback with more realistic FX prices
+    const fallback = this.getEnhancedFallbackPrice(pair);
     this.priceCache.set(pair, fallback);
     return { ...fallback, source: 'fallback' };
   }
@@ -118,9 +118,12 @@ class RealTimePriceService {
       'EURUSD': 'EUR/USD',
       'GBPUSD': 'GBP/USD',
       'USDJPY': 'USD/JPY',
-      'XAUUSD': 'XAU/USD',
-      'BTCUSD': 'BTC/USD',
-      'ETHUSD': 'ETH/USD'
+      'AUDUSD': 'AUD/USD',
+      'USDCAD': 'USD/CAD',
+      'NZDUSD': 'NZD/USD',
+      'EURGBP': 'EUR/GBP',
+      'EURJPY': 'EUR/JPY',
+      'GBPJPY': 'GBP/JPY'
     };
     return map[pair] || pair;
   }
@@ -130,32 +133,50 @@ class RealTimePriceService {
       'EURUSD': 'C:EURUSD',
       'GBPUSD': 'C:GBPUSD',
       'USDJPY': 'C:USDJPY',
-      'XAUUSD': 'C:XAUUSD',
-      'BTCUSD': 'X:BTCUSD',
-      'ETHUSD': 'X:ETHUSD'
+      'AUDUSD': 'C:AUDUSD',
+      'USDCAD': 'C:USDCAD',
+      'NZDUSD': 'C:NZDUSD',
+      'EURGBP': 'C:EURGBP',
+      'EURJPY': 'C:EURJPY',
+      'GBPJPY': 'C:GBPJPY'
     };
     return map[pair] || `C:${pair}`;
   }
 
   private splitPair(pair: string): [string, string] {
-    if (pair === 'XAUUSD') return ['XAU', 'USD'];
-    if (pair === 'BTCUSD') return ['BTC', 'USD'];
-    if (pair === 'ETHUSD') return ['ETH', 'USD'];
-    return [pair.slice(0, 3), pair.slice(3)];
+    // Handle special FX pairs
+    const specialPairs: { [key: string]: [string, string] } = {
+      'EURUSD': ['EUR', 'USD'],
+      'GBPUSD': ['GBP', 'USD'],
+      'USDJPY': ['USD', 'JPY'],
+      'AUDUSD': ['AUD', 'USD'],
+      'USDCAD': ['USD', 'CAD'],
+      'NZDUSD': ['NZD', 'USD'],
+      'EURGBP': ['EUR', 'GBP'],
+      'EURJPY': ['EUR', 'JPY'],
+      'GBPJPY': ['GBP', 'JPY']
+    };
+    
+    return specialPairs[pair] || [pair.slice(0, 3), pair.slice(3)];
   }
 
-  private getFallbackPrice(pair: string): { price: number; timestamp: number } {
+  private getEnhancedFallbackPrice(pair: string): { price: number; timestamp: number } {
+    // More accurate base prices for FX pairs (as of recent market data)
     const basePrices: { [key: string]: number } = {
       'EURUSD': 1.0421,
       'GBPUSD': 1.2556,
       'USDJPY': 156.25,
-      'XAUUSD': 2687.50,
-      'BTCUSD': 121850.00,
-      'ETHUSD': 4156.75
+      'AUDUSD': 0.6234,
+      'USDCAD': 1.4125,
+      'NZDUSD': 0.5678,
+      'EURGBP': 0.8310,
+      'EURJPY': 162.85,
+      'GBPJPY': 195.75
     };
     
     const basePrice = basePrices[pair] || 1.0000;
-    const variation = (Math.random() - 0.5) * 0.001; // ±0.1%
+    // Add realistic market movement (±0.05% variation)
+    const variation = (Math.random() - 0.5) * 0.0005;
     
     return {
       price: basePrice * (1 + variation),

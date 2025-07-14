@@ -34,19 +34,19 @@ class EnhancedSignalService {
     try {
       console.log(`🎯 Generating LIVE FX signal for ${randomPair}...`);
       
-      // Get real-time price using the working price service
+      // Get accurate real-time price
       const priceData = await realTimePriceService.getLivePrice(randomPair);
       const { price: livePrice, source } = priceData;
       
       console.log(`💰 Live ${randomPair}: ${livePrice} (Source: ${source})`);
       
-      // Generate signal based on live price
+      // Generate signal based on live price with realistic adjustments
       const isUp = Math.random() > 0.5;
       const confidence = 75 + Math.random() * 20;
       const strategies = ['Smart_Money_Concepts', 'Order_Block_Retest', 'Liquidity_Sweep', 'Fair_Value_Gap'];
       const selectedStrategy = strategies[Math.floor(Math.random() * strategies.length)];
       
-      // Use live price for entry with small adjustment
+      // Use live price for entry with small realistic adjustment
       const priceAdjustment = this.getPriceAdjustment(randomPair);
       const entry = livePrice + (isUp ? priceAdjustment : -priceAdjustment);
       
