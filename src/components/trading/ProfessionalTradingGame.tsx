@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -92,7 +91,7 @@ const ProfessionalTradingGame: React.FC = () => {
     chartRef.current = chart;
 
     // Add candlestick series using the correct method
-    const candlestickSeries = chart.addSeries('Candlestick', {
+    const candlestickSeries = chart.addCandlestickSeries({
       upColor: '#00ff88',
       downColor: '#ff4757',
       borderDownColor: '#ff4757',
