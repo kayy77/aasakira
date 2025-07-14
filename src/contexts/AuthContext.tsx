@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +42,9 @@ const DAILY_LIMITS = {
   memeScans: 3,
   mentorMessages: 5,
 };
+
+// Admin email - set your account as premium
+const ADMIN_EMAILS = ['khaijwh@gmail.com'];
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<UserData | null>(null);
@@ -95,9 +97,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
+    // Check if user is admin and set as premium
+    const isAdmin = ADMIN_EMAILS.includes(authUser.email || '');
+    
     return {
       ...authUser,
-      role: 'free', // Default to free
+      role: isAdmin ? 'premium' : 'free',
       username: authUser.email?.split('@')[0] || 'User',
       avatar: authUser.user_metadata?.avatar_url || '',
       createdAt: authUser.created_at,

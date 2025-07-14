@@ -37,6 +37,7 @@ const Trading = () => {
             </p>
           </div>
 
+          {/* Trading Duel Game Component */}
           <TradingDuelGame />
         </div>
       </div>
