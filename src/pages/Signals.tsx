@@ -14,11 +14,25 @@ const Signals = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold gradient-text mb-4">
-              Live AI Signals
+              Enhanced AI Signals
             </h1>
-            <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-              Real-time trading signals with live market data from multiple sources
+            <p className="text-gray-300 text-lg max-w-3xl mx-auto">
+              Multi-API price verification with webhook integration for Discord, Telegram, Zapier & Pipedream
             </p>
+            <div className="flex justify-center gap-4 mt-4">
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                Live Price Feeds
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                Webhook Alerts
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                AI Analysis
+              </div>
+            </div>
           </div>
 
           <LiveSignalsDashboard />
