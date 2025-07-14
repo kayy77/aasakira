@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, CandlestickData } from 'lightweight-charts';
 import { Trophy, Target, TrendingUp, Clock, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -154,7 +154,7 @@ const ProfessionalTradingGame = () => {
         },
       });
 
-      candlestickSeries.current = chart.current.addCandlestickSeries({
+      candlestickSeries.current = chart.current.addSeries('Candlestick', {
         upColor: '#4ade80',
         downColor: '#f87171',
         borderDownColor: '#f87171',
