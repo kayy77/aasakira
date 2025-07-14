@@ -28,6 +28,7 @@ import { useMentorMemory } from './useMentorMemory';
 import ProgressChart from './ProgressChart';
 import ImageUpload from './ImageUpload';
 import { useAIResponses } from './useAIResponses';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
   id: string;
@@ -61,6 +62,7 @@ const IntelligentAIMentor: React.FC = () => {
     commonMistakes: ['Entry timing', 'Risk management', 'Psychology']
   });
   const { toast } = useToast();
+  const { user } = useAuth();
   const { 
     state: mentorData, 
     addInteraction, 
@@ -151,7 +153,7 @@ const IntelligentAIMentor: React.FC = () => {
         `;
     }
     
-    return await generateAIResponse(enhancedPrompt);
+    return await generateAIResponse(enhancedPrompt, user?.id);
   };
 
   const analyzeQuestionType = (message: string): string => {
