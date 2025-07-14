@@ -1,314 +1,248 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createChart, IChartApi, ISeriesApi, CandlestickData, Time } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, CandlestickData, UTCTimestamp } from 'lightweight-charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, DollarSign, Target } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Target, 
+  Zap,
+  Trophy,
+  DollarSign,
+  BarChart3,
+  Clock
+} from 'lucide-react';
 
-interface Trade {
-  id: string;
-  symbol: string;
-  type: 'buy' | 'sell';
-  entry: number;
-  current: number;
-  pnl: number;
-  timestamp: Date;
-}
-
-interface GameStats {
-  balance: number;
-  totalTrades: number;
-  winRate: number;
-  totalPnL: number;
-}
-
-const ProfessionalTradingGame: React.FC = () => {
+const ProfessionalTradingGame = () => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const chart = useRef<IChartApi | null>(null);
+  const candlestickSeries = useRef<ISeriesApi<"Candlestick"> | null>(null);
   
-  const [activeTrades, setActiveTrades] = useState<Trade[]>([]);
-  const [gameStats, setGameStats] = useState<GameStats>({
-    balance: 10000,
-    totalTrades: 0,
-    winRate: 0,
-    totalPnL: 0
-  });
-  const [currentPrice, setCurrentPrice] = useState(1.1234);
-  const [selectedSymbol] = useState('EURUSD');
-  
-  const { toast } = useToast();
+  const [currentPrice, setCurrentPrice] = useState(1.0850);
+  const [prediction, setPrediction] = useState<'up' | 'down' | null>(null);
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [gameActive, setGameActive] = useState(false);
 
-  // Initialize chart
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
-
-    const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: 400,
-      layout: {
-        background: { color: 'transparent' },
-        textColor: '#ffffff',
-      },
-      grid: {
-        vertLines: { color: '#2B2B43' },
-        horzLines: { color: '#2B2B43' },
-      },
-      crosshair: {
-        mode: 1,
-      },
-      rightPriceScale: {
-        borderColor: '#485158',
-      },
-      timeScale: {
-        borderColor: '#485158',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-    });
-
-    // Create candlestick series using the correct method
-    const candlestickSeries = chart.addSeries('Candlestick', {
-      upColor: '#00D2FF',
-      downColor: '#FF6B6B',
-      borderVisible: false,
-      wickUpColor: '#00D2FF',
-      wickDownColor: '#FF6B6B',
-    });
-
-    chartRef.current = chart;
-    seriesRef.current = candlestickSeries;
-
-    // Generate sample data
-    const sampleData: CandlestickData[] = generateSampleData();
-    candlestickSeries.setData(sampleData);
-
-    // Handle resize
-    const handleResize = () => {
-      if (chartContainerRef.current && chart) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-    };
-  }, []);
-
-  // Generate sample candlestick data
-  const generateSampleData = (): CandlestickData[] => {
+  // Generate realistic forex data
+  const generateCandleData = (): CandlestickData[] => {
     const data: CandlestickData[] = [];
-    let basePrice = 1.1234;
-    const now = Date.now();
+    let price = 1.0800;
+    const now = Math.floor(Date.now() / 1000);
     
-    for (let i = 100; i >= 0; i--) {
-      const time = (now - i * 60000) / 1000; // 1 minute intervals
-      const volatility = 0.0002;
+    for (let i = 50; i >= 0; i--) {
+      const time = (now - i * 300) as UTCTimestamp; // 5-minute candles
+      const volatility = 0.0015;
+      const change = (Math.random() - 0.5) * volatility;
       
-      const open = basePrice + (Math.random() - 0.5) * volatility;
-      const high = open + Math.random() * volatility;
-      const low = open - Math.random() * volatility;
-      const close = low + Math.random() * (high - low);
+      const open = price;
+      const close = price + change;
+      const high = Math.max(open, close) + Math.random() * volatility * 0.5;
+      const low = Math.min(open, close) - Math.random() * volatility * 0.5;
       
       data.push({
-        time: time as Time,
+        time,
         open,
         high,
         low,
-        close,
+        close
       });
       
-      basePrice = close;
+      price = close;
     }
     
     setCurrentPrice(data[data.length - 1].close);
     return data;
   };
 
-  const openTrade = (type: 'buy' | 'sell') => {
-    const newTrade: Trade = {
-      id: Math.random().toString(36).substr(2, 9),
-      symbol: selectedSymbol,
-      type,
-      entry: currentPrice,
-      current: currentPrice,
-      pnl: 0,
-      timestamp: new Date()
-    };
+  useEffect(() => {
+    if (chartContainerRef.current) {
+      chart.current = createChart(chartContainerRef.current, {
+        width: chartContainerRef.current.clientWidth,
+        height: 400,
+        layout: {
+          background: { color: '#1a1a1a' },
+          textColor: '#ffffff',
+        },
+        grid: {
+          vertLines: { color: '#333' },
+          horzLines: { color: '#333' },
+        },
+        timeScale: {
+          borderColor: '#485158',
+        },
+        rightPriceScale: {
+          borderColor: '#485158',
+        },
+      });
 
-    setActiveTrades(prev => [...prev, newTrade]);
-    setGameStats(prev => ({
-      ...prev,
-      totalTrades: prev.totalTrades + 1
-    }));
+      // Fix: Use addCandlestickSeries() method directly
+      candlestickSeries.current = chart.current.addCandlestickSeries({
+        upColor: '#4ade80',
+        downColor: '#f87171',
+        borderVisible: false,
+        wickUpColor: '#4ade80',
+        wickDownColor: '#f87171',
+      });
 
-    toast({
-      title: `${type.toUpperCase()} Trade Opened`,
-      description: `${selectedSymbol} at ${currentPrice.toFixed(5)}`
-    });
+      const data = generateCandleData();
+      candlestickSeries.current.setData(data);
+
+      // Handle resize
+      const handleResize = () => {
+        if (chart.current && chartContainerRef.current) {
+          chart.current.applyOptions({
+            width: chartContainerRef.current.clientWidth,
+          });
+        }
+      };
+
+      window.addEventListener('resize', handleResize);
+
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        if (chart.current) {
+          chart.current.remove();
+        }
+      };
+    }
+  }, []);
+
+  const [candleData, setCandleData] = useState<CandlestickData[]>([]);
+
+  useEffect(() => {
+    const initialData = generateCandleData();
+    setCandleData(initialData);
+
+    if (candlestickSeries.current) {
+      candlestickSeries.current.setData(initialData);
+    }
+  }, []);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (gameActive) {
+      intervalId = setInterval(() => {
+        setTimeLeft(prevTime => {
+          if (prevTime <= 0) {
+            clearInterval(intervalId);
+            setGameActive(false);
+            setPrediction(null);
+            return 0;
+          } else {
+            return prevTime - 1;
+          }
+        });
+      }, 1000);
+    }
+
+    return () => clearInterval(intervalId);
+  }, [gameActive]);
+
+  useEffect(() => {
+    if (candlestickSeries.current && gameActive) {
+      const interval = setInterval(() => {
+        const newData = generateCandleData();
+        setCandleData(newData);
+        candlestickSeries.current?.update(newData[newData.length - 1]);
+        setCurrentPrice(newData[newData.length - 1].close);
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }
+  }, [gameActive]);
+
+  const startGame = () => {
+    setGameActive(true);
+    setTimeLeft(30);
+    setPrediction(null);
   };
 
-  const closeTrade = (tradeId: string) => {
-    setActiveTrades(prev => {
-      const trade = prev.find(t => t.id === tradeId);
-      if (trade) {
-        const pnl = trade.type === 'buy' 
-          ? (currentPrice - trade.entry) * 10000
-          : (trade.entry - currentPrice) * 10000;
-
-        setGameStats(prevStats => ({
-          ...prevStats,
-          balance: prevStats.balance + pnl,
-          totalPnL: prevStats.totalPnL + pnl,
-          winRate: pnl > 0 ? 
-            ((prevStats.winRate * (prevStats.totalTrades - 1)) + 1) / prevStats.totalTrades * 100 :
-            (prevStats.winRate * (prevStats.totalTrades - 1)) / prevStats.totalTrades * 100
-        }));
-
-        toast({
-          title: `Trade Closed`,
-          description: `P&L: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} pips`,
-          variant: pnl > 0 ? 'default' : 'destructive'
-        });
+  const makePrediction = (direction: 'up' | 'down') => {
+    if (!gameActive) return;
+    setPrediction(direction);
+    
+    // Simulate price movement after 3 seconds
+    setTimeout(() => {
+      const change = (Math.random() - 0.5) * 0.002;
+      const newPrice = currentPrice + change;
+      setCurrentPrice(newPrice);
+      
+      const correct = (change > 0 && direction === 'up') || (change < 0 && direction === 'down');
+      if (correct) {
+        setScore(prev => prev + 1);
       }
-
-      return prev.filter(t => t.id !== tradeId);
-    });
+      
+      setGameActive(false);
+      setPrediction(null);
+    }, 3000);
   };
 
   return (
     <div className="space-y-6">
-      {/* Game Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="glass-card border-green-500/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-green-400" />
-              <div>
-                <p className="text-xs text-gray-400">Balance</p>
-                <p className="text-lg font-bold text-white">${gameStats.balance.toFixed(2)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-blue-500/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-blue-400" />
-              <div>
-                <p className="text-xs text-gray-400">Win Rate</p>
-                <p className="text-lg font-bold text-white">{gameStats.winRate.toFixed(1)}%</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-purple-500/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-purple-400" />
-              <div>
-                <p className="text-xs text-gray-400">Total P&L</p>
-                <p className={`text-lg font-bold ${gameStats.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {gameStats.totalPnL >= 0 ? '+' : ''}{gameStats.totalPnL.toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-yellow-500/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-yellow-400" />
-              <div>
-                <p className="text-xs text-gray-400">Trades</p>
-                <p className="text-lg font-bold text-white">{gameStats.totalTrades}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Chart */}
-      <Card className="glass-card border-purple-500/20">
+      <Card className="glass-card border-blue-500/20">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>{selectedSymbol}</span>
-            <Badge className="bg-green-500/20 text-green-400">
-              {currentPrice.toFixed(5)}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-blue-400" />
+              Professional Trading Game
+            </div>
+            <div className="flex items-center gap-4">
+              <Badge className="bg-green-500/20 text-green-400">
+                <Trophy className="w-4 h-4 mr-1" />
+                Score: {score}
+              </Badge>
+              <Badge className="bg-purple-500/20 text-purple-400">
+                <Clock className="w-4 h-4 mr-1" />
+                {timeLeft}s
+              </Badge>
+            </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div ref={chartContainerRef} className="w-full h-[400px]" />
+        <CardContent className="space-y-4">
+          <div ref={chartContainerRef} className="w-full h-96 bg-gray-900 rounded-lg" />
+          
+          <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+            <div className="text-center">
+              <div className="text-sm text-gray-400">Current Price</div>
+              <div className="text-2xl font-bold text-white">
+                {currentPrice.toFixed(5)}
+              </div>
+            </div>
+            
+            {!gameActive ? (
+              <Button
+                onClick={startGame}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Start Round
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => makePrediction('up')}
+                  disabled={prediction !== null}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  UP
+                </Button>
+                <Button
+                  onClick={() => makePrediction('down')}
+                  disabled={prediction !== null}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <TrendingDown className="w-4 h-4 mr-2" />
+                  DOWN
+                </Button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
-
-      {/* Trading Controls */}
-      <div className="flex gap-4 justify-center">
-        <Button
-          onClick={() => openTrade('buy')}
-          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-        >
-          <TrendingUp className="w-4 h-4 mr-2" />
-          BUY
-        </Button>
-        <Button
-          onClick={() => openTrade('sell')}
-          className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-        >
-          <TrendingDown className="w-4 h-4 mr-2" />
-          SELL
-        </Button>
-      </div>
-
-      {/* Active Trades */}
-      {activeTrades.length > 0 && (
-        <Card className="glass-card border-blue-500/20">
-          <CardHeader>
-            <CardTitle>Active Trades</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {activeTrades.map((trade) => {
-                const pnl = trade.type === 'buy' 
-                  ? (currentPrice - trade.entry) * 10000
-                  : (trade.entry - currentPrice) * 10000;
-
-                return (
-                  <div key={trade.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Badge className={trade.type === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
-                        {trade.type.toUpperCase()}
-                      </Badge>
-                      <span className="text-white">{trade.symbol}</span>
-                      <span className="text-gray-400">@{trade.entry.toFixed(5)}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {pnl >= 0 ? '+' : ''}{pnl.toFixed(1)} pips
-                      </span>
-                      <Button
-                        size="sm"
-                        onClick={() => closeTrade(trade.id)}
-                        className="bg-gray-600 hover:bg-gray-700"
-                      >
-                        Close
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
