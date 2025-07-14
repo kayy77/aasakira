@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { createChart, IChartApi, ISeriesApi, CandlestickData } from 'lightweight-charts';
+import { createChart, CandlestickData } from 'lightweight-charts';
 import { Trophy, Target, TrendingUp, Clock, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -48,8 +48,8 @@ const ProfessionalTradingGame = () => {
   const [currentPrice, setCurrentPrice] = useState(1.20500);
   const [sampleData, setSampleData] = useState<TradingData[]>([]);
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chart = useRef<IChartApi | null>(null);
-  const candlestickSeries = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const chartRef = useRef<any>(null);
+  const candlestickSeriesRef = useRef<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -130,7 +130,7 @@ const ProfessionalTradingGame = () => {
 
   useEffect(() => {
     if (chartContainerRef.current) {
-      chart.current = createChart(chartContainerRef.current, {
+      const chart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
         height: 400,
         layout: {
@@ -154,7 +154,8 @@ const ProfessionalTradingGame = () => {
         },
       });
 
-      candlestickSeries.current = chart.current.addSeries('Candlestick', {
+      chartRef.current = chart;
+      const candlestickSeries = chart.addCandlestickSeries({
         upColor: '#4ade80',
         downColor: '#f87171',
         borderDownColor: '#f87171',
@@ -163,10 +164,12 @@ const ProfessionalTradingGame = () => {
         wickUpColor: '#4ade80',
       });
 
+      candlestickSeriesRef.current = candlestickSeries;
+
       // Generate sample data
       const data = generateSampleData();
       setSampleData(data);
-      candlestickSeries.current.setData(data);
+      candlestickSeries.setData(data);
       
       // Set current price from the last data point
       if (data.length > 0) {
@@ -174,8 +177,8 @@ const ProfessionalTradingGame = () => {
       }
 
       return () => {
-        if (chart.current) {
-          chart.current.remove();
+        if (chartRef.current) {
+          chartRef.current.remove();
         }
       };
     }

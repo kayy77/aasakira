@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, CandlestickData } from 'lightweight-charts';
 import { Trophy, Target, TrendingUp, Clock, Users, Zap, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,19 +46,20 @@ const SkillBasedTradingGame = () => {
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [gameData, setGameData] = useState<TradingData[]>([]);
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chart = useRef<IChartApi | null>(null);
-  const candleSeries = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const chartRef = useRef<any>(null);
+  const candleSeriesRef = useRef<any>(null);
   const { toast } = useToast();
   const { user, canUseFeature, incrementUsage } = useAuth();
 
   useEffect(() => {
     if (chartContainerRef.current) {
-      chart.current = createChart(chartContainerRef.current, {
+      const chart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
         height: 400,
       });
 
-      candleSeries.current = chart.current.addSeries('Candlestick', {
+      chartRef.current = chart;
+      const candleSeries = chart.addCandlestickSeries({
         upColor: '#4ade80',
         downColor: '#f87171',
         borderDownColor: '#f87171',
@@ -66,14 +68,16 @@ const SkillBasedTradingGame = () => {
         wickUpColor: '#4ade80',
       });
 
+      candleSeriesRef.current = candleSeries;
+
       // Generate sample data for the game
       const data = generateGameData();
       setGameData(data);
-      candleSeries.current.setData(data);
+      candleSeries.setData(data);
 
       return () => {
-        if (chart.current) {
-          chart.current.remove();
+        if (chartRef.current) {
+          chartRef.current.remove();
         }
       };
     }
