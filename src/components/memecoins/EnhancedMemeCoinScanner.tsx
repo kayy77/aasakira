@@ -193,13 +193,13 @@ const EnhancedMemeCoinScanner = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Search coins by name or symbol..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-gray-800/50 border-purple-500/30"
-                icon={<Search className="w-4 h-4 text-gray-400" />}
+                className="bg-gray-800/50 border-purple-500/30 pl-10"
               />
             </div>
             <div className="flex gap-2">

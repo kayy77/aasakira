@@ -52,7 +52,7 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
   };
 
   const handleQuizComplete = (score: number) => {
-    updateProgress('quizzes', 1);
+    updateProgress('concepts', 1);
     onFeatureUse?.();
     
     toast({
@@ -128,9 +128,9 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-pink-400">
-                {mentorData.progress.quizzes || 0}
+                {mentorData.progress.concepts || 0}
               </div>
-              <div className="text-sm text-gray-400">Quizzes Completed</div>
+              <div className="text-sm text-gray-400">Concepts Learned</div>
             </div>
           </div>
           
@@ -239,7 +239,7 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
           </div>
           
           <InteractiveQuiz
-            key={selectedQuizTopic} // Force re-render when topic changes
+            key={selectedQuizTopic}
             topic={selectedQuizTopic}
             difficulty="medium"
             onComplete={handleQuizComplete}

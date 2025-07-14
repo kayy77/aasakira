@@ -19,10 +19,3 @@ const Index = () => {
 };
 
 export default Index;
-
-
-run:
-npm install framer-motion
-
-
-npm install canvas-confetti
