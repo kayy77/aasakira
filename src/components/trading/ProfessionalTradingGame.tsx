@@ -92,7 +92,7 @@ const ProfessionalTradingGame: React.FC = () => {
     chartRef.current = chart;
 
     // Add candlestick series using the correct method
-    const candlestickSeries = chart.addCandlestickSeries({
+    const candlestickSeries = chart.addSeries('Candlestick', {
       upColor: '#00ff88',
       downColor: '#ff4757',
       borderDownColor: '#ff4757',
