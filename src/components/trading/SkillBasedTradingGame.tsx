@@ -1,247 +1,368 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { createChart, CandlestickData } from 'lightweight-charts';
-import { Trophy, Target, TrendingUp, Clock, Users, Zap, Award } from 'lucide-react';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Brain, 
+  Target,
+  Award,
+  Clock
+} from 'lucide-react';
+import { createChart, ColorType } from 'lightweight-charts';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
 
-interface TradingData {
-  time: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
+interface PredictionResult {
+  id: string;
+  prediction: 'up' | 'down';
+  confidence: number;
+  actualDirection?: 'up' | 'down';
+  correct?: boolean;
+  timestamp: Date;
+  points: number;
 }
 
-const generateGameData = (): TradingData[] => {
-  const now = new Date();
-  const data: TradingData[] = [];
-  let price = 100;
-
-  for (let i = 0; i < 50; i++) {
-    const time = new Date(now.getTime() - i * 60000).toISOString().slice(0, 16).replace('T', ' ');
-    const change = Math.random() * 4 - 2;
-    const open = price;
-    price += change;
-    const high = open + Math.random() * 2;
-    const low = open - Math.random() * 2;
-    const close = price;
-
-    data.push({ time, open, high, low, close });
-  }
-
-  return data.reverse();
-};
-
 const SkillBasedTradingGame = () => {
-  const [score, setScore] = useState(0);
-  const [balance, setBalance] = useState(1000);
-  const [position, setPosition] = useState<'long' | 'short' | null>(null);
-  const [entryPrice, setEntryPrice] = useState(0);
-  const [tradingActive, setTradingActive] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(60);
-  const [gameData, setGameData] = useState<TradingData[]>([]);
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<any>(null);
-  const candleSeriesRef = useRef<any>(null);
   const { toast } = useToast();
-  const { user, canUseFeature, incrementUsage } = useAuth();
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [currentPrice, setCurrentPrice] = useState(1.0850);
+  const [priceHistory, setPriceHistory] = useState<number[]>([]);
+  const [predictions, setPredictions] = useState<PredictionResult[]>([]);
+  const [score, setScore] = useState(0);
+  const [level, setLevel] = useState(1);
+  const [streak, setStreak] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(30);
+  const [gameActive, setGameActive] = useState(false);
+  const [currentPrediction, setCurrentPrediction] = useState<'up' | 'down' | null>(null);
+
+  // Generate chart data
+  const generateChartData = () => {
+    const data = [];
+    const startTime = Date.now() - (50 * 60 * 1000); // 50 minutes ago
+    let price = 1.0850;
+    
+    for (let i = 0; i < 50; i++) {
+      const time = startTime + (i * 60 * 1000); // 1 minute intervals
+      const change = (Math.random() - 0.5) * 0.001;
+      price += change;
+      
+      data.push({
+        time: Math.floor(time / 1000),
+        open: price - change,
+        high: price + Math.abs(change) * 0.5,
+        low: price - Math.abs(change) * 0.5,
+        close: price,
+      });
+    }
+    
+    return data;
+  };
 
   useEffect(() => {
-    if (chartContainerRef.current) {
-      const chart = createChart(chartContainerRef.current, {
-        width: chartContainerRef.current.clientWidth,
-        height: 400,
-      });
+    if (!chartContainerRef.current) return;
 
-      chartRef.current = chart;
-      const candleSeries = chart.addCandlestickSeries({
-        upColor: '#4ade80',
-        downColor: '#f87171',
-        borderDownColor: '#f87171',
-        borderUpColor: '#4ade80',
-        wickDownColor: '#f87171',
-        wickUpColor: '#4ade80',
-      });
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: '#DDD',
+      },
+      grid: {
+        vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
+        horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
+      },
+      width: chartContainerRef.current.clientWidth,
+      height: 300,
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+      },
+    });
 
-      candleSeriesRef.current = candleSeries;
+    // Use the correct API method for adding candlestick series
+    const candlestickSeries = chart.addSeries('Candlestick', {
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderVisible: false,
+      wickUpColor: '#26a69a',
+      wickDownColor: '#ef5350',
+    });
 
-      // Generate sample data for the game
-      const data = generateGameData();
-      setGameData(data);
-      candleSeries.setData(data);
+    const chartData = generateChartData();
+    candlestickSeries.setData(chartData);
 
-      return () => {
-        if (chartRef.current) {
-          chartRef.current.remove();
-        }
-      };
-    }
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+    };
   }, []);
 
   useEffect(() => {
-    let countdownInterval: NodeJS.Timeout;
-
-    if (tradingActive && timeRemaining > 0) {
-      countdownInterval = setInterval(() => {
-        setTimeRemaining((prevTime) => prevTime - 1);
+    let interval: NodeJS.Timeout;
+    
+    if (gameActive && timeRemaining > 0) {
+      interval = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            evaluatePrediction();
+            return 30; // Reset timer
+          }
+          return prev - 1;
+        });
+        
+        // Update price
+        setCurrentPrice(prev => {
+          const change = (Math.random() - 0.5) * 0.002;
+          const newPrice = prev + change;
+          setPriceHistory(prevHistory => [...prevHistory.slice(-19), newPrice]);
+          return newPrice;
+        });
       }, 1000);
-    } else if (timeRemaining === 0) {
-      setTradingActive(false);
-      handleGameEnd();
     }
+    
+    return () => clearInterval(interval);
+  }, [gameActive, timeRemaining]);
 
-    return () => clearInterval(countdownInterval);
-  }, [tradingActive, timeRemaining]);
-
-  const handleBuy = () => {
-    if (!user) {
-      toast({
-        title: "Sign In Required",
-        description: "Please sign in to start trading.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!canUseFeature('signals')) {
-      toast({
-        title: "Daily Limit Reached",
-        description: "You've reached your daily limit for trading signals. Upgrade to premium for unlimited access.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!tradingActive) {
-      setTradingActive(true);
-      setTimeRemaining(60);
-      setEntryPrice(getCurrentPrice());
-      setPosition('long');
-      incrementUsage('signals');
-      toast({
-        title: "Long Position Opened",
-        description: "Good luck! Let's see if you can make a profit.",
-      });
-    }
+  const startGame = () => {
+    setGameActive(true);
+    setTimeRemaining(30);
+    setCurrentPrediction(null);
+    setPriceHistory([currentPrice]);
   };
 
-  const handleSell = () => {
-    if (!user) {
-      toast({
-        title: "Sign In Required",
-        description: "Please sign in to start trading.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!canUseFeature('signals')) {
-      toast({
-        title: "Daily Limit Reached",
-        description: "You've reached your daily limit for trading signals. Upgrade to premium for unlimited access.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!tradingActive) {
-      setTradingActive(true);
-      setTimeRemaining(60);
-      setEntryPrice(getCurrentPrice());
-      setPosition('short');
-      incrementUsage('signals');
-      toast({
-        title: "Short Position Opened",
-        description: "Good luck! Let's see if you can make a profit.",
-      });
-    }
+  const makePrediction = (direction: 'up' | 'down') => {
+    if (!gameActive || currentPrediction) return;
+    
+    setCurrentPrediction(direction);
+    
+    toast({
+      title: "Prediction Made!",
+      description: `You predicted the price will go ${direction}`,
+    });
   };
 
-  const getCurrentPrice = (): number => {
-    if (gameData.length > 0) {
-      return gameData[gameData.length - 1].close;
+  const evaluatePrediction = () => {
+    if (!currentPrediction || priceHistory.length < 2) return;
+    
+    const startPrice = priceHistory[0];
+    const endPrice = currentPrice;
+    const actualDirection = endPrice > startPrice ? 'up' : 'down';
+    const correct = currentPrediction === actualDirection;
+    
+    const points = correct ? (streak + 1) * 10 : 0;
+    
+    const result: PredictionResult = {
+      id: Date.now().toString(),
+      prediction: currentPrediction,
+      actualDirection,
+      correct,
+      timestamp: new Date(),
+      points,
+      confidence: 75 // Could be user input
+    };
+    
+    setPredictions(prev => [result, ...prev.slice(0, 9)]);
+    setScore(prev => prev + points);
+    setStreak(prev => correct ? prev + 1 : 0);
+    
+    if (correct) {
+      setLevel(prev => Math.floor((score + points) / 100) + 1);
     }
-    return 100;
+    
+    setCurrentPrediction(null);
+    
+    toast({
+      title: correct ? "Correct!" : "Incorrect",
+      description: `${correct ? `+${points} points` : 'Better luck next time'}`,
+      variant: correct ? "default" : "destructive"
+    });
   };
 
-  const handleGameEnd = () => {
-    if (position) {
-      const exitPrice = getCurrentPrice();
-      const profit = position === 'long' ? exitPrice - entryPrice : entryPrice - exitPrice;
-      const profitPercentage = (profit / entryPrice) * 100;
-      const newBalance = balance + profit;
-
-      setBalance(newBalance);
-
-      if (profit > 0) {
-        setScore((prevScore) => prevScore + 1);
-        toast({
-          title: "Congratulations!",
-          description: `You made a profit of ${profitPercentage.toFixed(2)}%. Your new balance is ${newBalance.toFixed(2)}.`,
-        });
-      } else {
-        toast({
-          title: "Better luck next time!",
-          description: `You incurred a loss of ${Math.abs(profitPercentage).toFixed(2)}%. Your balance is now ${newBalance.toFixed(2)}.`,
-          variant: "destructive",
-        });
-      }
-
-      setPosition(null);
-      setTradingActive(false);
-    }
-  };
+  const accuracy = predictions.length > 0 
+    ? (predictions.filter(p => p.correct).length / predictions.length) * 100 
+    : 0;
 
   return (
-    <Card className="glass-card border-blue-500/20">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-yellow-400" />
-            Skill-Based Trading Game
-          </div>
-          <Badge variant="secondary">Beta</Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-yellow-400" />
-            Score: {score}
-          </div>
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-blue-400" />
-            Balance: ${balance.toFixed(2)}
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* Game Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="glass-card border-yellow-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Score</p>
+                <p className="text-2xl font-bold text-yellow-400">{score}</p>
+              </div>
+              <Award className="h-8 w-8 text-yellow-400" />
+            </div>
+          </CardContent>
+        </Card>
 
-        <div ref={chartContainerRef} className="w-full h-64" />
+        <Card className="glass-card border-blue-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Level</p>
+                <p className="text-2xl font-bold text-blue-400">{level}</p>
+              </div>
+              <Target className="h-8 w-8 text-blue-400" />
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Button onClick={handleBuy} disabled={tradingActive} className="bg-green-600 hover:bg-green-700">
-            {tradingActive && position === 'long' ? 'Long Position Active' : 'Buy'}
-          </Button>
-          <Button onClick={handleSell} disabled={tradingActive} className="bg-red-600 hover:bg-red-700">
-            {tradingActive && position === 'short' ? 'Short Position Active' : 'Sell'}
-          </Button>
-        </div>
+        <Card className="glass-card border-green-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Streak</p>
+                <p className="text-2xl font-bold text-green-400">{streak}</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-green-400" />
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-gray-400" />
-            Time Remaining: {timeRemaining}s
+        <Card className="glass-card border-purple-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Accuracy</p>
+                <p className="text-2xl font-bold text-purple-400">{accuracy.toFixed(1)}%</p>
+              </div>
+              <Brain className="h-8 w-8 text-purple-400" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Game Area */}
+      <Card className="glass-card border-blue-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="text-blue-400">Price Prediction Challenge</span>
+            {gameActive && (
+              <Badge variant="outline" className="text-yellow-400 border-yellow-400">
+                <Clock className="w-4 h-4 mr-1" />
+                {timeRemaining}s
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div ref={chartContainerRef} className="w-full h-72 mb-4" />
+          
+          <div className="flex items-center justify-center space-x-4 mb-4">
+            <div className="text-center">
+              <p className="text-sm text-gray-400">Current Price</p>
+              <p className="text-2xl font-bold text-white">{currentPrice.toFixed(5)}</p>
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={handleGameEnd} disabled={!tradingActive}>
-            End Game
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          
+          {!gameActive ? (
+            <div className="text-center">
+              <Button 
+                onClick={startGame}
+                size="lg"
+                className="bg-gradient-to-r from-purple-600 to-blue-600"
+              >
+                Start Game
+              </Button>
+            </div>
+          ) : (
+            <div className="flex justify-center space-x-4">
+              <Button 
+                onClick={() => makePrediction('up')}
+                disabled={!!currentPrediction}
+                className="bg-green-600 hover:bg-green-700"
+                size="lg"
+              >
+                <TrendingUp className="w-5 h-5 mr-2" />
+                Predict UP
+              </Button>
+              
+              <Button 
+                onClick={() => makePrediction('down')}
+                disabled={!!currentPrediction}
+                className="bg-red-600 hover:bg-red-700"
+                size="lg"
+              >
+                <TrendingDown className="w-5 h-5 mr-2" />
+                Predict DOWN
+              </Button>
+            </div>
+          )}
+          
+          {currentPrediction && (
+            <div className="text-center mt-4">
+              <Badge className="bg-yellow-500/20 text-yellow-400">
+                Prediction: {currentPrediction.toUpperCase()} - Waiting for result...
+              </Badge>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Predictions */}
+      {predictions.length > 0 && (
+        <Card className="glass-card border-gray-500/20">
+          <CardHeader>
+            <CardTitle className="text-gray-400">Recent Predictions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {predictions.map((prediction) => (
+                <div key={prediction.id} className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    {prediction.prediction === 'up' ? (
+                      <TrendingUp className="w-5 h-5 text-green-400" />
+                    ) : (
+                      <TrendingDown className="w-5 h-5 text-red-400" />
+                    )}
+                    <div>
+                      <p className="text-sm">
+                        Predicted: {prediction.prediction.toUpperCase()}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Actual: {prediction.actualDirection?.toUpperCase()}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={prediction.correct ? "default" : "destructive"}>
+                      {prediction.correct ? "✓" : "✗"}
+                    </Badge>
+                    <span className="text-sm font-semibold text-yellow-400">
+                      +{prediction.points}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Progress to Next Level */}
+      <Card className="glass-card border-purple-500/20">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-purple-400">Progress to Level {level + 1}</span>
+            <span className="text-sm text-gray-400">{score % 100}/100</span>
+          </div>
+          <Progress value={(score % 100)} className="h-2" />
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
