@@ -25,6 +25,8 @@ import ImageUpload from './ImageUpload';
 import ChatInterface from './ChatInterface';
 import LearningProgress from './combat/LearningProgress';
 import { useAIResponses } from './useAIResponses';
+import SuperAIMentor from './SuperAIMentor';
+import RealTimeUserStats from './RealTimeUserStats';
 
 interface EnhancedAIMentorProps {
   onFeatureUse?: () => void;
@@ -196,28 +198,11 @@ const EnhancedAIMentor = ({ onFeatureUse }: EnhancedAIMentorProps) => {
         </TabsList>
 
         <TabsContent value="learning" className="space-y-6">
-          <LearningProgress 
-            userStats={{
-              wins: 12,
-              losses: 3,
-              streak: 5,
-              points: 1847,
-              tradingStyle: 'Day Trader'
-            }}
-            onLearningUpdate={(data) => {
-              console.log('Learning data updated:', data);
-            }}
-          />
+          <RealTimeUserStats />
         </TabsContent>
 
         <TabsContent value="chat" className="space-y-6">
-          <ChatInterface 
-            messages={chatMessages}
-            inputMessage={message}
-            isTyping={isLoading}
-            onInputChange={setMessage}
-            onSendMessage={handleSendMessage}
-          />
+          <SuperAIMentor onFeatureUse={onFeatureUse} />
         </TabsContent>
 
         <TabsContent value="upload" className="space-y-6">

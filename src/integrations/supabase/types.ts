@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_memory: {
+        Row: {
+          content: string
+          context: Json | null
+          created_at: string
+          id: string
+          importance_score: number | null
+          memory_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          context?: Json | null
+          created_at?: string
+          id?: string
+          importance_score?: number | null
+          memory_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          context?: Json | null
+          created_at?: string
+          id?: string
+          importance_score?: number | null
+          memory_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      learning_sessions: {
+        Row: {
+          created_at: string
+          duration_minutes: number | null
+          end_time: string | null
+          id: string
+          interactions_count: number | null
+          performance_score: number | null
+          session_type: string
+          start_time: string
+          topics_covered: string[] | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number | null
+          end_time?: string | null
+          id?: string
+          interactions_count?: number | null
+          performance_score?: number | null
+          session_type: string
+          start_time?: string
+          topics_covered?: string[] | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number | null
+          end_time?: string | null
+          id?: string
+          interactions_count?: number | null
+          performance_score?: number | null
+          session_type?: string
+          start_time?: string
+          topics_covered?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscribers: {
         Row: {
           created_at: string
@@ -92,12 +164,107 @@ export type Database = {
         }
         Relationships: []
       }
+      user_activities: {
+        Row: {
+          activity_type: string
+          created_at: string
+          data: Json
+          id: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          data?: Json
+          id?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_progress: {
+        Row: {
+          charts_analyzed: number
+          created_at: string
+          current_streak: number
+          id: string
+          max_streak: number
+          meme_coins_scanned: number
+          messages_sent: number
+          preferred_timeframes: string[] | null
+          risk_tolerance: string | null
+          signals_viewed: number
+          skills_mastered: string[] | null
+          total_study_time_minutes: number
+          trading_games_played: number
+          trading_style: string | null
+          updated_at: string
+          user_id: string
+          weaknesses: string[] | null
+          win_rate: number
+        }
+        Insert: {
+          charts_analyzed?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          max_streak?: number
+          meme_coins_scanned?: number
+          messages_sent?: number
+          preferred_timeframes?: string[] | null
+          risk_tolerance?: string | null
+          signals_viewed?: number
+          skills_mastered?: string[] | null
+          total_study_time_minutes?: number
+          trading_games_played?: number
+          trading_style?: string | null
+          updated_at?: string
+          user_id: string
+          weaknesses?: string[] | null
+          win_rate?: number
+        }
+        Update: {
+          charts_analyzed?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          max_streak?: number
+          meme_coins_scanned?: number
+          messages_sent?: number
+          preferred_timeframes?: string[] | null
+          risk_tolerance?: string | null
+          signals_viewed?: number
+          skills_mastered?: string[] | null
+          total_study_time_minutes?: number
+          trading_games_played?: number
+          trading_style?: string | null
+          updated_at?: string
+          user_id?: string
+          weaknesses?: string[] | null
+          win_rate?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_user_progress: {
+        Args: {
+          p_user_id: string
+          p_activity_type: string
+          p_performance_score?: number
+          p_duration_minutes?: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
