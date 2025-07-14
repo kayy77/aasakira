@@ -41,7 +41,7 @@ const SkillBasedTradingGame = () => {
       },
     });
 
-    const candlestickSeries = chart.addCandlestickSeries({
+    const candlestickSeries = chart.addSeries('Candlestick', {
       upColor: '#26a69a',
       downColor: '#ef5350',
       borderVisible: false,
