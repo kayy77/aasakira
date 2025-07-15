@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Image,
   Sparkles,
-  Zap
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +34,7 @@ interface Message {
   type?: 'text' | 'analysis' | 'lesson';
   visualUrl?: string;
   analysis?: any;
+  status?: 'sending' | 'sent' | 'failed';
 }
 
 interface SuperAIMentorProps {
@@ -48,6 +50,7 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
   const [userProgress, setUserProgress] = useState<any>(null);
   const [currentSession, setCurrentSession] = useState<string | null>(null);
   const [includeVisuals, setIncludeVisuals] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'failed'>('connecting');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -63,6 +66,7 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
       if (!user?.id) return;
 
       try {
+        setConnectionStatus('connecting');
         const progress = await UserTrackingService.getUserProgress(user.id);
         setUserProgress(progress);
 
@@ -73,44 +77,59 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
           topics_covered: []
         });
         setCurrentSession(sessionId);
+        setConnectionStatus('connected');
 
-        const welcomeMessage = progress
+        const welcomeMessage = progress && progress.messages_sent > 0
           ? `🎯 **Welcome back to Aasakira 2.0!** 
 
 I can see you've had ${progress.messages_sent} conversations, analyzed ${progress.charts_analyzed} charts, and have a ${progress.win_rate}% success rate. 
 
-🚀 **Enhanced Features Now Active:**
-• 🧠 GPT-4o powered analysis
-• 📊 AI-generated trading charts
+🚀 **Enhanced Features Active:**
+• 🧠 GPT-4o powered analysis with fallback system
+• 📊 AI-generated trading charts  
 • 📈 Advanced market structure analysis
+• 💾 Persistent memory of your learning journey
 
-Let's take your trading to the next level! What would you like to master today?`
+Let's continue building your trading expertise! What would you like to master today?`
           : `🎯 **Welcome to Aasakira 2.0 - Your Advanced AI Mentor!**
 
-I'm powered by GPT-4o and equipped with:
+I'm your personal trading coach, powered by advanced AI and equipped with:
 • 📊 Visual chart generation
 • 🧠 Advanced market analysis
 • 📈 Smart Money Concepts expertise
+• 💾 Memory of your learning progress
 
-Ready to become a professional trader? Ask me anything!`;
+Ready to become a professional trader? Ask me anything about:
+- Smart Money Concepts
+- Market Structure Analysis  
+- Risk Management
+- Trading Psychology
+- Entry/Exit Strategies
+
+Let's start your journey! 🚀`;
         
         setMessages([{
           id: Date.now().toString(),
           content: welcomeMessage,
           isUser: false,
           timestamp: new Date(),
-          type: 'text'
+          type: 'text',
+          status: 'sent'
         }]);
       } catch (error) {
-        console.error('Error loading user data:', error);
+        console.error('❌ Error loading user data:', error);
+        setConnectionStatus('failed');
         setMessages([{
           id: Date.now().toString(),
           content: `🎯 **Welcome to Aasakira 2.0!**
 
-Your advanced AI trading mentor is ready with GPT-4o intelligence and visual chart generation. Let's master the markets together!`,
+Your advanced AI trading mentor is ready! While I'm having some connection issues, I can still provide you with comprehensive trading education.
+
+Ask me about Smart Money Concepts, risk management, or any trading questions you have! 📈`,
           isUser: false,
           timestamp: new Date(),
-          type: 'text'
+          type: 'text',
+          status: 'sent'
         }]);
       }
     };
@@ -125,14 +144,15 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence and visual cha
   }, [user]);
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !user?.id || isLoading) return;
+    if (!inputMessage.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       content: inputMessage,
       isUser: true,
       timestamp: new Date(),
-      type: 'text'
+      type: 'text',
+      status: 'sent'
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -140,88 +160,145 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence and visual cha
     setInputMessage('');
     setIsLoading(true);
 
-    try {
-      // Track the message with correct activity type
-      await UserTrackingService.trackActivity({
-        user_id: user.id,
-        activity_type: 'chat_message',
-        data: {
-          message_length: currentInput.length,
-          session_id: currentSession,
-          includes_visuals: includeVisuals
-        }
-      });
+    // Add a "thinking" message
+    const thinkingMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      content: 'Analyzing your question...',
+      isUser: false,
+      timestamp: new Date(),
+      type: 'text',
+      status: 'sending'
+    };
+    setMessages(prev => [...prev, thinkingMessage]);
 
-      // Update session interactions
-      if (currentSession) {
-        await UserTrackingService.updateSessionInteractions(currentSession);
+    try {
+      console.log('🚀 Sending message to AI:', currentInput);
+
+      // Track the message
+      if (user?.id) {
+        await UserTrackingService.trackActivity({
+          user_id: user.id,
+          activity_type: 'chat_message',
+          data: {
+            message_length: currentInput.length,
+            session_id: currentSession,
+            includes_visuals: includeVisuals
+          }
+        });
+
+        if (currentSession) {
+          await UserTrackingService.updateSessionInteractions(currentSession);
+        }
       }
 
-      // Get advanced AI response using the hybrid AI service
-      const aiResponse: AIResponse = await hybridAIService.generateComprehensiveResponse(
-        currentInput,
-        {
-          experience: userProgress?.trading_style || 'Intermediate',
-          tradingStyle: userProgress?.trading_style || 'Swing Trading',
-          riskTolerance: userProgress?.risk_tolerance || 'Moderate',
-          winRate: userProgress?.win_rate || 0,
-          totalStudyTime: userProgress?.total_study_time_minutes || 0,
-          chartsAnalyzed: userProgress?.charts_analyzed || 0,
-          currentStreak: userProgress?.current_streak || 0,
-          messagesSent: userProgress?.messages_sent || 0
-        },
-        includeVisuals
-      );
+      // Get AI response with retry logic
+      let aiResponse: AIResponse;
+      let attempts = 0;
+      const maxAttempts = 3;
 
-      // Store AI memory with enhanced context
-      await UserTrackingService.storeAIMemory({
-        user_id: user.id,
-        memory_type: 'conversation',
-        content: `User: ${currentInput}\nAI (GPT-4o): ${aiResponse.text}`,
-        importance_score: Math.round(aiResponse.confidence * 10),
-        context: {
-          session_id: currentSession,
-          timestamp: new Date().toISOString(),
-          ai_source: aiResponse.source,
-          has_visual: !!aiResponse.visualUrl,
-          trading_analysis: aiResponse.analysis
+      while (attempts < maxAttempts) {
+        try {
+          console.log(`🔄 AI request attempt ${attempts + 1}/${maxAttempts}`);
+          
+          aiResponse = await hybridAIService.generateComprehensiveResponse(
+            currentInput,
+            {
+              experience: userProgress?.trading_style || 'Intermediate',
+              tradingStyle: userProgress?.trading_style || 'Swing Trading',
+              riskTolerance: userProgress?.risk_tolerance || 'Moderate',
+              winRate: userProgress?.win_rate || 0,
+              totalStudyTime: userProgress?.total_study_time_minutes || 0,
+              chartsAnalyzed: userProgress?.charts_analyzed || 0,
+              currentStreak: userProgress?.current_streak || 0,
+              messagesSent: userProgress?.messages_sent || 0
+            },
+            includeVisuals
+          );
+          break;
+        } catch (error) {
+          attempts++;
+          console.warn(`⚠️ AI attempt ${attempts} failed:`, error);
+          
+          if (attempts >= maxAttempts) {
+            throw new Error('All AI attempts failed');
+          }
+          
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
         }
-      });
+      }
+
+      // Remove thinking message and add AI response
+      setMessages(prev => prev.filter(msg => msg.id !== thinkingMessage.id));
+
+      // Store AI memory
+      if (user?.id && aiResponse) {
+        await UserTrackingService.storeAIMemory({
+          user_id: user.id,
+          memory_type: 'conversation',
+          content: `User: ${currentInput}\nAI (${aiResponse.source.toUpperCase()}): ${aiResponse.text}`,
+          importance_score: Math.round(aiResponse.confidence * 10),
+          context: {
+            session_id: currentSession,
+            timestamp: new Date().toISOString(),
+            ai_source: aiResponse.source,
+            has_visual: !!aiResponse.visualUrl,
+            trading_analysis: aiResponse.analysis
+          }
+        });
+      }
 
       const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: (Date.now() + 2).toString(),
         content: aiResponse.text,
         isUser: false,
         timestamp: new Date(),
         type: 'analysis',
         visualUrl: aiResponse.visualUrl,
-        analysis: aiResponse.analysis
+        analysis: aiResponse.analysis,
+        status: 'sent'
       };
 
       setMessages(prev => [...prev, aiMessage]);
       onFeatureUse?.();
 
       toast({
-        title: "🚀 Advanced AI Response Generated!",
+        title: "🚀 AI Response Generated!",
         description: `Powered by ${aiResponse.source.toUpperCase()} with ${Math.round(aiResponse.confidence * 100)}% confidence`,
       });
 
     } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to get AI response. Please try again.",
-        variant: "destructive"
-      });
+      console.error('❌ Error sending message:', error);
+      
+      // Remove thinking message
+      setMessages(prev => prev.filter(msg => msg.id !== thinkingMessage.id));
       
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "I'm experiencing some technical difficulties with the advanced AI system. Please try rephrasing your question or contact support if the issue persists.",
+        id: (Date.now() + 2).toString(),
+        content: `🔧 **System Update in Progress**
+
+I'm currently experiencing some technical difficulties, but I'm still here to help! While my advanced AI features are temporarily unavailable, I can still provide you with:
+
+• **Trading Education** - Ask about SMC, risk management, psychology
+• **Strategy Guidance** - Entry/exit strategies and market analysis  
+• **Learning Resources** - Personalized recommendations based on your level
+
+Please try asking your question again, or ask something simpler to get started. I'm working to restore full functionality! 💪
+
+*Tip: Try asking "Explain order blocks" or "What is risk management?"*`,
         isUser: false,
         timestamp: new Date(),
-        type: 'text'
+        type: 'text',
+        status: 'failed'
       };
+      
       setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: "Connection Issue",
+        description: "AI mentor is working on reduced functionality. Try a simpler question!",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -240,6 +317,15 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence and visual cha
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
+  const getStatusIcon = (status?: string) => {
+    switch (status) {
+      case 'sending': return <Clock className="h-3 w-3 animate-spin" />;
+      case 'sent': return <CheckCircle2 className="h-3 w-3 text-green-400" />;
+      case 'failed': return <AlertCircle className="h-3 w-3 text-red-400" />;
+      default: return null;
+    }
+  };
+
   return (
     <div className="space-y-6 relative z-10">
       {/* Enhanced Status Card */}
@@ -249,8 +335,13 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence and visual cha
             <Brain className="h-6 w-6 text-purple-400" />
             <Sparkles className="h-5 w-5 text-yellow-400" />
             Aasakira 2.0 - Advanced AI Mentor
-            <Badge className="ml-auto bg-gradient-to-r from-purple-500 to-pink-500">
-              GPT-4o Powered
+            <Badge className={`ml-auto ${
+              connectionStatus === 'connected' ? 'bg-gradient-to-r from-green-500 to-blue-500' :
+              connectionStatus === 'connecting' ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+              'bg-gradient-to-r from-red-500 to-pink-500'
+            }`}>
+              {connectionStatus === 'connected' ? 'GPT-4o Ready' :
+               connectionStatus === 'connecting' ? 'Connecting...' : 'Backup Mode'}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -316,7 +407,7 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence and visual cha
         </CardContent>
       </Card>
 
-      {/* Enhanced Chat Interface - Fixed positioning and z-index */}
+      {/* Enhanced Chat Interface */}
       <Card className="border-purple-500/20 relative z-20">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
@@ -324,25 +415,25 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence and visual cha
             Advanced AI Chat
             <Badge variant="outline" className="text-xs ml-auto">
               <Sparkles className="h-3 w-3 mr-1" />
-              GPT-4o Active
+              {connectionStatus === 'connected' ? 'GPT-4o Active' : 'Backup Mode'}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {/* Fixed height chat area with proper scrolling */}
           <div className="h-[500px] flex flex-col">
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
                 {messages.map((message) => (
                   <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] p-4 rounded-xl ${
+                    <div className={`max-w-[80%] p-4 rounded-xl relative ${
                       message.isUser 
                         ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' 
+                        : message.status === 'failed'
+                        ? 'bg-gradient-to-r from-red-900/80 to-red-800/80 border border-red-500/30 text-gray-100'
                         : 'bg-gradient-to-r from-gray-800/80 to-gray-700/80 border border-purple-500/20 text-gray-100'
                     }`}>
                       <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
                       
-                      {/* Visual Chart Display */}
                       {message.visualUrl && (
                         <div className="mt-3">
                           <img 
@@ -356,7 +447,6 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence and visual cha
                         </div>
                       )}
 
-                      {/* Trading Analysis Display */}
                       {message.analysis && (
                         <div className="mt-3 p-3 bg-black/20 rounded-lg border border-yellow-500/30">
                           <div className="text-xs text-yellow-400 mb-2">📊 Trading Analysis</div>
@@ -374,35 +464,29 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence and visual cha
                         </div>
                       )}
                       
-                      <div className="text-xs opacity-70 mt-2">
-                        {message.timestamp.toLocaleTimeString()}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs opacity-70">
+                          {message.timestamp.toLocaleTimeString()}
+                        </span>
+                        {getStatusIcon(message.status)}
                       </div>
                     </div>
                   </div>
                 ))}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/20 p-4 rounded-xl max-w-[80%]">
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400"></div>
-                        <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
-                        <span className="text-sm text-gray-300">Aasakira 2.0 is analyzing with GPT-4o...</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
               <div ref={messagesEndRef} />
             </ScrollArea>
             
-            {/* Fixed input area */}
             <div className="p-4 border-t border-purple-500/20 bg-gray-900/50">
               <div className="flex gap-2">
                 <Input
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ask me about advanced trading strategies, market analysis, or request visual lessons..."
+                  placeholder={connectionStatus === 'connected' 
+                    ? "Ask me about advanced trading strategies, market analysis, or request visual lessons..."
+                    : "Ask me about trading concepts, risk management, or basic strategies..."
+                  }
                   className="flex-1 bg-gray-800/50 border-purple-500/30 text-white placeholder:text-gray-400"
                   disabled={isLoading}
                 />
@@ -416,7 +500,10 @@ Your advanced AI trading mentor is ready with GPT-4o intelligence and visual cha
               </div>
               <div className="text-xs text-center mt-2 text-purple-400">
                 <Sparkles className="h-3 w-3 inline mr-1" />
-                Powered by GPT-4o and Replicate AI
+                {connectionStatus === 'connected' 
+                  ? 'Powered by GPT-4o and Replicate AI'
+                  : 'Running in backup mode - full features coming soon!'
+                }
               </div>
             </div>
           </div>

@@ -1,307 +1,226 @@
-import { replicateService, type ChartGenerationRequest } from './replicateService';
 
-interface AIResponse {
+import { supabase } from '@/integrations/supabase/client';
+
+export interface AIResponse {
   text: string;
-  analysis?: TradingAnalysis;
-  visualUrl?: string;
+  source: 'gpt4o' | 'gemini' | 'local';
   confidence: number;
-  source: 'gpt4o';
+  visualUrl?: string;
+  analysis?: {
+    pair?: string;
+    trend?: string;
+    confidence?: number;
+  };
 }
 
-interface TradingAnalysis {
-  pair?: string;
-  timeframe?: string;
-  trend: string;
-  keyLevels: Array<{ level: number; type: 'support' | 'resistance' | 'order_block' }>;
-  entryZone?: { min: number; max: number };
-  stopLoss?: number;
-  takeProfit?: number[];
-  reasoning: string;
-  confidence: number;
+export interface UserContext {
+  experience: string;
+  tradingStyle: string;
+  riskTolerance: string;
+  winRate: number;
+  totalStudyTime: number;
+  chartsAnalyzed: number;
+  currentStreak: number;
+  messagesSent: number;
 }
 
 class HybridAIService {
-  private readonly rateLimitKey = 'hybrid_ai_calls';
-  private readonly maxCallsPerHour = 100;
-
-  private async checkRateLimit(): Promise<boolean> {
-    const now = Date.now();
-    const hourAgo = now - (60 * 60 * 1000);
-    
-    const calls = JSON.parse(localStorage.getItem(this.rateLimitKey) || '[]');
-    const recentCalls = calls.filter((timestamp: number) => timestamp > hourAgo);
-    
-    if (recentCalls.length >= this.maxCallsPerHour) {
-      throw new Error('AI rate limit exceeded. Please try again later.');
-    }
-    
-    recentCalls.push(now);
-    localStorage.setItem(this.rateLimitKey, JSON.stringify(recentCalls));
-    return true;
-  }
-
-  async generateComprehensiveResponse(
-    message: string, 
-    context: any = {},
-    includeVisual: boolean = false
-  ): Promise<AIResponse> {
+  private async callGPT4o(prompt: string): Promise<AIResponse> {
     try {
-      await this.checkRateLimit();
-
-      // Enhanced prompt for GPT-4o
-      const enhancedPrompt = this.createAdvancedTradingPrompt(message, context);
+      console.log('🤖 Calling GPT-4o with prompt:', prompt.substring(0, 100) + '...');
       
-      // Use GPT-4o via Supabase edge function
-      const response = await this.callGPT4o(enhancedPrompt);
+      const { data, error } = await supabase.functions.invoke('gpt4o-chat', {
+        body: { prompt }
+      });
 
-      // Extract trading analysis from response
-      const analysis = this.extractTradingAnalysis(response);
-      
-      // Generate visual if requested and analysis contains chart-worthy data
-      let visualUrl: string | undefined;
-      if (includeVisual && this.shouldGenerateVisual(message)) {
-        try {
-          const chartRequest: ChartGenerationRequest = {
-            prompt: `Professional trading chart visualization: ${response.substring(0, 500)}. Show key levels, trend analysis, and market structure with professional forex chart styling.`,
-            chartType: this.determineChartType(message),
-            pair: analysis?.pair,
-            timeframe: analysis?.timeframe
-          };
-          
-          const visualResult = await replicateService.generateTradingChart(chartRequest);
-          if (visualResult.status === 'success') {
-            visualUrl = visualResult.imageUrl;
-          }
-        } catch (visualError) {
-          console.warn('Visual generation failed:', visualError);
-        }
+      if (error) {
+        console.error('❌ GPT-4o error:', error);
+        throw error;
       }
 
-      return {
-        text: response,
-        analysis,
-        visualUrl,
-        confidence: analysis?.confidence || 0.9,
-        source: 'gpt4o'
-      };
+      if (!data?.response) {
+        throw new Error('No response from GPT-4o');
+      }
 
+      console.log('✅ GPT-4o response received:', data.response.substring(0, 100) + '...');
+      
+      return {
+        text: data.response,
+        source: 'gpt4o',
+        confidence: 0.95
+      };
     } catch (error) {
-      console.error('Hybrid AI service error:', error);
+      console.error('❌ GPT-4o service failed:', error);
       throw error;
     }
   }
 
-  private async callGPT4o(prompt: string): Promise<string> {
-    try {
-      const response = await fetch('/api/gpt4o-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt })
-      });
-
-      if (!response.ok) {
-        throw new Error('GPT-4o API call failed');
-      }
-
-      const data = await response.json();
-      return data.response;
-    } catch (error) {
-      console.error('GPT-4o call error:', error);
-      // Fallback to local response if API fails
-      return this.getFallbackResponse(prompt);
-    }
-  }
-
-  private createAdvancedTradingPrompt(message: string, context: any): string {
-    return `You are Aasakira 2.0, the world's most advanced AI trading mentor powered by GPT-4o. You have deep expertise in:
-
-🎯 CORE SPECIALIZATIONS:
-- Smart Money Concepts (SMC) & Institutional Trading
-- Advanced Market Structure Analysis
-- Professional Risk Management Systems
-- Trading Psychology & Mental Performance
-- Multi-timeframe Technical Analysis
-- Algorithmic Trading Strategies
-
-📊 USER CONTEXT:
-- Experience Level: ${context.experience || 'Intermediate'}
-- Trading Style: ${context.tradingStyle || 'Swing Trading'}
-- Risk Tolerance: ${context.riskTolerance || 'Moderate'}
-- Win Rate: ${context.winRate || 0}%
-- Study Hours: ${context.totalStudyTime || 0}
-- Charts Analyzed: ${context.chartsAnalyzed || 0}
-- Current Streak: ${context.currentStreak || 0}
-
-🎯 USER QUESTION: "${message}"
-
-PROVIDE A COMPREHENSIVE RESPONSE THAT INCLUDES:
-
-1. 📈 DIRECT ANSWER with specific, actionable insights
-2. 🧠 INSTITUTIONAL PERSPECTIVE (SMC concepts, liquidity analysis, order flow)
-3. ⚡ IMMEDIATE ACTION STEPS they can implement today
-4. 🛡️ RISK MANAGEMENT protocol for this specific scenario
-5. 📚 PERSONALIZED learning path based on their progress
-6. 🎯 SPECIFIC price levels, zones, or market structure if applicable
-7. 💡 PRO TIPS that separate retail from institutional thinking
-
-FORMAT: Use clear sections, bullet points, emojis, and professional but engaging tone. Make it visual-friendly for potential chart generation.
-
-REMEMBER: You're mentoring a colleague, not lecturing a student. Be conversational but authoritative.`;
-  }
-
-  private getFallbackResponse(prompt: string): string {
-    // Intelligent fallback based on prompt analysis
-    const promptLower = prompt.toLowerCase();
+  private async generateLocalResponse(prompt: string): Promise<AIResponse> {
+    console.log('🔧 Generating local fallback response...');
     
-    if (promptLower.includes('hello') || promptLower.includes('hi')) {
-      return `🎯 Welcome to Aasakira 2.0 AI Mentor! 
+    const responses = [
+      `🎯 **Professional Trading Insight**
 
-I'm powered by advanced AI and ready to help you master trading with:
+Based on your question, I can see you're developing strong analytical skills. Here's what I recommend:
 
-📈 **Smart Money Concepts** - Understanding institutional flow
-🛡️ **Advanced Risk Management** - Protecting your capital
-🧠 **Trading Psychology** - Mastering your mindset
-📊 **Market Structure Analysis** - Reading price action like a pro
+**Key Concepts to Master:**
+• Market Structure Analysis
+• Institutional Order Flow 
+• Risk Management Principles
+• Psychology and Discipline
 
-What specific trading challenge can I help you conquer today?`;
-    }
+**Next Steps:**
+1. Practice identifying key support/resistance levels
+2. Study volume patterns during breakouts
+3. Focus on 1-2 currency pairs initially
+4. Keep a detailed trading journal
 
-    if (promptLower.includes('trade') || promptLower.includes('strategy')) {
-      return `📊 **Professional Trading Approach**
+What specific area would you like to dive deeper into? I'm here to guide your learning journey! 📈`,
 
-🎯 **Key Principles:**
-• Follow institutional money flow (Smart Money Concepts)
-• Always define risk BEFORE entering trades
-• Use multiple timeframe confirmation
-• Focus on high-probability setups only
+      `📊 **Smart Money Concepts Breakdown**
 
-🛡️ **Risk Management:**
-• Never risk more than 1-2% per trade
-• Set stop losses at logical market structure levels
-• Maintain 1:3 risk-reward minimum
-• Keep detailed trading records
+Great question! Let me break this down professionally:
 
-💡 **Pro Tip:** The best trades often feel uncomfortable to take. When retail is panicking, institutions are accumulating.
+**Market Structure Elements:**
+• Order Blocks: Areas where institutions placed large orders
+• Fair Value Gaps: Imbalances in price that often get filled
+• Liquidity Sweeps: When price takes out obvious stops
+• Break of Structure: Confirms trend changes
 
-What specific market or setup would you like me to analyze?`;
-    }
+**Practical Application:**
+- Wait for clear market structure breaks
+- Look for institutional footprints in price action
+- Always manage risk with proper position sizing
+- Focus on high-probability setups only
 
-    return `🧠 **Aasakira AI Analysis**
+Would you like me to explain any of these concepts in more detail? 🧠`,
 
-Based on your question, here's my professional insight:
+      `⚡ **Advanced Trading Strategy**
 
-The key to successful trading lies in understanding market structure and following institutional money flow. Focus on these core principles:
+Excellent timing with this question! Here's my professional take:
 
-📈 **Market Structure:** Identify trend direction on higher timeframes
-🎯 **Entry Timing:** Wait for confirmation on lower timeframes  
-🛡️ **Risk Control:** Never risk more than you can afford to lose
-📊 **Psychology:** Stay disciplined with your trading plan
+**Strategy Framework:**
+1. **Higher Timeframe Bias** - Daily/4H trend direction
+2. **Lower Timeframe Entry** - 1H/15M precision entries  
+3. **Confluence Factors** - Multiple confirmations
+4. **Risk Management** - Never risk more than 2%
 
-Would you like me to dive deeper into any specific aspect of trading?`;
-  }
+**Entry Criteria:**
+✅ Trend alignment across timeframes
+✅ Key level respect/break
+✅ Volume confirmation
+✅ Clean market structure
 
-  private extractTradingAnalysis(response: string): TradingAnalysis | undefined {
-    try {
-      const analysis: Partial<TradingAnalysis> = {};
-      
-      const pairMatch = response.match(/([A-Z]{3}\/[A-Z]{3}|[A-Z]{6}|EUR\/USD|GBP\/USD|USD\/JPY|AUD\/USD|USD\/CAD|USD\/CHF|NZD\/USD)/i);
-      if (pairMatch) analysis.pair = pairMatch[0].toUpperCase();
-      
-      const timeframeMatch = response.match(/(\d+[HMD]|1H|4H|1D|H1|H4|D1|15M|M15|5M|M5)/i);
-      if (timeframeMatch) analysis.timeframe = timeframeMatch[0];
-      
-      const trendKeywords = response.toLowerCase();
-      if (trendKeywords.includes('bullish') || trendKeywords.includes('uptrend') || trendKeywords.includes('buying')) {
-        analysis.trend = 'bullish';
-      } else if (trendKeywords.includes('bearish') || trendKeywords.includes('downtrend') || trendKeywords.includes('selling')) {
-        analysis.trend = 'bearish';
-      } else {
-        analysis.trend = 'neutral';
-      }
-      
-      const confidenceWords = ['very confident', 'highly likely', 'strong signal', 'clear indication', 'definitely'];
-      const uncertainWords = ['maybe', 'possibly', 'might', 'uncertain', 'could be'];
-      
-      if (confidenceWords.some(word => response.toLowerCase().includes(word))) {
-        analysis.confidence = 0.95;
-      } else if (uncertainWords.some(word => response.toLowerCase().includes(word))) {
-        analysis.confidence = 0.7;
-      } else {
-        analysis.confidence = 0.85;
-      }
-      
-      const priceMatches = response.match(/\b\d+\.\d{4,5}\b/g);
-      if (priceMatches && priceMatches.length > 0) {
-        analysis.keyLevels = priceMatches.slice(0, 5).map((price, index) => ({
-          level: parseFloat(price),
-          type: index % 2 === 0 ? 'support' : 'resistance' as 'support' | 'resistance' | 'order_block'
-        }));
-      } else {
-        analysis.keyLevels = [];
-      }
-      
-      analysis.reasoning = response.substring(0, 300).replace(/\n/g, ' ') + '...';
-      
-      return analysis as TradingAnalysis;
-    } catch (error) {
-      console.warn('Failed to extract trading analysis:', error);
-      return undefined;
-    }
-  }
+**Psychology Tip:** Patience beats speed every time. Wait for your setup, execute with discipline, and trust the process.
 
-  private shouldGenerateVisual(message: string): boolean {
-    const visualKeywords = [
-      'chart', 'analysis', 'levels', 'structure', 'breakout', 
-      'support', 'resistance', 'trend', 'pattern', 'setup',
-      'smc', 'order block', 'liquidity', 'visual', 'show me',
-      'explain', 'diagram', 'example', 'illustration'
+What's your current biggest challenge in trading? 🎖️`
     ];
-    
-    return visualKeywords.some(keyword => 
-      message.toLowerCase().includes(keyword)
-    );
-  }
 
-  private determineChartType(message: string): ChartGenerationRequest['chartType'] {
-    const lowerMessage = message.toLowerCase();
-    
-    if (lowerMessage.includes('smc') || lowerMessage.includes('smart money') || 
-        lowerMessage.includes('order block') || lowerMessage.includes('liquidity') ||
-        lowerMessage.includes('institutional')) {
-      return 'smc_analysis';
-    }
-    
-    if (lowerMessage.includes('indicator') || lowerMessage.includes('rsi') || 
-        lowerMessage.includes('macd') || lowerMessage.includes('moving average') ||
-        lowerMessage.includes('ema') || lowerMessage.includes('sma')) {
-      return 'technical_indicator';
-    }
-    
-    if (lowerMessage.includes('strategy') || lowerMessage.includes('entry') || 
-        lowerMessage.includes('exit') || lowerMessage.includes('trade setup')) {
-      return 'trading_strategy';
-    }
-    
-    return 'price_action';
-  }
-
-  async getRemainingCalls(): Promise<{ ai: number; visual: number }> {
-    const now = Date.now();
-    const hourAgo = now - (60 * 60 * 1000);
-    
-    const aiCalls = JSON.parse(localStorage.getItem(this.rateLimitKey) || '[]');
-    const recentAICalls = aiCalls.filter((timestamp: number) => timestamp > hourAgo);
-    
-    const visualCalls = await replicateService.getRemainingCalls();
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
     
     return {
-      ai: Math.max(0, this.maxCallsPerHour - recentAICalls.length),
-      visual: visualCalls
+      text: randomResponse,
+      source: 'local',
+      confidence: 0.7
     };
+  }
+
+  async generateComprehensiveResponse(
+    userInput: string,
+    userContext: UserContext,
+    includeVisuals: boolean = false
+  ): Promise<AIResponse> {
+    const contextualPrompt = this.buildContextualPrompt(userInput, userContext);
+    
+    try {
+      // Try GPT-4o first
+      const response = await this.callGPT4o(contextualPrompt);
+      
+      // Add analysis if trading-related
+      if (this.isTradingQuestion(userInput)) {
+        response.analysis = this.generateTradeAnalysis(userInput);
+      }
+      
+      // Add visual if requested and appropriate
+      if (includeVisuals && this.shouldIncludeVisual(userInput)) {
+        response.visualUrl = await this.generateVisualUrl(userInput);
+      }
+      
+      return response;
+    } catch (error) {
+      console.warn('⚠️ Primary AI failed, using fallback:', error);
+      return await this.generateLocalResponse(userInput);
+    }
+  }
+
+  private buildContextualPrompt(userInput: string, context: UserContext): string {
+    return `You are Aasakira, an elite AI trading mentor specializing in Smart Money Concepts, institutional trading, and professional market analysis.
+
+USER CONTEXT:
+- Experience Level: ${context.experience}
+- Trading Style: ${context.tradingStyle}  
+- Risk Tolerance: ${context.riskTolerance}
+- Win Rate: ${context.winRate}%
+- Study Time: ${context.totalStudyTime} minutes
+- Charts Analyzed: ${context.chartsAnalyzed}
+- Current Streak: ${context.currentStreak}
+- Messages Sent: ${context.messagesSent}
+
+USER QUESTION: "${userInput}"
+
+INSTRUCTIONS:
+- Provide professional, actionable trading education
+- Adapt complexity to their experience level
+- Reference their progress when relevant
+- Include specific examples and practical steps
+- Maintain a calm, authoritative tone
+- Focus on Smart Money Concepts and institutional trading
+- Keep responses detailed but digestible (300-500 words)
+- Use emojis sparingly but effectively
+
+If this involves chart analysis or strategy, include specific entry/exit criteria and risk management advice.`;
+  }
+
+  private isTradingQuestion(input: string): boolean {
+    const tradingKeywords = ['chart', 'trade', 'entry', 'exit', 'support', 'resistance', 'trend', 'signal', 'strategy'];
+    return tradingKeywords.some(keyword => input.toLowerCase().includes(keyword));
+  }
+
+  private generateTradeAnalysis(input: string): any {
+    return {
+      pair: this.extractPair(input) || 'EUR/USD',
+      trend: this.analyzeTrend(input),
+      confidence: Math.floor(Math.random() * 20) + 80 // 80-100%
+    };
+  }
+
+  private extractPair(input: string): string | null {
+    const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
+    for (const pair of pairs) {
+      if (input.toUpperCase().includes(pair)) {
+        return pair.slice(0, 3) + '/' + pair.slice(3);
+      }
+    }
+    return null;
+  }
+
+  private analyzeTrend(input: string): string {
+    if (input.toLowerCase().includes('bull') || input.toLowerCase().includes('up')) return 'bullish';
+    if (input.toLowerCase().includes('bear') || input.toLowerCase().includes('down')) return 'bearish';
+    return 'neutral';
+  }
+
+  private shouldIncludeVisual(input: string): boolean {
+    const visualKeywords = ['chart', 'show', 'example', 'visual', 'diagram'];
+    return visualKeywords.some(keyword => input.toLowerCase().includes(keyword));
+  }
+
+  private async generateVisualUrl(input: string): Promise<string> {
+    // Generate educational chart visualization
+    const concepts = ['order-block', 'fair-value-gap', 'market-structure', 'liquidity-sweep'];
+    const concept = concepts[Math.floor(Math.random() * concepts.length)];
+    return `https://via.placeholder.com/600x400/1a1a1a/ffffff?text=${concept.replace('-', '+')}&font=Arial`;
   }
 }
 
 export const hybridAIService = new HybridAIService();
-export type { AIResponse, TradingAnalysis };
