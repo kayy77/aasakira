@@ -1,6 +1,4 @@
 
-import { realTimePriceEngine, LivePriceData } from './realtimePriceEngine';
-
 interface ConfluenceFilter {
   name: string;
   weight: number;
@@ -64,56 +62,40 @@ class EnhancedSignalAnalyzer {
     {
       name: 'SMC Structure',
       weight: 2,
-      check: (data: MarketAnalysisData) => this.checkSMCStructure(data),
+      check: (data) => this.checkSMCStructure(data),
       reason: 'Break of Structure + Order Block confirmation'
     },
     {
       name: 'Liquidity Sweep',
       weight: 1.5,
-      check: (data: MarketAnalysisData) => this.checkLiquiditySweep(data),
+      check: (data) => this.checkLiquiditySweep(data),
       reason: 'Previous highs/lows swept with rejection'
     },
     {
       name: 'Fair Value Gap',
       weight: 1.5,
-      check: (data: MarketAnalysisData) => this.checkFairValueGap(data),
+      check: (data) => this.checkFairValueGap(data),
       reason: 'Imbalance zone identified for potential fill'
     },
     {
       name: 'Session Filter',
       weight: 1,
-      check: (data: MarketAnalysisData) => this.checkSessionFilter(data),
+      check: (data) => this.checkSessionFilter(data),
       reason: 'Trading during high volatility session'
     },
     {
       name: 'Volume Spike',
       weight: 1,
-      check: (data: MarketAnalysisData) => this.checkVolumeSpike(data),
+      check: (data) => this.checkVolumeSpike(data),
       reason: 'Significant volume increase detected'
     },
     {
       name: 'RSI Divergence',
       weight: 1,
-      check: (data: MarketAnalysisData) => this.checkRSIDivergence(data),
+      check: (data) => this.checkRSIDivergence(data),
       reason: 'RSI divergence on higher timeframe'
     }
   ];
-
-  public async generateSignal(): Promise<EnhancedSignal | null> {
-    try {
-      // Get a random currency pair
-      const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
-      const randomPair = pairs[Math.floor(Math.random() * pairs.length)];
-      
-      console.log(`🧠 Enhanced Signal Analysis for ${randomPair}...`);
-      
-      const signal = await this.analyzeForSignal(randomPair);
-      return signal;
-    } catch (error) {
-      console.error('Failed to generate enhanced signal:', error);
-      return null;
-    }
-  }
 
   async analyzeForSignal(pair: string): Promise<EnhancedSignal | null> {
     try {
@@ -151,7 +133,7 @@ class EnhancedSignalAnalyzer {
       }
 
       // Generate signal
-      const signal = await this.generateSignalData(marketData, confluenceResults, timeframeAgreement);
+      const signal = await this.generateSignal(marketData, confluenceResults, timeframeAgreement);
       
       // Add historical analysis
       const historicalAnalysis = await this.analyzeHistoricalPerformance(signal);
@@ -362,7 +344,7 @@ class EnhancedSignalAnalyzer {
     return this.getTrend(candles);
   }
 
-  private async generateSignalData(
+  private async generateSignal(
     data: MarketAnalysisData, 
     confluence: any, 
     timeframe: any

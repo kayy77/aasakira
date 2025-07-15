@@ -1,66 +1,126 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  RefreshCw, 
-  Zap, 
-  Activity, 
-  BarChart3, 
-  Brain,
-  TrendingUp,
-  AlertTriangle,
-  Clock,
-  Target
-} from 'lucide-react';
-import EnhancedSignalCard from './EnhancedSignalCard';
-import MilitaryGradeSignalCard from './MilitaryGradeSignalCard';
 import { multiIntelligenceCore, SignalDNA } from '@/services/multiIntelligenceCore';
-import { enhancedSignalAnalyzer, EnhancedSignal } from '@/services/enhancedSignalAnalyzer';
+import { webhookService } from '@/services/webhookService';
+import { trueLivePriceService } from '@/services/trueLivePriceService';
 import { motion, AnimatePresence } from 'framer-motion';
+import SignalCardV2 from './SignalCardV2';
+import { 
+  Brain, 
+  Activity, 
+  Clock, 
+  RefreshCw,
+  Settings,
+  Webhook,
+  CheckCircle2,
+  Target,
+  Shield
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import WebhookManager from './WebhookManager';
 
-interface LiveSignalsDashboardProps {
-  onAskAasakira: (signal: any) => void;
-}
-
-// Union type for both signal types
-type UnifiedSignal = (EnhancedSignal & { signalType: 'enhanced' }) | (SignalDNA & { signalType: 'military' });
-
-const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({ onAskAasakira }) => {
-  const [signals, setSignals] = useState<UnifiedSignal[]>([]);
+const LiveSignalsDashboard: React.FC = () => {
+  const [militarySignals, setMilitarySignals] = useState<(SignalDNA & { id: string, livePrice: number })[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [showWebhookManager, setShowWebhookManager] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState<string | null>(null);
+  const [generationSettings, setGenerationSettings] = useState({
+    strategyType: 'Hybrid' as 'SMC' | 'Institutional' | 'Hybrid',
+    confidenceThreshold: 80,
+    minFilters: 4,
+    pairFilter: 'majors' as 'all' | 'majors' | 'eurusd'
+  });
   const { toast } = useToast();
 
-  const generateSignal = async () => {
+  const generateMilitarySignal = async () => {
     setIsGenerating(true);
+    
     try {
-      const enhancedSignal = await enhancedSignalAnalyzer.generateSignal();
-      const militaryGradeSignal = await multiIntelligenceCore.generateSignalDNA();
-
-      if (enhancedSignal) {
-        const enhancedWithType: UnifiedSignal = { ...enhancedSignal, signalType: 'enhanced' };
-        setSignals(prev => [enhancedWithType, ...prev.slice(0, 4)]);
-      }
-
-      if (militaryGradeSignal) {
-        const militaryWithType: UnifiedSignal = { ...militaryGradeSignal, signalType: 'military' };
-        setSignals(prev => [militaryWithType, ...prev.slice(0, 4)]);
-      }
-
-      if (!enhancedSignal && !militaryGradeSignal) {
+      console.log('🚀 MULTI-INTELLIGENCE CORE ACTIVATION SEQUENCE INITIATED...');
+      
+      // Select pair based on filter
+      const pairs = generationSettings.pairFilter === 'eurusd' 
+        ? ['EURUSD'] 
+        : generationSettings.pairFilter === 'majors'
+        ? ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD']
+        : ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF'];
+      
+      const selectedPair = pairs[Math.floor(Math.random() * pairs.length)];
+      
+      // Get REAL live price using the original service
+      console.log(`🎯 TARGET ACQUIRED: ${selectedPair} - Fetching REAL live price...`);
+      const livePriceData = await trueLivePriceService.getTrueLivePrice(selectedPair);
+      const livePrice = livePriceData.price;
+      
+      console.log(`📡 LIVE PRICE CONFIRMED: ${selectedPair} @ ${livePrice} from ${livePriceData.source}`);
+      
+      // Generate signal through AI council
+      const signalDNA = await multiIntelligenceCore.generateSignalDNA(selectedPair, livePrice);
+      
+      if (!signalDNA) {
         toast({
-          title: "No Opportunities Found",
-          description: "Markets may be ranging. Try again in a few minutes.",
+          title: "Signal Validation Failed",
+          description: "AI Council consensus could not be reached. Market conditions do not meet institutional criteria.",
           variant: "destructive"
         });
+        return;
       }
-    } catch (error) {
+
+      // Check confidence threshold
+      if (signalDNA.confidence < generationSettings.confidenceThreshold) {
+        toast({
+          title: "Confidence Threshold Not Met",
+          description: `Signal confidence ${signalDNA.confidence}% below required ${generationSettings.confidenceThreshold}%`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update the price info with real data
+      signalDNA.price = {
+        source: livePriceData.source,
+        status: livePriceData.accuracy,
+        lastUpdated: 'Just now'
+      };
+
+      const militarySignal = {
+        ...signalDNA,
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        livePrice
+      };
+
+      setMilitarySignals(prev => [militarySignal, ...prev].slice(0, 8));
+      setLastUpdate(new Date());
+      
+      // Trigger webhook
+      await webhookService.triggerSignalAlert({
+        pair: signalDNA.symbol,
+        type: signalDNA.type,
+        confidence: signalDNA.confidence,
+        entry: signalDNA.structure.entry,
+        sl: signalDNA.structure.stopLoss,
+        tp: signalDNA.structure.takeProfit,
+        rr: signalDNA.structure.rr,
+        aiThought: signalDNA.aiThought
+      });
+      
+      const voteCount = Object.values(signalDNA.origin).filter(Boolean).length;
+      const gradeLevel = voteCount === 6 ? 'INSTITUTIONAL GRADE' : 'PROFESSIONAL';
+      
       toast({
-        title: "Signal Generation Failed",
-        description: "Failed to generate signal. Please try again.",
+        title: `${gradeLevel} Signal Generated`,
+        description: `${signalDNA.symbol} ${signalDNA.type} @ ${signalDNA.structure.entry} | Confidence: ${signalDNA.confidence}% | Confluence: ${voteCount}/6`,
+      });
+      
+    } catch (error) {
+      console.error('❌ SIGNAL GENERATION FAILED:', error);
+      toast({
+        title: "Generation Failure",
+        description: "Multi-Intelligence Core experienced critical error. Retry signal generation.",
         variant: "destructive"
       });
     } finally {
@@ -68,232 +128,314 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({ onAskAasaki
     }
   };
 
-  const removeSignal = (signalId: string) => {
-    setSignals(signals.filter(signal => 
-      signal.signalType === 'enhanced' ? signal.id !== signalId : signal.symbol !== signalId
-    ));
+  const removeMilitarySignal = (signalId: string) => {
+    setMilitarySignals(prev => prev.filter(signal => signal.id !== signalId));
+    toast({
+      title: "Signal Terminated",
+      description: "Signal removed from active monitoring.",
+    });
   };
 
-  const handleRefresh = async (symbol: string) => {
-    setIsGenerating(true);
+  const refreshSignalPrice = async (signalId: string) => {
+    setIsAnalyzing(signalId);
+    
     try {
-      const updatedSignal = await multiIntelligenceCore.refreshSignal(symbol);
-      setSignals(prevSignals =>
-        prevSignals.map(signal =>
-          (signal.signalType === 'military' && signal.symbol === symbol) ? 
-          { ...signal, ...updatedSignal } : signal
+      const signal = militarySignals.find(s => s.id === signalId);
+      if (!signal) return;
+      
+      // Get REAL live price
+      const livePriceData = await trueLivePriceService.getTrueLivePrice(signal.symbol);
+      const newPrice = livePriceData.price;
+      
+      setMilitarySignals(prev => 
+        prev.map(s => 
+          s.id === signalId 
+            ? { 
+                ...s, 
+                livePrice: newPrice, 
+                price: { 
+                  ...s.price, 
+                  source: livePriceData.source,
+                  status: livePriceData.accuracy,
+                  lastUpdated: 'Just now' 
+                } 
+              }
+            : s
         )
       );
+      
+      toast({
+        title: "Price Updated",
+        description: `${signal.symbol} live price refreshed: ${newPrice.toFixed(signal.symbol.includes('JPY') ? 3 : 5)} from ${livePriceData.source}`,
+      });
+      
     } catch (error) {
       toast({
-        title: "Signal Refresh Failed",
-        description: "Failed to refresh signal. Please try again.",
+        title: "Price Update Failed",
+        description: "Failed to refresh live price data.",
         variant: "destructive"
       });
     } finally {
-      setIsGenerating(false);
+      setIsAnalyzing(null);
     }
   };
 
-  const handleBacktest = (signal: any) => {
+  const handleBacktest = (signalDNA: SignalDNA) => {
     toast({
-      title: "Backtesting Signal",
-      description: "Analyzing historical performance and similar setups...",
+      title: "Backtest Analysis",
+      description: `${signalDNA.symbol} ${signalDNA.type}: ${Math.round(signalDNA.backtest.winRate)}% win rate over ${signalDNA.backtest.totalTrades} trades. Avg R/R: ${signalDNA.backtest.avgRR.toFixed(1)}`,
     });
   };
 
-  const handleCopySignal = (signal: any) => {
-    navigator.clipboard.writeText(JSON.stringify(signal));
-    toast({
-      title: "Signal Copied",
-      description: "Signal details copied to clipboard!",
-    });
-  };
-
-  const handleAskMentor = (signal: any) => {
-    toast({
-      title: "Asking Mentor",
-      description: "Routing to AI Mentor for strategic insights...",
-    });
-  };
-
+  // Auto-refresh prices every 5 seconds using REAL price service
   useEffect(() => {
-    generateSignal();
+    if (militarySignals.length === 0) return;
+    
+    const interval = setInterval(async () => {
+      const updatedSignals = await Promise.all(
+        militarySignals.map(async (signal) => {
+          try {
+            const livePriceData = await trueLivePriceService.getTrueLivePrice(signal.symbol);
+            return {
+              ...signal,
+              livePrice: livePriceData.price,
+              price: { 
+                ...signal.price, 
+                source: livePriceData.source,
+                status: livePriceData.accuracy,
+                lastUpdated: '5s ago' 
+              }
+            };
+          } catch {
+            return signal;
+          }
+        })
+      );
+      
+      setMilitarySignals(updatedSignals);
+    }, 5000);
 
-    const intervalId = setInterval(() => {
-      generateSignal();
-    }, 60000);
-
-    return () => clearInterval(intervalId);
-  }, []);
-
-  const totalSignals = signals.length;
-  const bullishSignals = signals.filter(signal => {
-    if (signal.signalType === 'enhanced') {
-      return signal.type === 'BUY';
-    } else {
-      // For military signals, we'll determine based on AI thought or default to random
-      return Math.random() > 0.5; // Placeholder logic
-    }
-  }).length;
-  const bearishSignals = totalSignals - bullishSignals;
+    return () => clearInterval(interval);
+  }, [militarySignals.length]);
 
   return (
-    <div className="space-y-8">
-      {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="glass-card hover-glow border-green-500/30">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-400" />
-              Bullish Signals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-400">{bullishSignals}</div>
-            <p className="text-sm text-gray-400">Number of BUY signals</p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card hover-glow border-red-500/30">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-400" />
-              Bearish Signals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-red-400">{bearishSignals}</div>
-            <p className="text-sm text-gray-400">Number of SELL signals</p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card hover-glow border-blue-500/30">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-400" />
-              Total Signals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-400">{totalSignals}</div>
-            <p className="text-sm text-gray-400">Total active signals</p>
-          </CardContent>
-        </Card>
+    <div className="space-y-6">
+      {/* Sakura Particles Background */}
+      <div className="sakura-container">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="sakura-petal"
+            style={{
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 10}s`,
+              animationDuration: `${8 + Math.random() * 4}s`
+            }}
+          />
+        ))}
       </div>
 
-      {/* Generate Signals Section */}
-      <Card className="glass-card border-purple-500/30">
-        <CardContent className="py-8 flex items-center justify-center">
-          <Button
-            onClick={generateSignal}
-            disabled={isGenerating}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold px-6 py-3"
-          >
-            {isGenerating ? (
-              <>
-                <RefreshCw className="animate-spin h-4 w-4 mr-2" />
-                Scanning Live Markets...
-              </>
-            ) : (
-              <>
-                <Zap className="mr-2 h-5 w-5" />
-                Generate New Signals
-              </>
-            )}
-          </Button>
+      {/* Samurai Command Center Header */}
+      <Card className="bg-gradient-to-r from-gray-950 via-purple-950/20 to-gray-950 border border-pink-500/30 relative overflow-hidden glow-soft animate-section-load">
+        <div className="absolute inset-0 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-pink-500/5" />
+        <CardHeader className="relative z-10">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="p-3 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded border border-pink-500/50 glow-soft">
+                  <Brain className="w-8 h-8 text-pink-400" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-gray-950" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-zen-maru font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+                  ⛩️ AASAKIRA SIGNAL SYSTEM
+                </h2>
+                <p className="text-sm text-gray-400 font-shippori">
+                  Silent precision. Disciplined execution. Every signal is a calculated strike.
+                </p>
+                <div className="flex items-center gap-4 mt-2">
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs font-zen-maru glow-soft">
+                    <Activity className="w-3 h-3 mr-1" />
+                    LIVE FEEDS ACTIVE
+                  </Badge>
+                  <Badge className="bg-pink-500/20 text-pink-400 border-pink-500/30 text-xs font-zen-maru glow-soft">
+                    <Shield className="w-3 h-3 mr-1" />
+                    AI COUNCIL ONLINE
+                  </Badge>
+                  <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs font-zen-maru glow-soft">
+                    <Target className="w-3 h-3 mr-1" />
+                    TACTICAL MODE
+                  </Badge>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {lastUpdate && (
+                <div className="flex items-center gap-1 text-xs text-gray-400 font-zen-maru">
+                  <Clock className="w-3 h-3" />
+                  Last: {lastUpdate.toLocaleTimeString()}
+                </div>
+              )}
+              <Button
+                onClick={() => setShowWebhookManager(!showWebhookManager)}
+                variant="outline"
+                size="sm"
+                className="border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-zen-maru glow-soft"
+              >
+                <Webhook className="w-4 h-4 mr-2" />
+                Webhooks
+              </Button>
+              <Button
+                onClick={generateMilitarySignal}
+                disabled={isGenerating}
+                className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/50 hover:bg-pink-500/30 font-zen-maru font-bold glow-intense"
+              >
+                {isGenerating ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                    AI COUNCIL VOTING...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-5 h-5 mr-2" />
+                    GENERATE SIGNAL
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+      </Card>
+
+      {/* Tactical Parameters */}
+      <Card className="bg-gray-950/50 border-gray-600/30 glow-soft animate-section-load">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2 font-zen-maru">
+            <Settings className="w-5 h-5" />
+            TACTICAL PARAMETERS
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block font-zen-maru">Strategy Type</label>
+              <select 
+                value={generationSettings.strategyType}
+                onChange={(e) => setGenerationSettings(prev => ({ ...prev, strategyType: e.target.value as any }))}
+                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm font-noto glow-soft"
+              >
+                <option value="Hybrid">⚡ Hybrid</option>
+                <option value="Institutional">⛩️ Institutional</option>
+                <option value="SMC">🥋 SMC</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block font-zen-maru">Min Confidence</label>
+              <select 
+                value={generationSettings.confidenceThreshold}
+                onChange={(e) => setGenerationSettings(prev => ({ ...prev, confidenceThreshold: parseInt(e.target.value) }))}
+                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm font-noto glow-soft"
+              >
+                <option value={70}>70%+</option>
+                <option value={80}>80%+</option>
+                <option value={90}>90%+</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block font-zen-maru">Min Confluence</label>
+              <select 
+                value={generationSettings.minFilters}
+                onChange={(e) => setGenerationSettings(prev => ({ ...prev, minFilters: parseInt(e.target.value) }))}
+                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm font-noto glow-soft"
+              >
+                <option value={3}>3/6 Frameworks</option>
+                <option value={4}>4/6 Frameworks</option>
+                <option value={5}>5/6 Frameworks</option>
+                <option value={6}>6/6 Frameworks (Elite)</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block font-zen-maru">Pair Filter</label>
+              <select 
+                value={generationSettings.pairFilter}
+                onChange={(e) => setGenerationSettings(prev => ({ ...prev, pairFilter: e.target.value as any }))}
+                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm font-noto glow-soft"
+              >
+                <option value="majors">Major Pairs</option>
+                <option value="eurusd">EUR/USD Only</option>
+                <option value="all">All Pairs</option>
+              </select>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Live Signals Display */}
+      {/* Webhook Manager */}
+      {showWebhookManager && <WebhookManager />}
+
+      {/* System Status */}
+      {militarySignals.length > 0 && (
+        <Alert className="border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10 glow-soft animate-section-load">
+          <CheckCircle2 className="h-4 w-4 text-green-400" />
+          <AlertDescription className="text-green-400 font-zen-maru">
+            ⛩️ AASAKIRA SYSTEM OPERATIONAL - {militarySignals.length} Active Signals | Auto-refresh: 5s intervals
+            <div className="mt-1 text-xs text-green-300 font-noto">
+              Strategic signal intelligence with live price feeds and multi-framework validation
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Signal Cards */}
       <AnimatePresence>
-        {signals.length > 0 && (
+        {militarySignals.map((signal, index) => (
           <motion.div
+            key={signal.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ delay: index * 0.1 }}
           >
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                🔴 LIVE SIGNALS
-                <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-                  {signals.length} Active
-                </Badge>
-              </h2>
-              
-              <Button
-                onClick={generateSignal}
-                disabled={isGenerating}
-                size="sm"
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-                Refresh All
-              </Button>
-            </div>
-
-            <div className="grid gap-6">
-              {signals.map((signal, index) => (
-                <div key={`${signal.signalType}-${index}`} className="relative">
-                  {signal.signalType === 'enhanced' ? (
-                    <EnhancedSignalCard
-                      signal={signal as EnhancedSignal}
-                      onBacktest={() => handleBacktest(signal)}
-                      onCopySignal={() => handleCopySignal(signal)}
-                      onAskAasakira={() => onAskAasakira(signal)}
-                    />
-                  ) : (
-                    <MilitaryGradeSignalCard
-                      signalDNA={signal as SignalDNA}
-                      livePrice={1.0950}
-                      onRemove={removeSignal}
-                      onRefresh={() => handleRefresh(signal.symbol)}
-                      onBacktest={() => handleBacktest(signal)}
-                      onAskMentor={() => handleAskMentor(signal)}
-                      onAskAasakira={() => onAskAasakira(signal)}
-                      isUpdating={isGenerating}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+            <SignalCardV2
+              signalDNA={signal}
+              livePrice={signal.livePrice}
+              onRemove={removeMilitarySignal}
+              onRefresh={() => refreshSignalPrice(signal.id)}
+              onBacktest={() => handleBacktest(signal)}
+              isUpdating={isAnalyzing === signal.id}
+            />
           </motion.div>
-        )}
+        ))}
       </AnimatePresence>
 
-      {/* No Signals State */}
-      {signals.length === 0 && !isGenerating && (
-        <Card className="glass-card border-purple-500/20">
+      {/* Empty State */}
+      {militarySignals.length === 0 && !isGenerating && (
+        <Card className="bg-gradient-to-br from-gray-950 to-gray-900 border-gray-500/20 glow-soft animate-section-load">
           <CardContent className="text-center py-12">
-            <Target className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No Active Signals</h3>
-            <p className="text-gray-400 mb-4">
-              AI is scanning live markets for high-probability setups
+            <div className="relative mb-6">
+              <div className="w-20 h-20 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-full mx-auto flex items-center justify-center border border-pink-500/30 glow-soft">
+                <Brain className="w-10 h-10 text-pink-400" />
+              </div>
+              <div className="absolute inset-0 bg-pink-400/10 rounded-full blur-xl" />
+            </div>
+            <h3 className="text-2xl font-zen-maru font-bold text-white mb-2">⛩️ SYSTEM STANDBY</h3>
+            <p className="text-gray-400 mb-6 max-w-md mx-auto font-shippori">
+              Multi-Intelligence Core awaiting deployment. Elite signals require AI council consensus of 4/6 minimum.
             </p>
             <Button
-              onClick={generateSignal}
-              variant="outline"
-              className="border-purple-500/30 hover:bg-purple-500/20"
+              onClick={generateMilitarySignal}
+              className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/50 hover:bg-pink-500/30 font-zen-maru font-bold px-8 py-3 glow-intense"
             >
-              <Zap className="w-4 h-4 mr-2" />
-              Generate New Signals
+              <Brain className="w-5 h-5 mr-2" />
+              ACTIVATE INTELLIGENCE CORE
             </Button>
           </CardContent>
         </Card>
       )}
-
-      {/* Performance Analytics */}
-      <Card className="glass-card border-blue-500/30">
-        <CardHeader>
-          <CardTitle className="text-white">Performance Analytics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-400">
-            Here, we'll display performance analytics for the generated signals.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 };

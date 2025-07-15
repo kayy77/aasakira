@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,8 +21,7 @@ import {
   Crosshair,
   Clock,
   CheckCircle2,
-  XCircle,
-  MessageCircle
+  XCircle
 } from 'lucide-react';
 import { SignalDNA } from '@/services/multiIntelligenceCore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,7 +33,6 @@ interface MilitaryGradeSignalCardProps {
   onRefresh: () => void;
   onBacktest: () => void;
   onAskMentor: () => void;
-  onAskAasakira: (SignalDNA: SignalDNA) => void;
   isUpdating?: boolean;
 }
 
@@ -44,7 +43,6 @@ const MilitaryGradeSignalCard: React.FC<MilitaryGradeSignalCardProps> = ({
   onRefresh,
   onBacktest,
   onAskMentor,
-  onAskAasakira,
   isUpdating = false
 }) => {
   const [showConflictViewer, setShowConflictViewer] = useState(false);
@@ -157,28 +155,15 @@ const MilitaryGradeSignalCard: React.FC<MilitaryGradeSignalCardProps> = ({
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className={`text-xl font-bold ${typeConfig.textColor} flex items-center gap-3`}>
-                {/* Large BUY/SELL Indicator */}
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
-                  isLong 
-                    ? 'bg-green-500/20 border-green-500/50 text-green-400' 
-                    : 'bg-red-500/20 border-red-500/50 text-red-400'
-                }`}>
-                  {isLong ? (
-                    <TrendingUp className="w-5 h-5" />
-                  ) : (
-                    <TrendingDown className="w-5 h-5" />
-                  )}
-                  <div>
-                    <div className="text-lg font-bold">{isLong ? 'BUY' : 'SELL'}</div>
-                    <div className="text-xs opacity-80">{signalDNA.symbol}</div>
-                  </div>
-                </div>
-                
-                <div>
-                  <span className="text-sm font-normal">
-                    {typeConfig.icon} {signalDNA.type.toUpperCase()}
-                  </span>
-                </div>
+                {isLong ? (
+                  <TrendingUp className="w-6 h-6 text-green-400" />
+                ) : (
+                  <TrendingDown className="w-6 h-6 text-red-400" />
+                )}
+                {signalDNA.symbol}
+                <span className="text-sm font-normal">
+                  {typeConfig.icon} {signalDNA.type.toUpperCase()}
+                </span>
               </CardTitle>
               
               <div className="flex items-center gap-2">
@@ -290,18 +275,8 @@ const MilitaryGradeSignalCard: React.FC<MilitaryGradeSignalCardProps> = ({
               </div>
             </div>
 
-            {/* Enhanced Power Buttons */}
+            {/* Power Buttons */}
             <div className="grid grid-cols-2 gap-2">
-              <Button
-                onClick={() => onAskAasakira(signalDNA)}
-                variant="outline"
-                size="sm"
-                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/20 bg-gradient-to-r from-purple-500/10 to-pink-500/10"
-              >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Ask Aasakira
-              </Button>
-              
               <Button
                 onClick={onRefresh}
                 disabled={isUpdating}
@@ -328,13 +303,23 @@ const MilitaryGradeSignalCard: React.FC<MilitaryGradeSignalCardProps> = ({
               </Button>
               
               <Button
+                onClick={() => setShowWhyTrade(true)}
+                variant="outline"
+                size="sm"
+                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
+              >
+                <Brain className="w-4 h-4 mr-2" />
+                Why Trade?
+              </Button>
+              
+              <Button
                 onClick={onAskMentor}
                 variant="outline"
                 size="sm"
                 className="border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20"
               >
                 <Target className="w-4 h-4 mr-2" />
-                Strategic
+                Ask Mentor
               </Button>
             </div>
 

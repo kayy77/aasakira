@@ -1,3 +1,4 @@
+
 export interface IntelligenceModule {
   name: string;
   role: string;
@@ -94,23 +95,7 @@ class MultiIntelligenceCore {
     }
   ];
 
-  public async generateSignalDNA(): Promise<SignalDNA | null> {
-    try {
-      // Get a random currency pair
-      const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
-      const randomPair = pairs[Math.floor(Math.random() * pairs.length)];
-      
-      // Get a base price for the pair
-      const livePrice = this.getBasePrice(randomPair);
-      
-      return await this.generateSignalDNAForPair(randomPair, livePrice);
-    } catch (error) {
-      console.error('Failed to generate signal DNA:', error);
-      return null;
-    }
-  }
-
-  async generateSignalDNAForPair(pair: string, livePrice: number): Promise<SignalDNA | null> {
+  async generateSignalDNA(pair: string, livePrice: number): Promise<SignalDNA | null> {
     console.log(`🧠 MULTI-INTELLIGENCE CORE ACTIVATED FOR ${pair}`);
     
     // Simulate AI council voting
@@ -175,32 +160,6 @@ class MultiIntelligenceCore {
 
     console.log(`✅ ${approvedVotes === 6 ? 'INSTITUTIONAL GRADE' : 'HIGH CONFIDENCE'} SIGNAL GENERATED`);
     return signalDNA;
-  }
-
-  public async refreshSignal(symbol: string): Promise<Partial<SignalDNA>> {
-    try {
-      console.log(`🔄 Refreshing signal for ${symbol}...`);
-      
-      // Get updated price
-      const livePrice = this.getBasePrice(symbol);
-      
-      // Return updated fields
-      return {
-        price: {
-          source: 'Polygon/Alpha Vantage',
-          status: 'VERIFIED',
-          lastUpdated: 'just now'
-        },
-        backtest: {
-          winRate: 65 + Math.random() * 15,
-          totalTrades: Math.floor(100 + Math.random() * 200),
-          avgRR: 1.8 + Math.random() * 1.2
-        }
-      };
-    } catch (error) {
-      console.error(`Failed to refresh signal for ${symbol}:`, error);
-      return {};
-    }
   }
 
   private async conductAIVoting(pair: string, livePrice: number): Promise<IntelligenceModule[]> {
@@ -306,17 +265,6 @@ class MultiIntelligenceCore {
 
   getVotingResults(): IntelligenceModule[] {
     return this.intelligenceModules;
-  }
-
-  private getBasePrice(pair: string): number {
-    const prices: { [key: string]: number } = {
-      'EURUSD': 1.0421,
-      'GBPUSD': 1.2556,
-      'USDJPY': 156.25,
-      'AUDUSD': 0.6234,
-      'USDCAD': 1.4287
-    };
-    return prices[pair] || 1.0000;
   }
 }
 

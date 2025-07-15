@@ -1,21 +1,11 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import Navigation from '@/components/Navigation';
 import LiveSignalsDashboard from '@/components/signals/LiveSignalsDashboard';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import EnhancedSignalDigestCard from '@/components/signals/EnhancedSignalDigestCard';
 import CoachModeExplanation from '@/components/signals/CoachModeExplanation';
-import AasakiraSignalMentor from '@/components/signals/AasakiraSignalMentor';
 
 const Signals = () => {
-  const [selectedSignalForMentor, setSelectedSignalForMentor] = useState<any>(null);
-  const [showMentor, setShowMentor] = useState(false);
-
-  const handleAskAasakira = (signal: any) => {
-    setSelectedSignalForMentor(signal);
-    setShowMentor(true);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative">
       <CherryBlossomBackground />
@@ -41,24 +31,14 @@ const Signals = () => {
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-400">
                 <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                Ask Aasakira
+                Coach Mode
               </div>
             </div>
           </div>
 
-          <LiveSignalsDashboard onAskAasakira={handleAskAasakira} />
+          <LiveSignalsDashboard />
         </div>
       </div>
-
-      {/* Aasakira Signal Mentor Modal */}
-      <AasakiraSignalMentor
-        signal={selectedSignalForMentor}
-        isOpen={showMentor}
-        onClose={() => {
-          setShowMentor(false);
-          setSelectedSignalForMentor(null);
-        }}
-      />
     </div>
   );
 };
