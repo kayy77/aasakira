@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -68,15 +69,6 @@ const VisualExplainer = ({ message, userContext = {}, onAnalysisComplete }: Visu
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    }
-  };
-
-  const getRemainingCalls = async () => {
-    try {
-      const calls = await hybridAIService.getRemainingCalls();
-      return calls;
-    } catch (error) {
-      return { ai: 0, visual: 0 };
     }
   };
 
@@ -189,7 +181,7 @@ const VisualExplainer = ({ message, userContext = {}, onAnalysisComplete }: Visu
                       response.analysis.trend === 'bullish' ? 'text-green-400' :
                       response.analysis.trend === 'bearish' ? 'text-red-400' : 'text-yellow-400'
                     }`}>
-                      {response.analysis.trend.toUpperCase()}
+                      {response.analysis.trend?.toUpperCase()}
                     </div>
                   </div>
                 </div>

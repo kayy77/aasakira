@@ -9,7 +9,12 @@ export interface AIResponse {
   analysis?: {
     pair?: string;
     trend?: string;
+    timeframe?: string;
     confidence?: number;
+    keyLevels?: Array<{
+      type: 'support' | 'resistance' | 'pivot';
+      level: string;
+    }>;
   };
 }
 
@@ -25,6 +30,9 @@ export interface UserContext {
 }
 
 class HybridAIService {
+  private readonly rateLimitKey = 'ai_service_calls';
+  private readonly maxCallsPerHour = 30;
+
   private async callGPT4o(prompt: string): Promise<AIResponse> {
     try {
       console.log('🤖 Calling GPT-4o with prompt:', prompt.substring(0, 100) + '...');
@@ -153,6 +161,26 @@ What's your current biggest challenge in trading? 🎖️`
     }
   }
 
+  async getRemainingCalls(): Promise<{ ai: number; visual: number }> {
+    try {
+      const now = Date.now();
+      const hourAgo = now - (60 * 60 * 1000);
+      
+      const calls = JSON.parse(localStorage.getItem(this.rateLimitKey) || '[]');
+      const recentCalls = calls.filter((timestamp: number) => timestamp > hourAgo);
+      
+      const remaining = Math.max(0, this.maxCallsPerHour - recentCalls.length);
+      
+      return {
+        ai: remaining,
+        visual: remaining
+      };
+    } catch (error) {
+      console.error('Error checking rate limits:', error);
+      return { ai: 0, visual: 0 };
+    }
+  }
+
   private buildContextualPrompt(userInput: string, context: UserContext): string {
     return `You are Aasakira, an elite AI trading mentor specializing in Smart Money Concepts, institutional trading, and professional market analysis.
 
@@ -190,7 +218,9 @@ If this involves chart analysis or strategy, include specific entry/exit criteri
     return {
       pair: this.extractPair(input) || 'EUR/USD',
       trend: this.analyzeTrend(input),
-      confidence: Math.floor(Math.random() * 20) + 80 // 80-100%
+      timeframe: this.extractTimeframe(input) || '1H',
+      confidence: Math.floor(Math.random() * 20) + 80, // 80-100%
+      keyLevels: this.generateKeyLevels(input)
     };
   }
 
@@ -202,6 +232,44 @@ If this involves chart analysis or strategy, include specific entry/exit criteri
       }
     }
     return null;
+  }
+
+  private extractTimeframe(input: string): string | null {
+    const timeframes = ['1M', '5M', '15M', '30M', '1H', '4H', '1D'];
+    for (const tf of timeframes) {
+      if (input.toUpperCase().includes(tf)) {
+        return tf;
+      }
+    }
+    return null;
+  }
+
+  private generateKeyLevels(input: string): Array<{ type: 'support' | 'resistance' | 'pivot'; level: string }> {
+    const levels = [];
+    const basePrice = 1.0800; // Example EUR/USD
+    
+    if (input.toLowerCase().includes('support') || Math.random() > 0.5) {
+      levels.push({
+        type: 'support' as const,
+        level: (basePrice - 0.0050).toFixed(4)
+      });
+    }
+    
+    if (input.toLowerCase().includes('resistance') || Math.random() > 0.5) {
+      levels.push({
+        type: 'resistance' as const,
+        level: (basePrice + 0.0050).toFixed(4)
+      });
+    }
+    
+    if (Math.random() > 0.7) {
+      levels.push({
+        type: 'pivot' as const,
+        level: basePrice.toFixed(4)
+      });
+    }
+    
+    return levels;
   }
 
   private analyzeTrend(input: string): string {
