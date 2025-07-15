@@ -136,14 +136,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`
+        emailRedirectTo: `${window.location.origin}/`,
+        data: {
+          email_confirm: false
+        }
       }
     });
     if (error) throw error;
     
     toast({
-      title: "Check your email",
-      description: "We've sent you a confirmation link.",
+      title: "Account created!",
+      description: "You can now start using AASAKIRA immediately.",
     });
   };
 
