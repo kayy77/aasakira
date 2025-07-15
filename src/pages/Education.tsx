@@ -21,31 +21,34 @@ import TradingJournal from '@/components/education/TradingJournal';
 import BacktestLab from '@/components/education/BacktestLab';
 import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
 import CombatMode from '@/components/education/CombatMode';
+import MobileNavigation from '@/components/mobile/MobileNavigation';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Education = () => {
   const [activeTab, setActiveTab] = useState('mentor');
+  const isMobile = useIsMobile();
 
   const features = [
     {
-      icon: <Brain className="w-8 h-8 text-purple-400" />,
+      icon: <Brain className="w-6 h-6 md:w-8 md:h-8 text-purple-400" />,
       title: "AI Mentor",
       description: "Personalized trading education with AI-powered explanations",
       tab: "mentor"
     },
     {
-      icon: <BookOpen className="w-8 h-8 text-blue-400" />,
+      icon: <BookOpen className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />,
       title: "Trading Journal",
       description: "Track your trades, emotions, and learning progress",
       tab: "journal"
     },
     {
-      icon: <TestTube className="w-8 h-8 text-green-400" />,
+      icon: <TestTube className="w-6 h-6 md:w-8 md:h-8 text-green-400" />,
       title: "Backtest Lab",
       description: "Test your strategies against historical market data",
       tab: "backtest"
     },
     {
-      icon: <Gamepad2 className="w-8 h-8 text-red-400" />,
+      icon: <Gamepad2 className="w-6 h-6 md:w-8 md:h-8 text-red-400" />,
       title: "Combat Mode",
       description: "Gamified learning with trading battles and challenges",
       tab: "combat"
@@ -55,21 +58,23 @@ const Education = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative">
       <CherryBlossomBackground />
-      <Navigation />
+      {isMobile ? <MobileNavigation /> : <Navigation />}
       
-      <div className="relative z-10 pt-24 pb-12">
+      <div className="relative z-10 pt-20 md:pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold gradient-text mb-4">
+          <div className="text-center mb-8 md:mb-12">
+            <h1 className="text-2xl md:text-4xl font-bold gradient-text mb-4">
               Trading Education Hub
             </h1>
-            <p className="text-gray-300 text-lg max-w-3xl mx-auto">
+            <p className="text-gray-300 text-sm md:text-lg max-w-3xl mx-auto px-4">
               Master the markets with AI-powered education, personal journaling, strategy backtesting, and gamified learning
             </p>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 md:space-y-8">
+            <div className={`grid gap-3 md:gap-4 mb-6 md:mb-8 ${
+              isMobile ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-4'
+            }`}>
               {features.map((feature, index) => (
                 <Card 
                   key={index}
@@ -78,14 +83,18 @@ const Education = () => {
                   }`}
                   onClick={() => setActiveTab(feature.tab)}
                 >
-                  <CardContent className="p-6 text-center">
-                    <div className="flex justify-center mb-4">
+                  <CardContent className={`p-4 md:p-6 text-center ${isMobile ? 'space-y-2' : ''}`}>
+                    <div className="flex justify-center mb-2 md:mb-4">
                       {feature.icon}
                     </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">
+                    <h3 className={`font-semibold text-white mb-1 md:mb-2 ${
+                      isMobile ? 'text-sm' : 'text-lg'
+                    }`}>
                       {feature.title}
                     </h3>
-                    <p className="text-gray-400 text-sm">
+                    <p className={`text-gray-400 ${
+                      isMobile ? 'text-xs hidden' : 'text-sm'
+                    }`}>
                       {feature.description}
                     </p>
                   </CardContent>

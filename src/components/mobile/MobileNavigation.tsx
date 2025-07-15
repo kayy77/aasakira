@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Brain, TrendingUp, Coins, Signal, Home, User } from 'lucide-react';
@@ -30,7 +31,7 @@ const MobileNavigation = () => {
   return (
     <div className="md:hidden">
       {/* Mobile Header */}
-      <div className="flex items-center justify-between p-4 bg-black/50 backdrop-blur-sm border-b border-white/10">
+      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm border-b border-white/10 sticky top-0 z-50">
         <Link to="/" className="text-xl font-bold gradient-text">
           Aasakira
         </Link>
@@ -48,7 +49,7 @@ const MobileNavigation = () => {
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-black/90 backdrop-blur-sm border-white/20" align="end">
+              <DropdownMenuContent className="w-56 bg-black/95 backdrop-blur-sm border-white/20 z-50" align="end">
                 <DropdownMenuItem className="flex-col items-start text-white hover:bg-white/10">
                   <div className="font-medium">{user.email}</div>
                   <div className="text-xs text-gray-400">Free Plan</div>
@@ -85,38 +86,44 @@ const MobileNavigation = () => {
 
       {/* Mobile Menu Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm">
-          <div className="flex flex-col h-full pt-20">
-            <div className="flex-1 px-4">
-              <nav className="space-y-2">
-                {navigation.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-lg font-medium transition-all duration-200 ${
-                        isActive(item.href)
-                          ? 'bg-primary/20 text-primary border border-primary/30'
-                          : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      <Icon className="h-6 w-6" />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-            
-            <div className="p-4 border-t border-white/10">
-              <div className="text-center text-gray-400 text-sm">
-                Aasakira Trading Platform
+        <>
+          <div 
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm">
+            <div className="flex flex-col h-full pt-20 px-4">
+              <div className="flex-1">
+                <nav className="space-y-3">
+                  {navigation.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={`flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium transition-all duration-200 ${
+                          isActive(item.href)
+                            ? 'bg-primary/20 text-primary border border-primary/30'
+                            : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <Icon className="h-6 w-6" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+              
+              <div className="p-4 border-t border-white/10">
+                <div className="text-center text-gray-400 text-sm">
+                  Aasakira Trading Platform
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

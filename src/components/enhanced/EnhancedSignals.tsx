@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserTrackingService } from '@/services/userTrackingService';
@@ -17,7 +16,9 @@ import {
   Lock,
   CheckCircle2,
   Activity,
-  RefreshCw
+  RefreshCw,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import { signalService, Signal } from '@/services/signalService';
 import UsageLimits from '@/components/features/UsageLimits';
@@ -26,6 +27,7 @@ import MobileSignalCard from '@/components/enhanced/MobileSignalCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SignalCardProps {
   signal: Signal;
@@ -49,18 +51,31 @@ const SignalCard: React.FC<SignalCardProps> = ({ signal, isPremium, onExplain, o
     }`}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge className={`${
-              signal.type === 'BUY' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-            } border-0 font-bold`}>
-              {signal.type} {signal.pair}
-            </Badge>
-            {isHighQuality && (
-              <Badge className="bg-gold-500/20 text-gold-400 border-gold-500/30">
-                <Crown className="w-3 h-3 mr-1" />
-                PREMIUM
-              </Badge>
-            )}
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${
+              signal.type === 'BUY' ? 'bg-green-500/20' : 'bg-red-500/20'
+            }`}>
+              {signal.type === 'BUY' ? (
+                <TrendingUp className="w-5 h-5 text-green-400" />
+              ) : (
+                <TrendingDown className="w-5 h-5 text-red-400" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <Badge className={`font-bold text-lg px-3 py-1 ${
+                  signal.type === 'BUY' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                } border-0`}>
+                  {signal.type} {signal.pair}
+                </Badge>
+                {isHighQuality && (
+                  <Badge className="bg-gold-500/20 text-gold-400 border-gold-500/30">
+                    <Crown className="w-3 h-3 mr-1" />
+                    PREMIUM
+                  </Badge>
+                )}
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Badge className={`border-0 ${
@@ -183,19 +198,8 @@ const EnhancedSignals = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [replayMode, setReplayMode] = useState<Signal | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
   const { toast } = useToast();
-
-  // Check if mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   const generateSignal = async () => {
     if (!canUseFeature('signals') && !isPremium) {
@@ -265,7 +269,6 @@ const EnhancedSignals = () => {
     });
   };
 
-  // Get performance stats
   const performanceStats = signalService.getPerformanceStats();
 
   useEffect(() => {
@@ -274,16 +277,16 @@ const EnhancedSignals = () => {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header Section */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-3">
-          <div className="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
-            <Sparkles className="h-8 w-8 text-purple-400" />
+          <div className="p-2 md:p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
+            <Sparkles className="h-6 w-6 md:h-8 md:w-8 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold gradient-text">LIVE AI SIGNALS</h1>
-            <p className="text-gray-400">Real-time market analysis with live price feeds</p>
+            <h1 className="text-xl md:text-3xl font-bold gradient-text">LIVE AI SIGNALS</h1>
+            <p className="text-gray-400 text-sm md:text-base">Real-time market analysis with live price feeds</p>
           </div>
         </div>
         
@@ -291,17 +294,19 @@ const EnhancedSignals = () => {
           <Button
             onClick={generateSignal}
             disabled={isGenerating}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold px-6 py-3"
+            className={`bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold ${
+              isMobile ? 'px-4 py-2 text-sm' : 'px-6 py-3'
+            }`}
           >
             {isGenerating ? (
               <>
-                <RefreshCw className="animate-spin h-4 w-4 mr-2" />
-                Scanning Live Markets...
+                <RefreshCw className={`animate-spin mr-2 ${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                {isMobile ? 'Scanning...' : 'Scanning Live Markets...'}
               </>
             ) : (
               <>
-                <Zap className="mr-2 h-5 w-5" />
-                Generate Live Signal
+                <Zap className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                {isMobile ? 'Generate Signal' : 'Generate Live Signal'}
               </>
             )}
           </Button>
@@ -313,32 +318,32 @@ const EnhancedSignals = () => {
 
       {/* Performance Stats */}
       <Card className="glass-card hover-glow border-gold-500/30">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-gold-400" />
-            Live Performance Tracking
-            <Badge className="bg-gold-500/20 text-gold-400 border-gold-500/30 ml-auto">
+        <CardHeader className={isMobile ? 'pb-3' : ''}>
+          <CardTitle className={`text-white flex items-center gap-2 ${isMobile ? 'text-lg' : ''}`}>
+            <BarChart3 className={`text-gold-400 ${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
+            {isMobile ? 'Performance' : 'Live Performance Tracking'}
+            <Badge className="bg-gold-500/20 text-gold-400 border-gold-500/30 ml-auto text-xs">
               VERIFIED
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={`grid gap-3 md:gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'}`}>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">{performanceStats.winRate}%</div>
-              <div className="text-sm text-gray-400">Win Rate (30D)</div>
+              <div className={`font-bold text-green-400 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{performanceStats.winRate}%</div>
+              <div className={`text-gray-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>Win Rate (30D)</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-400">{performanceStats.avgRR}R</div>
-              <div className="text-sm text-gray-400">Avg Risk:Reward</div>
+              <div className={`font-bold text-blue-400 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{performanceStats.avgRR}R</div>
+              <div className={`text-gray-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>Avg Risk:Reward</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-400">{performanceStats.totalSignals}</div>
-              <div className="text-sm text-gray-400">Total Signals</div>
+              <div className={`font-bold text-purple-400 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{performanceStats.totalSignals}</div>
+              <div className={`text-gray-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>Total Signals</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-400">{performanceStats.activeSignals}</div>
-              <div className="text-sm text-gray-400">Active Now</div>
+              <div className={`font-bold text-red-400 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{performanceStats.activeSignals}</div>
+              <div className={`text-gray-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>Active Now</div>
             </div>
           </div>
         </CardContent>
@@ -349,7 +354,7 @@ const EnhancedSignals = () => {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <h2 className="text-xl font-bold text-white">🔴 LIVE SIGNALS</h2>
+            <h2 className={`font-bold text-white ${isMobile ? 'text-lg' : 'text-xl'}`}>🔴 LIVE SIGNALS</h2>
           </div>
           
           <div className="grid gap-4">
@@ -379,18 +384,19 @@ const EnhancedSignals = () => {
       {/* No Signals State */}
       {signals.length === 0 && !isGenerating && (
         <Card className="glass-card border-purple-500/20">
-          <CardContent className="text-center py-12">
-            <Target className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No Active Signals</h3>
-            <p className="text-gray-400 mb-4">
+          <CardContent className={`text-center ${isMobile ? 'py-8' : 'py-12'}`}>
+            <Target className={`text-gray-400 mx-auto mb-4 ${isMobile ? 'w-12 h-12' : 'w-16 h-16'}`} />
+            <h3 className={`font-semibold text-white mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>No Active Signals</h3>
+            <p className={`text-gray-400 mb-4 ${isMobile ? 'text-sm px-4' : ''}`}>
               AI is scanning live markets for high-probability setups
             </p>
             <Button
               onClick={generateSignal}
               variant="outline"
               className="border-purple-500/30 hover:bg-purple-500/20"
+              size={isMobile ? 'sm' : 'default'}
             >
-              <Zap className="w-4 h-4 mr-2" />
+              <Zap className={`mr-2 ${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
               Scan Live Markets
             </Button>
           </CardContent>
@@ -402,15 +408,15 @@ const EnhancedSignals = () => {
         <Alert className="border-blue-500/30 bg-blue-500/10">
           <Brain className="h-4 w-4 text-blue-400" />
           <AlertDescription className="text-blue-300">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-start justify-between gap-2">
+              <div className={isMobile ? 'text-sm' : ''}>
                 <strong>AI Analysis:</strong> {explanation}
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setExplanation(null)}
-                className="text-blue-400 hover:bg-blue-500/20"
+                className="text-blue-400 hover:bg-blue-500/20 flex-shrink-0"
               >
                 ✕
               </Button>
@@ -424,8 +430,8 @@ const EnhancedSignals = () => {
         <Alert className="border-green-500/30 bg-green-500/10">
           <CheckCircle2 className="h-4 w-4 text-green-400" />
           <AlertDescription className="text-green-300">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-start justify-between gap-2">
+              <div className={isMobile ? 'text-sm' : ''}>
                 <strong>Backtest Result:</strong> Similar setups hit TP in avg 2.1 hours. Historical win rate: 82%. 
                 Expected RRR: {replayMode.takeProfit && replayMode.entry && replayMode.stopLoss ? 
                   ((Number(replayMode.takeProfit) - Number(replayMode.entry)) / (Number(replayMode.entry) - Number(replayMode.stopLoss))).toFixed(1) : '2.4'}R
@@ -434,7 +440,7 @@ const EnhancedSignals = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => setReplayMode(null)}
-                className="text-green-400 hover:bg-green-500/20"
+                className="text-green-400 hover:bg-green-500/20 flex-shrink-0"
               >
                 ✕
               </Button>
