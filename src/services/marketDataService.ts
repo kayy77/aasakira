@@ -60,6 +60,27 @@ class MarketDataService {
     return this.generateFallbackData(pair);
   }
 
+  async getCurrentPrice(symbol: string): Promise<number> {
+    try {
+      const marketData = await this.fetchMarketData(symbol);
+      return marketData.currentPrice;
+    } catch (error) {
+      console.error(`Failed to get current price for ${symbol}:`, error);
+      // Return fallback price based on symbol
+      if (symbol === 'EURUSD') return 1.0386;
+      if (symbol === 'GBPUSD') return 1.2489;
+      if (symbol === 'USDJPY') return 156.25;
+      if (symbol === 'USDCHF') return 0.9134;
+      if (symbol === 'AUDUSD') return 0.6549;
+      if (symbol === 'USDCAD') return 1.3700;
+      if (symbol === 'NZDUSD') return 0.5895;
+      if (symbol === 'EURJPY') return 162.35;
+      if (symbol === 'GBPJPY') return 195.12;
+      if (symbol === 'EURGBP') return 0.8318;
+      return 1.0;
+    }
+  }
+
   private async tryFinnhub(pair: string): Promise<MarketData | null> {
     try {
       console.log(`📡 Trying Finnhub for ${pair}...`);

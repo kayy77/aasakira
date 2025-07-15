@@ -1,4 +1,3 @@
-
 import { marketDataService } from './marketDataService';
 
 export interface LivePriceData {
@@ -79,6 +78,38 @@ class TrueLivePriceService {
     });
 
     return fallbackData;
+  }
+
+  validatePriceAccuracy(signalPrice: number, livePrice: number, symbol: string): {
+    isAccurate: boolean;
+    pips: number;
+    status: string;
+  } {
+    console.log(`🔍 [Price Accuracy] Validating ${symbol}: Signal=${signalPrice}, Live=${livePrice}`);
+    
+    // Calculate pip difference based on currency pair
+    let pipMultiplier = 10000; // Default for most major pairs
+    if (symbol.includes('JPY')) {
+      pipMultiplier = 100; // JPY pairs have different pip calculation
+    }
+    
+    const pips = Math.abs((livePrice - signalPrice) * pipMultiplier);
+    const isAccurate = pips <= 3; // Within 3 pips is considered accurate
+    
+    let status = 'ACCURATE';
+    if (pips > 3 && pips <= 10) {
+      status = 'MODERATE_DIFFERENCE';
+    } else if (pips > 10) {
+      status = 'HIGH_DIFFERENCE';
+    }
+    
+    console.log(`📊 [Price Accuracy] ${symbol}: ${pips.toFixed(1)} pips difference - ${status}`);
+    
+    return {
+      isAccurate,
+      pips: Math.round(pips * 10) / 10, // Round to 1 decimal place
+      status
+    };
   }
 
   private async fetchFromFreeForexAPI(symbol: string): Promise<LivePriceData | null> {
