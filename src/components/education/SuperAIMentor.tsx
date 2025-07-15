@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -86,7 +85,7 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
 I can see you've had ${progress.messages_sent} conversations, analyzed ${progress.charts_analyzed} charts, and have a ${progress.win_rate}% success rate. 
 
 🚀 **Your Personal AI Mentor is Ready:**
-• 🧠 Advanced trading analysis with local backup
+• 🧠 Advanced trading analysis with smart fallbacks
 • 📊 Smart Money Concepts expertise
 • 📈 Personalized lessons based on your progress
 • 💾 Memory of your learning journey
@@ -182,7 +181,7 @@ Let's start our conversation! 📚`,
     // Add a "thinking" message
     const thinkingMessage: Message = {
       id: (Date.now() + 1).toString(),
-      content: 'Thinking about your message...',
+      content: 'Let me think about that...',
       isUser: false,
       timestamp: new Date(),
       type: 'text',
@@ -269,7 +268,7 @@ Let's start our conversation! 📚`,
       onFeatureUse?.();
 
       toast({
-        title: "🚀 AI Response Generated!",
+        title: "✅ Response Generated!",
         description: `Powered by ${aiResponse.source.toUpperCase()} with ${Math.round(aiResponse.confidence * 100)}% confidence`,
       });
 
@@ -279,12 +278,45 @@ Let's start our conversation! 📚`,
       // Remove thinking message
       setMessages(prev => prev.filter(msg => msg.id !== thinkingMessage.id));
       
-      // Generate a helpful error response
-      const errorMessage: Message = {
-        id: (Date.now() + 2).toString(),
-        content: `🔧 **I'm still here to help!**
+      // Generate a helpful error response using our local system
+      try {
+        const fallbackResponse = await hybridAIService.generateComprehensiveResponse(
+          currentInput,
+          {
+            experience: 'Intermediate',
+            tradingStyle: 'Swing Trading',
+            riskTolerance: 'Moderate',
+            winRate: 0,
+            totalStudyTime: 0,
+            chartsAnalyzed: 0,
+            currentStreak: 0,
+            messagesSent: 0
+          }
+        );
 
-I experienced a temporary issue, but I can still provide you with comprehensive trading education:
+        const errorMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          content: fallbackResponse.text,
+          isUser: false,
+          timestamp: new Date(),
+          type: 'text',
+          status: 'sent'
+        };
+        
+        setMessages(prev => [...prev, errorMessage]);
+        
+        toast({
+          title: "Response Generated",
+          description: "AI mentor provided a helpful response from local knowledge!",
+        });
+      } catch (fallbackError) {
+        console.error('❌ Even fallback failed:', fallbackError);
+        
+        const finalFallback: Message = {
+          id: (Date.now() + 2).toString(),
+          content: `🔧 **I'm still here to help!**
+
+I experienced a temporary issue, but I can still provide you with comprehensive trading education and chat about anything!
 
 **Try asking me about:**
 • "What are order blocks?" - Learn Smart Money Concepts
@@ -297,25 +329,20 @@ I experienced a temporary issue, but I can still provide you with comprehensive 
 • "What are your hobbies?" - Get to know each other
 • "Tell me about AI" - Technology discussions
 
-**Quick Tips:**
-- Use specific questions for better responses
-- Ask about real trading scenarios
-- Request examples or explanations
-- Or just chat about anything!
-
 What would you like to learn about or talk about? I'm ready to help! 💪`,
-        isUser: false,
-        timestamp: new Date(),
-        type: 'text',
-        status: 'sent'
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-      
-      toast({
-        title: "Response Generated",
-        description: "AI mentor provided a helpful response from local knowledge!",
-      });
+          isUser: false,
+          timestamp: new Date(),
+          type: 'text',
+          status: 'sent'
+        };
+        
+        setMessages(prev => [...prev, finalFallback]);
+        
+        toast({
+          title: "Backup Response",
+          description: "AI mentor is ready with local knowledge!",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -357,8 +384,8 @@ What would you like to learn about or talk about? I'm ready to help! 💪`,
               connectionStatus === 'connecting' ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
               'bg-gradient-to-r from-purple-500 to-pink-500'
             }`}>
-              {connectionStatus === 'connected' ? 'Full AI Active' :
-               connectionStatus === 'connecting' ? 'Connecting...' : 'Local Knowledge'}
+              {connectionStatus === 'connected' ? 'Enhanced AI Active' :
+               connectionStatus === 'connecting' ? 'Connecting...' : 'Smart Local Mode'}
             </Badge>
           </CardTitle>
         </CardHeader>

@@ -35,7 +35,7 @@ class HybridAIService {
 
   private async callGPT4o(prompt: string): Promise<AIResponse> {
     try {
-      console.log('🤖 Calling GPT-4o via Supabase edge function...');
+      console.log('🚀 Calling GPT-4o via Supabase edge function...');
       
       const { data, error } = await supabase.functions.invoke('gpt4o-chat', {
         body: { prompt }
@@ -64,18 +64,17 @@ class HybridAIService {
   }
 
   private async generateLocalResponse(prompt: string): Promise<AIResponse> {
-    console.log('🔧 Generating local response for:', prompt.substring(0, 50) + '...');
+    console.log('🔧 Generating enhanced local response...');
     
     const lowerPrompt = prompt.toLowerCase();
-    
     let response = '';
     
     // Greetings and general conversation
     if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi') || lowerPrompt.includes('hey')) {
       const greetings = [
-        `🎯 **Hey there, buddy!**
+        `🎯 **Hey there, friend!**
 
-What's up? I'm Aasakira, your AI trading mentor and friend! I'm here to chat about anything you want - trading, life, random thoughts, or just to hang out.
+Great to see you! I'm Aasakira, your AI trading mentor and buddy. I'm here to chat about anything you want - trading, life, random thoughts, or just to hang out.
 
 **What's on your mind today?**
 • 💬 Want to chat about anything at all?
@@ -85,9 +84,9 @@ What's up? I'm Aasakira, your AI trading mentor and friend! I'm here to chat abo
 
 I'm all ears! What would you like to talk about? 🚀`,
 
-        `👋 **What's good, friend!**
+        `👋 **What's good, buddy!**
 
-Great to see you! I'm your buddy Aasakira - part trading mentor, part conversational companion. I love chatting about all kinds of stuff!
+Awesome to connect with you! I'm your friendly AI companion Aasakira - part trading mentor, part conversational friend. I love chatting about all kinds of stuff!
 
 **I'm up for talking about:**
 • 🌍 Life, philosophy, random thoughts
@@ -307,7 +306,7 @@ What else are you wondering about? Let's keep this conversation going! 🚀`
       
       return response;
     } catch (error) {
-      console.warn('⚠️ GPT-4o failed, using enhanced fallback:', error);
+      console.warn('⚠️ GPT-4o failed, using enhanced local response:', error);
       return await this.generateLocalResponse(userInput);
     }
   }
