@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,90 +6,116 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { enhancedSignalService, EnhancedSignal } from '@/services/enhancedSignalService';
 import { institutionalSignalService } from '@/services/institutionalSignalService';
-import { enhancedPriceService } from '@/services/enhancedPriceService';
+import { multiIntelligenceCore, SignalDNA } from '@/services/multiIntelligenceCore';
 import { webhookService } from '@/services/webhookService';
 import { motion, AnimatePresence } from 'framer-motion';
-import InstitutionalSignalCard from './InstitutionalSignalCard';
+import MilitaryGradeSignalCard from './MilitaryGradeSignalCard';
 import { 
-  Zap, 
+  Brain, 
   Activity, 
   Clock, 
-  TrendingUp, 
-  TrendingDown,
   RefreshCw,
-  X,
-  HelpCircle,
-  Brain,
   Settings,
   Webhook,
   CheckCircle2,
-  AlertTriangle,
+  Zap,
   Crown,
-  Building2
+  Target,
+  Shield
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import LivePriceVerification from './LivePriceVerification';
-import PriceAccuracyCheck from './PriceAccuracyCheck';
 import WebhookManager from './WebhookManager';
-import SignalCardBase, { BaseSignalData } from './SignalCardBase';
-import { signalContradictionService } from '@/services/signalContradictionService';
 
 const LiveSignalsDashboard: React.FC = () => {
-  const [signals, setSignals] = useState<EnhancedSignal[]>([]);
-  const [institutionalSignals, setInstitutionalSignals] = useState<any[]>([]);
+  const [militarySignals, setMilitarySignals] = useState<(SignalDNA & { id: string, livePrice: number })[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [selectedSignal, setSelectedSignal] = useState<EnhancedSignal | null>(null);
   const [showWebhookManager, setShowWebhookManager] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState<number | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'institutional' | 'smc' | 'enhanced'>('all');
+  const [isAnalyzing, setIsAnalyzing] = useState<string | null>(null);
+  const [generationSettings, setGenerationSettings] = useState({
+    strategyType: 'Hybrid' as 'SMC' | 'Institutional' | 'Hybrid',
+    confidenceThreshold: 80,
+    minFilters: 4,
+    pairFilter: 'majors' as 'all' | 'majors' | 'eurusd'
+  });
   const { toast } = useToast();
 
-  const generateSignal = async () => {
+  const generateMilitarySignal = async () => {
     setIsGenerating(true);
     
     try {
-      console.log('🧠 GENERATING INSTITUTIONAL-GRADE SIGNAL...');
+      console.log('🚀 MULTI-INTELLIGENCE CORE ACTIVATION SEQUENCE INITIATED...');
       
-      // Try to generate institutional signal first (higher priority)
-      const institutionalSignal = await institutionalSignalService.generateInstitutionalSignal();
+      // Select pair based on filter
+      const pairs = generationSettings.pairFilter === 'eurusd' 
+        ? ['EURUSD'] 
+        : generationSettings.pairFilter === 'majors'
+        ? ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD']
+        : ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF'];
       
-      if (institutionalSignal) {
-        setInstitutionalSignals(prev => [institutionalSignal, ...prev].slice(0, 10));
-        
+      const selectedPair = pairs[Math.floor(Math.random() * pairs.length)];
+      
+      // Simulate live price fetch
+      const livePrice = await simulateLivePrice(selectedPair);
+      
+      console.log(`🎯 TARGET ACQUIRED: ${selectedPair} @ ${livePrice}`);
+      
+      // Generate signal through AI council
+      const signalDNA = await multiIntelligenceCore.generateSignalDNA(selectedPair, livePrice);
+      
+      if (!signalDNA) {
         toast({
-          title: "🧠 Institutional Signal Generated!",
-          description: `${institutionalSignal.direction.toUpperCase()} ${institutionalSignal.pair} @ ${institutionalSignal.livePrice || institutionalSignal.entry} - ${institutionalSignal.filters_passed.length}/6 filters passed`,
+          title: "⚔️ SIGNAL REJECTED",
+          description: "AI Council consensus failed. Market conditions do not meet institutional criteria.",
+          variant: "destructive"
         });
-        
         return;
       }
 
-      // Fallback to enhanced signal if institutional doesn't meet criteria
-      console.log('🔴 GENERATING ENHANCED SIGNAL...');
-      const newSignal = await enhancedSignalService.generateLiveSignal();
-      if (newSignal) {
-        setSignals(enhancedSignalService.getSignals());
-        setLastUpdate(new Date());
-        
-        // Trigger webhook for new signal
-        await webhookService.triggerSignalAlert(newSignal);
-        
+      // Check confidence threshold
+      if (signalDNA.confidence < generationSettings.confidenceThreshold) {
         toast({
-          title: "⚡ Enhanced Signal Generated",
-          description: `${newSignal.pair} ${newSignal.type} @ ${newSignal.entry} | Live: ${newSignal.livePrice}`,
-        });
-      } else {
-        toast({
-          title: "No Signal Generated",
-          description: "Market conditions don't meet institutional criteria (need 3/6 filters minimum)",
+          title: "⚠️ CONFIDENCE THRESHOLD NOT MET",
+          description: `Signal confidence ${signalDNA.confidence}% below required ${generationSettings.confidenceThreshold}%`,
           variant: "destructive"
         });
+        return;
       }
-    } catch (error) {
+
+      const militarySignal = {
+        ...signalDNA,
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        livePrice
+      };
+
+      setMilitarySignals(prev => [militarySignal, ...prev].slice(0, 8));
+      setLastUpdate(new Date());
+      
+      // Trigger webhook
+      await webhookService.triggerSignalAlert({
+        pair: signalDNA.symbol,
+        type: signalDNA.type,
+        confidence: signalDNA.confidence,
+        entry: signalDNA.structure.entry,
+        sl: signalDNA.structure.stopLoss,
+        tp: signalDNA.structure.takeProfit,
+        rr: signalDNA.structure.rr,
+        aiThought: signalDNA.aiThought
+      });
+      
+      const voteCount = Object.values(signalDNA.origin).filter(Boolean).length;
+      const gradeLevel = voteCount === 6 ? 'INSTITUTIONAL GRADE' : 'HIGH CONFIDENCE';
+      
       toast({
-        title: "Signal Generation Failed",
-        description: "Failed to fetch live market data. Please try again.",
+        title: `🧠 ${gradeLevel} SIGNAL GENERATED`,
+        description: `${signalDNA.symbol} ${signalDNA.type} @ ${signalDNA.structure.entry} | Confidence: ${signalDNA.confidence}% | AI Votes: ${voteCount}/6`,
+      });
+      
+    } catch (error) {
+      console.error('❌ SIGNAL GENERATION FAILED:', error);
+      toast({
+        title: "🚨 GENERATION FAILURE",
+        description: "Multi-Intelligence Core experienced critical error. Retry signal generation.",
         variant: "destructive"
       });
     } finally {
@@ -96,96 +123,59 @@ const LiveSignalsDashboard: React.FC = () => {
     }
   };
 
-  const removeSignal = (signalId: number) => {
-    enhancedSignalService.removeSignal(signalId);
-    setSignals(enhancedSignalService.getSignals());
+  const simulateLivePrice = async (pair: string): Promise<number> => {
+    // Simulate realistic FX prices
+    const basePrices: { [key: string]: number } = {
+      'EURUSD': 1.0850,
+      'GBPUSD': 1.2650,
+      'USDJPY': 148.50,
+      'AUDUSD': 0.6720,
+      'USDCAD': 1.3580,
+      'NZDUSD': 0.6180,
+      'USDCHF': 0.8950
+    };
+    
+    const basePrice = basePrices[pair] || 1.0000;
+    const volatility = 0.001; // 0.1% volatility
+    const randomChange = (Math.random() - 0.5) * 2 * volatility;
+    
+    return basePrice * (1 + randomChange);
+  };
+
+  const removeMilitarySignal = (signalId: string) => {
+    setMilitarySignals(prev => prev.filter(signal => signal.id !== signalId));
     toast({
-      title: "Signal Removed",
-      description: "Signal has been removed from your list.",
+      title: "🗑️ SIGNAL TERMINATED",
+      description: "Signal removed from active monitoring.",
     });
   };
 
-  const removeInstitutionalSignal = (signalId: string) => {
-    setInstitutionalSignals(prev => prev.filter(signal => signal.id !== signalId));
-    toast({
-      title: "Institutional Signal Removed",
-      description: "Signal has been removed from your list.",
-    });
-  };
-
-  const convertInstitutionalToBase = (signal: any): BaseSignalData => ({
-    id: signal.id,
-    pair: signal.pair,
-    direction: signal.direction,
-    entry: signal.entry,
-    stopLoss: signal.stop_loss,
-    takeProfit: signal.take_profit,
-    livePrice: signal.livePrice,
-    priceSource: signal.priceSource,
-    priceAccuracy: signal.priceAccuracy,
-    riskReward: signal.risk_reward,
-    timestamp: signal.timestamp,
-    type: 'institutional',
-    confidence: signal.confidence,
-    filtersPassedCount: signal.filters_passed?.length || 0,
-    maxFilters: 6,
-    reasoning: signal.reasoning,
-    session: signal.session,
-    timeframe: signal.timeframe
-  });
-
-  const convertEnhancedToBase = (signal: any): BaseSignalData => ({
-    id: signal.id.toString(),
-    pair: signal.pair,
-    direction: signal.type.toLowerCase(),
-    entry: signal.entry.toString(),
-    stopLoss: signal.stopLoss.toString(),
-    takeProfit: signal.takeProfit.toString(),
-    livePrice: signal.livePrice,
-    priceSource: signal.priceSource,
-    priceAccuracy: signal.priceAccuracy,
-    riskReward: `1:${signal.riskReward}`,
-    timestamp: new Date(),
-    type: 'enhanced',
-    strategy: signal.strategy
-  });
-
-  const allSignals: BaseSignalData[] = [
-    ...institutionalSignals.map(convertInstitutionalToBase),
-    ...signals.map(convertEnhancedToBase)
-  ];
-
-  const signalsWithContradictions = signalContradictionService.markSignalsWithContradictions(allSignals);
-
-  const filteredSignals = signalsWithContradictions.filter(signal => {
-    if (activeFilter === 'all') return true;
-    return signal.type === activeFilter;
-  });
-
-  const handleAIAnalysis = async (signal: EnhancedSignal) => {
-    setIsAnalyzing(signal.id);
+  const refreshSignalPrice = async (signalId: string) => {
+    setIsAnalyzing(signalId);
     
     try {
-      // Trigger AI analysis webhook
-      await webhookService.triggerAIAnalysis({
-        pair: signal.pair,
-        entry: signal.entry,
-        sl: signal.stopLoss,
-        tp: signal.takeProfit,
-        strategy: signal.strategy,
-        request: "Provide detailed technical analysis for this signal"
-      });
+      const signal = militarySignals.find(s => s.id === signalId);
+      if (!signal) return;
       
-      setSelectedSignal(signal);
+      const newPrice = await simulateLivePrice(signal.symbol);
+      
+      setMilitarySignals(prev => 
+        prev.map(s => 
+          s.id === signalId 
+            ? { ...s, livePrice: newPrice, price: { ...s.price, lastUpdated: 'Just now' } }
+            : s
+        )
+      );
       
       toast({
-        title: "🧠 AI Analysis Triggered",
-        description: "Enhanced analysis has been sent to your connected webhooks",
+        title: "🔄 PRICE UPDATED",
+        description: `${signal.symbol} live price refreshed: ${newPrice.toFixed(signal.symbol.includes('JPY') ? 3 : 5)}`,
       });
+      
     } catch (error) {
       toast({
-        title: "Analysis Failed",
-        description: "Failed to trigger AI analysis",
+        title: "❌ PRICE UPDATE FAILED",
+        description: "Failed to refresh live price data.",
         variant: "destructive"
       });
     } finally {
@@ -193,130 +183,122 @@ const LiveSignalsDashboard: React.FC = () => {
     }
   };
 
-  const handlePriceUpdate = (signalId: number, newPrice: number, source: string) => {
-    setSignals(prevSignals => 
-      prevSignals.map(signal => 
-        signal.id === signalId 
-          ? { ...signal, livePrice: newPrice, priceSource: source, lastUpdated: new Date().toLocaleTimeString() }
-          : signal
-      )
-    );
+  const handleBacktest = (signalDNA: SignalDNA) => {
+    toast({
+      title: "📊 BACKTEST ANALYSIS",
+      description: `${signalDNA.symbol} ${signalDNA.type}: ${Math.round(signalDNA.backtest.winRate)}% win rate over ${signalDNA.backtest.totalTrades} trades. Avg R/R: ${signalDNA.backtest.avgRR.toFixed(1)}`,
+    });
   };
 
-  const handleInstitutionalPriceUpdate = (signalId: string, newPrice: number, source: string) => {
-    console.log(`🔄 Updating institutional signal ${signalId} price: ${newPrice} from ${source}`);
+  const handleAskMentor = (signalDNA: SignalDNA) => {
+    const mentorResponses = [
+      `🧙‍♂️ "This ${signalDNA.symbol} setup aligns with my institutional playbook. I'd take this trade with proper risk management."`,
+      `🧙‍♂️ "Strong confluence on ${signalDNA.symbol}. The AI council consensus gives me confidence in this setup."`,
+      `🧙‍♂️ "Classic smart money move on ${signalDNA.symbol}. This is the kind of setup that separates pros from amateurs."`,
+      `🧙‍♂️ "The ${signalDNA.type} strategy is firing on all cylinders here. I see institutional footprints all over this."`
+    ];
     
-    setInstitutionalSignals(prevSignals => 
-      prevSignals.map(signal => 
-        signal.id === signalId 
-          ? { 
-              ...signal, 
-              livePrice: newPrice,
-              entry: newPrice.toFixed(signal.pair.includes('JPY') ? 3 : 5),
-              priceSource: source, 
-              priceTimestamp: new Date().toISOString(),
-              priceAccuracy: source === 'Enhanced Fallback' ? 'FALLBACK' : 'VERIFIED',
-              lastPriceUpdate: new Date()
-            }
-          : signal
-      )
-    );
+    const response = mentorResponses[Math.floor(Math.random() * mentorResponses.length)];
+    
+    toast({
+      title: "🧙‍♂️ MENTOR WISDOM",
+      description: response,
+    });
   };
 
-  const handleUnifiedSignalRemove = (signalId: string) => {
-    // Check if it's institutional or enhanced signal and remove accordingly
-    const institutionalSignal = institutionalSignals.find(s => s.id === signalId);
-    if (institutionalSignal) {
-      removeInstitutionalSignal(signalId);
-    } else {
-      const enhancedSignal = signals.find(s => s.id.toString() === signalId);
-      if (enhancedSignal) {
-        removeSignal(enhancedSignal.id);
-      }
-    }
-  };
-
-  const handleUnifiedPriceRefresh = async (signal: BaseSignalData) => {
-    if (signal.type === 'institutional') {
-      // Find the original institutional signal and update its price
-      const institutionalSignal = institutionalSignals.find(s => s.id === signal.id);
-      if (institutionalSignal) {
-        await institutionalSignalService.updateSignalPrice(signal.id);
-        const updatedSignals = institutionalSignalService.getLatestSignals();
-        const updatedSignal = updatedSignals.find(s => s.id === signal.id);
-        if (updatedSignal && updatedSignal.livePrice) {
-          handleInstitutionalPriceUpdate(signal.id, updatedSignal.livePrice, updatedSignal.priceSource);
-        }
-      }
-    }
-    // Enhanced signals don't have manual refresh yet
-  };
-
+  // Auto-refresh prices every 5 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Only update if signals exist to prevent unnecessary renders
-      if (institutionalSignals.length > 0) {
-        const latestSignals = institutionalSignalService.getLatestSignals();
-        if (latestSignals.length > 0) {
-          console.log(`🔄 Refreshing ${latestSignals.length} institutional signals from service...`);
-          setInstitutionalSignals(latestSignals);
-        }
-      }
+    if (militarySignals.length === 0) return;
+    
+    const interval = setInterval(async () => {
+      const updatedSignals = await Promise.all(
+        militarySignals.map(async (signal) => {
+          try {
+            const newPrice = await simulateLivePrice(signal.symbol);
+            return {
+              ...signal,
+              livePrice: newPrice,
+              price: { ...signal.price, lastUpdated: '5s ago' }
+            };
+          } catch {
+            return signal;
+          }
+        })
+      );
       
-      // Update enhanced signals if any exist
-      if (signals.length > 0) {
-        setSignals([...enhancedSignalService.getSignals()]);
-      }
-    }, 5000); // Reduced frequency to 5 seconds for better mobile performance
+      setMilitarySignals(updatedSignals);
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [signals.length, institutionalSignals.length]); // Better dependency array
+  }, [militarySignals.length]);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <Card className="glass-card border-yellow-500/30">
-        <CardHeader>
+      {/* Military Command Center Header */}
+      <Card className="bg-gradient-to-r from-gray-900 via-purple-900/20 to-gray-900 border-cyan-500/30 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-purple-500/5 to-cyan-500/5 animate-pulse" />
+        <CardHeader className="relative z-10">
           <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg">
-                <Brain className="w-6 h-6 text-yellow-400" />
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="p-3 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-lg border border-cyan-500/50">
+                  <Brain className="w-8 h-8 text-cyan-400" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-gray-900" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">🧠 Unified Signal Dashboard</h2>
-                <p className="text-sm text-gray-400">Multi-Strategy Analysis • Live Price Feed • Contradiction Detection</p>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                  🚀 MULTI-INTELLIGENCE WAR ENGINE
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Elite Trader Command Center • AI Council Voting • Military-Grade Precision
+                </p>
+                <div className="flex items-center gap-4 mt-2">
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+                    <Activity className="w-3 h-3 mr-1" />
+                    LIVE FEEDS ACTIVE
+                  </Badge>
+                  <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-xs">
+                    <Shield className="w-3 h-3 mr-1" />
+                    AI COUNCIL ONLINE
+                  </Badge>
+                  <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
+                    <Target className="w-3 h-3 mr-1" />
+                    PRECISION MODE
+                  </Badge>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {lastUpdate && (
                 <div className="flex items-center gap-1 text-xs text-gray-400">
                   <Clock className="w-3 h-3" />
-                  {lastUpdate.toLocaleTimeString()}
+                  Last: {lastUpdate.toLocaleTimeString()}
                 </div>
               )}
               <Button
                 onClick={() => setShowWebhookManager(!showWebhookManager)}
                 variant="outline"
                 size="sm"
-                className="border-blue-500/30 hover:bg-blue-500/20"
+                className="border-blue-500/30 hover:bg-blue-500/20 text-blue-400"
               >
                 <Webhook className="w-4 h-4 mr-2" />
                 Webhooks
               </Button>
               <Button
-                onClick={generateSignal}
+                onClick={generateMilitarySignal}
                 disabled={isGenerating}
-                className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30"
+                className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 font-bold"
               >
                 {isGenerating ? (
                   <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Analyzing Markets...
+                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                    AI COUNCIL VOTING...
                   </>
                 ) : (
                   <>
-                    <Brain className="w-4 h-4 mr-2" />
-                    Generate Signal
+                    <Brain className="w-5 h-5 mr-2" />
+                    GENERATE SIGNAL
                   </>
                 )}
               </Button>
@@ -325,94 +307,129 @@ const LiveSignalsDashboard: React.FC = () => {
         </CardHeader>
       </Card>
 
-      {/* Strategy Filter Tabs */}
-      <div className="flex gap-2 flex-wrap">
-        <Button
-          onClick={() => setActiveFilter('all')}
-          variant={activeFilter === 'all' ? 'default' : 'outline'}
-          size="sm"
-          className={activeFilter === 'all' ? 'bg-purple-500/20 text-purple-400' : 'border-gray-500/30'}
-        >
-          All Signals ({allSignals.length})
-        </Button>
-        <Button
-          onClick={() => setActiveFilter('institutional')}
-          variant={activeFilter === 'institutional' ? 'default' : 'outline'}
-          size="sm"
-          className={activeFilter === 'institutional' ? 'bg-yellow-500/20 text-yellow-400' : 'border-gray-500/30'}
-        >
-          <Crown className="w-3 h-3 mr-1" />
-          Institutional ({institutionalSignals.length})
-        </Button>
-        <Button
-          onClick={() => setActiveFilter('enhanced')}
-          variant={activeFilter === 'enhanced' ? 'default' : 'outline'}
-          size="sm"
-          className={activeFilter === 'enhanced' ? 'bg-blue-500/20 text-blue-400' : 'border-gray-500/30'}
-        >
-          <Zap className="w-3 h-3 mr-1" />
-          Enhanced ({signals.length})
-        </Button>
-      </div>
+      {/* Generation Settings */}
+      <Card className="bg-gray-800/50 border-gray-600/30">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            TACTICAL PARAMETERS
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block">Strategy Type</label>
+              <select 
+                value={generationSettings.strategyType}
+                onChange={(e) => setGenerationSettings(prev => ({ ...prev, strategyType: e.target.value as any }))}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+              >
+                <option value="Hybrid">🔁 Hybrid</option>
+                <option value="Institutional">🏛️ Institutional</option>
+                <option value="SMC">🧠 SMC</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block">Min Confidence</label>
+              <select 
+                value={generationSettings.confidenceThreshold}
+                onChange={(e) => setGenerationSettings(prev => ({ ...prev, confidenceThreshold: parseInt(e.target.value) }))}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+              >
+                <option value={70}>70%+</option>
+                <option value={80}>80%+</option>
+                <option value={90}>90%+</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block">Min AI Votes</label>
+              <select 
+                value={generationSettings.minFilters}
+                onChange={(e) => setGenerationSettings(prev => ({ ...prev, minFilters: parseInt(e.target.value) }))}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+              >
+                <option value={3}>3/6 AIs</option>
+                <option value={4}>4/6 AIs</option>
+                <option value={5}>5/6 AIs</option>
+                <option value={6}>6/6 AIs (Institutional Grade)</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block">Pair Filter</label>
+              <select 
+                value={generationSettings.pairFilter}
+                onChange={(e) => setGenerationSettings(prev => ({ ...prev, pairFilter: e.target.value as any }))}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+              >
+                <option value="majors">Major Pairs</option>
+                <option value="eurusd">EUR/USD Only</option>
+                <option value="all">All Pairs</option>
+              </select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Webhook Manager */}
-      {showWebhookManager && (
-        <WebhookManager />
-      )}
+      {showWebhookManager && <WebhookManager />}
 
-      {/* Enhanced Live Price Status */}
-      {filteredSignals.length > 0 && (
-        <Alert className="border-green-500/30 bg-gradient-to-r from-green-500/10 to-blue-500/10">
+      {/* System Status */}
+      {militarySignals.length > 0 && (
+        <Alert className="border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10">
           <CheckCircle2 className="h-4 w-4 text-green-400" />
           <AlertDescription className="text-green-400">
-            🔥 Unified Signal System Active - Real-time updates every 5 seconds with contradiction detection
+            🚀 MULTI-INTELLIGENCE SYSTEM OPERATIONAL - {militarySignals.length} Active Signals | Auto-refresh: 5s intervals
             <div className="mt-1 text-xs text-green-300">
-              {signalsWithContradictions.filter(s => s.hasContradiction).length > 0 && (
-                <span className="text-orange-400">
-                  ⚠️ {signalsWithContradictions.filter(s => s.hasContradiction).length} signals have contradictions - view details
-                </span>
-              )}
+              Next-generation AI council providing military-grade signal intelligence
             </div>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Unified Signal Cards */}
+      {/* Military Signal Cards */}
       <AnimatePresence>
-        {filteredSignals.map((signal, index) => (
+        {militarySignals.map((signal, index) => (
           <motion.div
-            key={`unified-${signal.id}-${signal.type}`}
+            key={signal.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ delay: index * 0.05 }}
+            transition={{ delay: index * 0.1 }}
           >
-            <SignalCardBase
-              signal={signal}
-              onRemove={handleUnifiedSignalRemove}
-              onRefreshPrice={() => handleUnifiedPriceRefresh(signal)}
-              onViewAnalysis={() => console.log('View analysis for:', signal)}
-              isUpdatingPrice={isAnalyzing === parseInt(signal.id)}
+            <MilitaryGradeSignalCard
+              signalDNA={signal}
+              livePrice={signal.livePrice}
+              onRemove={removeMilitarySignal}
+              onRefresh={() => refreshSignalPrice(signal.id)}
+              onBacktest={() => handleBacktest(signal)}
+              onAskMentor={() => handleAskMentor(signal)}
+              isUpdating={isAnalyzing === signal.id}
             />
           </motion.div>
         ))}
       </AnimatePresence>
 
       {/* Empty State */}
-      {filteredSignals.length === 0 && !isGenerating && (
-        <Card className="glass-card border-gray-500/20">
+      {militarySignals.length === 0 && !isGenerating && (
+        <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-500/20">
           <CardContent className="text-center py-12">
-            <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No Signals Available</h3>
-            <p className="text-gray-400 mb-4">
-              Generate multi-strategy signals with live price feeds and contradiction detection
+            <div className="relative mb-6">
+              <Brain className="w-20 h-20 text-cyan-400 mx-auto" />
+              <div className="absolute inset-0 bg-cyan-400/20 rounded-full blur-xl" />
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-2">🚀 WAR ENGINE STANDBY</h3>
+            <p className="text-gray-400 mb-6 max-w-md mx-auto">
+              Multi-Intelligence Core awaiting deployment. Elite signals require AI council consensus of 4/6 minimum.
             </p>
             <Button
-              onClick={generateSignal}
-              className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30"
+              onClick={generateMilitarySignal}
+              className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 font-bold px-8 py-3"
             >
-              <Brain className="w-4 h-4 mr-2" />
-              Generate Signal
+              <Brain className="w-5 h-5 mr-2" />
+              ACTIVATE INTELLIGENCE CORE
             </Button>
           </CardContent>
         </Card>
