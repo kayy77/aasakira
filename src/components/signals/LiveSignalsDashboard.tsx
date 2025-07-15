@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -250,12 +249,15 @@ const LiveSignalsDashboard: React.FC = () => {
         <WebhookManager />
       )}
 
-      {/* Live Price Status */}
+      {/* Enhanced Live Price Status */}
       {institutionalSignals.length > 0 && (
-        <Alert className="border-green-500/30 bg-green-500/10">
+        <Alert className="border-green-500/30 bg-gradient-to-r from-green-500/10 to-blue-500/10">
           <CheckCircle2 className="h-4 w-4 text-green-400" />
           <AlertDescription className="text-green-400">
-            🟢 Live Price Feed Active - Real-time updates every 3 seconds using enhanced price APIs
+            🔥 TRUE LIVE Price System Active - Real-time updates every 3 seconds using live tick endpoints (NO CACHE)
+            <div className="mt-1 text-xs text-green-300">
+              Sources: Polygon Live Ticks → TwelveData Live → Binance Live → Ultra Realistic Fallback
+            </div>
           </AlertDescription>
         </Alert>
       )}

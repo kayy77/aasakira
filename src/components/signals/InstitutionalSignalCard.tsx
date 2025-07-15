@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react';
 import type { InstitutionalSignal } from '@/services/institutionalSignalService';
 import { institutionalSignalService } from '@/services/institutionalSignalService';
+import PriceAccuracyValidator from './PriceAccuracyValidator';
 
 interface InstitutionalSignalCardProps {
   signal: InstitutionalSignal;
@@ -138,19 +138,26 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
         </CardHeader>
         
         <CardContent className="space-y-4">
-          {/* LIVE PRICE DISPLAY - Main Feature */}
-          <div className="p-4 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 rounded-lg">
+          {/* TRUE LIVE PRICE DISPLAY - Enhanced */}
+          <div className="p-4 bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Wifi className="w-5 h-5 text-blue-400" />
-                <span className="text-lg font-bold text-blue-400">LIVE PRICE</span>
+                <Wifi className="w-5 h-5 text-green-400" />
+                <span className="text-lg font-bold text-green-400">TRUE LIVE PRICE</span>
+                <Badge className={`text-xs ${
+                  localSignal.priceAccuracy === 'VERIFIED' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                  localSignal.priceAccuracy === 'WARNING' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                  'bg-red-500/20 text-red-400 border-red-500/30'
+                }`}>
+                  {localSignal.priceAccuracy}
+                </Badge>
               </div>
               <Button
                 onClick={updateLivePrice}
                 disabled={isUpdatingPrice}
                 variant="outline"
                 size="sm"
-                className="border-blue-500/30 hover:bg-blue-500/20"
+                className="border-green-500/30 hover:bg-green-500/20"
               >
                 {isUpdatingPrice ? (
                   <>
@@ -167,30 +174,30 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
             </div>
             
             <div className="text-center">
-              <div className="text-3xl font-mono font-bold text-white mb-1">
+              <div className="text-3xl font-mono font-bold text-white mb-2">
                 {displayPrice.toFixed(localSignal.pair.includes('JPY') ? 3 : 5)}
               </div>
-              <div className="flex items-center justify-center gap-2 text-sm">
-                <span className="text-blue-400">Source: {localSignal.priceSource}</span>
+              <div className="flex items-center justify-center gap-3 text-sm">
+                <span className="text-green-400 font-medium">Source: {localSignal.priceSource}</span>
                 <div className="flex items-center gap-1">
-                  {localSignal.priceAccuracy === 'VERIFIED' && <CheckCircle className="w-3 h-3 text-green-400" />}
-                  {localSignal.priceAccuracy === 'WARNING' && <AlertTriangle className="w-3 h-3 text-yellow-400" />}
-                  {localSignal.priceAccuracy === 'FALLBACK' && <XCircle className="w-3 h-3 text-red-400" />}
-                  <Badge variant={
-                    localSignal.priceAccuracy === 'VERIFIED' ? 'default' : 
-                    localSignal.priceAccuracy === 'WARNING' ? 'secondary' : 'destructive'
-                  } className="text-xs">
-                    {localSignal.priceAccuracy}
-                  </Badge>
+                  <div className={`w-2 h-2 rounded-full ${
+                    localSignal.priceAccuracy === 'VERIFIED' ? 'bg-green-400' :
+                    localSignal.priceAccuracy === 'WARNING' ? 'bg-yellow-400' : 'bg-red-400'
+                  }`} />
+                  <span className="text-gray-400">
+                    {priceAge !== null ? `${priceAge}s ago` : 'Just now'}
+                  </span>
                 </div>
               </div>
-              {priceAge !== null && (
-                <div className="text-xs text-gray-400 mt-1">
-                  Updated {priceAge}s ago
-                </div>
-              )}
             </div>
           </div>
+
+          {/* Price Accuracy Validator */}
+          <PriceAccuracyValidator
+            symbol={localSignal.pair}
+            signalPrice={parseFloat(localSignal.entry)}
+            signalSource={localSignal.priceSource}
+          />
 
           {/* Filters Passed */}
           <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg p-3">

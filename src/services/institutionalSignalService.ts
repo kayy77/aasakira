@@ -1,5 +1,5 @@
 import { marketDataService } from './marketDataService';
-import { enhancedPriceService, type PriceData } from './enhancedPriceService';
+import { trueLivePriceService, type LivePriceData } from './trueLivePriceService';
 
 interface InstitutionalSignal {
   id: string;
@@ -64,34 +64,34 @@ class InstitutionalSignalService {
       clearInterval(this.priceUpdateInterval);
     }
 
-    // Update prices every 3 seconds for better real-time feel
+    // Update prices every 3 seconds using TRUE LIVE service
     this.priceUpdateInterval = setInterval(() => {
-      this.updateAllLivePrices();
+      this.updateAllLivePricesWithTrueService();
     }, 3000);
 
-    console.log('🔄 Started live price updates for institutional signals');
+    console.log('🔥 Started TRUE LIVE price updates for institutional signals');
   }
 
-  private async updateAllLivePrices() {
+  private async updateAllLivePricesWithTrueService() {
     if (this.signals.length === 0) return;
 
-    console.log(`🔍 Updating live prices for ${this.signals.length} institutional signals...`);
+    console.log(`🔥 Updating TRUE LIVE prices for ${this.signals.length} institutional signals...`);
     
     for (const signal of this.signals) {
       if (signal.status === 'ACTIVE') {
         try {
-          const priceData = await enhancedPriceService.getLivePrice(signal.pair);
+          const livePriceData = await trueLivePriceService.getTrueLivePrice(signal.pair);
           
-          // Update the signal with new live price
-          signal.livePrice = priceData.price;
-          signal.priceSource = priceData.source;
-          signal.priceTimestamp = new Date(priceData.timestamp).toISOString();
+          // Update the signal with TRUE live price
+          signal.livePrice = livePriceData.price;
+          signal.priceSource = livePriceData.source;
+          signal.priceTimestamp = new Date(livePriceData.timestamp).toISOString();
           signal.lastPriceUpdate = new Date();
-          signal.priceAccuracy = this.validatePriceAccuracy(priceData, signal.pair);
+          signal.priceAccuracy = this.mapAccuracyToString(livePriceData.accuracy);
 
-          console.log(`💰 Updated ${signal.pair}: ${priceData.price} from ${priceData.source}`);
+          console.log(`💰 TRUE LIVE UPDATE ${signal.pair}: ${livePriceData.price} from ${livePriceData.source}`);
         } catch (error) {
-          console.error(`❌ Failed to update price for ${signal.pair}:`, error);
+          console.error(`❌ Failed to update TRUE LIVE price for ${signal.pair}:`, error);
         }
       }
     }
@@ -112,26 +112,26 @@ class InstitutionalSignalService {
     }
 
     try {
-      console.log(`🎯 Fetching LIVE price for ${selectedPair} using enhanced price service...`);
+      console.log(`🔥 Fetching TRUE LIVE PRICE for ${selectedPair} using trueLivePriceService...`);
       
-      // ✅ FETCH LIVE PRICE WITH ENHANCED SERVICE
-      const priceData = await enhancedPriceService.getLivePrice(selectedPair);
+      // ✅ FETCH TRUE LIVE PRICE BEFORE SIGNAL GENERATION
+      const livePriceData = await trueLivePriceService.getTrueLivePrice(selectedPair);
       
-      if (!priceData || !priceData.price) {
-        console.log(`❌ Failed to get valid price for ${selectedPair}, skipping signal`);
+      if (!livePriceData || !livePriceData.price) {
+        console.log(`❌ Failed to get TRUE LIVE price for ${selectedPair}, skipping signal`);
         return null;
       }
 
-      console.log(`💰 Got live price for ${selectedPair}: ${priceData.price} from ${priceData.source}`);
+      console.log(`💰 Got TRUE LIVE price for ${selectedPair}: ${livePriceData.price} from ${livePriceData.source} (${livePriceData.accuracy})`);
 
       // Validate price accuracy before proceeding
-      const accuracy = this.validatePriceAccuracy(priceData, selectedPair);
+      const accuracy = this.mapAccuracyToString(livePriceData.accuracy);
       
       if (accuracy === 'FALLBACK') {
         console.log(`⚠️ Using fallback price for ${selectedPair}, signal marked as lower confidence`);
       }
 
-      const analysis = this.performInstitutionalAnalysis(selectedPair, priceData.price);
+      const analysis = this.performInstitutionalAnalysis(selectedPair, livePriceData.price);
       
       // Must pass at least 3 filters
       if (analysis.filtersPassedCount < this.MIN_FILTERS_REQUIRED) {
@@ -139,13 +139,13 @@ class InstitutionalSignalService {
         return null;
       }
 
-      // Generate signal with institutional logic and live price data
-      const signal = this.createInstitutionalSignal(selectedPair, priceData, accuracy, analysis);
+      // Generate signal with institutional logic and TRUE LIVE price data
+      const signal = this.createInstitutionalSignal(selectedPair, livePriceData, accuracy, analysis);
       
       if (signal) {
         this.lastSignalTime[selectedPair] = new Date();
         this.signals.push(signal);
-        console.log(`✅ Generated INSTITUTIONAL signal for ${selectedPair} using ${priceData.source} @ ${priceData.price}`);
+        console.log(`✅ Generated INSTITUTIONAL signal for ${selectedPair} using TRUE LIVE ${livePriceData.source} @ ${livePriceData.price}`);
         return signal;
       }
 
@@ -156,24 +156,13 @@ class InstitutionalSignalService {
     }
   }
 
-  private validatePriceAccuracy(priceData: PriceData, symbol: string): 'VERIFIED' | 'WARNING' | 'FALLBACK' {
-    // Check if price source is reliable
-    if (priceData.source === 'Enhanced Fallback' || priceData.source === 'fallback') {
-      return 'FALLBACK';
+  private mapAccuracyToString(accuracy: 'LIVE' | 'DELAYED' | 'FALLBACK'): 'VERIFIED' | 'WARNING' | 'FALLBACK' {
+    switch (accuracy) {
+      case 'LIVE': return 'VERIFIED';
+      case 'DELAYED': return 'WARNING';
+      case 'FALLBACK': return 'FALLBACK';
+      default: return 'WARNING';
     }
-
-    // Check price freshness (within last 30 seconds)
-    const priceAge = Date.now() - priceData.timestamp;
-    if (priceAge > 30000) { // 30 seconds
-      return 'WARNING';
-    }
-
-    // Price from reliable APIs
-    if (['TwelveData', 'Polygon', 'Deriv', 'CoinGecko', 'Deriv WebSocket'].includes(priceData.source)) {
-      return 'VERIFIED';
-    }
-
-    return 'WARNING';
   }
 
   private performInstitutionalAnalysis(pair: string, price: number) {
@@ -361,7 +350,7 @@ class InstitutionalSignalService {
 
   private createInstitutionalSignal(
     pair: string, 
-    priceData: PriceData, 
+    livePriceData: LivePriceData, 
     accuracy: 'VERIFIED' | 'WARNING' | 'FALLBACK', 
     analysis: any
   ): InstitutionalSignal | null {
@@ -385,7 +374,7 @@ class InstitutionalSignalService {
     const rrRatio = this.MIN_RISK_REWARD + Math.random() * 2; // 2.0-4.0 RR
     const tpDistance = stopDistance * rrRatio;
     
-    const entry = priceData.price; // Use LIVE price
+    const entry = livePriceData.price; // Use TRUE LIVE price
     const stopLoss = direction === 'buy' 
       ? entry - (stopDistance * pipValue)
       : entry + (stopDistance * pipValue);
@@ -409,10 +398,10 @@ class InstitutionalSignalService {
                   analysis.filtersPassedCount >= 4 ? 'HIGH' : 'MEDIUM',
       session: this.getCurrentSession(),
       timeframe: '15M/5M',
-      priceSource: priceData.source,
-      priceTimestamp: new Date(priceData.timestamp).toISOString(),
+      priceSource: livePriceData.source,
+      priceTimestamp: new Date(livePriceData.timestamp).toISOString(),
       priceAccuracy: accuracy,
-      livePrice: priceData.price,
+      livePrice: livePriceData.price,
       lastPriceUpdate: new Date()
     };
   }
@@ -454,25 +443,25 @@ class InstitutionalSignalService {
     return this.signals.slice(-10);
   }
 
-  // Manual price update method
+  // Manual price update method using TRUE LIVE service
   async updateSignalPrice(signalId: string): Promise<boolean> {
     const signal = this.signals.find(s => s.id === signalId);
     if (!signal) return false;
 
     try {
-      console.log(`🔄 Manually updating price for ${signal.pair}...`);
-      const priceData = await enhancedPriceService.getLivePrice(signal.pair);
+      console.log(`🔄 Manually updating TRUE LIVE price for ${signal.pair}...`);
+      const livePriceData = await trueLivePriceService.getTrueLivePrice(signal.pair);
       
-      signal.livePrice = priceData.price;
-      signal.priceSource = priceData.source;
-      signal.priceTimestamp = new Date(priceData.timestamp).toISOString();
+      signal.livePrice = livePriceData.price;
+      signal.priceSource = livePriceData.source;
+      signal.priceTimestamp = new Date(livePriceData.timestamp).toISOString();
       signal.lastPriceUpdate = new Date();
-      signal.priceAccuracy = this.validatePriceAccuracy(priceData, signal.pair);
+      signal.priceAccuracy = this.mapAccuracyToString(livePriceData.accuracy);
 
-      console.log(`✅ Updated ${signal.pair}: ${priceData.price} from ${priceData.source}`);
+      console.log(`✅ Updated ${signal.pair}: ${livePriceData.price} from ${livePriceData.source} (${livePriceData.accuracy})`);
       return true;
     } catch (error) {
-      console.error(`❌ Failed to update price for ${signal.pair}:`, error);
+      console.error(`❌ Failed to update TRUE LIVE price for ${signal.pair}:`, error);
       return false;
     }
   }
@@ -483,7 +472,7 @@ class InstitutionalSignalService {
     if (!signal) return false;
 
     try {
-      const priceData = await enhancedPriceService.getLivePrice(signal.pair);
+      const priceData = await trueLivePriceService.getTrueLivePrice(signal.pair);
       const currentPrice = priceData.price;
       const entry = parseFloat(signal.entry);
       const sl = parseFloat(signal.stop_loss);
