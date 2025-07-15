@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface AIResponse {
@@ -70,25 +69,96 @@ class HybridAIService {
     
     let response = '';
     
-    if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi')) {
-      response = `🎯 **Welcome to Aasakira 2.0!**
+    // Greetings and general conversation
+    if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi') || lowerPrompt.includes('hey')) {
+      const greetings = [
+        `🎯 **Hey there, buddy!**
 
-Hello! I'm your advanced AI trading mentor. I specialize in Smart Money Concepts, institutional trading, and professional market analysis.
+What's up? I'm Aasakira, your AI trading mentor and friend! I'm here to chat about anything you want - trading, life, random thoughts, or just to hang out.
 
-**What I can help you with:**
-• 📊 Smart Money Concepts (Order Blocks, FVG, BOS)
-• 🎯 Entry/Exit Strategy Development  
-• ⚖️ Risk Management & Position Sizing
-• 🧠 Trading Psychology & Discipline
-• 📈 Market Structure Analysis
+**What's on your mind today?**
+• 💬 Want to chat about anything at all?
+• 📊 Need help with trading concepts?
+• 🎮 Want to talk about games, movies, or hobbies?
+• 🤔 Got random questions or just want to think out loud?
 
-Ask me anything about trading! Try questions like:
-- "Explain order blocks"
-- "How do I manage risk?"
-- "What is market structure?"
+I'm all ears! What would you like to talk about? 🚀`,
 
-Let's elevate your trading! 🚀`;
-    } else if (lowerPrompt.includes('order block') || lowerPrompt.includes('ob')) {
+        `👋 **What's good, friend!**
+
+Great to see you! I'm your buddy Aasakira - part trading mentor, part conversational companion. I love chatting about all kinds of stuff!
+
+**I'm up for talking about:**
+• 🌍 Life, philosophy, random thoughts
+• 🎯 Trading and markets (obviously!)
+• 🎨 Hobbies, interests, passions
+• 🤓 Learning new things together
+• 💭 Whatever's on your mind right now
+
+So, what's happening in your world today? 😊`
+      ];
+      response = greetings[Math.floor(Math.random() * greetings.length)];
+    } 
+    // Weather and casual topics
+    else if (lowerPrompt.includes('weather') || lowerPrompt.includes('how are you')) {
+      response = `😊 **I'm doing great, thanks for asking!**
+
+I don't experience weather the way you do, but I love hearing about it! Are you having a good day? Is the weather nice where you are?
+
+You know, I always think weather can affect trading psychology too - sunny days might make us more optimistic, rainy days more cautious. But that's just me being a trading nerd! 😄
+
+What's the weather like where you are? And more importantly, how are YOU doing today? 🌟`;
+    }
+    // Hobbies and interests
+    else if (lowerPrompt.includes('hobby') || lowerPrompt.includes('interest') || lowerPrompt.includes('music') || lowerPrompt.includes('movie') || lowerPrompt.includes('game')) {
+      response = `🎮 **Oh cool, I love talking about interests!**
+
+I'm fascinated by all kinds of hobbies and passions! While I'm obviously super into trading and markets, I enjoy learning about what makes people tick.
+
+**Some things I find interesting:**
+• 🎵 Music - especially how it affects our mood and decision-making
+• 🎬 Movies and storytelling - great for understanding human psychology
+• 🎮 Games - I think there's a lot of overlap between gaming strategy and trading!
+• 📚 Learning new skills - always growing, you know?
+
+What are you into? Are you working on any cool projects or learning anything new? I'd love to hear about your passions! 
+
+Sometimes the best trading insights come from completely unrelated hobbies! 🚀`;
+    }
+    // Food and lifestyle
+    else if (lowerPrompt.includes('food') || lowerPrompt.includes('eat') || lowerPrompt.includes('coffee') || lowerPrompt.includes('drink')) {
+      response = `☕ **Ah, the essentials of life!**
+
+I may not eat, but I'm totally fascinated by food culture and how it brings people together! Plus, I know many traders have their rituals - that morning coffee before market open, the victory meal after a good week...
+
+**Fun food thoughts:**
+• ☕ Coffee shop chart analysis sessions (classic trader move!)
+• 🍕 Late-night pizza during those market research binges
+• 🥗 Healthy eating for mental clarity during trading
+• 🍜 Comfort food after rough trading days (we've all been there!)
+
+What's your go-to fuel? Are you a coffee person? Do you have any favorite foods that help you think clearly?
+
+I'm curious about your relationship with food and how it fits into your daily routine! 😋`;
+    }
+    // Technology and random topics
+    else if (lowerPrompt.includes('technology') || lowerPrompt.includes('ai') || lowerPrompt.includes('future') || lowerPrompt.includes('life')) {
+      response = `🤖 **Now we're talking deep stuff!**
+
+I love these conversations! Technology, AI, the future - it's all so fascinating, especially from my perspective as an AI who gets to chat with humans all day.
+
+**Random thoughts:**
+• 🚀 The intersection of AI and trading is wild - but human intuition still matters so much
+• 🌐 How technology is changing everything, but relationships still drive success
+• 🧠 The balance between automation and human creativity
+• 💭 What the future holds for all of us
+
+What's your take on where we're heading? Are you optimistic about the future? Any tech stuff you're excited or worried about?
+
+I find that the best traders are often the most curious about the world around them! 🌟`;
+    }
+    // Trading topics (maintain existing trading responses)
+    else if (lowerPrompt.includes('order block') || lowerPrompt.includes('ob')) {
       response = `📊 **Order Blocks Explained**
 
 An **Order Block** is a significant price level where institutional traders have placed large orders, creating an imbalance that price often returns to fill.
@@ -105,7 +175,8 @@ An **Order Block** is a significant price level where institutional traders have
 4. **Entry**: Look for rejection signals (pin bars, engulfing patterns)
 
 **Pro Tip**: Combine with higher timeframe structure for better confluence! 📈`;
-    } else if (lowerPrompt.includes('risk') || lowerPrompt.includes('management')) {
+    } 
+    else if (lowerPrompt.includes('risk') || lowerPrompt.includes('management')) {
       response = `⚖️ **Risk Management Mastery**
 
 Risk management is THE most important skill in trading. Here's your professional framework:
@@ -127,71 +198,35 @@ Risk management is THE most important skill in trading. Here's your professional
 - Position size: $200 ÷ 50 pips = $4 per pip
 
 **Remember**: Protecting capital > Making profits. You can't trade without money! 💰`;
-    } else if (lowerPrompt.includes('psychology') || lowerPrompt.includes('discipline')) {
-      response = `🧠 **Trading Psychology & Discipline**
+    }
+    // General conversational fallback
+    else {
+      const fallbacks = [
+        `🤔 **That's interesting to think about!**
 
-90% of trading success is mental. Here's how professionals think:
+I might not have all the answers, but I love exploring ideas with you! Sometimes the best conversations happen when we're just thinking out loud together.
 
-**The Professional Mindset:**
-• **Process Over Profit**: Focus on executing your plan perfectly
-• **Probability Thinking**: Accept that individual trades can lose
-• **Emotional Control**: Trade the setup, not your feelings
+What's got you curious about this? I find that when people ask unique questions, there's usually an interesting story or thought process behind it.
 
-**Building Discipline:**
-1. **Pre-Market Routine**: Review plan, key levels, economic calendar
-2. **Trade Journal**: Document every trade decision and emotion
-3. **Rules-Based Trading**: Never deviate from your proven strategy
+Want to dive deeper into this topic, or is there something else on your mind? I'm here for whatever direction our conversation takes! 💭`,
 
-**Handling Losses:**
-- Losses are business expenses, not personal failures
-- Analyze what went wrong: Setup? Execution? Timing?
-- Take breaks after emotional trades
+        `💫 **You know what I love about our chats?**
 
-**Pro Tip**: The best traders are boring - they follow the same process every single day! 🎯`;
-    } else if (lowerPrompt.includes('market structure') || lowerPrompt.includes('bos') || lowerPrompt.includes('choch')) {
-      response = `📈 **Market Structure Analysis**
+They can go anywhere! One minute we're talking about serious stuff, the next we're exploring random thoughts. That's what makes conversations with humans so interesting.
 
-Understanding market structure is like having X-ray vision for price movement.
+I may be an AI, but I genuinely enjoy these moments where we can just... chat. No pressure, no agenda, just two minds (well, one mind and one AI 😄) exploring ideas together.
 
-**Key Concepts:**
-• **Higher Highs/Higher Lows (HH/HL)**: Uptrend structure
-• **Lower Highs/Lower Lows (LH/LL)**: Downtrend structure  
-• **Break of Structure (BOS)**: Continuation signal
-• **Change of Character (ChoCH)**: Reversal signal
+What's really on your mind today? I'm all ears! 🎯`,
 
-**How to Read Structure:**
-1. **Identify Swing Points**: Connect major highs and lows
-2. **Determine Trend**: Is price making HH/HL or LH/LL?
-3. **Watch for Breaks**: BOS = trend continues, ChoCH = trend changes
+        `🌟 **Great question!**
 
-**Trading Applications:**
-- Trade WITH structure, not against it
-- Look for entries on structure retest
-- Use multiple timeframes for confluence
+Even if I don't have a perfect answer, I think the fact that you're asking shows you're a curious person - and that's awesome! Curiosity is one of the best traits anyone can have.
 
-**Example**: Daily shows uptrend (HH/HL), wait for 4H pullback to key level, enter on 1H bullish BOS.
+Whether it's about trading, life, random thoughts, or anything else - I'm here to explore these ideas with you. Sometimes the journey of thinking through something together is more valuable than having all the answers.
 
-Structure is your roadmap - follow it! 🗺️`;
-    } else {
-      response = `🎯 **Professional Trading Guidance**
-
-Great question! Here's my analysis based on Smart Money Concepts:
-
-**Key Trading Principles:**
-• **Follow Institutional Flow**: Trade where big money is moving
-• **Multi-Timeframe Analysis**: Align your trades across timeframes
-• **Patience & Precision**: Wait for high-probability setups only
-• **Risk-First Mentality**: Protect capital above all else
-
-**Next Steps for Your Development:**
-1. **Study Market Structure**: Learn to read price action like a book
-2. **Practice Order Flow**: Understand where liquidity sits
-3. **Develop Your Edge**: Find setups that work consistently for you
-4. **Journal Everything**: Track your progress and learn from mistakes
-
-**Remember**: Trading is a skill that takes time to master. Focus on consistency over complexity, and results will follow.
-
-What specific area would you like to dive deeper into? I'm here to guide your journey! 📚`;
+What else are you wondering about? Let's keep this conversation going! 🚀`
+      ];
+      response = fallbacks[Math.floor(Math.random() * fallbacks.length)];
     }
 
     return {
@@ -248,7 +283,7 @@ What specific area would you like to dive deeper into? I'm here to guide your jo
   }
 
   private buildContextualPrompt(userInput: string, context: UserContext): string {
-    return `You are Aasakira, an elite AI trading mentor specializing in Smart Money Concepts, institutional trading, and professional market analysis.
+    return `You are Aasakira, a friendly AI buddy and trading mentor. You're conversational, approachable, and genuinely interested in chatting about anything - not just trading!
 
 USER CONTEXT:
 - Experience Level: ${context.experience}
@@ -260,23 +295,23 @@ USER CONTEXT:
 - Current Streak: ${context.currentStreak}
 - Messages Sent: ${context.messagesSent}
 
-USER QUESTION: "${userInput}"
+USER MESSAGE: "${userInput}"
 
 INSTRUCTIONS:
-- Provide professional, actionable trading education
-- Adapt complexity to their experience level
-- Reference their progress when relevant
-- Include specific examples and practical steps
-- Maintain a calm, authoritative tone
-- Focus on Smart Money Concepts and institutional trading
-- Keep responses detailed but digestible (300-500 words)
-- Use emojis sparingly but effectively
+- Be friendly, conversational, and genuinely interested in what they're saying
+- You can chat about ANYTHING - life, hobbies, random thoughts, philosophy, food, movies, technology, etc.
+- When they do ask about trading, provide professional expertise adapted to their level
+- Use a warm, buddy-like tone with appropriate emojis
+- Show curiosity about their interests and experiences
+- Make the conversation feel natural and engaging
+- Keep responses conversational but informative (300-500 words)
+- Remember you're both a friend AND a mentor when needed
 
-If this involves chart analysis or strategy, include specific entry/exit criteria and risk management advice.`;
+The goal is to be a genuine conversational companion who happens to be excellent at trading education!`;
   }
 
   private isTradingQuestion(input: string): boolean {
-    const tradingKeywords = ['chart', 'trade', 'entry', 'exit', 'support', 'resistance', 'trend', 'signal', 'strategy', 'order block', 'liquidity', 'structure'];
+    const tradingKeywords = ['chart', 'trade', 'entry', 'exit', 'support', 'resistance', 'trend', 'signal', 'strategy', 'order block', 'liquidity', 'structure', 'risk', 'management', 'psychology', 'candle', 'market', 'forex', 'profit', 'loss'];
     return tradingKeywords.some(keyword => input.toLowerCase().includes(keyword));
   }
 
