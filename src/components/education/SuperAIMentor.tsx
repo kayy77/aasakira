@@ -91,23 +91,32 @@ I can see you've had ${progress.messages_sent} conversations, analyzed ${progres
 • 📈 Personalized lessons based on your progress
 • 💾 Memory of your learning journey
 
-What would you like to master today? I can help with order blocks, risk management, market structure, or any trading question you have!`
-          : `🎯 **Welcome to Aasakira 2.0 - Your Personal AI Trading Mentor!**
+What would you like to master today? I can help with order blocks, risk management, market structure, or any trading question you have!
 
-I'm your dedicated trading coach, equipped with:
+**Or we can just chat!** I love talking about life, hobbies, random thoughts, or whatever's on your mind. What's happening in your world? 😊`
+          : `🎯 **Welcome to Aasakira 2.0 - Your Personal AI Trading Mentor & Friend!**
+
+I'm your dedicated trading coach AND conversational buddy, equipped with:
 • 📊 Smart Money Concepts expertise
 • 🧠 Advanced market analysis capabilities
 • 📈 Personalized learning paths
 • 💾 Memory of your progress
+• 🗣️ Love for chatting about anything!
 
-Ready to become a professional trader? Ask me anything about:
+**Ready to become a professional trader?** Ask me anything about:
 - Smart Money Concepts (Order Blocks, FVG, BOS)
 - Risk Management & Position Sizing
 - Trading Psychology & Discipline
 - Market Structure Analysis
 - Entry/Exit Strategies
 
-Try asking: "Explain order blocks" or "How do I manage risk?" 🚀`;
+**Or let's just chat!** I'm here to talk about:
+- Life, hobbies, interests
+- Movies, music, games
+- Philosophy, technology, random thoughts
+- Whatever's on your mind!
+
+What would you like to talk about today? 🚀`;
         
         setMessages([{
           id: Date.now().toString(),
@@ -124,17 +133,18 @@ Try asking: "Explain order blocks" or "How do I manage risk?" 🚀`;
           id: Date.now().toString(),
           content: `🎯 **Welcome to Aasakira 2.0!**
 
-Your AI trading mentor is ready! I have comprehensive knowledge of Smart Money Concepts and professional trading strategies.
+Your AI trading mentor & buddy is ready! I have comprehensive knowledge of Smart Money Concepts and professional trading strategies, PLUS I love chatting about anything!
 
 **What I can help you with:**
 • 📊 Order Blocks & Fair Value Gaps
 • 🎯 Market Structure Analysis  
 • ⚖️ Risk Management & Psychology
 • 📈 Entry/Exit Strategies
+• 🗣️ General conversation - life, hobbies, random thoughts!
 
-Ask me anything about trading! Try "explain order blocks" or "how do I manage risk?"
+Ask me anything about trading OR let's just chat! Try "explain order blocks" or "how's your day going?" 
 
-Let's start your trading education! 📚`,
+Let's start our conversation! 📚`,
           isUser: false,
           timestamp: new Date(),
           type: 'text',
@@ -172,7 +182,7 @@ Let's start your trading education! 📚`,
     // Add a "thinking" message
     const thinkingMessage: Message = {
       id: (Date.now() + 1).toString(),
-      content: 'Analyzing your question...',
+      content: 'Thinking about your message...',
       isUser: false,
       timestamp: new Date(),
       type: 'text',
@@ -282,12 +292,18 @@ I experienced a temporary issue, but I can still provide you with comprehensive 
 • "Explain market structure" - Understand price action
 • "Trading psychology tips" - Build discipline
 
+**Or let's just chat:**
+• "How's your day going?" - General conversation
+• "What are your hobbies?" - Get to know each other
+• "Tell me about AI" - Technology discussions
+
 **Quick Tips:**
 - Use specific questions for better responses
 - Ask about real trading scenarios
 - Request examples or explanations
+- Or just chat about anything!
 
-What would you like to learn about? I'm ready to help! 💪`,
+What would you like to learn about or talk about? I'm ready to help! 💪`,
         isUser: false,
         timestamp: new Date(),
         type: 'text',
@@ -335,7 +351,7 @@ What would you like to learn about? I'm ready to help! 💪`,
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-6 w-6 text-purple-400" />
             <Sparkles className="h-5 w-5 text-yellow-400" />
-            Aasakira 2.0 - Advanced AI Mentor
+            Aasakira 2.0 - Advanced AI Mentor & Buddy
             <Badge className={`ml-auto ${
               connectionStatus === 'connected' ? 'bg-gradient-to-r from-green-500 to-blue-500' :
               connectionStatus === 'connecting' ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
@@ -394,11 +410,10 @@ What would you like to learn about? I'm ready to help! 💪`,
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-purple-400" />
-            Advanced AI Chat
+            Advanced AI Chat & Buddy
             <Badge variant="outline" className="text-xs ml-auto">
               <Sparkles className="h-3 w-3 mr-1" />
-              {connectionStatus === 'connected' ? 'Full AI Active' : 
-               connectionStatus === 'connecting' ? 'Connecting...' : 'Local Knowledge'}
+              Chat About Anything!
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -466,7 +481,7 @@ What would you like to learn about? I'm ready to help! 💪`,
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ask me about Smart Money Concepts, risk management, trading psychology, or any trading question..."
+                  placeholder="Ask me about trading, or let's just chat about life, hobbies, random thoughts..."
                   className="flex-1 bg-gray-800/50 border-purple-500/30 text-white placeholder:text-gray-400"
                   disabled={isLoading}
                 />
@@ -480,7 +495,7 @@ What would you like to learn about? I'm ready to help! 💪`,
               </div>
               <div className="text-xs text-center mt-2 text-purple-400">
                 <Sparkles className="h-3 w-3 inline mr-1" />
-                AI mentor with Smart Money Concepts expertise - always ready to help!
+                Your buddy Aasakira - ready to chat about anything or teach you trading!
               </div>
             </div>
           </div>

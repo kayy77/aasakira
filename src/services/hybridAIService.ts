@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface AIResponse {
@@ -198,6 +199,55 @@ Risk management is THE most important skill in trading. Here's your professional
 - Position size: $200 ÷ 50 pips = $4 per pip
 
 **Remember**: Protecting capital > Making profits. You can't trade without money! 💰`;
+    }
+    else if (lowerPrompt.includes('smart money') || lowerPrompt.includes('smc')) {
+      response = `🏦 **Smart Money Concepts (SMC) Fundamentals**
+
+Smart Money refers to institutional traders (banks, hedge funds) who move markets with massive capital.
+
+**Core SMC Principles:**
+• **Market Structure**: Higher highs/lows vs lower highs/lows
+• **Liquidity**: Where stop losses cluster (easy targets)
+• **Order Flow**: Following institutional footprints
+• **Imbalance**: Fair Value Gaps where price moved too fast
+
+**Key SMC Tools:**
+1. **Order Blocks**: Institutional entry zones
+2. **Fair Value Gaps**: Price imbalances to be filled
+3. **Liquidity Sweeps**: Stop hunting before reversals
+4. **Break of Structure**: Trend change confirmations
+
+**Trading SMC Strategy:**
+- Wait for liquidity sweep
+- Look for order block formation
+- Enter on structure break confirmation
+- Target next liquidity pool
+
+SMC isn't magic - it's reading institutional behavior! 🎯`;
+    }
+    else if (lowerPrompt.includes('psychology') || lowerPrompt.includes('mindset') || lowerPrompt.includes('emotion')) {
+      response = `🧠 **Trading Psychology Mastery**
+
+Trading is 80% psychology, 20% strategy. Here's how to master your mind:
+
+**The Big 4 Emotions:**
+• **Fear**: Causes hesitation and missed opportunities
+• **Greed**: Leads to overtrading and position sizing errors
+• **Hope**: Makes you hold losing trades too long
+• **Regret**: Creates revenge trading and poor decisions
+
+**Mental Framework:**
+1. **Accept Losses**: They're part of the business
+2. **Process Focus**: Judge success by following rules, not P&L
+3. **Detachment**: Don't marry your positions
+4. **Discipline**: Stick to your plan when emotions run high
+
+**Daily Mental Routine:**
+- Morning: Review plan and mindset
+- During trades: Breathe, stick to rules
+- Evening: Journal emotions and decisions
+
+**Pro Tip**: The market will always be here tomorrow. Protect your mental capital like your financial capital! 💪`;
     }
     // General conversational fallback
     else {
