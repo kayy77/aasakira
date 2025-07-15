@@ -19,6 +19,13 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				'zen-maru': ['Zen Maru Gothic', 'sans-serif'],
+				'noto': ['Noto Sans JP', 'sans-serif'],
+				'shippori': ['Shippori Mincho B1', 'serif'],
+				'sans': ['Noto Sans JP', 'Inter', 'system-ui', 'sans-serif'],
+				'serif': ['Shippori Mincho B1', 'serif'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -85,6 +92,18 @@ export default {
 					400: '#60a5fa',
 					500: '#3b82f6',
 					600: '#2563eb'
+				},
+				'sakura': {
+					50: '#fef7ff',
+					100: '#fdebff',
+					200: '#fad7ff',
+					300: '#f5b7ff',
+					400: '#ed85ff',
+					500: '#e052ff',
+					600: '#d030f7',
+					700: '#b51fdb',
+					800: '#9419b3',
+					900: '#781992'
 				}
 			},
 			borderRadius: {
@@ -153,6 +172,32 @@ export default {
 					'100%': { 
 						opacity: '1' 
 					}
+				},
+				'sakura-fall': {
+					'0%': {
+						opacity: '0',
+						transform: 'translateY(-100px) rotate(0deg)'
+					},
+					'10%': {
+						opacity: '1'
+					},
+					'90%': {
+						opacity: '1'
+					},
+					'100%': {
+						opacity: '0',
+						transform: 'translateY(100vh) rotate(360deg)'
+					}
+				},
+				'section-load': {
+					'0%': {
+						opacity: '0',
+						transform: 'translateY(20px)'
+					},
+					'100%': {
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
 				}
 			},
 			animation: {
@@ -162,12 +207,15 @@ export default {
 				'float': 'float 6s ease-in-out infinite',
 				'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
 				'slide-up': 'slide-up 0.6s ease-out',
-				'fade-in': 'fade-in 0.8s ease-out'
+				'fade-in': 'fade-in 0.8s ease-out',
+				'sakura-fall': 'sakura-fall linear infinite',
+				'section-load': 'section-load 0.6s ease-out'
 			},
 			backgroundImage: {
 				'cyber-gradient': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
 				'neon-gradient': 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-				'trading-gradient': 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+				'trading-gradient': 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+				'sakura-gradient': 'linear-gradient(135deg, #fef7ff 0%, #f5b7ff 50%, #e052ff 100%)'
 			}
 		}
 	},
