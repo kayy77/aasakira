@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,11 +7,13 @@ import {
   Target, 
   Brain, 
   TrendingUp, 
+  TrendingDown,
   Clock, 
   BarChart3,
   Zap,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  MessageCircle
 } from 'lucide-react';
 import { EnhancedSignal } from '@/services/enhancedSignalAnalyzer';
 
@@ -20,12 +21,14 @@ interface EnhancedSignalCardProps {
   signal: EnhancedSignal;
   onBacktest: (signal: EnhancedSignal) => void;
   onCopySignal: (signal: EnhancedSignal) => void;
+  onAskAasakira: (signal: EnhancedSignal) => void;
 }
 
 const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({ 
   signal, 
   onBacktest, 
-  onCopySignal 
+  onCopySignal,
+  onAskAasakira
 }) => {
   const confidenceColor = signal.confidence >= 80 ? 'text-green-400' : 
                          signal.confidence >= 65 ? 'text-yellow-400' : 
@@ -34,6 +37,8 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
   const confidenceBg = signal.confidence >= 80 ? 'bg-green-500/20' : 
                       signal.confidence >= 65 ? 'bg-yellow-500/20' : 
                       'bg-red-500/20';
+
+  const isBuy = signal.type === 'BUY';
 
   return (
     <Card className="glass-card hover-glow border-2 border-purple-500/30 transition-all duration-300">
@@ -53,11 +58,25 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
               <p className="text-gray-400 text-sm">Enhanced Multi-Confluence Analysis</p>
             </div>
           </div>
-          <Badge className={`${
-            signal.type === 'BUY' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-          } border-0 font-bold text-lg px-3 py-1`}>
-            {signal.type} {signal.pair}
-          </Badge>
+
+          {/* Large BUY/SELL Indicator */}
+          <div className="text-center">
+            <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 ${
+              isBuy 
+                ? 'bg-green-500/20 border-green-500/50 text-green-400' 
+                : 'bg-red-500/20 border-red-500/50 text-red-400'
+            }`}>
+              {isBuy ? (
+                <TrendingUp className="w-6 h-6" />
+              ) : (
+                <TrendingDown className="w-6 h-6" />
+              )}
+              <div>
+                <div className="text-2xl font-bold">{signal.type}</div>
+                <div className="text-sm opacity-80">{signal.pair}</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Confluence Score */}
@@ -174,8 +193,17 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
           ))}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-2">
+        {/* Enhanced Action Buttons */}
+        <div className="grid grid-cols-3 gap-2 pt-2">
+          <Button
+            onClick={() => onAskAasakira(signal)}
+            variant="outline"
+            size="sm"
+            className="flex-1 border-purple-500/30 hover:bg-purple-500/20 bg-gradient-to-r from-purple-500/10 to-pink-500/10"
+          >
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Ask Aasakira
+          </Button>
           <Button
             onClick={() => onBacktest(signal)}
             variant="outline"
@@ -183,7 +211,7 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
             className="flex-1 border-blue-500/30 hover:bg-blue-500/20"
           >
             <BarChart3 className="w-4 h-4 mr-2" />
-            Backtest Analysis
+            Backtest
           </Button>
           <Button
             onClick={() => onCopySignal(signal)}
