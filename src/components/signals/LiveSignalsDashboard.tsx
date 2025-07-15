@@ -8,6 +8,7 @@ import { enhancedSignalService, EnhancedSignal } from '@/services/enhancedSignal
 import { institutionalSignalService } from '@/services/institutionalSignalService';
 import { multiIntelligenceCore, SignalDNA } from '@/services/multiIntelligenceCore';
 import { webhookService } from '@/services/webhookService';
+import { trueLivePriceService } from '@/services/trueLivePriceService';
 import { motion, AnimatePresence } from 'framer-motion';
 import MilitaryGradeSignalCard from './MilitaryGradeSignalCard';
 import { 
@@ -55,10 +56,12 @@ const LiveSignalsDashboard: React.FC = () => {
       
       const selectedPair = pairs[Math.floor(Math.random() * pairs.length)];
       
-      // Simulate live price fetch
-      const livePrice = await simulateLivePrice(selectedPair);
+      // Get REAL live price using the original service
+      console.log(`🎯 TARGET ACQUIRED: ${selectedPair} - Fetching REAL live price...`);
+      const livePriceData = await trueLivePriceService.getTrueLivePrice(selectedPair);
+      const livePrice = livePriceData.price;
       
-      console.log(`🎯 TARGET ACQUIRED: ${selectedPair} @ ${livePrice}`);
+      console.log(`📡 LIVE PRICE CONFIRMED: ${selectedPair} @ ${livePrice} from ${livePriceData.source}`);
       
       // Generate signal through AI council
       const signalDNA = await multiIntelligenceCore.generateSignalDNA(selectedPair, livePrice);
@@ -81,6 +84,13 @@ const LiveSignalsDashboard: React.FC = () => {
         });
         return;
       }
+
+      // Update the price info with real data
+      signalDNA.price = {
+        source: livePriceData.source,
+        status: livePriceData.accuracy,
+        lastUpdated: 'Just now'
+      };
 
       const militarySignal = {
         ...signalDNA,
@@ -123,25 +133,6 @@ const LiveSignalsDashboard: React.FC = () => {
     }
   };
 
-  const simulateLivePrice = async (pair: string): Promise<number> => {
-    // Simulate realistic FX prices
-    const basePrices: { [key: string]: number } = {
-      'EURUSD': 1.0850,
-      'GBPUSD': 1.2650,
-      'USDJPY': 148.50,
-      'AUDUSD': 0.6720,
-      'USDCAD': 1.3580,
-      'NZDUSD': 0.6180,
-      'USDCHF': 0.8950
-    };
-    
-    const basePrice = basePrices[pair] || 1.0000;
-    const volatility = 0.001; // 0.1% volatility
-    const randomChange = (Math.random() - 0.5) * 2 * volatility;
-    
-    return basePrice * (1 + randomChange);
-  };
-
   const removeMilitarySignal = (signalId: string) => {
     setMilitarySignals(prev => prev.filter(signal => signal.id !== signalId));
     toast({
@@ -157,19 +148,30 @@ const LiveSignalsDashboard: React.FC = () => {
       const signal = militarySignals.find(s => s.id === signalId);
       if (!signal) return;
       
-      const newPrice = await simulateLivePrice(signal.symbol);
+      // Get REAL live price
+      const livePriceData = await trueLivePriceService.getTrueLivePrice(signal.symbol);
+      const newPrice = livePriceData.price;
       
       setMilitarySignals(prev => 
         prev.map(s => 
           s.id === signalId 
-            ? { ...s, livePrice: newPrice, price: { ...s.price, lastUpdated: 'Just now' } }
+            ? { 
+                ...s, 
+                livePrice: newPrice, 
+                price: { 
+                  ...s.price, 
+                  source: livePriceData.source,
+                  status: livePriceData.accuracy,
+                  lastUpdated: 'Just now' 
+                } 
+              }
             : s
         )
       );
       
       toast({
         title: "🔄 PRICE UPDATED",
-        description: `${signal.symbol} live price refreshed: ${newPrice.toFixed(signal.symbol.includes('JPY') ? 3 : 5)}`,
+        description: `${signal.symbol} live price refreshed: ${newPrice.toFixed(signal.symbol.includes('JPY') ? 3 : 5)} from ${livePriceData.source}`,
       });
       
     } catch (error) {
@@ -206,7 +208,7 @@ const LiveSignalsDashboard: React.FC = () => {
     });
   };
 
-  // Auto-refresh prices every 5 seconds
+  // Auto-refresh prices every 5 seconds using REAL price service
   useEffect(() => {
     if (militarySignals.length === 0) return;
     
@@ -214,11 +216,16 @@ const LiveSignalsDashboard: React.FC = () => {
       const updatedSignals = await Promise.all(
         militarySignals.map(async (signal) => {
           try {
-            const newPrice = await simulateLivePrice(signal.symbol);
+            const livePriceData = await trueLivePriceService.getTrueLivePrice(signal.symbol);
             return {
               ...signal,
-              livePrice: newPrice,
-              price: { ...signal.price, lastUpdated: '5s ago' }
+              livePrice: livePriceData.price,
+              price: { 
+                ...signal.price, 
+                source: livePriceData.source,
+                status: livePriceData.accuracy,
+                lastUpdated: '5s ago' 
+              }
             };
           } catch {
             return signal;
@@ -383,7 +390,7 @@ const LiveSignalsDashboard: React.FC = () => {
           <AlertDescription className="text-green-400">
             🚀 MULTI-INTELLIGENCE SYSTEM OPERATIONAL - {militarySignals.length} Active Signals | Auto-refresh: 5s intervals
             <div className="mt-1 text-xs text-green-300">
-              Next-generation AI council providing military-grade signal intelligence
+              Next-generation AI council providing military-grade signal intelligence with LIVE price feeds
             </div>
           </AlertDescription>
         </Alert>
