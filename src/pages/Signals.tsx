@@ -1,8 +1,9 @@
-
 import React from 'react';
 import Navigation from '@/components/Navigation';
 import LiveSignalsDashboard from '@/components/signals/LiveSignalsDashboard';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
+import EnhancedSignalDigestCard from '@/components/signals/EnhancedSignalDigestCard';
+import CoachModeExplanation from '@/components/signals/CoachModeExplanation';
 
 const Signals = () => {
   return (
@@ -17,7 +18,7 @@ const Signals = () => {
               Enhanced AI Signals
             </h1>
             <p className="text-gray-300 text-lg max-w-3xl mx-auto">
-              Multi-API price verification with webhook integration for Discord, Telegram, Zapier & Pipedream
+              Multi-API price verification with enhanced signal digest, coach mode explanations, and real-time accuracy tracking
             </p>
             <div className="flex justify-center gap-4 mt-4">
               <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -26,11 +27,11 @@ const Signals = () => {
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-400">
                 <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                Webhook Alerts
+                Enhanced Digest
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-400">
                 <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                AI Analysis
+                Coach Mode
               </div>
             </div>
           </div>
