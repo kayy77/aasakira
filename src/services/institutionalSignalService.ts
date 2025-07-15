@@ -54,7 +54,7 @@ class InstitutionalSignalService {
   };
 
   constructor() {
-    // Start live price updates immediately
+    // Start live price updates with higher frequency for better accuracy
     this.startLivePriceUpdates();
   }
 
@@ -64,34 +64,34 @@ class InstitutionalSignalService {
       clearInterval(this.priceUpdateInterval);
     }
 
-    // Update prices every 5 seconds (more reasonable for free APIs)
+    // Update prices every 3 seconds for maximum accuracy
     this.priceUpdateInterval = setInterval(() => {
       this.updateAllLivePricesWithTrueService();
-    }, 5000);
+    }, 3000);
 
-    console.log('🔥 Started TRUE LIVE price updates for institutional signals (every 5 seconds)');
+    console.log('🔥 Started ULTRA PRECISE price updates for institutional signals (every 3 seconds)');
   }
 
   private async updateAllLivePricesWithTrueService() {
     if (this.signals.length === 0) return;
 
-    console.log(`🔥 Updating TRUE LIVE prices for ${this.signals.length} institutional signals...`);
+    console.log(`🎯 Updating ULTRA PRECISE prices for ${this.signals.length} institutional signals...`);
     
     for (const signal of this.signals) {
       if (signal.status === 'ACTIVE') {
         try {
           const livePriceData = await trueLivePriceService.getTrueLivePrice(signal.pair);
           
-          // Update the signal with TRUE live price
+          // Update the signal with ultra precise live price
           signal.livePrice = livePriceData.price;
           signal.priceSource = livePriceData.source;
           signal.priceTimestamp = new Date(livePriceData.timestamp).toISOString();
           signal.lastPriceUpdate = new Date();
           signal.priceAccuracy = this.mapAccuracyToString(livePriceData.accuracy);
 
-          console.log(`💰 TRUE LIVE UPDATE ${signal.pair}: ${livePriceData.price} from ${livePriceData.source} (${livePriceData.accuracy})`);
+          console.log(`💎 ULTRA PRECISE UPDATE ${signal.pair}: ${livePriceData.price} from ${livePriceData.source} (${livePriceData.accuracy})`);
         } catch (error) {
-          console.error(`❌ Failed to update TRUE LIVE price for ${signal.pair}:`, error);
+          console.error(`❌ Failed to update ultra precise price for ${signal.pair}:`, error);
         }
       }
     }
@@ -443,13 +443,13 @@ class InstitutionalSignalService {
     return this.signals.slice(-10);
   }
 
-  // Manual price update method using TRUE LIVE service
+  // Manual price update method using ULTRA PRECISE service
   async updateSignalPrice(signalId: string): Promise<boolean> {
     const signal = this.signals.find(s => s.id === signalId);
     if (!signal) return false;
 
     try {
-      console.log(`🔄 Manually updating TRUE LIVE price for ${signal.pair}...`);
+      console.log(`🎯 Manually updating ULTRA PRECISE price for ${signal.pair}...`);
       const livePriceData = await trueLivePriceService.getTrueLivePrice(signal.pair);
       
       signal.livePrice = livePriceData.price;
@@ -458,10 +458,10 @@ class InstitutionalSignalService {
       signal.lastPriceUpdate = new Date();
       signal.priceAccuracy = this.mapAccuracyToString(livePriceData.accuracy);
 
-      console.log(`✅ Updated ${signal.pair}: ${livePriceData.price} from ${livePriceData.source} (${livePriceData.accuracy})`);
+      console.log(`💎 Updated ${signal.pair}: ${livePriceData.price} from ${livePriceData.source} (${livePriceData.accuracy})`);
       return true;
     } catch (error) {
-      console.error(`❌ Failed to update TRUE LIVE price for ${signal.pair}:`, error);
+      console.error(`❌ Failed to update ultra precise price for ${signal.pair}:`, error);
       return false;
     }
   }
