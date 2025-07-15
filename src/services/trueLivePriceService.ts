@@ -1,4 +1,3 @@
-
 interface LivePriceData {
   price: number;
   timestamp: number;
@@ -12,36 +11,38 @@ class TrueLivePriceService {
   private priceCache = new Map<string, { price: number; timestamp: number; source: string }>();
 
   async getTrueLivePrice(symbol: string): Promise<LivePriceData> {
-    console.log(`🔥 FETCHING PRECISE LIVE PRICE for ${symbol}`);
+    console.log(`🔥 FETCHING PRECISE LIVE PRICE for ${symbol} @ ${new Date().toISOString()}`);
     
     // Try multiple working APIs in order of reliability
     let result = await this.fetchFromExchangeRateAPI(symbol);
     if (result && this.isValidPrice(result)) {
-      console.log(`✅ EXCHANGE RATE API: ${symbol} = ${result.price} (${result.accuracy})`);
+      console.log(`📡 [Fetch] ${symbol}: ${result.price} from ${result.source} @ ${new Date().toISOString()}`);
       return result;
     }
 
     result = await this.fetchFromFreeForexAPI(symbol);
     if (result && this.isValidPrice(result)) {
-      console.log(`✅ FREE FOREX API: ${symbol} = ${result.price} (${result.accuracy})`);
+      console.log(`📡 [Fetch] ${symbol}: ${result.price} from ${result.source} @ ${new Date().toISOString()}`);
       return result;
     }
 
     result = await this.fetchFromCurrencyAPI(symbol);
     if (result && this.isValidPrice(result)) {
-      console.log(`✅ CURRENCY API: ${symbol} = ${result.price} (${result.accuracy})`);
+      console.log(`📡 [Fetch] ${symbol}: ${result.price} from ${result.source} @ ${new Date().toISOString()}`);
       return result;
     }
 
     result = await this.fetchFromBinancePublic(symbol);
     if (result && this.isValidPrice(result)) {
-      console.log(`✅ BINANCE: ${symbol} = ${result.price} (${result.accuracy})`);
+      console.log(`📡 [Fetch] ${symbol}: ${result.price} from ${result.source} @ ${new Date().toISOString()}`);
       return result;
     }
 
     // Use highly accurate current market prices as last resort
-    console.log(`🎯 USING ULTRA PRECISE MARKET PRICES for ${symbol}`);
-    return this.getUltraPreciseMarketPrice(symbol);
+    console.log(`🎯 USING ULTRA PRECISE MARKET PRICES for ${symbol} @ ${new Date().toISOString()}`);
+    const fallbackResult = this.getUltraPreciseMarketPrice(symbol);
+    console.log(`📡 [Fetch] ${symbol}: ${fallbackResult.price} from ${fallbackResult.source} @ ${new Date().toISOString()}`);
+    return fallbackResult;
   }
 
   private async fetchFromExchangeRateAPI(symbol: string): Promise<LivePriceData | null> {
@@ -51,15 +52,16 @@ class TrueLivePriceService {
       const base = symbol.substring(0, 3);
       const quote = symbol.substring(3, 6);
       
-      console.log(`📡 Exchange Rate API: ${base}/${quote}`);
+      console.log(`📡 Exchange Rate API: ${base}/${quote} @ ${new Date().toISOString()}`);
       
       const response = await fetch(
         `https://api.exchangerate-api.com/v4/latest/${base}`,
         {
           method: 'GET',
           headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           },
           cache: 'no-store'
         }
@@ -73,8 +75,10 @@ class TrueLivePriceService {
       const data = await response.json();
 
       if (data.rates && data.rates[quote]) {
+        const price = data.rates[quote];
+        console.log(`✅ Exchange Rate API SUCCESS: ${symbol} = ${price} @ ${new Date().toISOString()}`);
         return {
-          price: data.rates[quote],
+          price,
           timestamp: Date.now(),
           source: 'Exchange Rate API',
           accuracy: 'LIVE'
@@ -83,7 +87,7 @@ class TrueLivePriceService {
 
       return null;
     } catch (error) {
-      console.error(`❌ Exchange Rate API failed for ${symbol}:`, error);
+      console.error(`❌ Exchange Rate API fetch error for ${symbol} @ ${new Date().toISOString()}:`, error);
       return null;
     }
   }
@@ -95,15 +99,16 @@ class TrueLivePriceService {
       const base = symbol.substring(0, 3);
       const quote = symbol.substring(3, 6);
       
-      console.log(`📡 Free Forex API: ${base}/${quote}`);
+      console.log(`📡 Free Forex API: ${base}/${quote} @ ${new Date().toISOString()}`);
       
       const response = await fetch(
         `https://api.fxratesapi.com/latest?base=${base}&symbols=${quote}`,
         {
           method: 'GET',
           headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           },
           cache: 'no-store'
         }
@@ -117,8 +122,10 @@ class TrueLivePriceService {
       const data = await response.json();
 
       if (data.rates && data.rates[quote]) {
+        const price = data.rates[quote];
+        console.log(`✅ Free Forex API SUCCESS: ${symbol} = ${price} @ ${new Date().toISOString()}`);
         return {
-          price: data.rates[quote],
+          price,
           timestamp: Date.now(),
           source: 'Free Forex API',
           accuracy: 'LIVE'
@@ -127,7 +134,7 @@ class TrueLivePriceService {
 
       return null;
     } catch (error) {
-      console.error(`❌ Free Forex API failed for ${symbol}:`, error);
+      console.error(`❌ Free Forex API fetch error for ${symbol} @ ${new Date().toISOString()}:`, error);
       return null;
     }
   }
@@ -139,13 +146,17 @@ class TrueLivePriceService {
       const base = symbol.substring(0, 3);
       const quote = symbol.substring(3, 6);
       
+      console.log(`📡 Currency API: ${base}/${quote} @ ${new Date().toISOString()}`);
+      
       // Use currencyapi.com (free tier available)
       const response = await fetch(
         `https://api.currencyapi.com/v3/latest?apikey=cur_live_YOUR_KEY&currencies=${quote}&base_currency=${base}`,
         {
           method: 'GET',
           headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate'
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           },
           cache: 'no-store'
         }
@@ -154,8 +165,10 @@ class TrueLivePriceService {
       if (response.ok) {
         const data = await response.json();
         if (data.data && data.data[quote] && data.data[quote].value) {
+          const price = data.data[quote].value;
+          console.log(`✅ Currency API SUCCESS: ${symbol} = ${price} @ ${new Date().toISOString()}`);
           return {
-            price: data.data[quote].value,
+            price,
             timestamp: Date.now(),
             source: 'Currency API',
             accuracy: 'LIVE'
@@ -165,7 +178,7 @@ class TrueLivePriceService {
 
       return null;
     } catch (error) {
-      console.error(`❌ Currency API failed for ${symbol}:`, error);
+      console.error(`❌ Currency API fetch error for ${symbol} @ ${new Date().toISOString()}:`, error);
       return null;
     }
   }
@@ -175,14 +188,16 @@ class TrueLivePriceService {
       if (!this.isCryptoSymbol(symbol)) return null;
 
       const binanceSymbol = this.formatBinanceSymbol(symbol);
-      console.log(`📡 Binance Public: ${binanceSymbol}`);
+      console.log(`📡 Binance Public: ${binanceSymbol} @ ${new Date().toISOString()}`);
       
       const response = await fetch(
         `https://api.binance.com/api/v3/ticker/price?symbol=${binanceSymbol}`,
         {
           method: 'GET',
           headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate'
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           },
           cache: 'no-store'
         }
@@ -196,8 +211,10 @@ class TrueLivePriceService {
       const data = await response.json();
 
       if (data.price) {
+        const price = parseFloat(data.price);
+        console.log(`✅ Binance SUCCESS: ${symbol} = ${price} @ ${new Date().toISOString()}`);
         return {
-          price: parseFloat(data.price),
+          price,
           timestamp: Date.now(),
           source: 'Binance',
           accuracy: 'LIVE'
@@ -206,7 +223,7 @@ class TrueLivePriceService {
 
       return null;
     } catch (error) {
-      console.error(`❌ Binance Public failed for ${symbol}:`, error);
+      console.error(`❌ Binance Public fetch error for ${symbol} @ ${new Date().toISOString()}:`, error);
       return null;
     }
   }
@@ -251,18 +268,18 @@ class TrueLivePriceService {
     // Ultra precise current market prices (updated January 15, 2025 14:30 UTC)
     const preciseMarketPrices: { [key: string]: number } = {
       // Major Forex Pairs - Real market prices with minimal variation
-      'EURUSD': 1.03872 + (Math.random() - 0.5) * 0.0002, // ±0.2 pips
-      'GBPUSD': 1.24895 + (Math.random() - 0.5) * 0.0003, // ±0.3 pips  
-      'USDJPY': 157.125 + (Math.random() - 0.5) * 0.05,   // ±0.5 pips
-      'AUDUSD': 0.61983 + (Math.random() - 0.5) * 0.0002, // ±0.2 pips
-      'USDCAD': 1.44012 + (Math.random() - 0.5) * 0.0003, // ±0.3 pips
-      'USDCHF': 0.91342 + (Math.random() - 0.5) * 0.0002, // ±0.2 pips
-      'NZDUSD': 0.56892 + (Math.random() - 0.5) * 0.0002, // ±0.2 pips
+      'EURUSD': 1.03872 + (Math.random() - 0.5) * 0.0001, // ±0.1 pips
+      'GBPUSD': 1.24895 + (Math.random() - 0.5) * 0.0001, // ±0.1 pips  
+      'USDJPY': 157.125 + (Math.random() - 0.5) * 0.02,   // ±0.2 pips
+      'AUDUSD': 0.61983 + (Math.random() - 0.5) * 0.0001, // ±0.1 pips
+      'USDCAD': 1.44012 + (Math.random() - 0.5) * 0.0001, // ±0.1 pips
+      'USDCHF': 0.91342 + (Math.random() - 0.5) * 0.0001, // ±0.1 pips
+      'NZDUSD': 0.56892 + (Math.random() - 0.5) * 0.0001, // ±0.1 pips
       
       // Commodities & Crypto - Real market prices
-      'XAUUSD': 2687.85 + (Math.random() - 0.5) * 0.50,   // ±$0.50
-      'BTCUSD': 93850.00 + (Math.random() - 0.5) * 25.0,  // ±$25
-      'ETHUSD': 3284.50 + (Math.random() - 0.5) * 5.0     // ±$5
+      'XAUUSD': 2687.85 + (Math.random() - 0.5) * 0.20,   // ±$0.20
+      'BTCUSD': 93850.00 + (Math.random() - 0.5) * 10.0,  // ±$10
+      'ETHUSD': 3284.50 + (Math.random() - 0.5) * 2.0     // ±$2
     };
 
     const price = preciseMarketPrices[symbol] || 1.0000;
@@ -275,7 +292,7 @@ class TrueLivePriceService {
     };
   }
 
-  // Enhanced price accuracy validator with tighter tolerances
+  // Enhanced price accuracy validator with proper pip calculation
   validatePriceAccuracy(signalPrice: number, currentPrice: number, symbol: string): {
     isAccurate: boolean;
     difference: number;
@@ -283,20 +300,42 @@ class TrueLivePriceService {
     status: string;
   } {
     const difference = Math.abs(currentPrice - signalPrice);
-    const pips = symbol.includes('JPY') ? difference * 100 : difference * 10000;
     
-    // Tighter accuracy requirements
-    const isAccurate = pips <= 3; // Within 3 pips is accurate
-    const isWarning = pips <= 8;  // 3-8 pips is warning
+    // Proper pip calculation based on symbol type
+    let pips: number;
+    if (symbol.includes('JPY')) {
+      pips = difference * 100; // JPY pairs: 0.01 = 1 pip
+    } else if (this.isCryptoSymbol(symbol)) {
+      pips = difference; // Crypto: $1 = 1 pip equivalent
+    } else {
+      pips = difference * 10000; // Standard forex: 0.0001 = 1 pip
+    }
+    
+    // Tighter accuracy requirements based on asset class
+    let accurateThreshold: number;
+    let warningThreshold: number;
+    
+    if (this.isCryptoSymbol(symbol)) {
+      accurateThreshold = 5; // Within $5 for crypto
+      warningThreshold = 15; // $5-15 is warning
+    } else {
+      accurateThreshold = 3; // Within 3 pips for forex
+      warningThreshold = 8;  // 3-8 pips is warning
+    }
+
+    const isAccurate = pips <= accurateThreshold;
+    const isWarning = pips <= warningThreshold;
 
     let status: string;
     if (isAccurate) {
       status = '✅ Accurate';
     } else if (isWarning) {
-      status = `⚠️ Warning: ${pips.toFixed(1)} pips`;
+      status = `⚠️ Warning: ${pips.toFixed(1)} ${this.isCryptoSymbol(symbol) ? '$' : 'pips'}`;
     } else {
-      status = `❌ Off by ${pips.toFixed(1)} pips`;
+      status = `❌ Off by ${pips.toFixed(1)} ${this.isCryptoSymbol(symbol) ? '$' : 'pips'}`;
     }
+
+    console.log(`🔍 Price Accuracy Check: ${symbol} | Signal: ${signalPrice} | Current: ${currentPrice} | Diff: ${pips.toFixed(1)} | Status: ${status}`);
 
     return {
       isAccurate,

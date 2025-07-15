@@ -37,10 +37,11 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
   const [isUpdatingPrice, setIsUpdatingPrice] = useState(false);
   const [localSignal, setLocalSignal] = useState(signal);
 
-  // Update local signal when prop changes
+  // Update local signal when prop changes - FIXED KEY for React re-render
   useEffect(() => {
+    console.log(`👁️ [Render] ${signal.pair}: ${signal.livePrice} @ ${new Date().toISOString()}`);
     setLocalSignal(signal);
-  }, [signal]);
+  }, [signal.pair, signal.livePrice, signal.priceSource, signal.lastPriceUpdate]); // Add proper dependencies
 
   const getConfidenceColor = (confidence: string) => {
     switch (confidence) {
@@ -73,7 +74,7 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
   const updateLivePrice = async () => {
     setIsUpdatingPrice(true);
     try {
-      console.log(`🔄 Manually refreshing price for ${localSignal.pair}...`);
+      console.log(`🔄 Manually refreshing price for ${localSignal.pair} @ ${new Date().toISOString()}...`);
       
       const success = await institutionalSignalService.updateSignalPrice(localSignal.id);
       
@@ -83,13 +84,14 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
         const updatedSignal = updatedSignals.find(s => s.id === localSignal.id);
         
         if (updatedSignal && updatedSignal.livePrice) {
+          console.log(`🧠 [State Update] MANUAL REFRESH: ${localSignal.pair} price updated to ${updatedSignal.livePrice} @ ${new Date().toISOString()}`);
           setLocalSignal(updatedSignal);
           onPriceUpdate?.(updatedSignal.livePrice, updatedSignal.priceSource);
           console.log(`✅ Price updated for ${localSignal.pair}: ${updatedSignal.livePrice}`);
         }
       }
     } catch (error) {
-      console.error('Failed to update live price:', error);
+      console.error(`❌ Failed to update live price @ ${new Date().toISOString()}:`, error);
     } finally {
       setIsUpdatingPrice(false);
     }
@@ -101,9 +103,15 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
     ? Math.floor((Date.now() - localSignal.lastPriceUpdate.getTime()) / 1000)
     : null;
 
+  // 👁️ [Render] - Log render data
+  console.log(`👁️ [Render] Card for ${localSignal.pair}: Price=${displayPrice}, Source=${localSignal.priceSource}, Age=${priceAge}s @ ${new Date().toISOString()}`);
+
   return (
     <>
-      <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-300 relative overflow-hidden">
+      <Card 
+        className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-300 relative overflow-hidden"
+        key={`${localSignal.pair}-${localSignal.livePrice}-${priceAge}`} // FORCE RE-RENDER with dynamic key
+      >
         {/* Institutional Badge */}
         {localSignal.confidence === 'INSTITUTIONAL' && (
           <div className="absolute top-2 right-2">

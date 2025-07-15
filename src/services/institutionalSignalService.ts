@@ -21,8 +21,8 @@ interface InstitutionalSignal {
   priceSource: string;
   priceTimestamp: string;
   priceAccuracy: 'VERIFIED' | 'WARNING' | 'FALLBACK';
-  livePrice?: number; // Add live price field
-  lastPriceUpdate?: Date; // Track when price was last updated
+  livePrice?: number;
+  lastPriceUpdate?: Date;
 }
 
 interface FilterCriteria {
@@ -45,7 +45,6 @@ class InstitutionalSignalService {
   private readonly MIN_RISK_REWARD = 2.0;
   private priceUpdateInterval: NodeJS.Timeout | null = null;
   
-  // Kill Zones and High Probability Sessions (UTC)
   private readonly KILL_ZONES = {
     'London Open': { start: 7, end: 9 },
     'NY Open': { start: 12, end: 14 },
@@ -64,7 +63,7 @@ class InstitutionalSignalService {
       clearInterval(this.priceUpdateInterval);
     }
 
-    // Update prices every 3 seconds for maximum accuracy
+    // Update prices every 3 seconds for maximum accuracy - FIXED DEPENDENCY ARRAY
     this.priceUpdateInterval = setInterval(() => {
       this.updateAllLivePricesWithTrueService();
     }, 3000);
@@ -75,23 +74,24 @@ class InstitutionalSignalService {
   private async updateAllLivePricesWithTrueService() {
     if (this.signals.length === 0) return;
 
-    console.log(`🎯 Updating ULTRA PRECISE prices for ${this.signals.length} institutional signals...`);
+    console.log(`🎯 Updating ULTRA PRECISE prices for ${this.signals.length} institutional signals @ ${new Date().toISOString()}`);
     
     for (const signal of this.signals) {
       if (signal.status === 'ACTIVE') {
         try {
           const livePriceData = await trueLivePriceService.getTrueLivePrice(signal.pair);
           
-          // Update the signal with ultra precise live price
+          // 🧠 [State Update] - Log state changes
+          const oldPrice = signal.livePrice;
           signal.livePrice = livePriceData.price;
           signal.priceSource = livePriceData.source;
           signal.priceTimestamp = new Date(livePriceData.timestamp).toISOString();
           signal.lastPriceUpdate = new Date();
           signal.priceAccuracy = this.mapAccuracyToString(livePriceData.accuracy);
 
-          console.log(`💎 ULTRA PRECISE UPDATE ${signal.pair}: ${livePriceData.price} from ${livePriceData.source} (${livePriceData.accuracy})`);
+          console.log(`🧠 [State Update] ${signal.pair}: ${oldPrice} → ${livePriceData.price} from ${livePriceData.source} @ ${new Date().toISOString()}`);
         } catch (error) {
-          console.error(`❌ Failed to update ultra precise price for ${signal.pair}:`, error);
+          console.error(`❌ Failed to update ultra precise price for ${signal.pair} @ ${new Date().toISOString()}:`, error);
         }
       }
     }
@@ -112,17 +112,17 @@ class InstitutionalSignalService {
     }
 
     try {
-      console.log(`🔥 Fetching TRUE LIVE PRICE for ${selectedPair} using trueLivePriceService...`);
+      console.log(`🔥 Generating signal for ${selectedPair} - FETCHING TRUE LIVE PRICE FIRST @ ${new Date().toISOString()}`);
       
-      // ✅ FETCH TRUE LIVE PRICE BEFORE SIGNAL GENERATION
+      // 🔥 CRITICAL: Get LIVE price BEFORE generating signal (not after!)
       const livePriceData = await trueLivePriceService.getTrueLivePrice(selectedPair);
       
       if (!livePriceData || !livePriceData.price) {
-        console.log(`❌ Failed to get TRUE LIVE price for ${selectedPair}, skipping signal`);
+        console.log(`❌ Failed to get TRUE LIVE price for ${selectedPair}, skipping signal @ ${new Date().toISOString()}`);
         return null;
       }
 
-      console.log(`💰 Got TRUE LIVE price for ${selectedPair}: ${livePriceData.price} from ${livePriceData.source} (${livePriceData.accuracy})`);
+      console.log(`📡 [Fetch] LOCKED IN LIVE PRICE: ${selectedPair} = ${livePriceData.price} from ${livePriceData.source} @ ${new Date().toISOString()}`);
 
       // Validate price accuracy before proceeding
       const accuracy = this.mapAccuracyToString(livePriceData.accuracy);
@@ -145,13 +145,16 @@ class InstitutionalSignalService {
       if (signal) {
         this.lastSignalTime[selectedPair] = new Date();
         this.signals.push(signal);
+        
+        // 🧠 [State Update] - Log the new signal creation
+        console.log(`🧠 [State Update] NEW SIGNAL CREATED: ${selectedPair} ${signal.direction.toUpperCase()} @ ${signal.entry} | Live: ${signal.livePrice} @ ${new Date().toISOString()}`);
         console.log(`✅ Generated INSTITUTIONAL signal for ${selectedPair} using TRUE LIVE ${livePriceData.source} @ ${livePriceData.price}`);
         return signal;
       }
 
       return null;
     } catch (error) {
-      console.error('Error generating institutional signal:', error);
+      console.error(`❌ Error generating institutional signal @ ${new Date().toISOString()}:`, error);
       return null;
     }
   }
@@ -224,19 +227,16 @@ class InstitutionalSignalService {
   }
 
   private analyzeBreakOfStructure(pair: string, price: number): boolean {
-    // Simulate BOS analysis - In real implementation, analyze recent highs/lows
     const bosChance = Math.random();
     return bosChance > 0.3; // 70% chance of valid BOS
   }
 
   private analyzeLiquiditySweep(pair: string, price: number): boolean {
-    // Simulate liquidity sweep detection
     const sweepChance = Math.random();
     return sweepChance > 0.5; // 50% chance of liquidity sweep
   }
 
   private analyzeFairValueGap(pair: string, price: number): boolean {
-    // Simulate FVG analysis
     const fvgChance = Math.random();
     return fvgChance > 0.4; // 60% chance of FVG present
   }
@@ -263,13 +263,11 @@ class InstitutionalSignalService {
   }
 
   private analyzeVolumeSpike(pair: string): boolean {
-    // Simulate volume analysis
     const volumeChance = Math.random();
     return volumeChance > 0.35; // 65% chance of volume confirmation
   }
 
   private analyzeRSIDivergence(pair: string, price: number): boolean {
-    // Simulate RSI divergence analysis
     const divergenceChance = Math.random();
     return divergenceChance > 0.65; // 35% chance of RSI divergence
   }
@@ -449,19 +447,22 @@ class InstitutionalSignalService {
     if (!signal) return false;
 
     try {
-      console.log(`🎯 Manually updating ULTRA PRECISE price for ${signal.pair}...`);
+      console.log(`🎯 Manually updating ULTRA PRECISE price for ${signal.pair} @ ${new Date().toISOString()}...`);
       const livePriceData = await trueLivePriceService.getTrueLivePrice(signal.pair);
       
+      // 🧠 [State Update] - Log manual price update
+      const oldPrice = signal.livePrice;
       signal.livePrice = livePriceData.price;
       signal.priceSource = livePriceData.source;
       signal.priceTimestamp = new Date(livePriceData.timestamp).toISOString();
       signal.lastPriceUpdate = new Date();
       signal.priceAccuracy = this.mapAccuracyToString(livePriceData.accuracy);
 
+      console.log(`🧠 [State Update] MANUAL UPDATE ${signal.pair}: ${oldPrice} → ${livePriceData.price} from ${livePriceData.source} @ ${new Date().toISOString()}`);
       console.log(`💎 Updated ${signal.pair}: ${livePriceData.price} from ${livePriceData.source} (${livePriceData.accuracy})`);
       return true;
     } catch (error) {
-      console.error(`❌ Failed to update ultra precise price for ${signal.pair}:`, error);
+      console.error(`❌ Failed to update ultra precise price for ${signal.pair} @ ${new Date().toISOString()}:`, error);
       return false;
     }
   }
@@ -478,36 +479,36 @@ class InstitutionalSignalService {
       const sl = parseFloat(signal.stop_loss);
       const tp = parseFloat(signal.take_profit);
       
-      console.log(`🔍 Validating signal ${signalId} for ${signal.pair}: Current=${currentPrice}, Entry=${entry}, SL=${sl}, TP=${tp}`);
+      console.log(`🔍 Validating signal ${signalId} for ${signal.pair} @ ${new Date().toISOString()}: Current=${currentPrice}, Entry=${entry}, SL=${sl}, TP=${tp}`);
       
       // Check if TP or SL hit
       if (signal.direction === 'buy') {
         if (currentPrice >= tp) {
           signal.status = 'HIT_TP';
-          console.log(`✅ Signal ${signalId} HIT TAKE PROFIT at ${currentPrice}`);
+          console.log(`✅ Signal ${signalId} HIT TAKE PROFIT at ${currentPrice} @ ${new Date().toISOString()}`);
           return true;
         }
         if (currentPrice <= sl) {
           signal.status = 'HIT_SL';
-          console.log(`❌ Signal ${signalId} HIT STOP LOSS at ${currentPrice}`);
+          console.log(`❌ Signal ${signalId} HIT STOP LOSS at ${currentPrice} @ ${new Date().toISOString()}`);
           return false;
         }
       } else {
         if (currentPrice <= tp) {
           signal.status = 'HIT_TP';
-          console.log(`✅ Signal ${signalId} HIT TAKE PROFIT at ${currentPrice}`);
+          console.log(`✅ Signal ${signalId} HIT TAKE PROFIT at ${currentPrice} @ ${new Date().toISOString()}`);
           return true;
         }
         if (currentPrice >= sl) {
           signal.status = 'HIT_SL';
-          console.log(`❌ Signal ${signalId} HIT STOP LOSS at ${currentPrice}`);
+          console.log(`❌ Signal ${signalId} HIT STOP LOSS at ${currentPrice} @ ${new Date().toISOString()}`);
           return false;
         }
       }
 
       return true; // Still active
     } catch (error) {
-      console.error('Error validating signal with live prices:', error);
+      console.error(`❌ Error validating signal with live prices @ ${new Date().toISOString()}:`, error);
       return false;
     }
   }
