@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -193,18 +192,36 @@ const LiveSignalsDashboard: React.FC = () => {
   };
 
   const handleAskMentor = (signalDNA: SignalDNA) => {
-    const mentorResponses = [
-      `🧙‍♂️ "This ${signalDNA.symbol} setup aligns with my institutional playbook. I'd take this trade with proper risk management."`,
-      `🧙‍♂️ "Strong confluence on ${signalDNA.symbol}. The AI council consensus gives me confidence in this setup."`,
-      `🧙‍♂️ "Classic smart money move on ${signalDNA.symbol}. This is the kind of setup that separates pros from amateurs."`,
-      `🧙‍♂️ "The ${signalDNA.type} strategy is firing on all cylinders here. I see institutional footprints all over this."`
+    const isLong = parseFloat(signalDNA.structure.takeProfit) > parseFloat(signalDNA.structure.entry);
+    const direction = isLong ? 'bullish' : 'bearish';
+    const session = signalDNA.session;
+    const confidence = signalDNA.confidence;
+    const voteCount = Object.values(signalDNA.origin).filter(Boolean).length;
+    
+    const dynamicMentorResponses = [
+      `🧙‍♂️ "${session} session volume spike + CHoCH at ${isLong ? 'demand' : 'supply'} zone? Classic ${isLong ? 'accumulation' : 'distribution'}. This setup screams Smart Money. I'd watch this one closely."`,
+      
+      `🧙‍♂️ "Liquidity sweep followed by ${direction} momentum? The algos are positioning for the next move. ${confidence}% confidence tells me institutional players are moving. This isn't retail noise."`,
+      
+      `🧙‍♂️ "I've seen this pattern destroy retail traders who fade it. Multiple timeframe confluence + order block retest? The probability math favors the professionals here."`,
+      
+      `🧙‍♂️ "When ${voteCount}/6 of my intelligence modules agree, it's not luck. Market structure + liquidity dynamics are aligning perfectly. Time to be surgical with your execution."`,
+      
+      `🧙‍♂️ "This isn't a gamble — it's calculated warfare. Smart money left footprints all over this ${signalDNA.timeframe} setup. The question isn't IF this moves, but WHEN."`,
+      
+      `🧙‍♂️ "${session} session with clear ${direction} bias? I've traded through enough market cycles to recognize when the big players are positioning. Trust the process, not emotions."`,
+      
+      `🧙‍♂️ "Look at that confluence: ${signalDNA.filters.join(', ')}. When multiple technical factors align like this, smart money is usually behind it. Don't overthink it."`,
+      
+      `🧙‍♂️ "The ${signalDNA.type} strategy is surgical here. ${signalDNA.structure.rr} risk-reward with ${Math.round(signalDNA.backtest.winRate)}% historical win rate? I'd take this setup every time it appears."`,
     ];
     
-    const response = mentorResponses[Math.floor(Math.random() * mentorResponses.length)];
+    const response = dynamicMentorResponses[Math.floor(Math.random() * dynamicMentorResponses.length)];
     
     toast({
       title: "🧙‍♂️ MENTOR WISDOM",
       description: response,
+      duration: 8000,
     });
   };
 

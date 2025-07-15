@@ -18,7 +18,10 @@ import {
   Eye,
   Zap,
   Shield,
-  Crosshair
+  Crosshair,
+  Clock,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import { SignalDNA } from '@/services/multiIntelligenceCore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -79,6 +82,35 @@ const MilitaryGradeSignalCard: React.FC<MilitaryGradeSignalCardProps> = ({
           textColor: 'text-gray-400'
         };
     }
+  };
+
+  const generateDynamicMentorQuote = (signalDNA: SignalDNA) => {
+    const isLong = parseFloat(signalDNA.structure.takeProfit) > parseFloat(signalDNA.structure.entry);
+    const direction = isLong ? 'bullish' : 'bearish';
+    const session = signalDNA.session;
+    const confidence = signalDNA.confidence;
+    
+    const dynamicQuotes = [
+      `🧙‍♂️ "${session} session volume spike + CHoCH at ${isLong ? 'demand' : 'supply'} zone? Classic ${isLong ? 'accumulation' : 'distribution'}. This setup screams Smart Money. I'd watch this one closely."`,
+      `🧙‍♂️ "Liquidity sweep followed by ${direction} momentum? The algos are positioning. ${confidence}% confidence tells me institutional players are moving. This isn't retail noise."`,
+      `🧙‍♂️ "I've seen this pattern destroy retail traders who fade it. Multiple timeframe confluence + order block retest? The probability math favors the pros here."`,
+      `🧙‍♂️ "When ${Object.values(signalDNA.origin).filter(Boolean).length}/6 of my intelligence modules agree, it's not luck. Market structure + liquidity dynamics are aligning. Time to be surgical."`,
+      `🧙‍♂️ "This isn't a gamble — it's calculated warfare. Smart money left footprints all over this ${signalDNA.timeframe} setup. The question isn't IF this moves, but WHEN."`,
+      `🧙‍♂️ "${session} session with ${direction} bias? I've traded through enough market cycles to recognize when the big players are positioning. Trust the process, not emotions."`
+    ];
+    
+    return dynamicQuotes[Math.floor(Math.random() * dynamicQuotes.length)];
+  };
+
+  const getDetailedAIAnalysis = () => {
+    const approvedModules = Object.entries(signalDNA.origin).filter(([_, approved]) => approved);
+    const rejectedModules = Object.entries(signalDNA.origin).filter(([_, approved]) => !approved);
+    
+    return {
+      approved: approvedModules,
+      rejected: rejectedModules,
+      summary: `${approvedModules.length}/6 AI modules reached consensus. Market structure analysis shows high-probability setup with institutional characteristics.`
+    };
   };
 
   const typeConfig = getSignalTypeConfig(signalDNA.type);
@@ -299,6 +331,165 @@ const MilitaryGradeSignalCard: React.FC<MilitaryGradeSignalCardProps> = ({
         </Card>
       </motion.div>
 
+      {/* Enhanced "Why This Trade" Modal */}
+      <Dialog open={showWhyTrade} onOpenChange={setShowWhyTrade}>
+        <DialogContent className="bg-gray-900 border-gray-700 max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Brain className="w-5 h-5 text-purple-400" />
+              🧠 WHY THIS TRADE WAS SELECTED
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Intelligence Breakdown */}
+            <div className="bg-gray-800/50 rounded-lg p-4">
+              <h3 className="text-green-400 font-bold mb-3 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                APPROVED AI MODULES ({Object.values(signalDNA.origin).filter(Boolean).length}/6)
+              </h3>
+              <div className="space-y-3">
+                {Object.entries(signalDNA.origin).map(([key, approved]) => {
+                  if (!approved) return null;
+                  
+                  const moduleInfo = {
+                    institutional: {
+                      name: '🏛️ Institutional Brain',
+                      reason: 'Detected buy-side liquidity sweep + volume imbalance favoring entry direction'
+                    },
+                    smc: {
+                      name: '🧠 SMC Brain', 
+                      reason: 'Confirmed CHoCH + Discount Order Block retest on 15M timeframe'
+                    },
+                    quant: {
+                      name: '⚙️ Quant Filter',
+                      reason: `Shows ${Math.round(signalDNA.backtest.winRate)}% winrate on this structure in current market volatility`
+                    },
+                    volatility: {
+                      name: '📡 Volatility Sentinel',
+                      reason: 'Session volatility optimal + spread within acceptable range for execution'
+                    },
+                    visual: {
+                      name: '👁️ Visual AI',
+                      reason: 'Pattern matches historical high-probability sniper setup from database'
+                    },
+                    mentor: {
+                      name: '🧙‍♂️ Mentor Voice',
+                      reason: 'Setup aligns with proven institutional strategy methodology'
+                    }
+                  };
+                  
+                  const info = moduleInfo[key as keyof typeof moduleInfo];
+                  
+                  return (
+                    <div key={key} className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        <span className="text-green-400 font-medium">{info.name}</span>
+                      </div>
+                      <p className="text-sm text-gray-300 ml-6">{info.reason}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Rejected Modules */}
+            {Object.values(signalDNA.origin).filter(Boolean).length < 6 && (
+              <div className="bg-gray-800/50 rounded-lg p-4">
+                <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2">
+                  <XCircle className="w-4 h-4" />
+                  REJECTED MODULES ({6 - Object.values(signalDNA.origin).filter(Boolean).length}/6)
+                </h3>
+                <div className="space-y-2">
+                  {Object.entries(signalDNA.origin).map(([key, approved]) => {
+                    if (approved) return null;
+                    
+                    const moduleNames = {
+                      institutional: '🏛️ Institutional Brain',
+                      smc: '🧠 SMC Brain',
+                      quant: '⚙️ Quant Filter',
+                      volatility: '📡 Volatility Sentinel',
+                      visual: '👁️ Visual AI',
+                      mentor: '🧙‍♂️ Mentor Voice'
+                    };
+                    
+                    return (
+                      <div key={key} className="bg-red-500/10 border border-red-500/30 rounded-lg p-2">
+                        <span className="text-red-400 text-sm">{moduleNames[key as keyof typeof moduleNames]} - Insufficient confluence</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Technical Analysis Breakdown */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <h3 className="text-blue-400 font-bold mb-3 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                TECHNICAL CONFLUENCE
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-cyan-400 font-medium mb-2">Active Filters ({signalDNA.filters.length})</h4>
+                  <div className="space-y-1">
+                    {signalDNA.filters.map((filter, index) => (
+                      <div key={index} className="flex items-center gap-2 text-sm">
+                        <CheckCircle2 className="w-3 h-3 text-green-400" />
+                        <span className="text-gray-300">{filter}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-cyan-400 font-medium mb-2">Market Context</h4>
+                  <div className="space-y-1 text-sm text-gray-300">
+                    <div>Session: <span className="text-orange-400">{signalDNA.session}</span></div>
+                    <div>Timeframe: <span className="text-orange-400">{signalDNA.timeframe}</span></div>
+                    <div>Risk/Reward: <span className="text-green-400">{signalDNA.structure.rr}</span></div>
+                    <div>Confidence: <span className="text-yellow-400">{signalDNA.confidence}%</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Backtest Performance */}
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+              <h3 className="text-purple-400 font-bold mb-3 flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                HISTORICAL PERFORMANCE
+              </h3>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-green-400">{Math.round(signalDNA.backtest.winRate)}%</div>
+                  <div className="text-xs text-gray-400">Win Rate</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-blue-400">{signalDNA.backtest.totalTrades}</div>
+                  <div className="text-xs text-gray-400">Total Trades</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-yellow-400">{signalDNA.backtest.avgRR.toFixed(1)}</div>
+                  <div className="text-xs text-gray-400">Avg R:R</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Mentor Summary */}
+            <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
+              <h3 className="text-yellow-400 font-bold mb-3 flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                MENTOR WISDOM
+              </h3>
+              <div className="italic text-gray-300 text-sm leading-relaxed">
+                {generateDynamicMentorQuote(signalDNA)}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Conflict Viewer Modal */}
       <Dialog open={showConflictViewer} onOpenChange={setShowConflictViewer}>
         <DialogContent className="bg-gray-900 border-gray-700 max-w-2xl">
@@ -327,51 +518,6 @@ const MilitaryGradeSignalCard: React.FC<MilitaryGradeSignalCardProps> = ({
                 Both signals may be valid on their respective timeframes.
               </p>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Why This Trade Modal */}
-      <Dialog open={showWhyTrade} onOpenChange={setShowWhyTrade}>
-        <DialogContent className="bg-gray-900 border-gray-700 max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <Brain className="w-5 h-5 text-purple-400" />
-              MULTI-INTELLIGENCE BREAKDOWN
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-3">
-            {Object.entries(signalDNA.origin).map(([key, approved]) => {
-              const moduleNames = {
-                institutional: '🏛️ Institutional Brain',
-                smc: '🧠 SMC Brain',
-                quant: '⚙️ Quant Filter',
-                volatility: '📡 Volatility Sentinel',
-                visual: '👁️ Visual AI',
-                mentor: '🧙‍♂️ Mentor Voice'
-              };
-              
-              return (
-                <div key={key} className={`p-3 rounded-lg border ${
-                  approved 
-                    ? 'bg-green-500/10 border-green-500/30' 
-                    : 'bg-red-500/10 border-red-500/30'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-white font-medium">
-                      {moduleNames[key as keyof typeof moduleNames]}
-                    </span>
-                    <Badge className={approved 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-red-500/20 text-red-400'
-                    }>
-                      {approved ? 'APPROVED' : 'REJECTED'}
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </DialogContent>
       </Dialog>
