@@ -64,12 +64,12 @@ class InstitutionalSignalService {
       clearInterval(this.priceUpdateInterval);
     }
 
-    // Update prices every 3 seconds using TRUE LIVE service
+    // Update prices every 5 seconds (more reasonable for free APIs)
     this.priceUpdateInterval = setInterval(() => {
       this.updateAllLivePricesWithTrueService();
-    }, 3000);
+    }, 5000);
 
-    console.log('🔥 Started TRUE LIVE price updates for institutional signals');
+    console.log('🔥 Started TRUE LIVE price updates for institutional signals (every 5 seconds)');
   }
 
   private async updateAllLivePricesWithTrueService() {
@@ -89,7 +89,7 @@ class InstitutionalSignalService {
           signal.lastPriceUpdate = new Date();
           signal.priceAccuracy = this.mapAccuracyToString(livePriceData.accuracy);
 
-          console.log(`💰 TRUE LIVE UPDATE ${signal.pair}: ${livePriceData.price} from ${livePriceData.source}`);
+          console.log(`💰 TRUE LIVE UPDATE ${signal.pair}: ${livePriceData.price} from ${livePriceData.source} (${livePriceData.accuracy})`);
         } catch (error) {
           console.error(`❌ Failed to update TRUE LIVE price for ${signal.pair}:`, error);
         }
