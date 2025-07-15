@@ -397,7 +397,7 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <SamuraiEffects showGlow={true}>
+              <SamuraiEffects showGlow>
                 <div className="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
                   <Brain className="w-6 h-6 text-purple-400" />
                 </div>
@@ -450,7 +450,7 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
 
       {/* Chat Section */}
       {activeSection === 'chat' && (
-        <SamuraiEffects showPetals={true}>
+        <SamuraiEffects showPetals>
           <Card className="glass-card border-blue-500/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -478,7 +478,7 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
                         className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div className="max-w-[85%] space-y-3">
-                          <SamuraiEffects showGlow={message.type === 'ai'}>
+                          <SamuraiEffects showGlow>
                             <div
                               className={`p-3 rounded-lg ${
                                 message.type === 'user'
@@ -529,7 +529,7 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
                     animate={{ opacity: 1 }}
                     className="flex justify-start"
                   >
-                    <SamuraiEffects showGlow={true}>
+                    <SamuraiEffects showGlow>
                       <div className="bg-gray-700 text-gray-100 p-3 rounded-lg flex items-center gap-2">
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         <span>Aasakira is thinking with Groq AI...</span>

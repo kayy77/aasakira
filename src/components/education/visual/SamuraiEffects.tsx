@@ -4,9 +4,15 @@ import { motion } from 'framer-motion';
 
 interface SamuraiEffectsProps {
   children: React.ReactNode;
+  showGlow?: boolean;
+  showPetals?: boolean;
 }
 
-const SamuraiEffects: React.FC<SamuraiEffectsProps> = ({ children }) => {
+const SamuraiEffects: React.FC<SamuraiEffectsProps> = ({ 
+  children, 
+  showGlow = false, 
+  showPetals = false 
+}) => {
   // Fixed variants with proper TypeScript types
   const glowVariants = {
     initial: { 
@@ -16,7 +22,7 @@ const SamuraiEffects: React.FC<SamuraiEffectsProps> = ({ children }) => {
       opacity: [0, 1, 0],
       transition: { 
         duration: 3, 
-        ease: "easeInOut", 
+        ease: "easeInOut" as const, 
         repeat: Infinity 
       }
     }
@@ -36,7 +42,7 @@ const SamuraiEffects: React.FC<SamuraiEffectsProps> = ({ children }) => {
       rotate: [0, 180, 360],
       transition: { 
         duration: 8, 
-        ease: "easeInOut", 
+        ease: "easeInOut" as const, 
         repeat: Infinity, 
         delay: Math.random() * 2 
       }
@@ -45,8 +51,8 @@ const SamuraiEffects: React.FC<SamuraiEffectsProps> = ({ children }) => {
 
   return (
     <div className="relative overflow-hidden">
-      {/* Cherry blossom petals */}
-      {[...Array(8)].map((_, i) => (
+      {/* Cherry blossom petals - only show if showPetals is true */}
+      {showPetals && [...Array(8)].map((_, i) => (
         <motion.div
           key={i}
           className="absolute w-2 h-2 bg-pink-300 rounded-full opacity-70"
@@ -60,13 +66,15 @@ const SamuraiEffects: React.FC<SamuraiEffectsProps> = ({ children }) => {
         />
       ))}
       
-      {/* Mystical glow effect */}
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 pointer-events-none"
-        variants={glowVariants}
-        initial="initial"
-        animate="animate"
-      />
+      {/* Mystical glow effect - only show if showGlow is true */}
+      {showGlow && (
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 pointer-events-none"
+          variants={glowVariants}
+          initial="initial"
+          animate="animate"
+        />
+      )}
       
       {children}
     </div>
