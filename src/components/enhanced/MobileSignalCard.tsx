@@ -46,9 +46,9 @@ const MobileSignalCard: React.FC<MobileSignalCardProps> = ({
               signal.type === 'BUY' ? 'bg-green-500/20' : 'bg-red-500/20'
             }`}>
               {signal.type === 'BUY' ? (
-                <TrendingUp className={`w-4 h-4 ${signal.type === 'BUY' ? 'text-green-400' : 'text-red-400'}`} />
+                <TrendingUp className="w-4 h-4 text-green-400" />
               ) : (
-                <TrendingDown className={`w-4 h-4 ${signal.type === 'BUY' ? 'text-green-400' : 'text-red-400'}`} />
+                <TrendingDown className="w-4 h-4 text-red-400" />
               )}
             </div>
             <div>
