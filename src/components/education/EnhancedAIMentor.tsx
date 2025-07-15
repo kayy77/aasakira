@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { geminiEducationService, AIExplanation } from '@/services/geminiEducationService';
+import { hybridAIService } from '@/services/hybridAIService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Send, 
@@ -41,7 +41,7 @@ const EnhancedAIMentor: React.FC = () => {
     {
       id: '1',
       type: 'ai',
-      content: '👋 Hello! I\'m Aasakira, your AI trading mentor. I\'m here to help you master forex trading with Smart Money Concepts. Ask me anything - from basic concepts to advanced strategies!',
+      content: '👋 Hello! I\'m Aasakira, your AI trading mentor and buddy. I\'m here to help you master forex trading with Smart Money Concepts, but I also love chatting about anything - life, hobbies, random thoughts! Ask me anything!',
       timestamp: new Date()
     }
   ]);
@@ -71,29 +71,29 @@ const EnhancedAIMentor: React.FC = () => {
     setIsLoading(true);
 
     try {
-      console.log('Sending message to Gemini:', currentInput);
+      console.log('Sending message to hybrid AI service:', currentInput);
       
-      const enhancedPrompt = `You are Aasakira, an expert forex trading mentor specializing in Smart Money Concepts and professional trading education.
-
-User level: ${userLevel}
-User question: "${currentInput}"
-
-Provide a helpful, practical response that:
-1. Answers their question directly
-2. Uses real trading examples when possible
-3. Explains concepts in simple terms
-4. Gives actionable advice
-5. Maintains an encouraging, professional tone
-
-Keep responses conversational and educational. Use emojis sparingly but effectively.`;
-
-      const response = await geminiEducationService.getAIResponse(enhancedPrompt);
-      console.log('Received response from Gemini:', response);
+      const response = await hybridAIService.generateComprehensiveResponse(
+        currentInput,
+        {
+          experience: userLevel,
+          tradingStyle: 'Smart Money Concepts',
+          riskTolerance: 'Moderate',
+          winRate: quizScore.total > 0 ? Math.round((quizScore.correct / quizScore.total) * 100) : 0,
+          totalStudyTime: messages.length * 2,
+          chartsAnalyzed: quizScore.total,
+          currentStreak: quizScore.correct,
+          messagesSent: messages.filter(m => m.type === 'user').length
+        },
+        false
+      );
+      
+      console.log('Received response from hybrid AI service:', response);
       
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: response,
+        content: response.text,
         timestamp: new Date()
       };
 
@@ -101,14 +101,14 @@ Keep responses conversational and educational. Use emojis sparingly but effectiv
       
       toast({
         title: "✅ AI Response Generated",
-        description: "Aasakira has responded to your question!",
+        description: `Powered by ${response.source.toUpperCase()} with ${Math.round(response.confidence * 100)}% confidence`,
       });
     } catch (error) {
       console.error('AI response error:', error);
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: 'I apologize, but I\'m having trouble responding right now. Please try asking your question again. Make sure to ask about specific trading topics like order blocks, liquidity, or market structure.',
+        content: 'I apologize, but I\'m having trouble responding right now. Please try asking your question again. I\'m here to help with trading concepts, life advice, or just casual conversation!',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -147,18 +147,47 @@ Keep responses conversational and educational. Use emojis sparingly but effectiv
       
       console.log(`Generating ${randomDifficulty} quiz on ${randomTopic}`);
       
-      const quizData = await geminiEducationService.generateQuizQuestion(
-        randomTopic, 
-        randomDifficulty, 
-        { 
-          questionsAnswered: quizScore.total,
-          correctAnswers: quizScore.correct,
-          userLevel 
+      // Generate a local quiz question instead of using external API
+      const localQuizQuestions = {
+        'Order Blocks and Breaker Blocks': {
+          easy: {
+            question: "What is an Order Block in Smart Money Concepts?",
+            options: [
+              "A random price area with high volume",
+              "The last opposite candle before a strong directional move",
+              "Any support or resistance level",
+              "A technical indicator signal"
+            ],
+            correctAnswer: 1,
+            explanation: "An Order Block is the last opposite candle before a strong directional move. This represents where institutional traders placed their orders, creating an imbalance that price often returns to fill."
+          },
+          medium: {
+            question: "How do you identify a valid Order Block for trading?",
+            options: [
+              "Any red candle followed by green candles",
+              "The highest volume candle on the chart",
+              "Last opposite candle before Break of Structure with volume confirmation",
+              "Any candle at support/resistance"
+            ],
+            correctAnswer: 2,
+            explanation: "A valid Order Block is identified as the last opposite candle before a Break of Structure (BOS), ideally with volume confirmation. This shows institutional involvement and increases the probability of price returning to this level."
+          }
+        },
+        'Risk Management and Position Sizing': {
+          easy: {
+            question: "What is the recommended maximum risk per trade?",
+            options: ["5% of account", "10% of account", "2% of account", "1% of account"],
+            correctAnswer: 2,
+            explanation: "The widely accepted rule is to never risk more than 2% of your trading account on any single trade. This helps preserve capital and allows you to survive losing streaks."
+          }
         }
-      );
+      };
+
+      const topicQuestions = localQuizQuestions[randomTopic as keyof typeof localQuizQuestions];
+      const questionData = topicQuestions?.[randomDifficulty as keyof typeof topicQuestions] || localQuizQuestions['Risk Management and Position Sizing'].easy;
       
       const quiz: QuizQuestion = {
-        ...quizData,
+        ...questionData,
         difficulty: randomDifficulty,
         topic: randomTopic
       };
@@ -230,8 +259,8 @@ Keep responses conversational and educational. Use emojis sparingly but effectiv
                 <Brain className="w-6 h-6 text-purple-400" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Aasakira AI Mentor</h2>
-                <p className="text-sm text-gray-400">Your personal trading education assistant</p>
+                <h2 className="text-xl font-bold text-white">Aasakira AI Mentor & Buddy</h2>
+                <p className="text-sm text-gray-400">Your personal trading education assistant and friend</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -291,7 +320,7 @@ Keep responses conversational and educational. Use emojis sparingly but effectiv
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-blue-400" />
-              AI Chat Assistant
+              AI Chat Assistant & Buddy
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -341,7 +370,7 @@ Keep responses conversational and educational. Use emojis sparingly but effectiv
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask me about trading concepts, strategies, or anything related to forex..."
+                placeholder="Ask me about trading, life, hobbies, random thoughts - anything!"
                 className="flex-1 bg-gray-800 border-gray-600 resize-none"
                 rows={2}
               />
