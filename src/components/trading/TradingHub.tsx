@@ -3,241 +3,242 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Brain, 
-  Clock, 
-  BarChart3,
-  RefreshCw,
-  AlertTriangle,
-  Eye
-} from 'lucide-react';
+import { Brain, TrendingUp, Clock, RefreshCw, Crown, Lock } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import EnhancedPremiumUpgrade from '@/components/enhanced/EnhancedPremiumUpgrade';
 
-interface TradingIdea {
+interface TradeIdea {
   id: string;
   pair: string;
   timeframe: string;
   bias: 'BUY' | 'SELL' | 'NEUTRAL';
-  title: string;
   reasoning: string;
-  marketContext: string;
-  generatedAt: string;
+  strength: 'High' | 'Medium' | 'Strong';
+  createdAt: Date;
 }
 
-const TradingHub = () => {
-  const [ideas, setIdeas] = useState<TradingIdea[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+const TradingHub: React.FC = () => {
+  const [tradeIdeas, setTradeIdeas] = useState<TradeIdea[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const { toast } = useToast();
+  const { isPremium, canUseFeature, incrementUsage, getRemainingUsage } = useSubscription();
   const isMobile = useIsMobile();
 
-  // Generate high-quality trading ideas with deep reasoning
-  const generateTradingIdeas = (): TradingIdea[] => {
-    const currentHour = new Date().getHours();
-    const marketSession = currentHour >= 8 && currentHour <= 16 ? 'London' : 
-                         currentHour >= 13 && currentHour <= 21 ? 'New York' : 'Asian';
+  const generateTradeIdeas = async () => {
+    // Check if user can use trading ideas feature
+    if (!canUseFeature('memeCoins')) { // Using memeCoins quota for trading ideas
+      setShowUpgrade(true);
+      toast({
+        title: "Daily Limit Reached",
+        description: "You've used your 1 daily trading idea scan. Upgrade to Premium for unlimited access!",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGenerating(true);
     
-    const strongIdeas = [
-      {
-        id: 'idea-1',
-        pair: 'EUR/USD',
-        timeframe: '4H',
-        bias: 'SELL' as const,
-        title: 'ECB Dovish Pivot Creates Euro Weakness',
-        reasoning: `The European Central Bank's recent dovish shift is creating sustained pressure on the Euro. With inflation cooling faster than expected in the Eurozone and the ECB signaling potential rate cuts, we're seeing institutional selling pressure build. The US Dollar remains supported by resilient economic data and the Fed's hawkish stance. Technical confluence shows EUR/USD breaking below the 200-day moving average with momentum accelerating. Volume analysis reveals heavy selling from European session opens, suggesting institutional participation. The pair is approaching a critical support zone that has held since 2022, but current fundamentals suggest a break is likely.`,
-        marketContext: `${marketSession} session is seeing continued USD strength as US yields remain elevated. European bond yields are compressing, widening the EUR/USD rate differential.`,
-        generatedAt: new Date(Date.now() - Math.random() * 1800000).toISOString()
-      },
-      {
-        id: 'idea-2',
-        pair: 'GBP/JPY',
-        timeframe: '1D',
-        bias: 'BUY' as const,
-        title: 'BoE Hawkish Stance vs BoJ Ultra-Dovish Policy',
-        reasoning: `The Bank of England's commitment to fighting persistent UK inflation creates a compelling carry trade opportunity against the ultra-dovish Bank of Japan. UK inflation remains sticky above 4%, forcing the BoE to maintain restrictive policy while the BoJ continues yield curve control and negative rates. This 500+ basis point differential is driving systematic buying from carry trade funds. Technically, GBP/JPY is breaking out of a 6-month consolidation pattern with strong momentum. Risk appetite is supported by improving global growth expectations, which typically benefits higher-yielding currencies like GBP against safe havens like JPY. The recent bounce from key Fibonacci support at 182.50 shows institutional accumulation.`,
-        marketContext: `Risk-on sentiment in ${marketSession} markets is supporting carry trades. Japanese intervention concerns remain but are less likely at current levels.`,
-        generatedAt: new Date(Date.now() - Math.random() * 3600000).toISOString()
-      },
-      {
-        id: 'idea-3',
-        pair: 'USD/JPY',
-        timeframe: '4H',
-        bias: 'NEUTRAL' as const,
-        title: 'Intervention Zone Caution - Range Trading Setup',
-        reasoning: `USD/JPY is approaching levels where Japanese intervention becomes increasingly likely (around 152.00). While US yields and rate differentials support upside, the Ministry of Finance's verbal interventions are intensifying, creating two-way risk. Smart money is positioning for range trading rather than directional bets. The pair showed strong rejection at 151.95 last week, suggesting institutional respect for intervention threats. Current positioning shows retail heavily long while institutional players are reducing exposure. This creates an environment where range trading between 149.50-151.50 offers better risk-adjusted returns than directional plays. Watch for BoJ Governor Ueda's comments which could trigger sharp moves in either direction.`,
-        marketContext: `${marketSession} trading is cautious around intervention levels. Momentum strategies are being replaced by mean reversion approaches.`,
-        generatedAt: new Date(Date.now() - Math.random() * 900000).toISOString()
-      }
-    ];
-
-    // Only return ideas that are relevant to current market conditions
-    const relevantIdeas = strongIdeas.filter(idea => {
-      // Add logic to filter based on market hours, volatility, etc.
-      return true; // For now, return all strong ideas
-    });
-
-    return relevantIdeas.slice(0, 3); // Limit to 3 strong ideas max
-  };
-
-  useEffect(() => {
-    const fetchIdeas = async () => {
-      setLoading(true);
-      // Simulate AI analysis time
+    try {
+      // Simulate AI analysis delay
       await new Promise(resolve => setTimeout(resolve, 2000));
-      setIdeas(generateTradingIdeas());
-      setLoading(false);
-    };
-
-    fetchIdeas();
-  }, []);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIdeas(generateTradingIdeas());
-    setRefreshing(false);
-  };
-
-  const formatTimeAgo = (timestamp: string) => {
-    const minutes = Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ago`;
-  };
-
-  const getBiasColor = (bias: string) => {
-    switch (bias) {
-      case 'BUY': return 'text-green-400 bg-green-900/20';
-      case 'SELL': return 'text-red-400 bg-red-900/20';
-      default: return 'text-yellow-400 bg-yellow-900/20';
+      
+      // Generate high-quality trade ideas based on current market conditions
+      const ideas: TradeIdea[] = [
+        {
+          id: '1',
+          pair: 'EURUSD',
+          timeframe: '4H',
+          bias: 'SELL',
+          reasoning: 'EUR/USD is approaching a critical resistance zone at 1.0850-1.0870 that has held strong for the past 3 weeks. ECB dovish stance combined with rising US treasury yields creates a perfect storm for Euro weakness. Price action shows rejection candles forming at this level with decreasing volume on bullish moves, indicating seller exhaustion. RSI divergence suggests momentum is shifting bearish. Additionally, DXY is showing renewed strength as Fed maintains hawkish rhetoric. This setup offers exceptional risk-reward as we target the 1.0750 support with tight stops above resistance.',
+          strength: 'Strong',
+          createdAt: new Date()
+        },
+        {
+          id: '2', 
+          pair: 'GBPJPY',
+          timeframe: '1H',
+          bias: 'BUY',
+          reasoning: 'GBP/JPY is breaking out of a 2-day consolidation pattern with explosive volume. BoJ intervention fears are diminishing as USD/JPY pulls back from highs, creating space for JPY crosses to rally. UK inflation data exceeded expectations, supporting Sterling strength. Technical analysis shows a clear flag pattern completion with targets at 195.50. Smart money indicators suggest institutional accumulation at current levels around 193.80. The break above 194.20 resistance with conviction signals the start of a larger move higher. Risk-off sentiment is fading globally, supporting carry trades like GBP/JPY.',
+          strength: 'High',
+          createdAt: new Date()
+        }
+      ];
+      
+      setTradeIdeas(ideas);
+      
+      // Increment usage for free users
+      incrementUsage('memeCoins'); // Using memeCoins quota for trading ideas
+      
+      toast({
+        title: "AI Trade Ideas Generated",
+        description: `${ideas.length} high-probability trade setups identified based on current market conditions.`,
+      });
+      
+    } catch (error) {
+      console.error('Failed to generate trade ideas:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to analyze market conditions. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
+  const remaining = getRemainingUsage('memeCoins'); // Using memeCoins quota for trading ideas
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center space-x-3">
-          <Brain className="w-8 h-8 text-purple-400" />
-          <h1 className={`${isMobile ? 'text-2xl' : 'text-4xl'} font-bold gradient-text`}>
-            💹 AI Trading Hub
-          </h1>
-        </div>
-        <p className={`text-gray-300 max-w-4xl mx-auto ${isMobile ? 'text-sm px-4' : 'text-lg'}`}>
-          Live trade ideas powered by real-time market analysis. These are high-conviction opportunities based on fundamental shifts, technical breakouts, and institutional flow — not automated signals.
-        </p>
-        
-        {/* Action Buttons */}
-        <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'} gap-4 justify-center ${isMobile ? 'px-4' : ''}`}>
-          <Button 
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh Analysis
-          </Button>
-          <Button variant="outline" className="border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10">
-            <Eye className="w-4 h-4 mr-2" />
-            Watch List
-          </Button>
-        </div>
-      </div>
-
-      {/* Trading Ideas */}
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-400">Analyzing current market conditions...</p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {ideas.length === 0 ? (
-            <Card className="glass-card border-orange-500/20 bg-orange-900/10">
-              <CardContent className="p-8 text-center">
-                <Brain className="w-12 h-12 text-orange-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-orange-400 mb-2">No Strong Ideas Right Now</h3>
-                <p className="text-orange-100">
-                  Markets are currently in consolidation or lack clear directional bias. 
-                  Our AI is waiting for higher conviction setups to emerge.
+      <Card className="bg-gradient-to-r from-gray-950 via-purple-950/20 to-gray-950 border border-blue-500/30 relative overflow-hidden">
+        <CardHeader>
+          <CardTitle className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="p-2 md:p-3 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded border border-blue-500/50">
+                <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />
+              </div>
+              <div>
+                <h1 className="text-lg md:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  💹 AI Trading Hub
+                </h1>
+                <p className="text-xs md:text-sm text-gray-400">
+                  Live trade ideas generated by our tactical AI system. These aren't signals — they're smart setups you can act on or watch evolve.
                 </p>
-              </CardContent>
-            </Card>
-          ) : (
-            ideas.map((idea) => (
-              <Card key={idea.id} className="glass-card border-purple-500/20 hover:border-purple-500/40 transition-all">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <CardTitle className="text-2xl font-bold text-white flex items-center">
-                        {idea.bias === 'BUY' && <TrendingUp className="w-6 h-6 mr-3 text-green-400" />}
-                        {idea.bias === 'SELL' && <TrendingDown className="w-6 h-6 mr-3 text-red-400" />}
-                        {idea.bias === 'NEUTRAL' && <BarChart3 className="w-6 h-6 mr-3 text-yellow-400" />}
-                        {idea.pair}
-                      </CardTitle>
-                      <h3 className="text-lg font-semibold text-purple-300">{idea.title}</h3>
-                    </div>
-                    <div className="flex flex-col items-end space-y-2">
-                      <Badge className={getBiasColor(idea.bias)}>
-                        {idea.bias}
-                      </Badge>
-                      <span className="text-sm text-gray-400">{idea.timeframe}</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-6">
-                  {/* Main Reasoning */}
-                  <div className="bg-blue-900/20 border border-blue-500/20 rounded-lg p-4">
-                    <div className="flex items-start space-x-3">
-                      <Brain className="w-5 h-5 text-blue-400 mt-1 flex-shrink-0" />
-                      <div>
-                        <h4 className="text-blue-400 font-semibold mb-2">Why This Opportunity Exists</h4>
-                        <p className="text-blue-100 leading-relaxed">{idea.reasoning}</p>
-                      </div>
-                    </div>
-                  </div>
+              </div>
+            </div>
+            <Button
+              onClick={generateTradeIdeas}
+              disabled={isGenerating}
+              className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500/30 font-bold text-sm md:text-base"
+            >
+              {isGenerating ? (
+                <>
+                  <RefreshCw className="w-4 h-4 md:w-5 md:h-5 mr-2 animate-spin" />
+                  Analyzing Markets...
+                </>
+              ) : (
+                <>
+                  <Brain className="w-4 h-4 md:w-5 md:h-5 mr-2" />
+                  Generate Ideas
+                </>
+              )}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+      </Card>
 
-                  {/* Market Context */}
-                  <div className="bg-purple-900/20 border border-purple-500/20 rounded-lg p-4">
-                    <h4 className="text-purple-400 font-semibold mb-2">Current Market Context</h4>
-                    <p className="text-purple-100 text-sm leading-relaxed">{idea.marketContext}</p>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-700/50">
-                    <div className="flex items-center text-sm text-gray-400">
-                      <Clock className="w-4 h-4 mr-2" />
-                      Analysis from {formatTimeAgo(idea.generatedAt)}
-                    </div>
-                    <div className="text-sm text-purple-400 flex items-center">
-                      <Brain className="w-4 h-4 mr-1" />
-                      Aasakira AI
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+      {/* Free User Limit Display */}
+      {!isPremium && (
+        <Card className="bg-gradient-to-r from-orange-950/20 via-yellow-950/20 to-orange-950/20 border border-orange-500/30">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Lock className="w-5 h-5 text-orange-400" />
+                <div>
+                  <p className="text-orange-300 font-semibold text-sm md:text-base">
+                    Trading Ideas Remaining Today: <span className="text-orange-100">{remaining}/1</span>
+                  </p>
+                  <p className="text-orange-400 text-xs md:text-sm">
+                    Free users get 1 trading idea scan daily. Upgrade for unlimited access!
+                  </p>
+                </div>
+              </div>
+              <Button 
+                size={isMobile ? "sm" : "default"}
+                onClick={() => setShowUpgrade(true)}
+                className="bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 text-white font-bold"
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade to Premium
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Risk Disclaimer */}
-      <Card className="glass-card border-orange-500/20 bg-orange-900/10">
-        <CardContent className="p-4">
-          <div className="flex items-start space-x-3">
-            <AlertTriangle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <h4 className="font-semibold text-orange-400 mb-1">Risk Disclaimer</h4>
-              <p className="text-orange-100 text-sm">
-                These are AI-generated trade ideas for educational and analysis purposes. Always conduct your own research, 
-                manage risk appropriately, and never risk more than you can afford to lose.
-              </p>
+      {/* Trade Ideas Grid */}
+      {tradeIdeas.length > 0 ? (
+        <div className="grid gap-4 md:gap-6 md:grid-cols-1 xl:grid-cols-2">
+          {tradeIdeas.map((idea) => (
+            <Card key={idea.id} className="bg-gray-950/50 border-gray-600/30 hover:border-blue-500/50 transition-colors">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-lg md:text-xl font-bold text-white">{idea.pair}</h2>
+                    <Badge variant="outline" className="text-xs">
+                      {idea.timeframe}
+                    </Badge>
+                    <Badge 
+                      className={`text-xs ${
+                        idea.bias === 'BUY' 
+                          ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                          : idea.bias === 'SELL'
+                          ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                          : 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                      }`}
+                    >
+                      {idea.bias}
+                    </Badge>
+                  </div>
+                  <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
+                    {idea.strength}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-300 mb-2">Market Analysis & Reasoning:</h3>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    {idea.reasoning}
+                  </p>
+                </div>
+                
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-3 border-t border-gray-700">
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <Clock className="w-3 h-3" />
+                    Generated: {idea.createdAt.toLocaleTimeString()}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    🧠 Generated by Aasakira AI
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="bg-gradient-to-br from-gray-950 to-gray-900 border-gray-500/20">
+          <CardContent className="text-center py-8 md:py-12">
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full mx-auto flex items-center justify-center border border-blue-500/30 mb-4 md:mb-6">
+              <TrendingUp className="w-8 h-8 md:w-10 md:h-10 text-blue-400" />
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            <h3 className="text-xl md:text-2xl font-bold text-white mb-2">AI Trading Hub Ready</h3>
+            <p className="text-gray-400 mb-4 md:mb-6 max-w-md mx-auto text-sm md:text-base px-4">
+              Click "Generate Ideas" to analyze current market conditions and discover high-probability trading opportunities.
+            </p>
+            <Button
+              onClick={generateTradeIdeas}
+              disabled={!canUseFeature('memeCoins')}
+              className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500/30 font-bold px-6 md:px-8 py-2 md:py-3 text-sm md:text-base"
+            >
+              <Brain className="w-4 h-4 md:w-5 md:h-5 mr-2" />
+              {canUseFeature('memeCoins') ? 'Generate AI Trade Ideas' : 'Upgrade for Trade Ideas'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Premium Upgrade Modal */}
+      {showUpgrade && (
+        <EnhancedPremiumUpgrade 
+          open={showUpgrade} 
+          onOpenChange={setShowUpgrade} 
+        />
+      )}
     </div>
   );
 };

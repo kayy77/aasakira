@@ -21,10 +21,16 @@ import {
   Target,
   Shield,
   AlertTriangle,
-  Info
+  Info,
+  Crown,
+  Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import WebhookManager from './WebhookManager';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useIsMobile } from '@/hooks/use-mobile';
+import FeatureGate from '@/components/FeatureGate';
+import EnhancedPremiumUpgrade from '@/components/enhanced/EnhancedPremiumUpgrade';
 
 const LiveSignalsDashboard: React.FC = () => {
   const [militarySignals, setMilitarySignals] = useState<(SignalDNA & { id: string, livePrice: number })[]>([]);
@@ -32,6 +38,7 @@ const LiveSignalsDashboard: React.FC = () => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [showWebhookManager, setShowWebhookManager] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState<string | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [generationSettings, setGenerationSettings] = useState({
     strategyType: 'Hybrid' as 'SMC' | 'Institutional' | 'Hybrid',
     confidenceThreshold: 80,
@@ -39,8 +46,21 @@ const LiveSignalsDashboard: React.FC = () => {
     pairFilter: 'majors' as 'all' | 'majors' | 'eurusd'
   });
   const { toast } = useToast();
+  const { isPremium, canUseFeature, incrementUsage, getRemainingUsage } = useSubscription();
+  const isMobile = useIsMobile();
 
   const generateMilitarySignal = async () => {
+    // Check if user can use signals feature
+    if (!canUseFeature('signals')) {
+      setShowUpgrade(true);
+      toast({
+        title: "Daily Limit Reached",
+        description: "You've used your 2 daily signals. Upgrade to Premium for unlimited access!",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
@@ -99,6 +119,9 @@ const LiveSignalsDashboard: React.FC = () => {
 
       setMilitarySignals(prev => [militarySignal, ...prev].slice(0, 8));
       setLastUpdate(new Date());
+      
+      // Increment usage for free users
+      incrementUsage('signals');
       
       // Trigger webhook
       await webhookService.triggerSignalAlert({
@@ -222,11 +245,13 @@ const LiveSignalsDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [militarySignals.length]);
 
+  const remaining = getRemainingUsage('signals');
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Sakura Particles Background */}
       <div className="sakura-container">
-        {[...Array(20)].map((_, i) => (
+        {[...Array(isMobile ? 10 : 20)].map((_, i) => (
           <div
             key={i}
             className="sakura-petal"
@@ -243,22 +268,22 @@ const LiveSignalsDashboard: React.FC = () => {
       <Card className="bg-gradient-to-r from-gray-950 via-purple-950/20 to-gray-950 border border-pink-500/30 relative overflow-hidden glow-soft animate-section-load">
         <div className="absolute inset-0 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-pink-500/5" />
         <CardHeader className="relative z-10">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <CardTitle className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
+            <div className="flex items-center gap-3 md:gap-4">
               <div className="relative">
-                <div className="p-3 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded border border-pink-500/50 glow-soft">
-                  <Brain className="w-8 h-8 text-pink-400" />
+                <div className="p-2 md:p-3 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded border border-pink-500/50 glow-soft">
+                  <Brain className="w-6 h-6 md:w-8 md:h-8 text-pink-400" />
                 </div>
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-gray-950" />
               </div>
               <div>
-                <h2 className="text-2xl font-zen-maru font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+                <h2 className="text-lg md:text-2xl font-zen-maru font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
                   ⛩️ AASAKIRA SIGNAL SYSTEM
                 </h2>
-                <p className="text-sm text-gray-400 font-shippori">
+                <p className="text-xs md:text-sm text-gray-400 font-shippori">
                   Silent precision. Disciplined execution. Every signal is a calculated strike.
                 </p>
-                <div className="flex items-center gap-4 mt-2">
+                <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2">
                   <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs font-zen-maru glow-soft">
                     <Activity className="w-3 h-3 mr-1" />
                     LIVE FEEDS ACTIVE
@@ -274,35 +299,37 @@ const LiveSignalsDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-2">
               {lastUpdate && (
                 <div className="flex items-center gap-1 text-xs text-gray-400 font-zen-maru">
                   <Clock className="w-3 h-3" />
                   Last: {lastUpdate.toLocaleTimeString()}
                 </div>
               )}
-              <Button
-                onClick={() => setShowWebhookManager(!showWebhookManager)}
-                variant="outline"
-                size="sm"
-                className="border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-zen-maru glow-soft"
-              >
-                <Webhook className="w-4 h-4 mr-2" />
-                Webhooks
-              </Button>
+              {!isMobile && (
+                <Button
+                  onClick={() => setShowWebhookManager(!showWebhookManager)}
+                  variant="outline"
+                  size="sm"
+                  className="border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-zen-maru glow-soft"
+                >
+                  <Webhook className="w-4 h-4 mr-2" />
+                  Webhooks
+                </Button>
+              )}
               <Button
                 onClick={generateMilitarySignal}
                 disabled={isGenerating}
-                className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/50 hover:bg-pink-500/30 font-zen-maru font-bold glow-intense"
+                className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/50 hover:bg-pink-500/30 font-zen-maru font-bold glow-intense text-sm md:text-base"
               >
                 {isGenerating ? (
                   <>
-                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                    <RefreshCw className="w-4 h-4 md:w-5 md:h-5 mr-2 animate-spin" />
                     AI COUNCIL VOTING...
                   </>
                 ) : (
                   <>
-                    <Brain className="w-5 h-5 mr-2" />
+                    <Brain className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                     GENERATE SIGNAL
                   </>
                 )}
@@ -312,39 +339,68 @@ const LiveSignalsDashboard: React.FC = () => {
         </CardHeader>
       </Card>
 
+      {/* Free User Limit Display */}
+      {!isPremium && (
+        <Card className="bg-gradient-to-r from-orange-950/20 via-yellow-950/20 to-orange-950/20 border border-orange-500/30">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Lock className="w-5 h-5 text-orange-400" />
+                <div>
+                  <p className="text-orange-300 font-semibold text-sm md:text-base">
+                    Signals Remaining Today: <span className="text-orange-100">{remaining}/2</span>
+                  </p>
+                  <p className="text-orange-400 text-xs md:text-sm">
+                    Free users get 2 signals daily. Upgrade for unlimited access!
+                  </p>
+                </div>
+              </div>
+              <Button 
+                size={isMobile ? "sm" : "default"}
+                onClick={() => setShowUpgrade(true)}
+                className="bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 text-white font-bold"
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade to Premium
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Premium Signal Disclaimer */}
       <Card className="bg-gradient-to-r from-orange-950/20 via-red-950/20 to-orange-950/20 border border-orange-500/30 relative overflow-hidden glow-soft animate-section-load">
         <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-3 text-orange-400">
+          <CardTitle className="flex items-center gap-3 text-orange-400 text-lg md:text-xl">
             <div className="p-2 bg-orange-500/20 rounded border border-orange-500/50">
-              <Shield className="w-5 h-5" />
+              <Shield className="w-4 h-4 md:w-5 md:h-5" />
             </div>
             🔒 Premium Signal Disclaimer
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
-            <div className="space-y-3 text-orange-100">
+            <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-orange-400 mt-0.5 flex-shrink-0" />
+            <div className="space-y-3 text-orange-100 text-sm md:text-base">
               <p>
                 These signals are generated by our advanced AI engine trained on Smart Money Concepts, price action, volume, and institutional logic. 
                 However, <strong>no signal is 100% accurate</strong>. Stop Loss (SL) and Take Profit (TP) levels are generated based on AI probability zones, 
                 but you should always monitor the trade and manage risk accordingly.
               </p>
               
-              <div className="bg-orange-900/30 border border-orange-500/30 rounded-lg p-4">
-                <h4 className="text-orange-300 font-semibold mb-2 flex items-center gap-2">
+              <div className="bg-orange-900/30 border border-orange-500/30 rounded-lg p-3 md:p-4">
+                <h4 className="text-orange-300 font-semibold mb-2 flex items-center gap-2 text-sm md:text-base">
                   <Target className="w-4 h-4" />
                   Trade Management Tips:
                 </h4>
-                <ul className="text-sm space-y-1 text-orange-200">
+                <ul className="text-xs md:text-sm space-y-1 text-orange-200">
                   <li>• Adjust your stop loss to breakeven once in profit</li>
                   <li>• Extend or trail take profit if momentum continues</li>
                   <li>• Stay aware of major news or market events</li>
                 </ul>
               </div>
               
-              <p className="text-orange-300 font-semibold">
+              <p className="text-orange-300 font-semibold text-sm md:text-base">
                 These trades are opportunities, not guarantees. You are responsible for your own risk.
               </p>
             </div>
@@ -353,18 +409,18 @@ const LiveSignalsDashboard: React.FC = () => {
           <div className="flex items-center gap-2 mt-4">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="border-orange-500/30 text-orange-400 hover:bg-orange-500/20">
+                <Button variant="outline" size={isMobile ? "sm" : "default"} className="border-orange-500/30 text-orange-400 hover:bg-orange-500/20">
                   <Info className="w-4 h-4 mr-2" />
                   View Full Risk Notice
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="bg-gray-950 border-orange-500/30">
+              <AlertDialogContent className="bg-gray-950 border-orange-500/30 max-w-lg">
                 <AlertDialogHeader>
                   <AlertDialogTitle className="text-orange-400 flex items-center gap-2">
                     <Shield className="w-5 h-5" />
                     Risk Management Notice
                   </AlertDialogTitle>
-                  <AlertDialogDescription className="text-gray-300 space-y-3">
+                  <AlertDialogDescription className="text-gray-300 space-y-3 text-sm">
                     <p>
                       Our AI signals are high-probability setups based on institutional logic and multi-confluence analysis. 
                       However, trading involves significant risk and no system guarantees profits.
@@ -392,22 +448,22 @@ const LiveSignalsDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Tactical Parameters */}
+      {/* Tactical Parameters - Collapsible on Mobile */}
       <Card className="bg-gray-950/50 border-gray-600/30 glow-soft animate-section-load">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2 font-zen-maru">
-            <Settings className="w-5 h-5" />
+          <CardTitle className="text-white flex items-center gap-2 font-zen-maru text-lg md:text-xl">
+            <Settings className="w-4 h-4 md:w-5 md:h-5" />
             TACTICAL PARAMETERS
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <div>
-              <label className="text-sm text-gray-400 mb-1 block font-zen-maru">Strategy Type</label>
+              <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Strategy Type</label>
               <select 
                 value={generationSettings.strategyType}
                 onChange={(e) => setGenerationSettings(prev => ({ ...prev, strategyType: e.target.value as any }))}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm font-noto glow-soft"
+                className="w-full bg-gray-800 border border-gray-600 rounded px-2 md:px-3 py-2 text-white text-xs md:text-sm font-noto glow-soft"
               >
                 <option value="Hybrid">⚡ Hybrid</option>
                 <option value="Institutional">⛩️ Institutional</option>
@@ -416,11 +472,11 @@ const LiveSignalsDashboard: React.FC = () => {
             </div>
             
             <div>
-              <label className="text-sm text-gray-400 mb-1 block font-zen-maru">Min Confidence</label>
+              <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Min Confidence</label>
               <select 
                 value={generationSettings.confidenceThreshold}
                 onChange={(e) => setGenerationSettings(prev => ({ ...prev, confidenceThreshold: parseInt(e.target.value) }))}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm font-noto glow-soft"
+                className="w-full bg-gray-800 border border-gray-600 rounded px-2 md:px-3 py-2 text-white text-xs md:text-sm font-noto glow-soft"
               >
                 <option value={70}>70%+</option>
                 <option value={80}>80%+</option>
@@ -429,11 +485,11 @@ const LiveSignalsDashboard: React.FC = () => {
             </div>
             
             <div>
-              <label className="text-sm text-gray-400 mb-1 block font-zen-maru">Min Confluence</label>
+              <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Min Confluence</label>
               <select 
                 value={generationSettings.minFilters}
                 onChange={(e) => setGenerationSettings(prev => ({ ...prev, minFilters: parseInt(e.target.value) }))}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm font-noto glow-soft"
+                className="w-full bg-gray-800 border border-gray-600 rounded px-2 md:px-3 py-2 text-white text-xs md:text-sm font-noto glow-soft"
               >
                 <option value={3}>3/6 Frameworks</option>
                 <option value={4}>4/6 Frameworks</option>
@@ -443,11 +499,11 @@ const LiveSignalsDashboard: React.FC = () => {
             </div>
             
             <div>
-              <label className="text-sm text-gray-400 mb-1 block font-zen-maru">Pair Filter</label>
+              <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Pair Filter</label>
               <select 
                 value={generationSettings.pairFilter}
                 onChange={(e) => setGenerationSettings(prev => ({ ...prev, pairFilter: e.target.value as any }))}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm font-noto glow-soft"
+                className="w-full bg-gray-800 border border-gray-600 rounded px-2 md:px-3 py-2 text-white text-xs md:text-sm font-noto glow-soft"
               >
                 <option value="majors">Major Pairs</option>
                 <option value="eurusd">EUR/USD Only</option>
@@ -458,14 +514,14 @@ const LiveSignalsDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Webhook Manager */}
-      {showWebhookManager && <WebhookManager />}
+      {/* Webhook Manager - Hidden on Mobile */}
+      {showWebhookManager && !isMobile && <WebhookManager />}
 
       {/* System Status */}
       {militarySignals.length > 0 && (
         <Alert className="border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10 glow-soft animate-section-load">
           <CheckCircle2 className="h-4 w-4 text-green-400" />
-          <AlertDescription className="text-green-400 font-zen-maru">
+          <AlertDescription className="text-green-400 font-zen-maru text-sm md:text-base">
             ⛩️ AASAKIRA SYSTEM OPERATIONAL - {militarySignals.length} Active Signals | Auto-refresh: 5s intervals
             <div className="mt-1 text-xs text-green-300 font-noto">
               Strategic signal intelligence with live price feeds and multi-framework validation
@@ -499,26 +555,35 @@ const LiveSignalsDashboard: React.FC = () => {
       {/* Empty State */}
       {militarySignals.length === 0 && !isGenerating && (
         <Card className="bg-gradient-to-br from-gray-950 to-gray-900 border-gray-500/20 glow-soft animate-section-load">
-          <CardContent className="text-center py-12">
-            <div className="relative mb-6">
-              <div className="w-20 h-20 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-full mx-auto flex items-center justify-center border border-pink-500/30 glow-soft">
-                <Brain className="w-10 h-10 text-pink-400" />
+          <CardContent className="text-center py-8 md:py-12">
+            <div className="relative mb-4 md:mb-6">
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-full mx-auto flex items-center justify-center border border-pink-500/30 glow-soft">
+                <Brain className="w-8 h-8 md:w-10 md:h-10 text-pink-400" />
               </div>
               <div className="absolute inset-0 bg-pink-400/10 rounded-full blur-xl" />
             </div>
-            <h3 className="text-2xl font-zen-maru font-bold text-white mb-2">⛩️ SYSTEM STANDBY</h3>
-            <p className="text-gray-400 mb-6 max-w-md mx-auto font-shippori">
+            <h3 className="text-xl md:text-2xl font-zen-maru font-bold text-white mb-2">⛩️ SYSTEM STANDBY</h3>
+            <p className="text-gray-400 mb-4 md:mb-6 max-w-md mx-auto font-shippori text-sm md:text-base px-4">
               Multi-Intelligence Core awaiting deployment. Elite signals require AI council consensus of 4/6 minimum.
             </p>
             <Button
               onClick={generateMilitarySignal}
-              className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/50 hover:bg-pink-500/30 font-zen-maru font-bold px-8 py-3 glow-intense"
+              disabled={!canUseFeature('signals')}
+              className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/50 hover:bg-pink-500/30 font-zen-maru font-bold px-6 md:px-8 py-2 md:py-3 glow-intense text-sm md:text-base"
             >
-              <Brain className="w-5 h-5 mr-2" />
-              ACTIVATE INTELLIGENCE CORE
+              <Brain className="w-4 h-4 md:w-5 md:h-5 mr-2" />
+              {canUseFeature('signals') ? 'ACTIVATE INTELLIGENCE CORE' : 'UPGRADE FOR MORE SIGNALS'}
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Premium Upgrade Modal */}
+      {showUpgrade && (
+        <EnhancedPremiumUpgrade 
+          open={showUpgrade} 
+          onOpenChange={setShowUpgrade} 
+        />
       )}
     </div>
   );

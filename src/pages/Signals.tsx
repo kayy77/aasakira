@@ -5,6 +5,7 @@ import LiveSignalsDashboard from '@/components/signals/LiveSignalsDashboard';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
+import FeatureGate from '@/components/FeatureGate';
 
 const Signals = () => {
   const isMobile = useIsMobile();
@@ -16,14 +17,14 @@ const Signals = () => {
       
       <div className="relative z-10 pt-20 md:pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 md:mb-12">
-            <h1 className="text-2xl md:text-4xl font-bold gradient-text mb-4">
+          <div className="text-center mb-6 md:mb-8 lg:mb-12">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold gradient-text mb-3 md:mb-4">
               Enhanced AI Signals
             </h1>
-            <p className="text-gray-300 text-sm md:text-lg max-w-3xl mx-auto px-4">
+            <p className="text-gray-300 text-sm md:text-base lg:text-lg max-w-3xl mx-auto px-4">
               Multi-API price verification with enhanced signal digest, coach mode explanations, and real-time accuracy tracking
             </p>
-            <div className={`flex justify-center gap-2 md:gap-4 mt-4 ${
+            <div className={`flex justify-center gap-2 md:gap-4 mt-3 md:mt-4 ${
               isMobile ? 'flex-wrap px-4' : ''
             }`}>
               <div className="flex items-center gap-2 text-xs md:text-sm text-gray-400">
@@ -41,7 +42,9 @@ const Signals = () => {
             </div>
           </div>
 
-          <LiveSignalsDashboard />
+          <FeatureGate feature="signals" featureName="AI Signals">
+            <LiveSignalsDashboard />
+          </FeatureGate>
         </div>
       </div>
     </div>

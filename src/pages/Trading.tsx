@@ -8,6 +8,7 @@ import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import TradingHub from '@/components/trading/TradingHub';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
+import FeatureGate from '@/components/FeatureGate';
 
 const Trading = () => {
   const navigate = useNavigate();
@@ -20,10 +21,11 @@ const Trading = () => {
       
       <div className="relative z-10 pt-20 md:pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-6">
+          <div className="mb-4 md:mb-6">
             <Button
               onClick={() => navigate('/')}
               variant="outline"
+              size={isMobile ? "sm" : "default"}
               className="flex items-center space-x-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -31,7 +33,9 @@ const Trading = () => {
             </Button>
           </div>
 
-          <TradingHub />
+          <FeatureGate feature="memeCoins" featureName="Trading Ideas">
+            <TradingHub />
+          </FeatureGate>
         </div>
       </div>
     </div>
