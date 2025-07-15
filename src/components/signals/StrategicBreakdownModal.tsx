@@ -66,10 +66,14 @@ const StrategicBreakdownModal: React.FC<StrategicBreakdownModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-gray-950 border border-gray-800 max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-gray-950 border border-gray-800 max-w-3xl max-h-[90vh] overflow-y-auto glow-soft">
         <DialogHeader className="border-b border-gray-800 pb-4">
-          <DialogTitle className="text-white text-xl font-medium">
-            Strategic Breakdown – {signalDNA.symbol} {signalDNA.type.toUpperCase()}
+          <DialogTitle className="text-white text-xl font-zen-maru tracking-wide">
+            ────────────────────────────────────
+            <br />
+            STRATEGIC BREAKDOWN – {signalDNA.symbol} {signalDNA.type.toUpperCase()}
+            <br />
+            ────────────────────────────────────
           </DialogTitle>
         </DialogHeader>
         
@@ -79,12 +83,12 @@ const StrategicBreakdownModal: React.FC<StrategicBreakdownModalProps> = ({
             {approvedModules.map(([key, _]) => {
               const details = getModuleDetails(key, true);
               return (
-                <div key={key} className="border-l-2 border-green-400 pl-4 bg-gray-900/30 p-3 rounded-r">
+                <div key={key} className="border-l-2 border-pink-400 pl-4 bg-gray-900/30 p-3 rounded-r glow-soft">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full" />
-                    <span className="text-green-300 font-medium">{details.name}:</span>
+                    <div className="w-2 h-2 bg-pink-400 rounded-full animate-pulse" />
+                    <span className="text-pink-300 font-medium font-zen-maru">➤ {details.name}:</span>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed ml-4">
+                  <p className="text-gray-300 text-sm leading-relaxed ml-4 font-noto">
                     {details.analysis}
                   </p>
                 </div>
@@ -95,13 +99,13 @@ const StrategicBreakdownModal: React.FC<StrategicBreakdownModalProps> = ({
           {/* Rejected Engines */}
           {rejectedModules.length > 0 && (
             <div className="border-t border-gray-800 pt-4">
-              <h4 className="text-gray-400 font-medium mb-3">Non-Validated Frameworks:</h4>
+              <h4 className="text-gray-400 font-medium mb-3 font-zen-maru">Non-Validated Frameworks:</h4>
               <div className="space-y-2">
                 {rejectedModules.map(([key, _]) => {
                   const details = getModuleDetails(key, false);
                   return (
                     <div key={key} className="border-l-2 border-gray-600 pl-4 bg-gray-900/20 p-2 rounded-r">
-                      <span className="text-gray-500 text-sm">{details.name}: {details.analysis}</span>
+                      <span className="text-gray-500 text-sm font-noto">➤ {details.name}: {details.analysis}</span>
                     </div>
                   );
                 })}
@@ -110,43 +114,47 @@ const StrategicBreakdownModal: React.FC<StrategicBreakdownModalProps> = ({
           )}
 
           {/* Confluence Score */}
-          <div className="bg-green-500/5 border border-green-500/20 rounded p-4">
+          <div className="bg-gradient-to-r from-pink-500/10 to-red-500/10 border border-pink-500/30 rounded p-4 glow-soft">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-green-300 font-medium">Confluence Score</span>
-              <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+              <span className="text-pink-300 font-medium font-zen-maru">Confluence Score</span>
+              <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/50 glow-soft">
                 {approvedModules.length}/6 Validated
               </Badge>
             </div>
             <Progress value={(approvedModules.length / 6) * 100} className="h-2" />
-            <p className="text-gray-400 text-xs mt-2">
+            <p className="text-gray-400 text-xs mt-2 font-noto">
               Minimum 4/6 frameworks required for signal validation
             </p>
           </div>
 
           {/* Backtest Data */}
-          <div className="bg-gray-900/40 border border-gray-700 rounded p-4">
-            <h4 className="text-white font-medium mb-3">
-              Backtest Results
+          <div className="bg-gray-900/40 border border-gray-700 rounded p-4 glow-soft">
+            <h4 className="text-white font-zen-maru mb-3 tracking-wide">
+              ────────────────────────────────────
+              <br />
+              BACKTEST RESULTS
+              <br />
+              ────────────────────────────────────
             </h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-sm font-noto">
               <div>
-                <span className="text-gray-400">Structure:</span>
+                <span className="text-gray-400">• Structure:</span>
                 <span className="text-white ml-2">{signalDNA.filters.slice(0, 3).join(' + ')}</span>
               </div>
               <div>
-                <span className="text-gray-400">Winrate:</span>
+                <span className="text-gray-400">• Winrate:</span>
                 <span className="text-green-400 ml-2">{Math.round(signalDNA.backtest.winRate)}%</span>
               </div>
               <div>
-                <span className="text-gray-400">Avg RR Hit:</span>
+                <span className="text-gray-400">• Avg RR Hit:</span>
                 <span className="text-blue-400 ml-2">{signalDNA.backtest.avgRR.toFixed(1)}</span>
               </div>
               <div>
-                <span className="text-gray-400">Historical Examples:</span>
+                <span className="text-gray-400">• Historical Examples:</span>
                 <span className="text-white ml-2">{signalDNA.backtest.totalTrades}</span>
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-gray-700/50 text-sm">
+            <div className="mt-4 pt-3 border-t border-gray-700/50 text-sm font-noto">
               <div className="flex justify-between">
                 <span className="text-green-400">TP Hit: {Math.round(signalDNA.backtest.totalTrades * signalDNA.backtest.winRate / 100)}</span>
                 <span className="text-red-400">SL Hit: {signalDNA.backtest.totalTrades - Math.round(signalDNA.backtest.totalTrades * signalDNA.backtest.winRate / 100)}</span>
@@ -156,9 +164,9 @@ const StrategicBreakdownModal: React.FC<StrategicBreakdownModalProps> = ({
 
           {/* Mentor Summary */}
           <div className="border-t border-gray-800 pt-4">
-            <div className="bg-yellow-500/5 border border-yellow-500/20 rounded p-4">
-              <h4 className="text-yellow-300 font-medium mb-2">Mentor Review:</h4>
-              <p className="text-gray-300 italic leading-relaxed">
+            <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded p-4 glow-soft">
+              <h4 className="text-yellow-300 font-zen-maru mb-2 tracking-wide">➤ Mentor Review:</h4>
+              <p className="text-gray-300 italic leading-relaxed font-shippori">
                 "{signalDNA.aiThought}"
               </p>
             </div>

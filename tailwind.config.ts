@@ -20,11 +20,11 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				'playfair': ['Playfair Display', 'serif'],
-				'crimson': ['Crimson Text', 'serif'],
-				'cormorant': ['Cormorant Garamond', 'serif'],
-				'sans': ['Inter', 'system-ui', 'sans-serif'],
-				'serif': ['Playfair Display', 'serif'],
+				'zen-maru': ['Zen Maru Gothic', 'sans-serif'],
+				'noto': ['Noto Sans JP', 'sans-serif'],
+				'shippori': ['Shippori Mincho B1', 'serif'],
+				'sans': ['Noto Sans JP', 'Inter', 'system-ui', 'sans-serif'],
+				'serif': ['Shippori Mincho B1', 'serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
