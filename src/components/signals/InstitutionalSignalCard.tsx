@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +21,8 @@ import {
   AlertTriangle,
   XCircle,
   Wifi,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import type { InstitutionalSignal } from '@/services/institutionalSignalService';
 import { institutionalSignalService } from '@/services/institutionalSignalService';
@@ -30,18 +32,24 @@ interface InstitutionalSignalCardProps {
   signal: InstitutionalSignal;
   onAnalyze?: (signal: InstitutionalSignal) => void;
   onPriceUpdate?: (newPrice: number, source: string) => void;
+  onRemove?: (signalId: string) => void;
 }
 
-const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signal, onAnalyze, onPriceUpdate }) => {
+const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ 
+  signal, 
+  onAnalyze, 
+  onPriceUpdate,
+  onRemove 
+}) => {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isUpdatingPrice, setIsUpdatingPrice] = useState(false);
   const [localSignal, setLocalSignal] = useState(signal);
 
-  // Update local signal when prop changes - FIXED KEY for React re-render
+  // Update local signal when prop changes - OPTIMIZED for mobile performance
   useEffect(() => {
     console.log(`👁️ [Render] ${signal.pair}: ${signal.livePrice} @ ${new Date().toISOString()}`);
     setLocalSignal(signal);
-  }, [signal.pair, signal.livePrice, signal.priceSource, signal.lastPriceUpdate]); // Add proper dependencies
+  }, [signal.livePrice, signal.priceSource]); // Only update on price/source changes
 
   const getConfidenceColor = (confidence: string) => {
     switch (confidence) {
@@ -71,6 +79,10 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
     onAnalyze?.(localSignal);
   };
 
+  const handleRemove = () => {
+    onRemove?.(localSignal.id);
+  };
+
   const updateLivePrice = async () => {
     setIsUpdatingPrice(true);
     try {
@@ -79,15 +91,12 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
       const success = await institutionalSignalService.updateSignalPrice(localSignal.id);
       
       if (success) {
-        // Get the updated signal
         const updatedSignals = institutionalSignalService.getLatestSignals();
         const updatedSignal = updatedSignals.find(s => s.id === localSignal.id);
         
         if (updatedSignal && updatedSignal.livePrice) {
-          console.log(`🧠 [State Update] MANUAL REFRESH: ${localSignal.pair} price updated to ${updatedSignal.livePrice} @ ${new Date().toISOString()}`);
           setLocalSignal(updatedSignal);
           onPriceUpdate?.(updatedSignal.livePrice, updatedSignal.priceSource);
-          console.log(`✅ Price updated for ${localSignal.pair}: ${updatedSignal.livePrice}`);
         }
       }
     } catch (error) {
@@ -97,24 +106,27 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
     }
   };
 
-  // Get the current live price to display
   const displayPrice = localSignal.livePrice || parseFloat(localSignal.entry);
   const priceAge = localSignal.lastPriceUpdate 
     ? Math.floor((Date.now() - localSignal.lastPriceUpdate.getTime()) / 1000)
     : null;
 
-  // 👁️ [Render] - Log render data
-  console.log(`👁️ [Render] Card for ${localSignal.pair}: Price=${displayPrice}, Source=${localSignal.priceSource}, Age=${priceAge}s @ ${new Date().toISOString()}`);
-
   return (
     <>
-      <Card 
-        className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-300 relative overflow-hidden"
-        key={`${localSignal.pair}-${localSignal.livePrice}-${priceAge}`} // FORCE RE-RENDER with dynamic key
-      >
+      <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-300 relative overflow-hidden">
+        {/* Remove Signal Button */}
+        <Button
+          onClick={handleRemove}
+          variant="ghost"
+          size="sm"
+          className="absolute top-2 right-2 w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-red-500/20 z-10"
+        >
+          <X className="w-3 h-3" />
+        </Button>
+
         {/* Institutional Badge */}
         {localSignal.confidence === 'INSTITUTIONAL' && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-2 right-10">
             <Badge className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border-yellow-500/30">
               <Crown className="w-3 h-3 mr-1" />
               INSTITUTIONAL
@@ -146,7 +158,7 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
         </CardHeader>
         
         <CardContent className="space-y-4">
-          {/* TRUE LIVE PRICE DISPLAY - Enhanced */}
+          {/* TRUE LIVE PRICE DISPLAY */}
           <div className="p-4 bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -102,6 +103,14 @@ const LiveSignalsDashboard: React.FC = () => {
     });
   };
 
+  const removeInstitutionalSignal = (signalId: string) => {
+    setInstitutionalSignals(prev => prev.filter(signal => signal.id !== signalId));
+    toast({
+      title: "Institutional Signal Removed",
+      description: "Signal has been removed from your list.",
+    });
+  };
+
   const handleAIAnalysis = async (signal: EnhancedSignal) => {
     setIsAnalyzing(signal.id);
     
@@ -163,33 +172,26 @@ const LiveSignalsDashboard: React.FC = () => {
     );
   };
 
-  // Real-time price updates from the institutional signal service
+  // OPTIMIZED: Real-time price updates with better performance for mobile
   useEffect(() => {
     const interval = setInterval(() => {
-      // Get the latest signals from the service (they update automatically)
-      const latestSignals = institutionalSignalService.getLatestSignals();
-      
-      if (latestSignals.length > 0) {
-        console.log(`🔄 Refreshing ${latestSignals.length} institutional signals from service...`);
-        setInstitutionalSignals(latestSignals);
+      // Only update if signals exist to prevent unnecessary renders
+      if (institutionalSignals.length > 0) {
+        const latestSignals = institutionalSignalService.getLatestSignals();
+        if (latestSignals.length > 0) {
+          console.log(`🔄 Refreshing ${latestSignals.length} institutional signals from service...`);
+          setInstitutionalSignals(latestSignals);
+        }
       }
       
       // Update enhanced signals if any exist
       if (signals.length > 0) {
         setSignals([...enhancedSignalService.getSignals()]);
       }
-    }, 2000); // Check every 2 seconds for faster updates
+    }, 5000); // Reduced frequency to 5 seconds for better mobile performance
 
     return () => clearInterval(interval);
-  }, [signals.length]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      // Cleanup institutional signal service if needed
-      // institutionalSignalService.destroy();
-    };
-  }, []);
+  }, [signals.length, institutionalSignals.length]); // Better dependency array
 
   return (
     <div className="space-y-6">
@@ -254,9 +256,9 @@ const LiveSignalsDashboard: React.FC = () => {
         <Alert className="border-green-500/30 bg-gradient-to-r from-green-500/10 to-blue-500/10">
           <CheckCircle2 className="h-4 w-4 text-green-400" />
           <AlertDescription className="text-green-400">
-            🔥 TRUE LIVE Price System Active - Real-time updates every 3 seconds using live tick endpoints (NO CACHE)
+            🔥 TRUE LIVE Price System Active - Real-time updates every 5 seconds using live tick endpoints (NO CACHE)
             <div className="mt-1 text-xs text-green-300">
-              Sources: Polygon Live Ticks → TwelveData Live → Binance Live → Ultra Realistic Fallback
+              Sources: Free Forex API → Exchange Rate API → CoinGecko → Binance Live → Ultra Realistic Fallback
             </div>
           </AlertDescription>
         </Alert>
@@ -266,7 +268,7 @@ const LiveSignalsDashboard: React.FC = () => {
       <AnimatePresence>
         {institutionalSignals.map((signal, index) => (
           <motion.div
-            key={signal.id}
+            key={`${signal.id}-${signal.pair}`} // Stable key for better mobile performance
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -276,6 +278,7 @@ const LiveSignalsDashboard: React.FC = () => {
               signal={signal}
               onAnalyze={(s) => console.log('Analyzing signal:', s)}
               onPriceUpdate={(newPrice, source) => handleInstitutionalPriceUpdate(signal.id, newPrice, source)}
+              onRemove={removeInstitutionalSignal}
             />
           </motion.div>
         ))}
@@ -291,7 +294,7 @@ const LiveSignalsDashboard: React.FC = () => {
           <AnimatePresence>
             {signals.map((signal, index) => (
               <motion.div
-                key={signal.id}
+                key={`enhanced-${signal.id}`} // Stable key
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
