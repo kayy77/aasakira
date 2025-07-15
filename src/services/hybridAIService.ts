@@ -35,7 +35,7 @@ class HybridAIService {
 
   private async callGPT4o(prompt: string): Promise<AIResponse> {
     try {
-      console.log('🤖 Calling GPT-4o with prompt:', prompt.substring(0, 100) + '...');
+      console.log('🤖 Attempting GPT-4o call...');
       
       const { data, error } = await supabase.functions.invoke('gpt4o-chat', {
         body: { prompt }
@@ -50,7 +50,7 @@ class HybridAIService {
         throw new Error('No response from GPT-4o');
       }
 
-      console.log('✅ GPT-4o response received:', data.response.substring(0, 100) + '...');
+      console.log('✅ GPT-4o response received');
       
       return {
         text: data.response,
@@ -64,72 +64,141 @@ class HybridAIService {
   }
 
   private async generateLocalResponse(prompt: string): Promise<AIResponse> {
-    console.log('🔧 Generating local fallback response...');
+    console.log('🔧 Generating local response for:', prompt.substring(0, 50) + '...');
     
-    const responses = [
-      `🎯 **Professional Trading Insight**
-
-Based on your question, I can see you're developing strong analytical skills. Here's what I recommend:
-
-**Key Concepts to Master:**
-• Market Structure Analysis
-• Institutional Order Flow 
-• Risk Management Principles
-• Psychology and Discipline
-
-**Next Steps:**
-1. Practice identifying key support/resistance levels
-2. Study volume patterns during breakouts
-3. Focus on 1-2 currency pairs initially
-4. Keep a detailed trading journal
-
-What specific area would you like to dive deeper into? I'm here to guide your learning journey! 📈`,
-
-      `📊 **Smart Money Concepts Breakdown**
-
-Great question! Let me break this down professionally:
-
-**Market Structure Elements:**
-• Order Blocks: Areas where institutions placed large orders
-• Fair Value Gaps: Imbalances in price that often get filled
-• Liquidity Sweeps: When price takes out obvious stops
-• Break of Structure: Confirms trend changes
-
-**Practical Application:**
-- Wait for clear market structure breaks
-- Look for institutional footprints in price action
-- Always manage risk with proper position sizing
-- Focus on high-probability setups only
-
-Would you like me to explain any of these concepts in more detail? 🧠`,
-
-      `⚡ **Advanced Trading Strategy**
-
-Excellent timing with this question! Here's my professional take:
-
-**Strategy Framework:**
-1. **Higher Timeframe Bias** - Daily/4H trend direction
-2. **Lower Timeframe Entry** - 1H/15M precision entries  
-3. **Confluence Factors** - Multiple confirmations
-4. **Risk Management** - Never risk more than 2%
-
-**Entry Criteria:**
-✅ Trend alignment across timeframes
-✅ Key level respect/break
-✅ Volume confirmation
-✅ Clean market structure
-
-**Psychology Tip:** Patience beats speed every time. Wait for your setup, execute with discipline, and trust the process.
-
-What's your current biggest challenge in trading? 🎖️`
-    ];
-
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    // Analyze the prompt to give relevant responses
+    const lowerPrompt = prompt.toLowerCase();
     
+    let response = '';
+    
+    if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi')) {
+      response = `🎯 **Welcome to Aasakira 2.0!**
+
+Hello! I'm your advanced AI trading mentor. I specialize in Smart Money Concepts, institutional trading, and professional market analysis.
+
+**What I can help you with:**
+• 📊 Smart Money Concepts (Order Blocks, FVG, BOS)
+• 🎯 Entry/Exit Strategy Development  
+• ⚖️ Risk Management & Position Sizing
+• 🧠 Trading Psychology & Discipline
+• 📈 Market Structure Analysis
+
+Ask me anything about trading! Try questions like:
+- "Explain order blocks"
+- "How do I manage risk?"
+- "What is market structure?"
+
+Let's elevate your trading! 🚀`;
+    } else if (lowerPrompt.includes('order block') || lowerPrompt.includes('ob')) {
+      response = `📊 **Order Blocks Explained**
+
+An **Order Block** is a significant price level where institutional traders have placed large orders, creating an imbalance that price often returns to fill.
+
+**Key Characteristics:**
+• **Formation**: Created by aggressive buying/selling that moves price rapidly
+• **Structure**: Shows as a consolidation before a strong directional move
+• **Behavior**: Price often returns to test these levels for liquidity
+
+**How to Trade Order Blocks:**
+1. **Identify**: Look for strong moves away from consolidation areas
+2. **Mark the Zone**: The last opposite candle before the move
+3. **Wait for Return**: Price often comes back to test this level
+4. **Entry**: Look for rejection signals (pin bars, engulfing patterns)
+
+**Pro Tip**: Combine with higher timeframe structure for better confluence! 📈`;
+    } else if (lowerPrompt.includes('risk') || lowerPrompt.includes('management')) {
+      response = `⚖️ **Risk Management Mastery**
+
+Risk management is THE most important skill in trading. Here's your professional framework:
+
+**The 2% Rule:**
+• Never risk more than 2% of your account per trade
+• Calculate position size BEFORE entering
+• Use this formula: Risk Amount ÷ Stop Loss Distance = Position Size
+
+**Professional Risk Framework:**
+1. **Pre-Trade**: Define your risk, stop loss, and take profit
+2. **During Trade**: Never move stops against you
+3. **Post-Trade**: Journal your risk decisions
+
+**Position Sizing Example:**
+- Account: $10,000
+- Risk per trade: 2% = $200
+- Stop loss: 50 pips
+- Position size: $200 ÷ 50 pips = $4 per pip
+
+**Remember**: Protecting capital > Making profits. You can't trade without money! 💰`;
+    } else if (lowerPrompt.includes('psychology') || lowerPrompt.includes('discipline')) {
+      response = `🧠 **Trading Psychology & Discipline**
+
+90% of trading success is mental. Here's how professionals think:
+
+**The Professional Mindset:**
+• **Process Over Profit**: Focus on executing your plan perfectly
+• **Probability Thinking**: Accept that individual trades can lose
+• **Emotional Control**: Trade the setup, not your feelings
+
+**Building Discipline:**
+1. **Pre-Market Routine**: Review plan, key levels, economic calendar
+2. **Trade Journal**: Document every trade decision and emotion
+3. **Rules-Based Trading**: Never deviate from your proven strategy
+
+**Handling Losses:**
+- Losses are business expenses, not personal failures
+- Analyze what went wrong: Setup? Execution? Timing?
+- Take breaks after emotional trades
+
+**Pro Tip**: The best traders are boring - they follow the same process every single day! 🎯`;
+    } else if (lowerPrompt.includes('market structure') || lowerPrompt.includes('bos') || lowerPrompt.includes('choch')) {
+      response = `📈 **Market Structure Analysis**
+
+Understanding market structure is like having X-ray vision for price movement.
+
+**Key Concepts:**
+• **Higher Highs/Higher Lows (HH/HL)**: Uptrend structure
+• **Lower Highs/Lower Lows (LH/LL)**: Downtrend structure  
+• **Break of Structure (BOS)**: Continuation signal
+• **Change of Character (ChoCH)**: Reversal signal
+
+**How to Read Structure:**
+1. **Identify Swing Points**: Connect major highs and lows
+2. **Determine Trend**: Is price making HH/HL or LH/LL?
+3. **Watch for Breaks**: BOS = trend continues, ChoCH = trend changes
+
+**Trading Applications:**
+- Trade WITH structure, not against it
+- Look for entries on structure retest
+- Use multiple timeframes for confluence
+
+**Example**: Daily shows uptrend (HH/HL), wait for 4H pullback to key level, enter on 1H bullish BOS.
+
+Structure is your roadmap - follow it! 🗺️`;
+    } else {
+      response = `🎯 **Professional Trading Guidance**
+
+Great question! Here's my analysis based on Smart Money Concepts:
+
+**Key Trading Principles:**
+• **Follow Institutional Flow**: Trade where big money is moving
+• **Multi-Timeframe Analysis**: Align your trades across timeframes
+• **Patience & Precision**: Wait for high-probability setups only
+• **Risk-First Mentality**: Protect capital above all else
+
+**Next Steps for Your Development:**
+1. **Study Market Structure**: Learn to read price action like a book
+2. **Practice Order Flow**: Understand where liquidity sits
+3. **Develop Your Edge**: Find setups that work consistently for you
+4. **Journal Everything**: Track your progress and learn from mistakes
+
+**Remember**: Trading is a skill that takes time to master. Focus on consistency over complexity, and results will follow.
+
+What specific area would you like to dive deeper into? I'm here to guide your journey! 📚`;
+    }
+
     return {
-      text: randomResponse,
+      text: response,
       source: 'local',
-      confidence: 0.7
+      confidence: 0.85
     };
   }
 
@@ -142,6 +211,7 @@ What's your current biggest challenge in trading? 🎖️`
     
     try {
       // Try GPT-4o first
+      console.log('🚀 Attempting primary AI service...');
       const response = await this.callGPT4o(contextualPrompt);
       
       // Add analysis if trading-related
@@ -156,7 +226,7 @@ What's your current biggest challenge in trading? 🎖️`
       
       return response;
     } catch (error) {
-      console.warn('⚠️ Primary AI failed, using fallback:', error);
+      console.warn('⚠️ Primary AI failed, using enhanced fallback:', error);
       return await this.generateLocalResponse(userInput);
     }
   }
@@ -210,7 +280,7 @@ If this involves chart analysis or strategy, include specific entry/exit criteri
   }
 
   private isTradingQuestion(input: string): boolean {
-    const tradingKeywords = ['chart', 'trade', 'entry', 'exit', 'support', 'resistance', 'trend', 'signal', 'strategy'];
+    const tradingKeywords = ['chart', 'trade', 'entry', 'exit', 'support', 'resistance', 'trend', 'signal', 'strategy', 'order block', 'liquidity', 'structure'];
     return tradingKeywords.some(keyword => input.toLowerCase().includes(keyword));
   }
 

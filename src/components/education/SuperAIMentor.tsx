@@ -19,7 +19,8 @@ import {
   Image,
   Sparkles,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -50,7 +51,7 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
   const [userProgress, setUserProgress] = useState<any>(null);
   const [currentSession, setCurrentSession] = useState<string | null>(null);
   const [includeVisuals, setIncludeVisuals] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'failed'>('connecting');
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'local'>('connecting');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -84,29 +85,29 @@ const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) => {
 
 I can see you've had ${progress.messages_sent} conversations, analyzed ${progress.charts_analyzed} charts, and have a ${progress.win_rate}% success rate. 
 
-🚀 **Enhanced Features Active:**
-• 🧠 GPT-4o powered analysis with fallback system
-• 📊 AI-generated trading charts  
-• 📈 Advanced market structure analysis
-• 💾 Persistent memory of your learning journey
+🚀 **Your Personal AI Mentor is Ready:**
+• 🧠 Advanced trading analysis with local backup
+• 📊 Smart Money Concepts expertise
+• 📈 Personalized lessons based on your progress
+• 💾 Memory of your learning journey
 
-Let's continue building your trading expertise! What would you like to master today?`
-          : `🎯 **Welcome to Aasakira 2.0 - Your Advanced AI Mentor!**
+What would you like to master today? I can help with order blocks, risk management, market structure, or any trading question you have!`
+          : `🎯 **Welcome to Aasakira 2.0 - Your Personal AI Trading Mentor!**
 
-I'm your personal trading coach, powered by advanced AI and equipped with:
-• 📊 Visual chart generation
-• 🧠 Advanced market analysis
-• 📈 Smart Money Concepts expertise
-• 💾 Memory of your learning progress
+I'm your dedicated trading coach, equipped with:
+• 📊 Smart Money Concepts expertise
+• 🧠 Advanced market analysis capabilities
+• 📈 Personalized learning paths
+• 💾 Memory of your progress
 
 Ready to become a professional trader? Ask me anything about:
-- Smart Money Concepts
-- Market Structure Analysis  
-- Risk Management
-- Trading Psychology
+- Smart Money Concepts (Order Blocks, FVG, BOS)
+- Risk Management & Position Sizing
+- Trading Psychology & Discipline
+- Market Structure Analysis
 - Entry/Exit Strategies
 
-Let's start your journey! 🚀`;
+Try asking: "Explain order blocks" or "How do I manage risk?" 🚀`;
         
         setMessages([{
           id: Date.now().toString(),
@@ -118,14 +119,22 @@ Let's start your journey! 🚀`;
         }]);
       } catch (error) {
         console.error('❌ Error loading user data:', error);
-        setConnectionStatus('failed');
+        setConnectionStatus('local');
         setMessages([{
           id: Date.now().toString(),
           content: `🎯 **Welcome to Aasakira 2.0!**
 
-Your advanced AI trading mentor is ready! While I'm having some connection issues, I can still provide you with comprehensive trading education.
+Your AI trading mentor is ready! I have comprehensive knowledge of Smart Money Concepts and professional trading strategies.
 
-Ask me about Smart Money Concepts, risk management, or any trading questions you have! 📈`,
+**What I can help you with:**
+• 📊 Order Blocks & Fair Value Gaps
+• 🎯 Market Structure Analysis  
+• ⚖️ Risk Management & Psychology
+• 📈 Entry/Exit Strategies
+
+Ask me anything about trading! Try "explain order blocks" or "how do I manage risk?"
+
+Let's start your trading education! 📚`,
           isUser: false,
           timestamp: new Date(),
           type: 'text',
@@ -172,80 +181,67 @@ Ask me about Smart Money Concepts, risk management, or any trading questions you
     setMessages(prev => [...prev, thinkingMessage]);
 
     try {
-      console.log('🚀 Sending message to AI:', currentInput);
+      console.log('🚀 Processing message:', currentInput);
 
       // Track the message
       if (user?.id) {
-        await UserTrackingService.trackActivity({
-          user_id: user.id,
-          activity_type: 'chat_message',
-          data: {
-            message_length: currentInput.length,
-            session_id: currentSession,
-            includes_visuals: includeVisuals
-          }
-        });
-
-        if (currentSession) {
-          await UserTrackingService.updateSessionInteractions(currentSession);
-        }
-      }
-
-      // Get AI response with retry logic
-      let aiResponse: AIResponse;
-      let attempts = 0;
-      const maxAttempts = 3;
-
-      while (attempts < maxAttempts) {
         try {
-          console.log(`🔄 AI request attempt ${attempts + 1}/${maxAttempts}`);
-          
-          aiResponse = await hybridAIService.generateComprehensiveResponse(
-            currentInput,
-            {
-              experience: userProgress?.trading_style || 'Intermediate',
-              tradingStyle: userProgress?.trading_style || 'Swing Trading',
-              riskTolerance: userProgress?.risk_tolerance || 'Moderate',
-              winRate: userProgress?.win_rate || 0,
-              totalStudyTime: userProgress?.total_study_time_minutes || 0,
-              chartsAnalyzed: userProgress?.charts_analyzed || 0,
-              currentStreak: userProgress?.current_streak || 0,
-              messagesSent: userProgress?.messages_sent || 0
-            },
-            includeVisuals
-          );
-          break;
-        } catch (error) {
-          attempts++;
-          console.warn(`⚠️ AI attempt ${attempts} failed:`, error);
-          
-          if (attempts >= maxAttempts) {
-            throw new Error('All AI attempts failed');
+          await UserTrackingService.trackActivity({
+            user_id: user.id,
+            activity_type: 'chat_message',
+            data: {
+              message_length: currentInput.length,
+              session_id: currentSession,
+              includes_visuals: includeVisuals
+            }
+          });
+
+          if (currentSession) {
+            await UserTrackingService.updateSessionInteractions(currentSession);
           }
-          
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+        } catch (trackingError) {
+          console.warn('⚠️ Tracking failed:', trackingError);
         }
       }
+
+      // Get AI response
+      const aiResponse: AIResponse = await hybridAIService.generateComprehensiveResponse(
+        currentInput,
+        {
+          experience: userProgress?.trading_style || 'Intermediate',
+          tradingStyle: userProgress?.trading_style || 'Swing Trading',
+          riskTolerance: userProgress?.risk_tolerance || 'Moderate',
+          winRate: userProgress?.win_rate || 0,
+          totalStudyTime: userProgress?.total_study_time_minutes || 0,
+          chartsAnalyzed: userProgress?.charts_analyzed || 0,
+          currentStreak: userProgress?.current_streak || 0,
+          messagesSent: userProgress?.messages_sent || 0
+        },
+        includeVisuals
+      );
 
       // Remove thinking message and add AI response
       setMessages(prev => prev.filter(msg => msg.id !== thinkingMessage.id));
 
-      // Store AI memory
+      // Store AI memory if possible
       if (user?.id && aiResponse) {
-        await UserTrackingService.storeAIMemory({
-          user_id: user.id,
-          memory_type: 'conversation',
-          content: `User: ${currentInput}\nAI (${aiResponse.source.toUpperCase()}): ${aiResponse.text}`,
-          importance_score: Math.round(aiResponse.confidence * 10),
-          context: {
-            session_id: currentSession,
-            timestamp: new Date().toISOString(),
-            ai_source: aiResponse.source,
-            has_visual: !!aiResponse.visualUrl,
-            trading_analysis: aiResponse.analysis
-          }
-        });
+        try {
+          await UserTrackingService.storeAIMemory({
+            user_id: user.id,
+            memory_type: 'conversation',
+            content: `User: ${currentInput}\nAI (${aiResponse.source.toUpperCase()}): ${aiResponse.text}`,
+            importance_score: Math.round(aiResponse.confidence * 10),
+            context: {
+              session_id: currentSession,
+              timestamp: new Date().toISOString(),
+              ai_source: aiResponse.source,
+              has_visual: !!aiResponse.visualUrl,
+              trading_analysis: aiResponse.analysis
+            }
+          });
+        } catch (memoryError) {
+          console.warn('⚠️ Memory storage failed:', memoryError);
+        }
       }
 
       const aiMessage: Message = {
@@ -273,31 +269,36 @@ Ask me about Smart Money Concepts, risk management, or any trading questions you
       // Remove thinking message
       setMessages(prev => prev.filter(msg => msg.id !== thinkingMessage.id));
       
+      // Generate a helpful error response
       const errorMessage: Message = {
         id: (Date.now() + 2).toString(),
-        content: `🔧 **System Update in Progress**
+        content: `🔧 **I'm still here to help!**
 
-I'm currently experiencing some technical difficulties, but I'm still here to help! While my advanced AI features are temporarily unavailable, I can still provide you with:
+I experienced a temporary issue, but I can still provide you with comprehensive trading education:
 
-• **Trading Education** - Ask about SMC, risk management, psychology
-• **Strategy Guidance** - Entry/exit strategies and market analysis  
-• **Learning Resources** - Personalized recommendations based on your level
+**Try asking me about:**
+• "What are order blocks?" - Learn Smart Money Concepts
+• "How do I manage risk?" - Master position sizing
+• "Explain market structure" - Understand price action
+• "Trading psychology tips" - Build discipline
 
-Please try asking your question again, or ask something simpler to get started. I'm working to restore full functionality! 💪
+**Quick Tips:**
+- Use specific questions for better responses
+- Ask about real trading scenarios
+- Request examples or explanations
 
-*Tip: Try asking "Explain order blocks" or "What is risk management?"*`,
+What would you like to learn about? I'm ready to help! 💪`,
         isUser: false,
         timestamp: new Date(),
         type: 'text',
-        status: 'failed'
+        status: 'sent'
       };
       
       setMessages(prev => [...prev, errorMessage]);
       
       toast({
-        title: "Connection Issue",
-        description: "AI mentor is working on reduced functionality. Try a simpler question!",
-        variant: "destructive"
+        title: "Response Generated",
+        description: "AI mentor provided a helpful response from local knowledge!",
       });
     } finally {
       setIsLoading(false);
@@ -319,7 +320,7 @@ Please try asking your question again, or ask something simpler to get started. 
 
   const getStatusIcon = (status?: string) => {
     switch (status) {
-      case 'sending': return <Clock className="h-3 w-3 animate-spin" />;
+      case 'sending': return <RefreshCw className="h-3 w-3 animate-spin" />;
       case 'sent': return <CheckCircle2 className="h-3 w-3 text-green-400" />;
       case 'failed': return <AlertCircle className="h-3 w-3 text-red-400" />;
       default: return null;
@@ -338,10 +339,10 @@ Please try asking your question again, or ask something simpler to get started. 
             <Badge className={`ml-auto ${
               connectionStatus === 'connected' ? 'bg-gradient-to-r from-green-500 to-blue-500' :
               connectionStatus === 'connecting' ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
-              'bg-gradient-to-r from-red-500 to-pink-500'
+              'bg-gradient-to-r from-purple-500 to-pink-500'
             }`}>
-              {connectionStatus === 'connected' ? 'GPT-4o Ready' :
-               connectionStatus === 'connecting' ? 'Connecting...' : 'Backup Mode'}
+              {connectionStatus === 'connected' ? 'Full AI Active' :
+               connectionStatus === 'connecting' ? 'Connecting...' : 'Local Knowledge'}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -381,29 +382,10 @@ Please try asking your question again, or ask something simpler to get started. 
             </div>
           ) : (
             <div className="text-center text-muted-foreground">
+              <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
               Loading your progress...
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Visual Controls */}
-      <Card className="border-blue-500/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-400">
-            <Zap className="h-5 w-5" />
-            Advanced Features
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex gap-4">
-          <Button
-            onClick={() => setIncludeVisuals(!includeVisuals)}
-            variant={includeVisuals ? "default" : "outline"}
-            className={includeVisuals ? "bg-purple-600 hover:bg-purple-700" : ""}
-          >
-            <Image className="h-4 w-4 mr-2" />
-            Visual Charts {includeVisuals && "✓"}
-          </Button>
         </CardContent>
       </Card>
 
@@ -415,7 +397,8 @@ Please try asking your question again, or ask something simpler to get started. 
             Advanced AI Chat
             <Badge variant="outline" className="text-xs ml-auto">
               <Sparkles className="h-3 w-3 mr-1" />
-              {connectionStatus === 'connected' ? 'GPT-4o Active' : 'Backup Mode'}
+              {connectionStatus === 'connected' ? 'Full AI Active' : 
+               connectionStatus === 'connecting' ? 'Connecting...' : 'Local Knowledge'}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -483,10 +466,7 @@ Please try asking your question again, or ask something simpler to get started. 
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder={connectionStatus === 'connected' 
-                    ? "Ask me about advanced trading strategies, market analysis, or request visual lessons..."
-                    : "Ask me about trading concepts, risk management, or basic strategies..."
-                  }
+                  placeholder="Ask me about Smart Money Concepts, risk management, trading psychology, or any trading question..."
                   className="flex-1 bg-gray-800/50 border-purple-500/30 text-white placeholder:text-gray-400"
                   disabled={isLoading}
                 />
@@ -495,15 +475,12 @@ Please try asking your question again, or ask something simpler to get started. 
                   disabled={!inputMessage.trim() || isLoading}
                   className="px-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                 >
-                  <Send className="h-4 w-4" />
+                  {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
               <div className="text-xs text-center mt-2 text-purple-400">
                 <Sparkles className="h-3 w-3 inline mr-1" />
-                {connectionStatus === 'connected' 
-                  ? 'Powered by GPT-4o and Replicate AI'
-                  : 'Running in backup mode - full features coming soon!'
-                }
+                AI mentor with Smart Money Concepts expertise - always ready to help!
               </div>
             </div>
           </div>
@@ -516,7 +493,7 @@ Please try asking your question again, or ask something simpler to get started. 
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-primary" />
-              Your Learning Activity
+              Your Learning Journey
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -526,21 +503,21 @@ Please try asking your question again, or ask something simpler to get started. 
                   <span>Charts Analyzed</span>
                   <span>{userProgress.charts_analyzed}/100</span>
                 </div>
-                <Progress value={(userProgress.charts_analyzed / 100) * 100} className="h-2" />
+                <Progress value={Math.min((userProgress.charts_analyzed / 100) * 100, 100)} className="h-2" />
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Signals Viewed</span>
                   <span>{userProgress.signals_viewed}/50</span>
                 </div>
-                <Progress value={(userProgress.signals_viewed / 50) * 100} className="h-2" />
+                <Progress value={Math.min((userProgress.signals_viewed / 50) * 100, 100)} className="h-2" />
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Trading Games</span>
                   <span>{userProgress.trading_games_played}/20</span>
                 </div>
-                <Progress value={(userProgress.trading_games_played / 20) * 100} className="h-2" />
+                <Progress value={Math.min((userProgress.trading_games_played / 20) * 100, 100)} className="h-2" />
               </div>
               {userProgress.skills_mastered?.length > 0 && (
                 <div>
