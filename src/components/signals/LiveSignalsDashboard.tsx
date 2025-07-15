@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -110,10 +109,9 @@ const LiveSignalsDashboard: React.FC = () => {
       });
       
       const voteCount = Object.values(signalDNA.origin).filter(Boolean).length;
-      const gradeLevel = voteCount === 6 ? 'INSTITUTIONAL GRADE' : 'PROFESSIONAL';
       
       toast({
-        title: `${gradeLevel} Signal Generated`,
+        title: `Signal Generated`,
         description: `${signalDNA.symbol} ${signalDNA.type} @ ${signalDNA.structure.entry} | Confidence: ${signalDNA.confidence}% | Confluence: ${voteCount}/6`,
       });
       
