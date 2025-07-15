@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { getGroqService } from '@/services/groqService';
+import { getGroqService, initializeGroqService } from '@/services/groqService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Send, 
@@ -15,7 +16,8 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  Target
+  Target,
+  Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -40,7 +42,7 @@ const EnhancedAIMentor: React.FC = () => {
     {
       id: '1',
       type: 'ai',
-      content: '👋 Hello! I\'m Aasakira, your AI trading mentor and buddy powered by Groq\'s lightning-fast AI. I\'m here to help you master forex trading with Smart Money Concepts, but I also love chatting about anything - life, hobbies, random thoughts! Ask me anything!',
+      content: '👋 Hello! I\'m Aasakira, your AI trading mentor powered by Groq\'s lightning-fast AI. I\'m here to help you master forex trading with Smart Money Concepts! Ask me anything about trading, life, or just chat casually - I\'m your buddy too! 🚀',
       timestamp: new Date()
     }
   ]);
@@ -50,9 +52,50 @@ const EnhancedAIMentor: React.FC = () => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [quizScore, setQuizScore] = useState({ correct: 0, total: 0 });
-  const [activeSection, setActiveSection] = useState<'chat' | 'quiz'>('chat');
+  const [activeSection, setActiveSection] = useState<'chat' | 'quiz' | 'setup'>('setup');
   const [userLevel, setUserLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [groqApiKey, setGroqApiKey] = useState('');
+  const [isGroqInitialized, setIsGroqInitialized] = useState(false);
   const { toast } = useToast();
+
+  // Check if Groq is initialized on component mount
+  useEffect(() => {
+    try {
+      getGroqService();
+      setIsGroqInitialized(true);
+      setActiveSection('chat');
+    } catch (error) {
+      setIsGroqInitialized(false);
+      setActiveSection('setup');
+    }
+  }, []);
+
+  const handleInitializeGroq = () => {
+    if (!groqApiKey.trim()) {
+      toast({
+        title: "⚠️ API Key Required",
+        description: "Please enter your Groq API key to continue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      initializeGroqService(groqApiKey);
+      setIsGroqInitialized(true);
+      setActiveSection('chat');
+      toast({
+        title: "✅ Groq AI Connected",
+        description: "Lightning-fast AI responses are now ready!",
+      });
+    } catch (error) {
+      toast({
+        title: "❌ Connection Failed",
+        description: "Please check your API key and try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -72,9 +115,9 @@ const EnhancedAIMentor: React.FC = () => {
     try {
       console.log('🤖 Sending message to Groq AI service:', currentInput);
       
-      // Get conversation history for context
+      // Get conversation history for context - fix the type conversion
       const conversationHistory = messages.slice(-10).map(msg => ({
-        role: msg.type === 'user' ? 'user' : 'assistant',
+        role: (msg.type === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: msg.content
       }));
 
@@ -119,7 +162,7 @@ const EnhancedAIMentor: React.FC = () => {
       
       toast({
         title: "⚠️ Connection Issue",
-        description: "Please check if the Groq API key is properly configured in your project settings.",
+        description: "Please check if the Groq API key is properly configured.",
         variant: "destructive"
       });
     } finally {
@@ -273,6 +316,62 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
     }
   };
 
+  // Setup section for API key configuration
+  if (activeSection === 'setup') {
+    return (
+      <div className="space-y-6">
+        <Card className="glass-card border-purple-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
+                <Settings className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Setup Groq AI</h2>
+                <p className="text-sm text-gray-400">Configure your lightning-fast AI mentor</p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <h3 className="font-semibold text-blue-300 mb-2">🚀 Get Your Groq API Key</h3>
+              <p className="text-gray-300 text-sm mb-3">
+                Groq provides ultra-fast AI inference. Get your free API key at:
+              </p>
+              <a 
+                href="https://console.groq.com/keys" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline"
+              >
+                https://console.groq.com/keys
+              </a>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white">Groq API Key</label>
+              <Input
+                type="password"
+                value={groqApiKey}
+                onChange={(e) => setGroqApiKey(e.target.value)}
+                placeholder="Enter your Groq API key"
+                className="bg-gray-800 border-gray-600"
+              />
+            </div>
+            
+            <Button
+              onClick={handleInitializeGroq}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              Initialize Groq AI
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -296,6 +395,15 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
               }`}>
                 {userLevel.charAt(0).toUpperCase() + userLevel.slice(1)}
               </Badge>
+              <Button
+                onClick={() => setActiveSection('setup')}
+                variant="outline"
+                size="sm"
+                className="border-gray-600"
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                Setup
+              </Button>
               <Button
                 onClick={() => setActiveSection('chat')}
                 variant={activeSection === 'chat' ? 'default' : 'outline'}
