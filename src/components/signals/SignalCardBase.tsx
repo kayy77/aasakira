@@ -27,7 +27,12 @@ export interface BaseSignalData {
   takeProfit: string;
   livePrice?: number;
   priceSource?: string;
-  priceAccuracy?: string;
+  priceAccuracy?: {
+    spread: number;
+    pips: number;
+    isAccurate: boolean;
+    status: string;
+  };
   riskReward: string;
   timestamp: Date;
   type: 'institutional' | 'smc' | 'enhanced';
@@ -96,6 +101,21 @@ const SignalCardBase: React.FC<SignalCardBaseProps> = ({
   const displayPrice = signal.livePrice || parseFloat(signal.entry);
   const priceAge = signal.timestamp ? Math.floor((Date.now() - signal.timestamp.getTime()) / 1000) : null;
 
+  // Get price accuracy status text
+  const getPriceAccuracyStatus = () => {
+    if (!signal.priceAccuracy) return 'LIVE';
+    
+    if (signal.priceAccuracy.isAccurate) {
+      return 'VERIFIED';
+    } else if (signal.priceAccuracy.pips <= 5) {
+      return 'WARNING';
+    } else {
+      return 'HIGH_SPREAD';
+    }
+  };
+
+  const priceAccuracyStatus = getPriceAccuracyStatus();
+
   return (
     <>
       <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-500/20 hover:border-gray-400/40 transition-all duration-300 relative overflow-hidden">
@@ -160,15 +180,13 @@ const SignalCardBase: React.FC<SignalCardBaseProps> = ({
               <div className="flex items-center gap-2">
                 <Wifi className="w-5 h-5 text-green-400" />
                 <span className="text-lg font-bold text-green-400">LIVE PRICE</span>
-                {signal.priceAccuracy && (
-                  <Badge className={`text-xs ${
-                    signal.priceAccuracy === 'VERIFIED' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                    signal.priceAccuracy === 'WARNING' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                    'bg-red-500/20 text-red-400 border-red-500/30'
-                  }`}>
-                    {signal.priceAccuracy}
-                  </Badge>
-                )}
+                <Badge className={`text-xs ${
+                  priceAccuracyStatus === 'VERIFIED' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                  priceAccuracyStatus === 'WARNING' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                  'bg-red-500/20 text-red-400 border-red-500/30'
+                }`}>
+                  {priceAccuracyStatus}
+                </Badge>
               </div>
               {onRefreshPrice && (
                 <Button
@@ -210,6 +228,32 @@ const SignalCardBase: React.FC<SignalCardBaseProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Price Accuracy Info */}
+          {signal.priceAccuracy && (
+            <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg">
+              <div className="flex items-center gap-2">
+                {signal.priceAccuracy.isAccurate ? (
+                  <CheckCircle2 className="w-4 h-4 text-green-400" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                )}
+                <span className="text-sm text-gray-300">
+                  Spread: {signal.priceAccuracy.pips.toFixed(1)} pips
+                </span>
+              </div>
+              
+              <Badge className={`${
+                signal.priceAccuracy.isAccurate
+                  ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                  : signal.priceAccuracy.pips <= 5
+                  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                  : 'bg-red-500/20 text-red-400 border-red-500/30'
+              } text-xs`}>
+                {signal.priceAccuracy.status}
+              </Badge>
+            </div>
+          )}
 
           {/* Filter Status for Institutional */}
           {signal.type === 'institutional' && signal.filtersPassedCount && signal.maxFilters && (
