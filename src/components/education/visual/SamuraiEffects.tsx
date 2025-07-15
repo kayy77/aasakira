@@ -8,62 +8,62 @@ interface SamuraiEffectsProps {
   showPetals?: boolean;
 }
 
-const SamuraiEffects = ({ children, showGlow = false, showPetals = false }: SamuraiEffectsProps) => {
+const SamuraiEffects: React.FC<SamuraiEffectsProps> = ({ 
+  children, 
+  showGlow = false, 
+  showPetals = false 
+}) => {
   const petalVariants = {
-    initial: { y: -10, x: 0, opacity: 0, rotate: 0 },
-    animate: { 
-      y: window.innerHeight + 100, 
-      x: Math.random() * 100 - 50,
-      opacity: [0, 1, 1, 0],
-      rotate: 360,
-      transition: { 
-        duration: Math.random() * 3 + 4,
-        ease: "easeInOut",
+    initial: {
+      y: -20,
+      x: 0,
+      opacity: 0,
+      rotate: 0,
+    },
+    animate: {
+      y: [0, 200, 400],
+      x: [0, 30, -20, 40],
+      opacity: [0, 0.6, 0.3, 0],
+      rotate: [0, 180, 360],
+      transition: {
+        duration: 8,
+        ease: "easeOut",
         repeat: Infinity,
-        delay: Math.random() * 5
+        delay: Math.random() * 5,
       }
     }
   };
 
   return (
     <div className="relative">
-      {/* Sakura Petals */}
+      {/* Cherry Blossom Petals */}
       {showPetals && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {[...Array(8)].map((_, i) => (
+          {Array.from({ length: 6 }).map((_, i) => (
             <motion.div
               key={i}
-              className="absolute w-2 h-2 bg-gradient-to-br from-pink-300 to-pink-500 rounded-full opacity-60"
+              className="absolute text-pink-300 text-sm"
               style={{
                 left: `${Math.random() * 100}%`,
-                top: '-10px'
+                top: '-20px',
               }}
               variants={petalVariants}
               initial="initial"
               animate="animate"
-            />
+            >
+              🌸
+            </motion.div>
           ))}
         </div>
       )}
 
-      {/* Glow Effect */}
-      <motion.div
-        className={`relative ${showGlow ? 'shadow-lg shadow-purple-500/20' : ''}`}
-        animate={showGlow ? {
-          boxShadow: [
-            '0 0 20px rgba(168, 85, 247, 0.2)',
-            '0 0 40px rgba(168, 85, 247, 0.4)',
-            '0 0 20px rgba(168, 85, 247, 0.2)'
-          ]
-        } : {}}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      >
+      {/* Glowing Effect */}
+      <div className={`relative ${showGlow ? 'animate-pulse' : ''}`}>
+        {showGlow && (
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg blur-sm -z-10" />
+        )}
         {children}
-      </motion.div>
+      </div>
     </div>
   );
 };
