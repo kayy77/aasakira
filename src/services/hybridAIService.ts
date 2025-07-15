@@ -35,7 +35,7 @@ class HybridAIService {
 
   private async callGPT4o(prompt: string): Promise<AIResponse> {
     try {
-      console.log('🤖 Attempting GPT-4o call...');
+      console.log('🤖 Calling GPT-4o via Supabase edge function...');
       
       const { data, error } = await supabase.functions.invoke('gpt4o-chat', {
         body: { prompt }
@@ -50,7 +50,7 @@ class HybridAIService {
         throw new Error('No response from GPT-4o');
       }
 
-      console.log('✅ GPT-4o response received');
+      console.log('✅ GPT-4o response received successfully');
       
       return {
         text: data.response,
@@ -66,7 +66,6 @@ class HybridAIService {
   private async generateLocalResponse(prompt: string): Promise<AIResponse> {
     console.log('🔧 Generating local response for:', prompt.substring(0, 50) + '...');
     
-    // Analyze the prompt to give relevant responses
     const lowerPrompt = prompt.toLowerCase();
     
     let response = '';
@@ -210,23 +209,20 @@ What specific area would you like to dive deeper into? I'm here to guide your jo
     const contextualPrompt = this.buildContextualPrompt(userInput, userContext);
     
     try {
-      // Try GPT-4o first
-      console.log('🚀 Attempting primary AI service...');
+      console.log('🚀 Attempting GPT-4o via edge function...');
       const response = await this.callGPT4o(contextualPrompt);
       
-      // Add analysis if trading-related
       if (this.isTradingQuestion(userInput)) {
         response.analysis = this.generateTradeAnalysis(userInput);
       }
       
-      // Add visual if requested and appropriate
       if (includeVisuals && this.shouldIncludeVisual(userInput)) {
         response.visualUrl = await this.generateVisualUrl(userInput);
       }
       
       return response;
     } catch (error) {
-      console.warn('⚠️ Primary AI failed, using enhanced fallback:', error);
+      console.warn('⚠️ GPT-4o failed, using enhanced fallback:', error);
       return await this.generateLocalResponse(userInput);
     }
   }
@@ -289,7 +285,7 @@ If this involves chart analysis or strategy, include specific entry/exit criteri
       pair: this.extractPair(input) || 'EUR/USD',
       trend: this.analyzeTrend(input),
       timeframe: this.extractTimeframe(input) || '1H',
-      confidence: Math.floor(Math.random() * 20) + 80, // 80-100%
+      confidence: Math.floor(Math.random() * 20) + 80,
       keyLevels: this.generateKeyLevels(input)
     };
   }
@@ -316,7 +312,7 @@ If this involves chart analysis or strategy, include specific entry/exit criteri
 
   private generateKeyLevels(input: string): Array<{ type: 'support' | 'resistance' | 'pivot'; level: string }> {
     const levels = [];
-    const basePrice = 1.0800; // Example EUR/USD
+    const basePrice = 1.0800;
     
     if (input.toLowerCase().includes('support') || Math.random() > 0.5) {
       levels.push({
@@ -354,7 +350,6 @@ If this involves chart analysis or strategy, include specific entry/exit criteri
   }
 
   private async generateVisualUrl(input: string): Promise<string> {
-    // Generate educational chart visualization
     const concepts = ['order-block', 'fair-value-gap', 'market-structure', 'liquidity-sweep'];
     const concept = concepts[Math.floor(Math.random() * concepts.length)];
     return `https://via.placeholder.com/600x400/1a1a1a/ffffff?text=${concept.replace('-', '+')}&font=Arial`;
