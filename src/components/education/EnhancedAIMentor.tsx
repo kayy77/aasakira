@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { hybridAIService } from '@/services/hybridAIService';
+import { replicateAIService } from '@/services/replicateAIService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Send, 
@@ -41,7 +41,7 @@ const EnhancedAIMentor: React.FC = () => {
     {
       id: '1',
       type: 'ai',
-      content: '👋 Hello! I\'m Aasakira, your AI trading mentor and buddy. I\'m here to help you master forex trading with Smart Money Concepts, but I also love chatting about anything - life, hobbies, random thoughts! Ask me anything!',
+      content: '👋 Hello! I\'m Aasakira, your AI trading mentor and buddy powered by Replicate AI. I\'m here to help you master forex trading with Smart Money Concepts, but I also love chatting about anything - life, hobbies, random thoughts! Ask me anything!',
       timestamp: new Date()
     }
   ]);
@@ -71,9 +71,9 @@ const EnhancedAIMentor: React.FC = () => {
     setIsLoading(true);
 
     try {
-      console.log('Sending message to hybrid AI service:', currentInput);
+      console.log('🤖 Sending message to Replicate AI service:', currentInput);
       
-      const response = await hybridAIService.generateComprehensiveResponse(
+      const response = await replicateAIService.generateResponse(
         currentInput,
         {
           experience: userLevel,
@@ -85,10 +85,10 @@ const EnhancedAIMentor: React.FC = () => {
           currentStreak: quizScore.correct,
           messagesSent: messages.filter(m => m.type === 'user').length
         },
-        false
+        messages.slice(-6) // Last 6 messages for context
       );
       
-      console.log('Received response from hybrid AI service:', response);
+      console.log('✅ Received response from Replicate AI:', response);
       
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -101,10 +101,10 @@ const EnhancedAIMentor: React.FC = () => {
       
       toast({
         title: "✅ AI Response Generated",
-        description: `Powered by ${response.source.toUpperCase()} with ${Math.round(response.confidence * 100)}% confidence`,
+        description: `Powered by Replicate AI with ${Math.round(response.confidence * 100)}% confidence`,
       });
     } catch (error) {
-      console.error('AI response error:', error);
+      console.error('❌ Replicate AI response error:', error);
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
@@ -260,7 +260,7 @@ const EnhancedAIMentor: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">Aasakira AI Mentor & Buddy</h2>
-                <p className="text-sm text-gray-400">Your personal trading education assistant and friend</p>
+                <p className="text-sm text-gray-400">Powered by Replicate AI - Your trading mentor and friend</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -320,7 +320,10 @@ const EnhancedAIMentor: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-blue-400" />
-              AI Chat Assistant & Buddy
+              Replicate AI Chat Assistant & Buddy
+              <Badge className="bg-green-500/20 text-green-400 text-xs">
+                Powered by Llama 2
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -358,7 +361,7 @@ const EnhancedAIMentor: React.FC = () => {
                 >
                   <div className="bg-gray-700 text-gray-100 p-3 rounded-lg flex items-center gap-2">
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Aasakira is thinking...</span>
+                    <span>Aasakira is thinking with Replicate AI...</span>
                   </div>
                 </motion.div>
               )}
