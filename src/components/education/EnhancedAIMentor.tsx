@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,9 +15,15 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  Target
+  Target,
+  Sparkles,
+  Eye
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import ConceptVisualizer from './visual/ConceptVisualizer';
+import LessonCard from './visual/LessonCard';
+import SamuraiEffects from './visual/SamuraiEffects';
+import ChartUploadAnalysis from './visual/ChartUploadAnalysis';
 
 interface QuizQuestion {
   question: string;
@@ -54,6 +59,69 @@ const EnhancedAIMentor: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'chat' | 'quiz'>('chat');
   const [userLevel, setUserLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
   const { toast } = useToast();
+
+  const detectConcepts = (text: string): string[] => {
+    const concepts = [
+      'market structure',
+      'order block',
+      'fair value gap',
+      'liquidity',
+      'break of structure',
+      'breaker block',
+      'imbalance',
+      'stop hunt',
+      'smart money'
+    ];
+    
+    return concepts.filter(concept => 
+      text.toLowerCase().includes(concept)
+    );
+  };
+
+  const generateLessonCard = (concept: string) => {
+    const lessons = {
+      'market structure': {
+        topic: 'Market Structure Analysis',
+        strategy: 'Identify swing highs/lows and break of structure',
+        rule: 'Only trade in direction of structure break',
+        visual: 'Higher highs & higher lows for bullish structure'
+      },
+      'order block': {
+        topic: 'Order Block Trading',
+        strategy: 'Enter on return to institutional order zone',
+        rule: 'Use last opposite candle before strong directional move',
+        visual: 'Highlighted supply/demand zones on chart'
+      },
+      'fair value gap': {
+        topic: 'Fair Value Gap (FVG)',
+        strategy: 'Enter when price returns to fill the imbalance',
+        rule: 'Look for three candle pattern with gap',
+        visual: 'Visible gap between candle wicks'
+      },
+      'liquidity': {
+        topic: 'Liquidity Concepts',
+        strategy: 'Target areas where stops are likely resting',
+        rule: 'Above/below swing points hold stop losses',
+        visual: 'Zones above highs and below lows'
+      }
+    };
+    
+    return lessons[concept.toLowerCase()] || null;
+  };
+
+  const convertToBushidoQuote = (text: string): string => {
+    if (Math.random() > 0.3) return text; // 30% chance for bushido quote
+    
+    const quotes = [
+      "The patient trader strikes only when the market bows. " + text,
+      "Like cherry blossoms in spring, opportunities bloom for those who wait. " + text,
+      "A samurai's discipline in battle mirrors a trader's patience in chaos. " + text,
+      "The way of the market is like the way of the sword - precision over force. " + text,
+      "In stillness, find strength. In movement, find opportunity. " + text
+    ];
+    
+    return quotes[Math.floor(Math.random() * quotes.length)];
+  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -95,10 +163,13 @@ const EnhancedAIMentor: React.FC = () => {
       
       console.log('✅ Received response from Groq AI:', response);
       
+      // Convert to bushido quote occasionally
+      const finalResponse = convertToBushidoQuote(response);
+      
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: response,
+        content: finalResponse,
         timestamp: new Date()
       };
 
@@ -281,12 +352,17 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
-                <Brain className="w-6 h-6 text-purple-400" />
-              </div>
+              <SamuraiEffects showGlow={true}>
+                <div className="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
+                  <Brain className="w-6 h-6 text-purple-400" />
+                </div>
+              </SamuraiEffects>
               <div>
-                <h2 className="text-xl font-bold text-white">Aasakira AI Mentor & Buddy</h2>
-                <p className="text-sm text-gray-400">Powered by Groq AI - Lightning-fast responses</p>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  Aasakira AI Mentor & Buddy
+                  <Sparkles className="w-4 h-4 text-yellow-400" />
+                </h2>
+                <p className="text-sm text-gray-400">Visual Trading Sensei • Powered by Groq AI</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -342,77 +418,129 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
 
       {/* Chat Section */}
       {activeSection === 'chat' && (
-        <Card className="glass-card border-blue-500/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-blue-400" />
-              Groq AI Chat Assistant & Buddy
-              <Badge className="bg-green-500/20 text-green-400 text-xs">
-                ⚡ Lightning Fast
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Messages */}
-            <div className="h-96 overflow-y-auto space-y-3 bg-gray-900/30 rounded-lg p-4">
-              <AnimatePresence>
-                {messages.map((message) => (
+        <SamuraiEffects showPetals={true}>
+          <Card className="glass-card border-blue-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="w-5 h-5 text-blue-400" />
+                Visual Trading Sensei
+                <Badge className="bg-green-500/20 text-green-400 text-xs">
+                  ⚡ Enhanced with Charts
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Messages */}
+              <div className="h-96 overflow-y-auto space-y-3 bg-gray-900/30 rounded-lg p-4">
+                <AnimatePresence>
+                  {messages.map((message) => {
+                    const detectedConcepts = message.type === 'ai' ? detectConcepts(message.content) : [];
+                    const lessonConcept = detectedConcepts[0];
+                    const lessonData = lessonConcept ? generateLessonCard(lessonConcept) : null;
+                    
+                    return (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className="max-w-[85%] space-y-3">
+                          <SamuraiEffects showGlow={message.type === 'ai'}>
+                            <div
+                              className={`p-3 rounded-lg ${
+                                message.type === 'user'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-gray-700 text-gray-100'
+                              }`}
+                            >
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                              <div className="text-xs opacity-70 mt-1">
+                                {message.timestamp.toLocaleTimeString()}
+                              </div>
+                            </div>
+                          </SamuraiEffects>
+                          
+                          {/* Auto-embed concept visualizations */}
+                          {message.type === 'ai' && detectedConcepts.map((concept, index) => (
+                            <ConceptVisualizer
+                              key={index}
+                              concept={concept}
+                              explanation={message.content}
+                            />
+                          ))}
+                          
+                          {/* Show lesson card for main concept */}
+                          {message.type === 'ai' && lessonData && (
+                            <LessonCard
+                              topic={lessonData.topic}
+                              strategy={lessonData.strategy}
+                              rule={lessonData.rule}
+                              visual={lessonData.visual}
+                              onPractice={() => {
+                                toast({
+                                  title: "🎯 Practice Mode",
+                                  description: `Starting practice session for ${lessonData.topic}`,
+                                });
+                              }}
+                            />
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+                
+                {isLoading && (
                   <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex justify-start"
                   >
-                    <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
-                        message.type === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-700 text-gray-100'
-                      }`}
-                    >
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                      <div className="text-xs opacity-70 mt-1">
-                        {message.timestamp.toLocaleTimeString()}
+                    <SamuraiEffects showGlow={true}>
+                      <div className="bg-gray-700 text-gray-100 p-3 rounded-lg flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Aasakira is thinking with Groq AI...</span>
                       </div>
-                    </div>
+                    </SamuraiEffects>
                   </motion.div>
-                ))}
-              </AnimatePresence>
-              
-              {isLoading && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex justify-start"
-                >
-                  <div className="bg-gray-700 text-gray-100 p-3 rounded-lg flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Aasakira is thinking with Groq AI...</span>
-                  </div>
-                </motion.div>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* Input */}
-            <div className="flex gap-2">
-              <Textarea
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me about trading, life, hobbies, random thoughts - anything!"
-                className="flex-1 bg-gray-800 border-gray-600 resize-none"
-                rows={2}
+              {/* Chart Upload Analysis */}
+              <ChartUploadAnalysis
+                onImageUpload={(analysis) => {
+                  const analysisMessage: ChatMessage = {
+                    id: Date.now().toString(),
+                    type: 'ai',
+                    content: `📊 **Chart Analysis Complete:**\n\n${analysis}`,
+                    timestamp: new Date()
+                  };
+                  setMessages(prev => [...prev, analysisMessage]);
+                }}
               />
-              <Button
-                onClick={handleSendMessage}
-                disabled={isLoading || !inputMessage.trim()}
-                className="bg-gradient-to-r from-blue-600 to-purple-600"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+
+              {/* Input */}
+              <div className="flex gap-2">
+                <Textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask about trading, upload charts, or chat about anything!"
+                  className="flex-1 bg-gray-800 border-gray-600 resize-none"
+                  rows={2}
+                />
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={isLoading || !inputMessage.trim()}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </SamuraiEffects>
       )}
 
       {/* Quiz Section */}
