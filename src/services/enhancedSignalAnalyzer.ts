@@ -1,3 +1,4 @@
+
 import { realTimePriceEngine, LivePriceData } from './realtimePriceEngine';
 
 interface ConfluenceFilter {
@@ -150,7 +151,7 @@ class EnhancedSignalAnalyzer {
       }
 
       // Generate signal
-      const signal = await this.generateSignal(marketData, confluenceResults, timeframeAgreement);
+      const signal = await this.generateSignalData(marketData, confluenceResults, timeframeAgreement);
       
       // Add historical analysis
       const historicalAnalysis = await this.analyzeHistoricalPerformance(signal);
@@ -361,7 +362,7 @@ class EnhancedSignalAnalyzer {
     return this.getTrend(candles);
   }
 
-  private async generateSignal(
+  private async generateSignalData(
     data: MarketAnalysisData, 
     confluence: any, 
     timeframe: any
