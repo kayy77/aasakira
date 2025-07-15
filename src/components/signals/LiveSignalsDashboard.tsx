@@ -56,7 +56,7 @@ const LiveSignalsDashboard: React.FC = () => {
         
         toast({
           title: "🧠 Institutional Signal Generated!",
-          description: `${institutionalSignal.direction.toUpperCase()} ${institutionalSignal.pair} - ${institutionalSignal.filters_passed.length}/6 filters passed`,
+          description: `${institutionalSignal.direction.toUpperCase()} ${institutionalSignal.pair} @ ${institutionalSignal.livePrice || institutionalSignal.entry} - ${institutionalSignal.filters_passed.length}/6 filters passed`,
         });
         
         return;
@@ -145,45 +145,52 @@ const LiveSignalsDashboard: React.FC = () => {
   };
 
   const handleInstitutionalPriceUpdate = (signalId: string, newPrice: number, source: string) => {
+    console.log(`🔄 Updating institutional signal ${signalId} price: ${newPrice} from ${source}`);
+    
     setInstitutionalSignals(prevSignals => 
       prevSignals.map(signal => 
         signal.id === signalId 
           ? { 
               ...signal, 
+              livePrice: newPrice,
               entry: newPrice.toFixed(signal.pair.includes('JPY') ? 3 : 5),
               priceSource: source, 
               priceTimestamp: new Date().toISOString(),
-              priceAccuracy: source === 'Enhanced Fallback' ? 'FALLBACK' : 'VERIFIED'
+              priceAccuracy: source === 'Enhanced Fallback' ? 'FALLBACK' : 'VERIFIED',
+              lastPriceUpdate: new Date()
             }
           : signal
       )
     );
   };
 
-  // Auto-refresh signals and update live prices every 5 seconds
+  // Real-time price updates from the institutional signal service
   useEffect(() => {
-    const interval = setInterval(async () => {
+    const interval = setInterval(() => {
+      // Get the latest signals from the service (they update automatically)
+      const latestSignals = institutionalSignalService.getLatestSignals();
+      
+      if (latestSignals.length > 0) {
+        console.log(`🔄 Refreshing ${latestSignals.length} institutional signals from service...`);
+        setInstitutionalSignals(latestSignals);
+      }
+      
+      // Update enhanced signals if any exist
       if (signals.length > 0) {
         setSignals([...enhancedSignalService.getSignals()]);
       }
-      
-      // Update live prices for institutional signals
-      if (institutionalSignals.length > 0) {
-        for (const signal of institutionalSignals) {
-          if (signal.status === 'ACTIVE') {
-            try {
-              const priceData = await enhancedPriceService.getLivePrice(signal.pair);
-              handleInstitutionalPriceUpdate(signal.id, priceData.price, priceData.source);
-            } catch (error) {
-              console.error(`Failed to update price for ${signal.pair}:`, error);
-            }
-          }
-        }
-      }
-    }, 5000); // Every 5 seconds for better real-time feel
+    }, 2000); // Check every 2 seconds for faster updates
 
     return () => clearInterval(interval);
-  }, [signals.length, institutionalSignals.length]);
+  }, [signals.length]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup institutional signal service if needed
+      // institutionalSignalService.destroy();
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -197,7 +204,7 @@ const LiveSignalsDashboard: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">🧠 Institutional AI Signals</h2>
-                <p className="text-sm text-gray-400">Smart Money Concepts • 3/6 Filter Logic • Live Analysis</p>
+                <p className="text-sm text-gray-400">Smart Money Concepts • 3/6 Filter Logic • Live Price Feed</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -241,6 +248,16 @@ const LiveSignalsDashboard: React.FC = () => {
       {/* Webhook Manager */}
       {showWebhookManager && (
         <WebhookManager />
+      )}
+
+      {/* Live Price Status */}
+      {institutionalSignals.length > 0 && (
+        <Alert className="border-green-500/30 bg-green-500/10">
+          <CheckCircle2 className="h-4 w-4 text-green-400" />
+          <AlertDescription className="text-green-400">
+            🟢 Live Price Feed Active - Real-time updates every 3 seconds using enhanced price APIs
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Institutional Signals */}
@@ -382,7 +399,7 @@ const LiveSignalsDashboard: React.FC = () => {
             <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-white mb-2">No Institutional Signals</h3>
             <p className="text-gray-400 mb-4">
-              Generate institutional-grade signals based on Smart Money Concepts and multi-filter confluence
+              Generate institutional-grade signals based on Smart Money Concepts and multi-filter confluence with live price feeds
             </p>
             <Button
               onClick={generateSignal}

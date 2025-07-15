@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import type { InstitutionalSignal } from '@/services/institutionalSignalService';
+import { institutionalSignalService } from '@/services/institutionalSignalService';
 
 interface InstitutionalSignalCardProps {
   signal: InstitutionalSignal;
@@ -33,6 +35,12 @@ interface InstitutionalSignalCardProps {
 const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signal, onAnalyze, onPriceUpdate }) => {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isUpdatingPrice, setIsUpdatingPrice] = useState(false);
+  const [localSignal, setLocalSignal] = useState(signal);
+
+  // Update local signal when prop changes
+  useEffect(() => {
+    setLocalSignal(signal);
+  }, [signal]);
 
   const getConfidenceColor = (confidence: string) => {
     switch (confidence) {
@@ -59,17 +67,27 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
 
   const handleAnalyze = () => {
     setShowAnalysis(true);
-    onAnalyze?.(signal);
+    onAnalyze?.(localSignal);
   };
 
   const updateLivePrice = async () => {
-    if (!onPriceUpdate) return;
-    
     setIsUpdatingPrice(true);
     try {
-      const enhancedPriceService = await import('@/services/enhancedPriceService');
-      const priceData = await enhancedPriceService.enhancedPriceService.getLivePrice(signal.pair);
-      onPriceUpdate(priceData.price, priceData.source);
+      console.log(`🔄 Manually refreshing price for ${localSignal.pair}...`);
+      
+      const success = await institutionalSignalService.updateSignalPrice(localSignal.id);
+      
+      if (success) {
+        // Get the updated signal
+        const updatedSignals = institutionalSignalService.getLatestSignals();
+        const updatedSignal = updatedSignals.find(s => s.id === localSignal.id);
+        
+        if (updatedSignal && updatedSignal.livePrice) {
+          setLocalSignal(updatedSignal);
+          onPriceUpdate?.(updatedSignal.livePrice, updatedSignal.priceSource);
+          console.log(`✅ Price updated for ${localSignal.pair}: ${updatedSignal.livePrice}`);
+        }
+      }
     } catch (error) {
       console.error('Failed to update live price:', error);
     } finally {
@@ -77,11 +95,17 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
     }
   };
 
+  // Get the current live price to display
+  const displayPrice = localSignal.livePrice || parseFloat(localSignal.entry);
+  const priceAge = localSignal.lastPriceUpdate 
+    ? Math.floor((Date.now() - localSignal.lastPriceUpdate.getTime()) / 1000)
+    : null;
+
   return (
     <>
       <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-300 relative overflow-hidden">
         {/* Institutional Badge */}
-        {signal.confidence === 'INSTITUTIONAL' && (
+        {localSignal.confidence === 'INSTITUTIONAL' && (
           <div className="absolute top-2 right-2">
             <Badge className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border-yellow-500/30">
               <Crown className="w-3 h-3 mr-1" />
@@ -93,69 +117,78 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-              {signal.direction === 'buy' ? (
+              {localSignal.direction === 'buy' ? (
                 <TrendingUp className="w-5 h-5 text-green-400" />
               ) : (
                 <TrendingDown className="w-5 h-5 text-red-400" />
               )}
-              {signal.pair}
+              {localSignal.pair}
               <Building2 className="w-4 h-4 text-yellow-400" />
             </CardTitle>
             <div className="flex gap-2">
-              <Badge className={getDirectionColor(signal.direction)}>
-                {signal.direction.toUpperCase()}
+              <Badge className={getDirectionColor(localSignal.direction)}>
+                {localSignal.direction.toUpperCase()}
               </Badge>
-              <Badge className={getConfidenceColor(signal.confidence)}>
-                {getConfidenceIcon(signal.confidence)}
-                {signal.confidence}
+              <Badge className={getConfidenceColor(localSignal.confidence)}>
+                {getConfidenceIcon(localSignal.confidence)}
+                {localSignal.confidence}
               </Badge>
             </div>
           </div>
         </CardHeader>
         
         <CardContent className="space-y-4">
-          {/* Live Price Source Display */}
-          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Wifi className="w-4 h-4 text-blue-400" />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-blue-400">
-                  Live Price: {signal.priceSource}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {new Date(signal.priceTimestamp).toLocaleString()}
-                </span>
+          {/* LIVE PRICE DISPLAY - Main Feature */}
+          <div className="p-4 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Wifi className="w-5 h-5 text-blue-400" />
+                <span className="text-lg font-bold text-blue-400">LIVE PRICE</span>
               </div>
+              <Button
+                onClick={updateLivePrice}
+                disabled={isUpdatingPrice}
+                variant="outline"
+                size="sm"
+                className="border-blue-500/30 hover:bg-blue-500/20"
+              >
+                {isUpdatingPrice ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Refresh
+                  </>
+                )}
+              </Button>
             </div>
-            <Button
-              onClick={updateLivePrice}
-              disabled={isUpdatingPrice}
-              variant="outline"
-              size="sm"
-              className="border-blue-500/30 hover:bg-blue-500/20"
-            >
-              {isUpdatingPrice ? (
-                <>
-                  <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-3 h-3 mr-1" />
-                  Refresh
-                </>
+            
+            <div className="text-center">
+              <div className="text-3xl font-mono font-bold text-white mb-1">
+                {displayPrice.toFixed(localSignal.pair.includes('JPY') ? 3 : 5)}
+              </div>
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <span className="text-blue-400">Source: {localSignal.priceSource}</span>
+                <div className="flex items-center gap-1">
+                  {localSignal.priceAccuracy === 'VERIFIED' && <CheckCircle className="w-3 h-3 text-green-400" />}
+                  {localSignal.priceAccuracy === 'WARNING' && <AlertTriangle className="w-3 h-3 text-yellow-400" />}
+                  {localSignal.priceAccuracy === 'FALLBACK' && <XCircle className="w-3 h-3 text-red-400" />}
+                  <Badge variant={
+                    localSignal.priceAccuracy === 'VERIFIED' ? 'default' : 
+                    localSignal.priceAccuracy === 'WARNING' ? 'secondary' : 'destructive'
+                  } className="text-xs">
+                    {localSignal.priceAccuracy}
+                  </Badge>
+                </div>
+              </div>
+              {priceAge !== null && (
+                <div className="text-xs text-gray-400 mt-1">
+                  Updated {priceAge}s ago
+                </div>
               )}
-            </Button>
-            <div className="flex items-center gap-1">
-              {signal.priceAccuracy === 'VERIFIED' && <CheckCircle className="w-4 h-4 text-green-400" />}
-              {signal.priceAccuracy === 'WARNING' && <AlertTriangle className="w-4 h-4 text-yellow-400" />}
-              {signal.priceAccuracy === 'FALLBACK' && <XCircle className="w-4 h-4 text-red-400" />}
-              <Badge variant={
-                signal.priceAccuracy === 'VERIFIED' ? 'default' : 
-                signal.priceAccuracy === 'WARNING' ? 'secondary' : 'destructive'
-              } className="text-xs">
-                {signal.priceAccuracy}
-              </Badge>
             </div>
           </div>
 
@@ -165,11 +198,11 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
               <Brain className="w-4 h-4 text-yellow-400" />
               <span className="text-sm font-medium text-yellow-400">Smart Money Filters</span>
               <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">
-                {signal.filters_passed.length}/6 PASSED
+                {localSignal.filters_passed.length}/6 PASSED
               </Badge>
             </div>
             <div className="grid grid-cols-1 gap-2">
-              {signal.filters_passed.map((filter, index) => (
+              {localSignal.filters_passed.map((filter, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <CheckCircle2 className="w-3 h-3 text-green-400" />
                   <span className="text-white text-xs font-medium">{filter}</span>
@@ -182,11 +215,11 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-700/30 rounded-lg p-2 text-center">
               <p className="text-gray-400 text-xs mb-1">Session</p>
-              <p className="text-blue-400 font-bold text-sm">{signal.session}</p>
+              <p className="text-blue-400 font-bold text-sm">{localSignal.session}</p>
             </div>
             <div className="bg-gray-700/30 rounded-lg p-2 text-center">
               <p className="text-gray-400 text-xs mb-1">Timeframe</p>
-              <p className="text-purple-400 font-bold text-sm">{signal.timeframe}</p>
+              <p className="text-purple-400 font-bold text-sm">{localSignal.timeframe}</p>
             </div>
           </div>
 
@@ -194,15 +227,15 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
           <div className="grid grid-cols-3 gap-3 text-sm">
             <div className="text-center bg-gray-700/30 rounded-lg p-3">
               <p className="text-gray-400 mb-1 text-xs">Entry</p>
-              <p className="text-white font-mono font-bold">{signal.entry}</p>
+              <p className="text-white font-mono font-bold">{localSignal.entry}</p>
             </div>
             <div className="text-center bg-red-500/10 rounded-lg p-3">
               <p className="text-gray-400 mb-1 text-xs">Stop Loss</p>
-              <p className="text-red-400 font-mono font-bold">{signal.stop_loss}</p>
+              <p className="text-red-400 font-mono font-bold">{localSignal.stop_loss}</p>
             </div>
             <div className="text-center bg-green-500/10 rounded-lg p-3">
               <p className="text-gray-400 mb-1 text-xs">Take Profit</p>
-              <p className="text-green-400 font-mono font-bold">{signal.take_profit}</p>
+              <p className="text-green-400 font-mono font-bold">{localSignal.take_profit}</p>
             </div>
           </div>
 
@@ -212,7 +245,7 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
               <Shield className="w-4 h-4 text-green-400" />
               <span className="text-xs text-gray-400">Risk:Reward Ratio</span>
             </div>
-            <p className="text-green-400 font-bold text-lg">{signal.risk_reward}</p>
+            <p className="text-green-400 font-bold text-lg">{localSignal.risk_reward}</p>
           </div>
 
           {/* Analysis Button */}
@@ -229,7 +262,7 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
           {/* Timestamp */}
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Clock className="w-3 h-3" />
-            <span>{signal.timestamp.toLocaleTimeString()}</span>
+            <span>{localSignal.timestamp.toLocaleTimeString()}</span>
           </div>
         </CardContent>
       </Card>
@@ -247,10 +280,10 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
           <div className="space-y-4">
             <div className="text-center border-b border-gray-700 pb-4">
               <h3 className="text-lg font-bold text-white">
-                {signal.direction.toUpperCase()} - {signal.pair}
+                {localSignal.direction.toUpperCase()} - {localSignal.pair}
               </h3>
               <p className="text-gray-400 text-sm">
-                {signal.confidence} Grade • {signal.session} Session
+                {localSignal.confidence} Grade • {localSignal.session} Session
               </p>
             </div>
 
@@ -261,7 +294,7 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
                 Smart Money Concepts Analysis
               </h4>
               <div className="space-y-3">
-                {Object.entries(signal.reasoning).map(([filter, reason], index) => (
+                {Object.entries(localSignal.reasoning).map(([filter, reason], index) => (
                   <div key={index} className="bg-gray-800/50 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <CheckCircle2 className="w-4 h-4 text-green-400" />
@@ -273,7 +306,7 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
               </div>
             </div>
 
-            {/* Price Source Info */}
+            {/* Live Price Information */}
             <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-4">
               <h4 className="text-blue-400 font-medium mb-3 flex items-center gap-2">
                 <Wifi className="w-4 h-4" />
@@ -282,34 +315,42 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Current Price:</span>
+                    <span className="text-blue-400 font-mono font-bold">
+                      {displayPrice.toFixed(localSignal.pair.includes('JPY') ? 3 : 5)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Source:</span>
-                    <span className="text-blue-400 font-medium">{signal.priceSource}</span>
+                    <span className="text-blue-400 font-medium">{localSignal.priceSource}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Accuracy:</span>
                     <div className="flex items-center gap-1">
-                      {signal.priceAccuracy === 'VERIFIED' && <CheckCircle className="w-3 h-3 text-green-400" />}
-                      {signal.priceAccuracy === 'WARNING' && <AlertTriangle className="w-3 h-3 text-yellow-400" />}
-                      {signal.priceAccuracy === 'FALLBACK' && <XCircle className="w-3 h-3 text-red-400" />}
+                      {localSignal.priceAccuracy === 'VERIFIED' && <CheckCircle className="w-3 h-3 text-green-400" />}
+                      {localSignal.priceAccuracy === 'WARNING' && <AlertTriangle className="w-3 h-3 text-yellow-400" />}
+                      {localSignal.priceAccuracy === 'FALLBACK' && <XCircle className="w-3 h-3 text-red-400" />}
                       <span className={
-                        signal.priceAccuracy === 'VERIFIED' ? 'text-green-400' :
-                        signal.priceAccuracy === 'WARNING' ? 'text-yellow-400' : 'text-red-400'
+                        localSignal.priceAccuracy === 'VERIFIED' ? 'text-green-400' :
+                        localSignal.priceAccuracy === 'WARNING' ? 'text-yellow-400' : 'text-red-400'
                       }>
-                        {signal.priceAccuracy}
+                        {localSignal.priceAccuracy}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Fetched:</span>
-                    <span className="text-gray-300 text-xs">
-                      {new Date(signal.priceTimestamp).toLocaleTimeString()}
-                    </span>
+                    <span className="text-gray-400">Entry:</span>
+                    <span className="text-white font-mono font-bold">{localSignal.entry}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Entry:</span>
-                    <span className="text-white font-mono font-bold">{signal.entry}</span>
+                    <span className="text-gray-400">Stop Loss:</span>
+                    <span className="text-red-400 font-mono font-bold">{localSignal.stop_loss}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Take Profit:</span>
+                    <span className="text-green-400 font-mono font-bold">{localSignal.take_profit}</span>
                   </div>
                 </div>
               </div>
@@ -321,14 +362,14 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
                 <h5 className="text-gray-400 text-sm mb-2">Entry Setup</h5>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Entry:</span>
-                    <span className="text-white font-mono">{signal.entry}</span>
+                    <span className="text-gray-400">Direction:</span>
+                    <span className={localSignal.direction === 'buy' ? 'text-green-400' : 'text-red-400'}>
+                      {localSignal.direction.toUpperCase()}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Direction:</span>
-                    <span className={signal.direction === 'buy' ? 'text-green-400' : 'text-red-400'}>
-                      {signal.direction.toUpperCase()}
-                    </span>
+                    <span className="text-gray-400">Session:</span>
+                    <span className="text-blue-400">{localSignal.session}</span>
                   </div>
                 </div>
               </div>
@@ -338,15 +379,11 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">R:R:</span>
-                    <span className="text-green-400 font-bold">{signal.risk_reward}</span>
+                    <span className="text-green-400 font-bold">{localSignal.risk_reward}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Stop Loss:</span>
-                    <span className="text-red-400 font-mono">{signal.stop_loss}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Take Profit:</span>
-                    <span className="text-green-400 font-mono">{signal.take_profit}</span>
+                    <span className="text-gray-400">Filters:</span>
+                    <span className="text-yellow-400">{localSignal.filters_passed.length}/6</span>
                   </div>
                 </div>
               </div>
@@ -358,15 +395,15 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
               <div className="space-y-2 text-sm text-gray-300">
                 <p>• This signal follows institutional smart money concepts</p>
                 <p>• Risk-to-reward minimum of 1:2 maintained</p>
-                <p>• Entry based on {signal.filters_passed.length}/6 confluence factors</p>
+                <p>• Entry based on {localSignal.filters_passed.length}/6 confluence factors</p>
                 <p>• Quality over quantity - only high-probability setups</p>
-                <p>• Suitable for traders with institutional mindset</p>
+                <p>• Live price validation ensures accuracy</p>
               </div>
             </div>
 
             <div className="text-center">
-              <Badge className={getConfidenceColor(signal.confidence)}>
-                ✅ {signal.confidence} GRADE SIGNAL
+              <Badge className={getConfidenceColor(localSignal.confidence)}>
+                ✅ {localSignal.confidence} GRADE SIGNAL
               </Badge>
             </div>
           </div>

@@ -21,6 +21,8 @@ interface InstitutionalSignal {
   priceSource: string;
   priceTimestamp: string;
   priceAccuracy: 'VERIFIED' | 'WARNING' | 'FALLBACK';
+  livePrice?: number; // Add live price field
+  lastPriceUpdate?: Date; // Track when price was last updated
 }
 
 interface FilterCriteria {
@@ -41,6 +43,7 @@ class InstitutionalSignalService {
   private lastSignalTime: { [pair: string]: Date } = {};
   private readonly MIN_FILTERS_REQUIRED = 3;
   private readonly MIN_RISK_REWARD = 2.0;
+  private priceUpdateInterval: NodeJS.Timeout | null = null;
   
   // Kill Zones and High Probability Sessions (UTC)
   private readonly KILL_ZONES = {
@@ -49,6 +52,50 @@ class InstitutionalSignalService {
     'London Close': { start: 15, end: 17 },
     'Asian Killzone': { start: 23, end: 1 }
   };
+
+  constructor() {
+    // Start live price updates immediately
+    this.startLivePriceUpdates();
+  }
+
+  private startLivePriceUpdates() {
+    // Clear any existing interval
+    if (this.priceUpdateInterval) {
+      clearInterval(this.priceUpdateInterval);
+    }
+
+    // Update prices every 3 seconds for better real-time feel
+    this.priceUpdateInterval = setInterval(() => {
+      this.updateAllLivePrices();
+    }, 3000);
+
+    console.log('🔄 Started live price updates for institutional signals');
+  }
+
+  private async updateAllLivePrices() {
+    if (this.signals.length === 0) return;
+
+    console.log(`🔍 Updating live prices for ${this.signals.length} institutional signals...`);
+    
+    for (const signal of this.signals) {
+      if (signal.status === 'ACTIVE') {
+        try {
+          const priceData = await enhancedPriceService.getLivePrice(signal.pair);
+          
+          // Update the signal with new live price
+          signal.livePrice = priceData.price;
+          signal.priceSource = priceData.source;
+          signal.priceTimestamp = new Date(priceData.timestamp).toISOString();
+          signal.lastPriceUpdate = new Date();
+          signal.priceAccuracy = this.validatePriceAccuracy(priceData, signal.pair);
+
+          console.log(`💰 Updated ${signal.pair}: ${priceData.price} from ${priceData.source}`);
+        } catch (error) {
+          console.error(`❌ Failed to update price for ${signal.pair}:`, error);
+        }
+      }
+    }
+  }
 
   async generateInstitutionalSignal(): Promise<InstitutionalSignal | null> {
     // Major institutional pairs
@@ -59,22 +106,28 @@ class InstitutionalSignalService {
     if (this.lastSignalTime[selectedPair]) {
       const timeDiff = Date.now() - this.lastSignalTime[selectedPair].getTime();
       if (timeDiff < 15 * 60 * 1000) { // 15 minutes
+        console.log(`⏰ Cooldown active for ${selectedPair}, skipping signal generation`);
         return null;
       }
     }
 
     try {
-      // ✅ FETCH LIVE PRICE WITH FALLBACK CHAIN
-      console.log(`🎯 Fetching LIVE price for ${selectedPair} using priority API stack...`);
-      const priceData = await this.fetchLivePriceWithValidation(selectedPair);
+      console.log(`🎯 Fetching LIVE price for ${selectedPair} using enhanced price service...`);
       
-      if (!priceData) {
+      // ✅ FETCH LIVE PRICE WITH ENHANCED SERVICE
+      const priceData = await enhancedPriceService.getLivePrice(selectedPair);
+      
+      if (!priceData || !priceData.price) {
         console.log(`❌ Failed to get valid price for ${selectedPair}, skipping signal`);
         return null;
       }
 
+      console.log(`💰 Got live price for ${selectedPair}: ${priceData.price} from ${priceData.source}`);
+
       // Validate price accuracy before proceeding
-      if (priceData.accuracy === 'FALLBACK') {
+      const accuracy = this.validatePriceAccuracy(priceData, selectedPair);
+      
+      if (accuracy === 'FALLBACK') {
         console.log(`⚠️ Using fallback price for ${selectedPair}, signal marked as lower confidence`);
       }
 
@@ -87,7 +140,7 @@ class InstitutionalSignalService {
       }
 
       // Generate signal with institutional logic and live price data
-      const signal = this.createInstitutionalSignal(selectedPair, priceData, analysis);
+      const signal = this.createInstitutionalSignal(selectedPair, priceData, accuracy, analysis);
       
       if (signal) {
         this.lastSignalTime[selectedPair] = new Date();
@@ -103,29 +156,9 @@ class InstitutionalSignalService {
     }
   }
 
-  private async fetchLivePriceWithValidation(symbol: string): Promise<PriceData & { accuracy: 'VERIFIED' | 'WARNING' | 'FALLBACK' } | null> {
-    try {
-      // Try enhanced price service with multiple APIs
-      const priceData = await enhancedPriceService.getLivePrice(symbol);
-      
-      // Validate price accuracy
-      const accuracy = this.validatePriceAccuracy(priceData, symbol);
-      
-      console.log(`💰 Live price for ${symbol}: ${priceData.price} from ${priceData.source} (${accuracy})`);
-      
-      return {
-        ...priceData,
-        accuracy
-      };
-    } catch (error) {
-      console.error(`❌ Failed to fetch live price for ${symbol}:`, error);
-      return null;
-    }
-  }
-
   private validatePriceAccuracy(priceData: PriceData, symbol: string): 'VERIFIED' | 'WARNING' | 'FALLBACK' {
     // Check if price source is reliable
-    if (priceData.source === 'Enhanced Fallback') {
+    if (priceData.source === 'Enhanced Fallback' || priceData.source === 'fallback') {
       return 'FALLBACK';
     }
 
@@ -136,7 +169,7 @@ class InstitutionalSignalService {
     }
 
     // Price from reliable APIs
-    if (['TwelveData', 'Polygon', 'Deriv', 'CoinGecko'].includes(priceData.source)) {
+    if (['TwelveData', 'Polygon', 'Deriv', 'CoinGecko', 'Deriv WebSocket'].includes(priceData.source)) {
       return 'VERIFIED';
     }
 
@@ -201,7 +234,6 @@ class InstitutionalSignalService {
     };
   }
 
-  // Smart Money Concept Analysis Functions
   private analyzeBreakOfStructure(pair: string, price: number): boolean {
     // Simulate BOS analysis - In real implementation, analyze recent highs/lows
     const bosChance = Math.random();
@@ -253,7 +285,6 @@ class InstitutionalSignalService {
     return divergenceChance > 0.65; // 35% chance of RSI divergence
   }
 
-  // Reasoning Generation Functions
   private getBreakOfStructureReasoning(pair: string, price: number): string {
     const reasons = [
       "Price broke above recent swing high with strong bullish momentum candle",
@@ -328,7 +359,12 @@ class InstitutionalSignalService {
     return reasons[Math.floor(Math.random() * reasons.length)];
   }
 
-  private createInstitutionalSignal(pair: string, priceData: PriceData & { accuracy: 'VERIFIED' | 'WARNING' | 'FALLBACK' }, analysis: any): InstitutionalSignal | null {
+  private createInstitutionalSignal(
+    pair: string, 
+    priceData: PriceData, 
+    accuracy: 'VERIFIED' | 'WARNING' | 'FALLBACK', 
+    analysis: any
+  ): InstitutionalSignal | null {
     // Determine direction based on filters (simplified logic)
     const bullishFilters = ['Break of Structure (BOS)', 'Volume Spike', 'RSI Divergence'];
     const bearishFilters = ['Liquidity Sweep', 'Fair Value Gap (FVG)'];
@@ -375,7 +411,9 @@ class InstitutionalSignalService {
       timeframe: '15M/5M',
       priceSource: priceData.source,
       priceTimestamp: new Date(priceData.timestamp).toISOString(),
-      priceAccuracy: priceData.accuracy
+      priceAccuracy: accuracy,
+      livePrice: priceData.price,
+      lastPriceUpdate: new Date()
     };
   }
 
@@ -416,15 +454,27 @@ class InstitutionalSignalService {
     return this.signals.slice(-10);
   }
 
-  // Validate signal against conflicting rules
-  private hasConflictingSignal(pair: string, direction: 'buy' | 'sell'): boolean {
-    const recentSignals = this.signals.filter(s => 
-      s.pair === pair && 
-      s.status === 'ACTIVE' &&
-      Date.now() - s.timestamp.getTime() < 15 * 60 * 1000 // Last 15 minutes
-    );
+  // Manual price update method
+  async updateSignalPrice(signalId: string): Promise<boolean> {
+    const signal = this.signals.find(s => s.id === signalId);
+    if (!signal) return false;
 
-    return recentSignals.some(s => s.direction !== direction);
+    try {
+      console.log(`🔄 Manually updating price for ${signal.pair}...`);
+      const priceData = await enhancedPriceService.getLivePrice(signal.pair);
+      
+      signal.livePrice = priceData.price;
+      signal.priceSource = priceData.source;
+      signal.priceTimestamp = new Date(priceData.timestamp).toISOString();
+      signal.lastPriceUpdate = new Date();
+      signal.priceAccuracy = this.validatePriceAccuracy(priceData, signal.pair);
+
+      console.log(`✅ Updated ${signal.pair}: ${priceData.price} from ${priceData.source}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Failed to update price for ${signal.pair}:`, error);
+      return false;
+    }
   }
 
   // Real-time signal validation using LIVE PRICES
@@ -433,7 +483,6 @@ class InstitutionalSignalService {
     if (!signal) return false;
 
     try {
-      // Use enhanced price service for validation
       const priceData = await enhancedPriceService.getLivePrice(signal.pair);
       const currentPrice = priceData.price;
       const entry = parseFloat(signal.entry);
@@ -471,6 +520,14 @@ class InstitutionalSignalService {
     } catch (error) {
       console.error('Error validating signal with live prices:', error);
       return false;
+    }
+  }
+
+  // Cleanup method
+  destroy() {
+    if (this.priceUpdateInterval) {
+      clearInterval(this.priceUpdateInterval);
+      this.priceUpdateInterval = null;
     }
   }
 }
