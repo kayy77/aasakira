@@ -107,7 +107,7 @@ const SignalCardBase: React.FC<SignalCardBaseProps> = ({
     
     if (signal.priceAccuracy.isAccurate) {
       return 'VERIFIED';
-    } else if (signal.priceAccuracy.pips <= 5) {
+    } else if (signal.priceAccuracy.pips && signal.priceAccuracy.pips <= 5) {
       return 'WARNING';
     } else {
       return 'HIGH_SPREAD';
@@ -230,7 +230,7 @@ const SignalCardBase: React.FC<SignalCardBaseProps> = ({
           </div>
 
           {/* Price Accuracy Info */}
-          {signal.priceAccuracy && (
+          {signal.priceAccuracy && signal.priceAccuracy.pips !== undefined && (
             <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg">
               <div className="flex items-center gap-2">
                 {signal.priceAccuracy.isAccurate ? (
