@@ -119,16 +119,15 @@ Respond naturally and conversationally, as if you're a real mentor who knows thi
   }
 }
 
-// Create singleton instance (will be initialized with API key from secrets)
-let groqService: GroqService | null = null;
-
-export const initializeGroqService = (apiKey: string) => {
-  groqService = new GroqService(apiKey);
-};
+// Global instance with your API key
+const GROQ_API_KEY = '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';
+const groqService = new GroqService(GROQ_API_KEY);
 
 export const getGroqService = (): GroqService => {
-  if (!groqService) {
-    throw new Error('GroqService not initialized. Please set API key first.');
-  }
   return groqService;
+};
+
+// Keep the old function for backward compatibility
+export const initializeGroqService = (apiKey: string) => {
+  console.log('GroqService is now automatically initialized with global API key');
 };
