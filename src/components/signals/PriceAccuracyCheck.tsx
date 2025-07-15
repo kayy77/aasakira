@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { realTimePriceEngine, LivePriceData } from '@/services/realtimePriceEngine';
+import { trueLivePriceService, LivePriceData } from '@/services/trueLivePriceService';
 import { CheckCircle2, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface PriceAccuracyCheckProps {
@@ -29,7 +29,7 @@ const PriceAccuracyCheck: React.FC<PriceAccuracyCheckProps> = ({ signal }) => {
   const fetchCurrentPrice = async () => {
     setIsRefreshing(true);
     try {
-      const liveData = await realTimePriceEngine.getRealTimePrice(signal.pair);
+      const liveData = await trueLivePriceService.getTrueLivePrice(signal.pair);
       setCurrentMarketPrice(liveData);
       setLastCheck(new Date());
     } catch (error) {
@@ -50,7 +50,7 @@ const PriceAccuracyCheck: React.FC<PriceAccuracyCheckProps> = ({ signal }) => {
   const getCurrentAccuracy = () => {
     if (!currentMarketPrice) return signal.priceAccuracy;
     
-    return realTimePriceEngine.calculatePriceAccuracy(
+    return trueLivePriceService.validatePriceAccuracy(
       signal.entry,
       currentMarketPrice.price,
       signal.pair
@@ -122,7 +122,7 @@ const PriceAccuracyCheck: React.FC<PriceAccuracyCheckProps> = ({ signal }) => {
               <AlertTriangle className="w-4 h-4 text-yellow-400" />
             )}
             <span className="text-sm text-gray-300">
-              Spread: {currentAccuracy.pips} pips
+              Spread: {currentAccuracy.pips.toFixed(1)} pips
             </span>
           </div>
           
@@ -145,7 +145,7 @@ const PriceAccuracyCheck: React.FC<PriceAccuracyCheckProps> = ({ signal }) => {
             </span>
           ) : currentAccuracy.pips <= 5 ? (
             <span className="text-yellow-400">
-              ⚠️ Moderate spread - entry is {currentAccuracy.pips} pips from market
+              ⚠️ Moderate spread - entry is {currentAccuracy.pips.toFixed(1)} pips from market
             </span>
           ) : (
             <span className="text-red-400">
