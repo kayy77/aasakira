@@ -33,7 +33,7 @@ const Trading = () => {
             </Button>
           </div>
 
-          <FeatureGate feature="memeCoins" featureName="Trading Ideas">
+          <FeatureGate feature="signals" featureName="Trading Ideas">
             <TradingHub />
           </FeatureGate>
         </div>

@@ -26,7 +26,7 @@ const MemeCoins = () => {
             </p>
           </div>
 
-          <FeatureGate feature="memeCoins" featureName="Meme Coin Scans">
+          <FeatureGate feature="memeScans" featureName="Meme Coin Scans">
             <LiveMemeCoinDashboard />
           </FeatureGate>
         </div>
