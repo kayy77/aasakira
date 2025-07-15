@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +8,7 @@ import {
   TrendingDown, 
   Activity, 
   Zap, 
-  Fire,
+  Flame,
   Snowflake,
   Crosshair,
   RefreshCw
@@ -40,7 +39,7 @@ const MarketHeatDisplay: React.FC = () => {
 
   const getHeatIcon = (heat: string) => {
     switch (heat) {
-      case 'blazing': return <Fire className="w-4 h-4 text-red-400" />;
+      case 'blazing': return <Flame className="w-4 h-4 text-red-400" />;
       case 'hot': return <Zap className="w-4 h-4 text-orange-400" />;
       case 'neutral': return <Activity className="w-4 h-4 text-yellow-400" />;
       case 'cold': return <Snowflake className="w-4 h-4 text-blue-400" />;
@@ -97,7 +96,7 @@ const MarketHeatDisplay: React.FC = () => {
       <Card className="border-gray-700/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Fire className="w-5 h-5 text-red-400" />
+            <Flame className="w-5 h-5 text-red-400" />
             🔥 Hot Pairs to Watch
           </CardTitle>
         </CardHeader>
