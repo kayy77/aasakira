@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -5,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { enhancedGroqService } from '@/services/enhancedGroqService';
+import { EnhancedGroqService } from '@/services/enhancedGroqService';
 import { userContextService } from '@/services/userContextService';
 import { 
   Brain, 
@@ -30,7 +31,7 @@ import {
   Trophy,
   GraduationCap,
   FileSliders,
-  FilePieChart2,
+  FileText,
   FileCode2,
   FileHeart,
   FileLock2,
@@ -39,97 +40,25 @@ import {
   FileWarning,
   FileDown,
   FileUp,
-  FileKanban,
   FileJson2,
   FileKey2,
   FileTerminal,
   FileVideo2,
   FileAudio2,
-  FileImage2,
+  FileImage,
   FileArchive,
-  FileGit2,
   FileScan,
   FileSignature,
-  FileText,
-  FileImageIcon,
   FileInput,
   FileCog,
   FileBadge,
   FileCheck2,
   FileX2,
-  FileAlertTriangle,
-  FileQuestionMark,
-  FileStar,
-  FileHelp2,
-  FileWarning2,
-  FileAlertOctagon,
-  FileCheck,
-  FileX,
-  FileAlertCircle,
-  FileQuestionCircle,
-  FileStar2,
-  FileHelpCircle,
-  FileWarningCircle,
-  FileAlertSquare,
-  FileQuestionSquare,
-  FileStarSquare,
-  FileHelpSquare,
-  FileWarningSquare,
-  FileCheckSquare,
-  FileXSquare,
-  FileAlertTriangleSquare,
-  FileQuestionMarkSquare,
-  FileStarSquare2,
-  FileHelpSquare2,
-  FileWarningSquare2,
-  FileCheckSquare2,
-  FileXSquare2,
-  FileAlertTriangleSquare2,
-  FileQuestionMarkSquare2,
-  FileStarSquare3,
-  FileHelpSquare3,
-  FileWarningSquare3,
-  FileCheckSquare3,
-  FileXSquare3,
-  FileAlertTriangleSquare3,
-  FileQuestionMarkSquare3,
-  FileStarSquare4,
-  FileHelpSquare4,
-  FileWarningSquare4,
-  FileCheckSquare4,
-  FileXSquare4,
-  FileAlertTriangleSquare4,
-  FileQuestionMarkSquare4,
-  FileStarSquare5,
-  FileHelpSquare5,
-  FileWarningSquare5,
-  FileCheckSquare5,
-  FileXSquare5,
-  FileAlertTriangleSquare5,
-  FileQuestionMarkSquare5,
-  FileStarSquare6,
-  FileHelpSquare6,
-  FileWarningSquare6,
-  FileCheckSquare6,
-  FileXSquare6,
-  FileAlertTriangleSquare6,
-  FileQuestionMarkSquare6,
-  FileStarSquare7,
-  FileHelpSquare7,
-  FileWarningSquare7,
-  FileCheckSquare7,
-  FileXSquare7,
-  FileAlertTriangleSquare7,
-  FileQuestionMarkSquare7,
-  FileStarSquare8,
-  FileHelpSquare8,
-  FileWarningSquare8,
-  FileCheckSquare8,
-  FileXSquare8,
-  FileAlertTriangleSquare8,
-  FileQuestionMarkSquare8,
-  FileStarSquare9,
-  FileHelpSquare9,
+  AlertTriangle,
+  CheckSquare,
+  Star,
+  AlertCircle,
+  X
 } from "lucide-react";
 
 interface Message {
@@ -160,6 +89,14 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
 
     // Track feature usage
     onFeatureUse?.();
+    
+    const userMessage: Message = {
+      id: Date.now(),
+      role: 'user',
+      content: input
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
     try {
@@ -167,19 +104,17 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
       if (user?.id) {
         await userContextService.updateUserActivity(user.id, 'ai_message', { message: input });
         
-        const context = await userContextService.getUserContext(user.id);
-        const personalizedPrompt = userContextService.generatePersonalizedPrompt(context, input);
-        
-        const response = await enhancedGroqService.getPersonalizedResponse(
-          personalizedPrompt,
-          user.id
+        const response = await EnhancedGroqService.generatePersonalizedResponse(
+          input,
+          user.id,
+          messages.map(msg => ({ role: msg.role, content: msg.content }))
         );
         
         if (response) {
           const assistantMessage: Message = {
             id: Date.now() + 1,
             role: 'assistant',
-            content: response
+            content: response.response
           };
           
           setMessages(prev => [...prev, assistantMessage]);
@@ -187,7 +122,7 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
           // Store conversation memory
           await userContextService.storeConversationMemory(
             user.id,
-            `User: ${input}\nAssistant: ${response}`,
+            `User: ${input}\nAssistant: ${response.response}`,
             7
           );
         } else {

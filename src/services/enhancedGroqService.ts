@@ -1,4 +1,3 @@
-
 import { getGroqService } from './groqService';
 import { UserContextService, type ComprehensiveUserContext } from './userContextService';
 import { UserTrackingService } from './userTrackingService';
@@ -418,3 +417,6 @@ Remember: You're not just an AI - you're their trusted trading buddy who genuine
     return Math.min(score, 10);
   }
 }
+
+// Create and export the instance
+export const enhancedGroqService = new EnhancedGroqService();
