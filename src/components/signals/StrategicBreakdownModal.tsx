@@ -8,7 +8,7 @@ import { SignalDNA } from '@/services/multiIntelligenceCore';
 interface StrategicBreakdownModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  signalDNA: SignalDNA;
+  signalDNA: SignalDNA | null;
 }
 
 const StrategicBreakdownModal: React.FC<StrategicBreakdownModalProps> = ({
@@ -16,6 +16,8 @@ const StrategicBreakdownModal: React.FC<StrategicBreakdownModalProps> = ({
   onOpenChange,
   signalDNA
 }) => {
+  if (!signalDNA) return null;
+
   const approvedModules = Object.entries(signalDNA.origin).filter(([_, approved]) => approved);
   const rejectedModules = Object.entries(signalDNA.origin).filter(([_, approved]) => !approved);
 

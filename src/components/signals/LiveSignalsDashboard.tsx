@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SignalCardV2 from './SignalCardV2';
 import PremiumSignalCard from './PremiumSignalCard';
 import EnhancedTacticalParameters from './EnhancedTacticalParameters';
-import StrategyBreakdownModal from './StrategyBreakdownModal';
+import StrategicBreakdownModal from './StrategicBreakdownModal';
 import WebhookManager from './WebhookManager';
 import SignalMemoryDashboard from './SignalMemoryDashboard';
 import AutoJournalModal from './AutoJournalModal';
@@ -52,6 +52,25 @@ interface TacticalParams {
   riskLevel: string;
 }
 
+// Create WebhookManagerProps interface
+interface WebhookManagerProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+// Create a WebhookManagerComponent to handle props correctly
+const WebhookManagerComponent: React.FC<WebhookManagerProps> = ({ open, onClose }) => {
+  return open ? (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+      <div className="bg-gray-900 p-6 rounded-lg max-w-md w-full mx-4">
+        <h3 className="text-white text-lg font-bold mb-4">Webhook Manager</h3>
+        <p className="text-gray-400 mb-4">Configure your trading webhooks here.</p>
+        <Button onClick={onClose} className="w-full">Close</Button>
+      </div>
+    </div>
+  ) : null;
+};
+
 const LiveSignalsDashboard: React.FC = () => {
   const [signals, setSignals] = useState<SignalDNA[]>([]);
   const [premiumSignals, setPremiumSignals] = useState<EnhancedSignal[]>([]);
@@ -67,7 +86,7 @@ const LiveSignalsDashboard: React.FC = () => {
   const [showABTesting, setShowABTesting] = useState(false);
   const [showAIDigest, setShowAIDigest] = useState(false);
   const [showShareableCard, setShowShareableCard] = useState(false);
-  const [signalToShare, setSignalToShare] = useState<SignalDNA | null>(null);
+  const [signalToShare, setSignalToShare] = useState<SignalDNA | EnhancedSignal | null>(null);
   const [tacticalParams, setTacticalParams] = useState<TacticalParams>({
     minConfidence: 70,
     maxSignals: 3,
@@ -316,6 +335,27 @@ const LiveSignalsDashboard: React.FC = () => {
     });
   };
 
+  // Helper function to create compatible signal objects for components that expect specific types
+  const createCompatibleSignalList = () => {
+    return [...signals, ...premiumSignals].map(signal => {
+      if ('symbol' in signal) {
+        // This is a SignalDNA
+        return {
+          ...signal,
+          id: signal.symbol,
+          livePrice: livePrices[signal.symbol] || 0
+        };
+      } else {
+        // This is an EnhancedSignal, convert to compatible format
+        return {
+          ...signal,
+          symbol: signal.pair,
+          livePrice: livePrices[signal.pair] || 0
+        };
+      }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -437,8 +477,8 @@ const LiveSignalsDashboard: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  if (signals.length > 0) {
-                    setSignalToShare(signals[0]);
+                  if (signals.length > 0 || premiumSignals.length > 0) {
+                    setSignalToShare(signals[0] || premiumSignals[0]);
                     setShowShareableCard(true);
                   } else {
                     toast({
@@ -569,13 +609,13 @@ const LiveSignalsDashboard: React.FC = () => {
         )}
 
         {/* Modals */}
-        <StrategyBreakdownModal
+        <StrategicBreakdownModal
           open={showStrategyBreakdown}
           onOpenChange={setShowStrategyBreakdown}
           signalDNA={selectedSignal}
         />
 
-        <WebhookManager
+        <WebhookManagerComponent
           open={showWebhookManager}
           onClose={() => setShowWebhookManager(false)}
         />
@@ -589,19 +629,19 @@ const LiveSignalsDashboard: React.FC = () => {
         <AutoJournalModal
           open={showJournalModal}
           onOpenChange={setShowJournalModal}
-          signals={[...signals.map(s => ({ ...s, id: s.symbol, livePrice: livePrices[s.symbol] || 0 })), ...premiumSignals.map(s => ({ ...s, livePrice: livePrices[s.pair] || 0 }))]}
+          signals={createCompatibleSignalList()}
         />
 
         <ABTestingFramework
           open={showABTesting}
           onOpenChange={setShowABTesting}
-          signals={[...signals, ...premiumSignals]}
+          signals={createCompatibleSignalList()}
         />
 
         <AISignalDigest
           open={showAIDigest}
           onOpenChange={setShowAIDigest}
-          signals={[...signals, ...premiumSignals]}
+          signals={createCompatibleSignalList()}
         />
 
         <ShareableSignalCard

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -42,7 +43,8 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
         
         // Create download link
         const link = document.createElement('a');
-        link.download = `aasakira-signal-${signal.symbol}-${Date.now()}.png`;
+        const symbolOrPair = 'symbol' in signal ? signal.symbol : signal.pair;
+        link.download = `aasakira-signal-${symbolOrPair}-${Date.now()}.png`;
         link.href = canvas.toDataURL();
         link.click();
       }
@@ -53,9 +55,39 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
     }
   };
 
-  // Check if this is a BUY or SELL signal by looking at the correct property
-  const isBuySignal = 'type' in signal && signal.type === 'BUY';
-  const tradeDirection = 'type' in signal ? signal.type : ('structure' in signal && signal.structure.type) || 'BUY';
+  // Check signal type and get appropriate values
+  const isSignalDNA = 'symbol' in signal;
+  const symbolOrPair = isSignalDNA ? signal.symbol : signal.pair;
+  const tradeDirection = isSignalDNA ? signal.type : signal.type;
+
+  // Get trading levels based on signal type
+  const getEntry = () => {
+    if (isSignalDNA) {
+      return Number(signal.structure.entry).toFixed(5);
+    }
+    return Number(signal.entry).toFixed(5);
+  };
+
+  const getStopLoss = () => {
+    if (isSignalDNA) {
+      return Number(signal.structure.stopLoss).toFixed(5);
+    }
+    return Number(signal.stopLoss).toFixed(5);
+  };
+
+  const getTakeProfit = () => {
+    if (isSignalDNA) {
+      return Number(signal.structure.takeProfit).toFixed(5);
+    }
+    return Number(signal.takeProfit).toFixed(5);
+  };
+
+  const getStrategy = () => {
+    if (isSignalDNA) {
+      return 'AI Multi-Intelligence';
+    }
+    return signal.strategy || 'Enhanced Multi-Filter';
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,7 +115,7 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-gray-400">Pair:</span>
               <span className="text-white font-bold text-xl">
-                {'symbol' in signal ? signal.symbol : signal.pair}
+                {symbolOrPair}
               </span>
             </div>
 
@@ -105,19 +137,19 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
               <div className="text-center">
                 <div className="text-gray-400">Entry</div>
                 <div className="text-white font-mono">
-                  {'structure' in signal ? Number(signal.structure.entry).toFixed(5) : Number(signal.entry).toFixed(5)}
+                  {getEntry()}
                 </div>
               </div>
               <div className="text-center">
                 <div className="text-gray-400">SL</div>
                 <div className="text-red-400 font-mono">
-                  {'structure' in signal ? Number(signal.structure.stopLoss).toFixed(5) : Number(signal.stopLoss).toFixed(5)}
+                  {getStopLoss()}
                 </div>
               </div>
               <div className="text-center">
                 <div className="text-gray-400">TP</div>
                 <div className="text-green-400 font-mono">
-                  {'structure' in signal ? Number(signal.structure.takeProfit).toFixed(5) : Number(signal.takeProfit).toFixed(5)}
+                  {getTakeProfit()}
                 </div>
               </div>
             </div>
@@ -125,7 +157,7 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
             {/* Strategy Type */}
             <div className="text-center pt-2 border-t border-gray-700">
               <span className="text-purple-400 text-sm">
-                {'strategy' in signal ? signal.strategy : 'AI Multi-Intelligence'}
+                {getStrategy()}
               </span>
             </div>
           </div>
