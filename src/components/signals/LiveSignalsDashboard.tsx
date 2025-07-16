@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,7 +76,8 @@ const LiveSignalsDashboard: React.FC = () => {
       try {
         const initialPrices: { [key: string]: number } = {};
         for (const pair of tacticalParams.allowedPairs) {
-          initialPrices[pair] = await trueLivePriceService.getTrueLivePrice(pair);
+          const priceData = await trueLivePriceService.getTrueLivePrice(pair);
+          initialPrices[pair] = typeof priceData === 'number' ? priceData : priceData.price;
         }
         setLivePrices(initialPrices);
         setIsConnected(true);
@@ -100,7 +100,8 @@ const LiveSignalsDashboard: React.FC = () => {
         try {
           const updatedPrices: { [key: string]: number } = {};
           for (const pair of tacticalParams.allowedPairs) {
-            updatedPrices[pair] = await trueLivePriceService.getTrueLivePrice(pair);
+            const priceData = await trueLivePriceService.getTrueLivePrice(pair);
+            updatedPrices[pair] = typeof priceData === 'number' ? priceData : priceData.price;
           }
           setLivePrices(updatedPrices);
           setIsConnected(true);
@@ -130,7 +131,6 @@ const LiveSignalsDashboard: React.FC = () => {
     try {
       console.log('🔥 GENERATING PREMIUM SIGNAL WITH ENHANCED VALIDATION...');
       
-      // Use enhanced analyzer for premium signals
       const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
       const randomPair = pairs[Math.floor(Math.random() * pairs.length)];
       
@@ -139,7 +139,6 @@ const LiveSignalsDashboard: React.FC = () => {
       if (premiumSignal) {
         setPremiumSignals(prev => [premiumSignal, ...prev.slice(0, 2)]);
         
-        // Send email with signal
         await sendSignalEmail(premiumSignal);
         
         toast({
@@ -203,7 +202,8 @@ const LiveSignalsDashboard: React.FC = () => {
         Math.floor(Math.random() * tacticalParams.allowedPairs.length)
       ];
       
-      const livePrice = await trueLivePriceService.getTrueLivePrice(randomPair);
+      const priceData = await trueLivePriceService.getTrueLivePrice(randomPair);
+      const livePrice = typeof priceData === 'number' ? priceData : priceData.price;
       const signalDNA = await multiIntelligenceCore.generateSignalDNA(randomPair, livePrice);
       
       if (signalDNA && signalDNA.confidence >= tacticalParams.minConfidence) {
@@ -213,7 +213,6 @@ const LiveSignalsDashboard: React.FC = () => {
           setSignals(prev => [signalDNA, ...prev]);
         }
         
-        // Send email with signal
         await sendSignalEmail(signalDNA);
         
         toast({
@@ -253,7 +252,8 @@ const LiveSignalsDashboard: React.FC = () => {
   const refreshSignal = async (signal: SignalDNA) => {
     setIsGenerating(true);
     try {
-      const livePrice = await trueLivePriceService.getTrueLivePrice(signal.symbol);
+      const priceData = await trueLivePriceService.getTrueLivePrice(signal.symbol);
+      const livePrice = typeof priceData === 'number' ? priceData : priceData.price;
       const refreshedSignal = await multiIntelligenceCore.generateSignalDNA(signal.symbol, livePrice);
       if (refreshedSignal) {
         setSignals(prev =>
@@ -307,7 +307,6 @@ const LiveSignalsDashboard: React.FC = () => {
             Multi-intelligence AI council generating institutional-grade trading signals with visual evidence and premium validation
           </p>
 
-          {/* Connection Status */}
           <div className="flex items-center justify-center gap-2">
             <Activity className={`w-4 h-4 ${isConnected ? 'text-green-400 animate-pulse' : 'text-red-400'}`} />
             <span className={`text-sm ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
@@ -325,7 +324,6 @@ const LiveSignalsDashboard: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Generation Buttons */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Button
                 onClick={generatePremiumSignal}
@@ -355,7 +353,6 @@ const LiveSignalsDashboard: React.FC = () => {
               </Button>
             </div>
 
-            {/* Feature Buttons */}
             <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
               <Button
                 variant="outline"
@@ -438,7 +435,7 @@ const LiveSignalsDashboard: React.FC = () => {
 
         {/* Enhanced Tactical Parameters */}
         <EnhancedTacticalParameters
-          tacticalParams={tacticalParams}
+          params={tacticalParams}
           onParamsChange={setTacticalParams}
         />
 
@@ -543,7 +540,7 @@ const LiveSignalsDashboard: React.FC = () => {
         <StrategyBreakdownModal
           open={showStrategyBreakdown}
           onOpenChange={setShowStrategyBreakdown}
-          signal={selectedSignal}
+          signalDNA={selectedSignal}
         />
 
         <WebhookManager
@@ -560,7 +557,7 @@ const LiveSignalsDashboard: React.FC = () => {
         <AutoJournalModal
           open={showJournalModal}
           onOpenChange={setShowJournalModal}
-          signals={[...signals, ...premiumSignals]}
+          signals={[...signals.map(s => ({ ...s, id: s.symbol, livePrice: livePrices[s.symbol] || 0 })), ...premiumSignals.map(s => ({ ...s, livePrice: livePrices[s.pair] || 0 }))]}
         />
 
         <ABTestingFramework

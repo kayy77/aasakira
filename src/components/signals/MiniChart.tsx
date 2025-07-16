@@ -1,240 +1,109 @@
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
+import { Card } from '@/components/ui/card';
 import { ChartAnalysis, ChartMarkup } from '@/services/enhancedSignalAnalyzer';
 
 interface MiniChartProps {
-  chartAnalysis: ChartAnalysis;
-  pair: string;
-  className?: string;
+  analysis: ChartAnalysis;
+  width?: number;
+  height?: number;
 }
 
-const MiniChart: React.FC<MiniChartProps> = ({ chartAnalysis, pair, className = '' }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    drawChart();
-  }, [chartAnalysis]);
-
-  const drawChart = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Set canvas size
-    canvas.width = 300;
-    canvas.height = 200;
-
-    // Clear canvas
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Generate sample price data for visualization
-    const priceData = generateSamplePriceData(40);
-    
-    // Draw price chart
-    drawPriceChart(ctx, priceData, canvas.width, canvas.height);
-    
-    // Draw markups
-    drawMarkups(ctx, chartAnalysis.markups, canvas.width, canvas.height);
-    
-    // Draw analysis indicators
-    drawAnalysisIndicators(ctx, chartAnalysis, canvas.width, canvas.height);
-  };
-
-  const generateSamplePriceData = (count: number) => {
-    const data = [];
-    let price = 1.0500;
-    
-    for (let i = 0; i < count; i++) {
-      const change = (Math.random() - 0.5) * 0.002;
-      price += change;
-      data.push({
-        open: price,
-        high: price + Math.random() * 0.001,
-        low: price - Math.random() * 0.001,
-        close: price + change,
-        x: (i / (count - 1)) * 280 + 10,
-        index: i
-      });
-    }
-    
-    return data;
-  };
-
-  const drawPriceChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number) => {
-    const prices = data.map(d => d.close);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const priceRange = maxPrice - minPrice;
-    
-    // Draw price line
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    
-    data.forEach((point, index) => {
-      const y = height - 40 - ((point.close - minPrice) / priceRange) * (height - 80);
-      if (index === 0) {
-        ctx.moveTo(point.x, y);
-      } else {
-        ctx.lineTo(point.x, y);
-      }
-    });
-    
-    ctx.stroke();
-
-    // Draw candles for last few points
-    data.slice(-8).forEach(point => {
-      const openY = height - 40 - ((point.open - minPrice) / priceRange) * (height - 80);
-      const closeY = height - 40 - ((point.close - minPrice) / priceRange) * (height - 80);
-      const highY = height - 40 - ((point.high - minPrice) / priceRange) * (height - 80);
-      const lowY = height - 40 - ((point.low - minPrice) / priceRange) * (height - 80);
-      
-      const isBullish = point.close > point.open;
-      ctx.fillStyle = isBullish ? '#10b981' : '#ef4444';
-      ctx.strokeStyle = isBullish ? '#10b981' : '#ef4444';
-      ctx.lineWidth = 1;
-      
-      // Draw wick
-      ctx.beginPath();
-      ctx.moveTo(point.x, highY);
-      ctx.lineTo(point.x, lowY);
-      ctx.stroke();
-      
-      // Draw body
-      const bodyHeight = Math.abs(closeY - openY);
-      const bodyY = Math.min(openY, closeY);
-      ctx.fillRect(point.x - 2, bodyY, 4, bodyHeight || 1);
-    });
-  };
-
-  const drawMarkups = (ctx: CanvasRenderingContext2D, markups: ChartMarkup[], width: number, height: number) => {
-    markups.forEach(markup => {
-      const x = width * 0.8; // Position most markups near the end
-      let y = height * 0.5;
-      
-      switch (markup.type) {
-        case 'Entry':
-          ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([5, 5]);
-          ctx.beginPath();
-          ctx.moveTo(10, y);
-          ctx.lineTo(width - 10, y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          
-          // Entry label
-          ctx.fillStyle = '#fbbf24';
-          ctx.font = '10px Arial';
-          ctx.fillText('Entry', width - 40, y - 5);
-          break;
-          
-        case 'FVG':
-          // Draw FVG zone as rectangle
-          ctx.fillStyle = 'rgba(34, 197, 94, 0.2)';
-          ctx.fillRect(x - 30, y - 15, 60, 30);
-          ctx.strokeStyle = '#22c55e';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x - 30, y - 15, 60, 30);
-          
-          // FVG label
-          ctx.fillStyle = '#22c55e';
-          ctx.font = '9px Arial';
-          ctx.fillText('FVG', x - 12, y + 3);
-          break;
-          
-        case 'BOS':
-          // Draw BOS arrow
-          ctx.fillStyle = '#8b5cf6';
-          ctx.beginPath();
-          ctx.moveTo(x, y - 20);
-          ctx.lineTo(x + 10, y - 10);
-          ctx.lineTo(x + 5, y - 10);
-          ctx.lineTo(x + 5, y);
-          ctx.lineTo(x - 5, y);
-          ctx.lineTo(x - 5, y - 10);
-          ctx.lineTo(x - 10, y - 10);
-          ctx.closePath();
-          ctx.fill();
-          
-          // BOS label
-          ctx.fillStyle = '#8b5cf6';
-          ctx.font = '9px Arial';
-          ctx.fillText('BOS', x - 12, y + 15);
-          break;
-          
-        case 'LiquiditySweep':
-          // Draw sweep indicator
-          ctx.strokeStyle = '#f59e0b';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(x, y - 30, 8, 0, Math.PI * 2);
-          ctx.stroke();
-          
-          ctx.fillStyle = '#f59e0b';
-          ctx.font = '8px Arial';
-          ctx.fillText('Sweep', x - 15, y - 40);
-          break;
-      }
-    });
-  };
-
-  const drawAnalysisIndicators = (ctx: CanvasRenderingContext2D, analysis: ChartAnalysis, width: number, height: number) => {
-    // HTF Bias indicator
-    const htfColor = analysis.htfBias.aligned ? '#10b981' : '#ef4444';
-    ctx.fillStyle = htfColor;
-    ctx.fillRect(10, 10, 8, 8);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '10px Arial';
-    ctx.fillText('HTF', 22, 18);
-    
-    // Volume indicator
-    const volColor = analysis.volumeDelta.confirmed ? '#10b981' : '#6b7280';
-    ctx.fillStyle = volColor;
-    ctx.fillRect(10, 25, 8, 8);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('VOL', 22, 33);
-    
-    // Entry Zone indicator
-    const entryColor = analysis.entryZone.valid ? '#10b981' : '#6b7280';
-    ctx.fillStyle = entryColor;
-    ctx.fillRect(10, 40, 8, 8);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('ZONE', 22, 48);
-  };
-
+const MiniChart: React.FC<MiniChartProps> = ({ 
+  analysis, 
+  width = 300, 
+  height = 200 
+}) => {
   return (
-    <div className={`relative bg-slate-900 rounded border border-slate-700 ${className}`}>
-      <canvas 
-        ref={canvasRef}
-        className="w-full h-auto"
-        style={{ maxHeight: '200px' }}
-      />
-      
-      {/* Chart overlay info */}
-      <div className="absolute top-2 right-2 bg-black/50 px-2 py-1 rounded text-xs text-white">
-        {pair} • 15M
+    <Card className="bg-gray-900/50 border border-gray-700/50 p-4">
+      <div 
+        className="bg-gradient-to-br from-gray-900 to-gray-800 rounded border border-gray-600 flex items-center justify-center relative overflow-hidden"
+        style={{ width, height }}
+      >
+        {/* Simulated Chart Background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10" />
+        
+        {/* Chart Grid */}
+        <div className="absolute inset-0">
+          {/* Horizontal lines */}
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={`h-${i}`}
+              className="absolute w-full border-t border-gray-600/30"
+              style={{ top: `${(i + 1) * 20}%` }}
+            />
+          ))}
+          {/* Vertical lines */}
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={`v-${i}`}
+              className="absolute h-full border-l border-gray-600/30"
+              style={{ left: `${(i + 1) * 16.66}%` }}
+            />
+          ))}
+        </div>
+
+        {/* Simulated Candlesticks */}
+        <div className="absolute inset-0 flex items-end justify-around px-4 pb-4">
+          {[...Array(8)].map((_, i) => {
+            const height = 20 + Math.random() * 60;
+            const isGreen = Math.random() > 0.5;
+            return (
+              <div
+                key={i}
+                className={`w-2 ${isGreen ? 'bg-green-400' : 'bg-red-400'} opacity-70`}
+                style={{ height: `${height}%` }}
+              />
+            );
+          })}
+        </div>
+
+        {/* Analysis Overlays */}
+        <div className="absolute inset-0 flex flex-col justify-between p-2">
+          {/* HTF Bias Indicator */}
+          <div className="text-xs">
+            <div className={`inline-block px-2 py-1 rounded text-white ${
+              analysis.htfBias.aligned ? 'bg-green-500/80' : 'bg-yellow-500/80'
+            }`}>
+              HTF: {analysis.htfBias.h4Direction.toUpperCase()}
+            </div>
+          </div>
+
+          {/* Volume Indicator */}
+          <div className="text-xs">
+            {analysis.volumeDelta.confirmed && (
+              <div className="inline-block px-2 py-1 rounded bg-blue-500/80 text-white">
+                VOL: {analysis.volumeDelta.strength.toUpperCase()}
+              </div>
+            )}
+          </div>
+
+          {/* Entry Zone Marker */}
+          <div className="text-xs">
+            {analysis.entryZone.valid && (
+              <div className="inline-block px-2 py-1 rounded bg-purple-500/80 text-white">
+                {analysis.entryZone.type}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Chart Title */}
+        <div className="absolute top-2 left-2 text-xs text-gray-400">
+          Mini Chart Analysis
+        </div>
       </div>
-      
-      {/* Legend */}
-      <div className="absolute bottom-2 left-2 space-y-1">
-        <div className="flex items-center gap-2 text-xs">
-          <div className={`w-2 h-2 rounded ${chartAnalysis.htfBias.aligned ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="text-gray-300">HTF Aligned</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <div className={`w-2 h-2 rounded ${chartAnalysis.volumeDelta.confirmed ? 'bg-green-500' : 'bg-gray-500'}`} />
-          <span className="text-gray-300">Volume Confirmed</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <div className={`w-2 h-2 rounded ${chartAnalysis.entryZone.valid ? 'bg-green-500' : 'bg-gray-500'}`} />
-          <span className="text-gray-300">Entry Zone Valid</span>
-        </div>
+
+      {/* Chart Legend */}
+      <div className="mt-2 text-xs text-gray-400 space-y-1">
+        {analysis.markups.slice(0, 3).map((markup, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-400 rounded-full" />
+            <span>{markup.description}</span>
+          </div>
+        ))}
       </div>
-    </div>
+    </Card>
   );
 };
 

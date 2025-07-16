@@ -53,20 +53,23 @@ const SignalMemoryDashboard: React.FC<SignalMemoryDashboardProps> = ({
       const pairCount: { [key: string]: number } = {};
       
       signals.forEach(signal => {
-        const strategy = 'framework' in signal ? signal.framework : 'strategy' in signal ? signal.strategy : 'Unknown';
+        const strategy = 'strategy' in signal ? signal.strategy : 
+                        'origin' in signal ? signal.origin : 'Unknown';
         const pair = 'pair' in signal ? signal.pair : signal.symbol;
         
         strategyCount[strategy] = (strategyCount[strategy] || 0) + 1;
         pairCount[pair] = (pairCount[pair] || 0) + 1;
       });
       
-      const topStrategy = Object.keys(strategyCount).reduce((a, b) => 
-        strategyCount[a] > strategyCount[b] ? a : b, 'None'
-      );
+      const topStrategy = Object.keys(strategyCount).length > 0 ?
+        Object.keys(strategyCount).reduce((a, b) => 
+          strategyCount[a] > strategyCount[b] ? a : b
+        ) : 'None';
       
-      const bestPair = Object.keys(pairCount).reduce((a, b) => 
-        pairCount[a] > pairCount[b] ? a : b, 'None'
-      );
+      const bestPair = Object.keys(pairCount).length > 0 ?
+        Object.keys(pairCount).reduce((a, b) => 
+          pairCount[a] > pairCount[b] ? a : b
+        ) : 'None';
 
       setMemoryStats({
         totalSignals,
@@ -93,6 +96,18 @@ const SignalMemoryDashboard: React.FC<SignalMemoryDashboardProps> = ({
 
   const getSignalPair = (signal: SignalDNA | EnhancedSignal) => {
     return 'pair' in signal ? signal.pair : signal.symbol;
+  };
+
+  const getSignalStrategy = (signal: SignalDNA | EnhancedSignal) => {
+    return 'strategy' in signal ? signal.strategy : 
+           'origin' in signal ? signal.origin : 'Unknown';
+  };
+
+  const getSignalTimestamp = (signal: SignalDNA | EnhancedSignal) => {
+    if ('timestamp' in signal && signal.timestamp) {
+      return signal.timestamp;
+    }
+    return new Date().toISOString(); // fallback
   };
 
   const isEnhancedSignal = (signal: SignalDNA | EnhancedSignal): signal is EnhancedSignal => {
@@ -185,7 +200,7 @@ const SignalMemoryDashboard: React.FC<SignalMemoryDashboardProps> = ({
                           </div>
                           <div className="text-sm text-gray-400">
                             Confidence: {signal.confidence}% | 
-                            Strategy: {'framework' in signal ? signal.framework : 'strategy' in signal ? signal.strategy : 'Unknown'}
+                            Strategy: {getSignalStrategy(signal)}
                           </div>
                         </div>
                       </div>
@@ -197,7 +212,7 @@ const SignalMemoryDashboard: React.FC<SignalMemoryDashboardProps> = ({
                           </Badge>
                         )}
                         <Badge className="bg-blue-500/20 text-blue-400">
-                          {new Date(signal.timestamp).toLocaleDateString()}
+                          {new Date(getSignalTimestamp(signal)).toLocaleDateString()}
                         </Badge>
                       </div>
                     </div>

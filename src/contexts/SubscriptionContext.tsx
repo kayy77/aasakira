@@ -17,6 +17,7 @@ interface UsageData {
 
 interface SubscriptionContextType {
   isPremium: boolean;
+  isSubscribed: boolean; // Added this missing property
   dailyLimits: DailyLimits;
   usageToday: UsageData;
   incrementUsage: (type: keyof Omit<UsageData, 'lastReset'>) => void;
@@ -29,15 +30,16 @@ interface SubscriptionContextType {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 const FREE_LIMITS: DailyLimits = {
-  signals: 2,        // Reduced from previous
-  memeCoins: 3,      // Limited scans
-  aiMentorMessages: 5, // Reduced from 10
+  signals: 2,
+  memeCoins: 3,
+  aiMentorMessages: 5,
 };
 
 export const SubscriptionProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, incrementUsage, canUseFeature, getRemainingUsage } = useAuth();
 
   const isPremium = user?.role === 'premium' || false;
+  const isSubscribed = isPremium; // Added this
 
   const usageToday: UsageData = {
     signals: user?.aiSignalsUsedToday || 0,
@@ -69,6 +71,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   return (
     <SubscriptionContext.Provider value={{
       isPremium,
+      isSubscribed, // Added this
       dailyLimits: FREE_LIMITS,
       usageToday,
       incrementUsage: (type) => {

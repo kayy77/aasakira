@@ -1,26 +1,7 @@
+
 import { trueLivePriceService } from './trueLivePriceService';
 
-export interface EnhancedSignal {
-  id: string;
-  pair: string;
-  type: 'BUY' | 'SELL';
-  confidence: number;
-  confluenceScore: number;
-  maxConfluence: number;
-  entry: string;
-  stopLoss: string;
-  takeProfit: string;
-  riskReward: number;
-  strategy: string;
-  reasons: string[];
-  timestamp: string;
-  tags: string[];
-  chartAnalysis: ChartAnalysis;
-  historicalWinRate: number;
-  similarSetups: number;
-}
-
-interface ChartAnalysis {
+export interface ChartAnalysis {
   htfBias: {
     h4Direction: 'bullish' | 'bearish' | 'neutral';
     h1Direction: 'bullish' | 'bearish' | 'neutral';
@@ -41,6 +22,32 @@ interface ChartAnalysis {
     description: string;
     level?: number;
   }>;
+}
+
+export interface ChartMarkup {
+  type: string;
+  description: string;
+  level?: number;
+}
+
+export interface EnhancedSignal {
+  id: string;
+  pair: string;
+  type: 'BUY' | 'SELL';
+  confidence: number;
+  confluenceScore: number;
+  maxConfluence: number;
+  entry: string;
+  stopLoss: string;
+  takeProfit: string;
+  riskReward: number;
+  strategy: string;
+  reasons: string[];
+  timestamp: string;
+  tags: string[];
+  chartAnalysis: ChartAnalysis;
+  historicalWinRate: number;
+  similarSetups: number;
 }
 
 class EnhancedSignalAnalyzer {
