@@ -335,24 +335,62 @@ const LiveSignalsDashboard: React.FC = () => {
     });
   };
 
+  // Helper function to normalize EnhancedSignal to SignalDNA structure
+  const normalizeToSignalDNA = (signal: SignalDNA | EnhancedSignal): SignalDNA & { id: string; livePrice: number } => {
+    if ('symbol' in signal) {
+      // This is already a SignalDNA
+      return {
+        ...signal,
+        id: signal.symbol,
+        livePrice: livePrices[signal.symbol] || 0
+      };
+    } else {
+      // This is an EnhancedSignal, convert to SignalDNA structure
+      return {
+        symbol: signal.pair,
+        type: 'Hybrid' as const,
+        confidence: signal.confidence,
+        origin: {
+          institutional: true,
+          smc: true,
+          quant: false,
+          volatility: false,
+          visual: true,
+          mentor: false
+        },
+        structure: {
+          entry: signal.entry,
+          stopLoss: signal.stopLoss,
+          takeProfit: signal.takeProfit,
+          riskReward: signal.riskReward
+        },
+        filters: signal.reasons,
+        price: parseFloat(signal.entry),
+        entry: signal.entry,
+        stopLoss: signal.stopLoss,
+        takeProfit: signal.takeProfit,
+        riskReward: signal.riskReward,
+        notes: signal.reasoning || '',
+        timeValidity: new Date(signal.timestamp).toISOString(),
+        session: 'London',
+        id: signal.id,
+        livePrice: livePrices[signal.pair] || parseFloat(signal.entry)
+      };
+    }
+  };
+
   // Helper function to create compatible signal objects for components that expect specific types
-  const createCompatibleSignalList = () => {
+  const createCompatibleSignalList = (): (SignalDNA & { id: string; livePrice: number })[] => {
+    return [...signals, ...premiumSignals].map(normalizeToSignalDNA);
+  };
+
+  // Helper function to create standard SignalDNA list
+  const createSignalDNAList = (): SignalDNA[] => {
     return [...signals, ...premiumSignals].map(signal => {
-      if ('symbol' in signal) {
-        // This is a SignalDNA
-        return {
-          ...signal,
-          id: signal.symbol,
-          livePrice: livePrices[signal.symbol] || 0
-        };
-      } else {
-        // This is an EnhancedSignal, convert to compatible format
-        return {
-          ...signal,
-          symbol: signal.pair,
-          livePrice: livePrices[signal.pair] || 0
-        };
-      }
+      const normalized = normalizeToSignalDNA(signal);
+      // Remove the extra properties to match pure SignalDNA
+      const { id, livePrice, ...signalDNA } = normalized;
+      return signalDNA;
     });
   };
 
@@ -623,7 +661,7 @@ const LiveSignalsDashboard: React.FC = () => {
         <SignalMemoryDashboard
           open={showMemoryDashboard}
           onOpenChange={setShowMemoryDashboard}
-          signals={signals}
+          signals={createSignalDNAList()}
         />
 
         <AutoJournalModal
