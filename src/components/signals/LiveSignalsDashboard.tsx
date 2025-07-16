@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -68,7 +69,7 @@ const LiveSignalsDashboard: React.FC = () => {
   });
 
   const { toast } = useToast();
-  const { subscription } = useSubscription();
+  const { isSubscribed } = useSubscription();
 
   useEffect(() => {
     const fetchInitialPrices = async () => {
@@ -76,7 +77,7 @@ const LiveSignalsDashboard: React.FC = () => {
       try {
         const initialPrices: { [key: string]: number } = {};
         for (const pair of tacticalParams.allowedPairs) {
-          initialPrices[pair] = await trueLivePriceService.getTruePrice(pair);
+          initialPrices[pair] = await trueLivePriceService.getTrueLivePrice(pair);
         }
         setLivePrices(initialPrices);
         setIsConnected(true);
@@ -99,7 +100,7 @@ const LiveSignalsDashboard: React.FC = () => {
         try {
           const updatedPrices: { [key: string]: number } = {};
           for (const pair of tacticalParams.allowedPairs) {
-            updatedPrices[pair] = await trueLivePriceService.getTruePrice(pair);
+            updatedPrices[pair] = await trueLivePriceService.getTrueLivePrice(pair);
           }
           setLivePrices(updatedPrices);
           setIsConnected(true);
@@ -202,7 +203,7 @@ const LiveSignalsDashboard: React.FC = () => {
         Math.floor(Math.random() * tacticalParams.allowedPairs.length)
       ];
       
-      const livePrice = await trueLivePriceService.getTruePrice(randomPair);
+      const livePrice = await trueLivePriceService.getTrueLivePrice(randomPair);
       const signalDNA = await multiIntelligenceCore.generateSignalDNA(randomPair, livePrice);
       
       if (signalDNA && signalDNA.confidence >= tacticalParams.minConfidence) {
@@ -252,7 +253,7 @@ const LiveSignalsDashboard: React.FC = () => {
   const refreshSignal = async (signal: SignalDNA) => {
     setIsGenerating(true);
     try {
-      const livePrice = await trueLivePriceService.getTruePrice(signal.symbol);
+      const livePrice = await trueLivePriceService.getTrueLivePrice(signal.symbol);
       const refreshedSignal = await multiIntelligenceCore.generateSignalDNA(signal.symbol, livePrice);
       if (refreshedSignal) {
         setSignals(prev =>
@@ -437,7 +438,7 @@ const LiveSignalsDashboard: React.FC = () => {
 
         {/* Enhanced Tactical Parameters */}
         <EnhancedTacticalParameters
-          params={tacticalParams}
+          tacticalParams={tacticalParams}
           onParamsChange={setTacticalParams}
         />
 
@@ -542,33 +543,36 @@ const LiveSignalsDashboard: React.FC = () => {
         <StrategyBreakdownModal
           open={showStrategyBreakdown}
           onOpenChange={setShowStrategyBreakdown}
-          signalDNA={selectedSignal}
+          signal={selectedSignal}
         />
 
         <WebhookManager
-          open={showWebhookManager}
-          onOpenChange={setShowWebhookManager}
+          isOpen={showWebhookManager}
+          onClose={() => setShowWebhookManager(false)}
         />
 
         <SignalMemoryDashboard
           open={showMemoryDashboard}
           onOpenChange={setShowMemoryDashboard}
+          signals={[...signals, ...premiumSignals]}
         />
 
         <AutoJournalModal
           open={showJournalModal}
           onOpenChange={setShowJournalModal}
-          signal={selectedSignal}
+          signals={[...signals, ...premiumSignals]}
         />
 
         <ABTestingFramework
           open={showABTesting}
           onOpenChange={setShowABTesting}
+          signals={[...signals, ...premiumSignals]}
         />
 
         <AISignalDigest
           open={showAIDigest}
           onOpenChange={setShowAIDigest}
+          signals={[...signals, ...premiumSignals]}
         />
 
         <ShareableSignalCard
