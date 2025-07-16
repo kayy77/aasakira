@@ -362,15 +362,19 @@ const LiveSignalsDashboard: React.FC = () => {
           entry: signal.entry,
           stopLoss: signal.stopLoss,
           takeProfit: signal.takeProfit,
-          riskReward: signal.riskReward
+          rr: signal.riskReward.toString()
         },
         filters: signal.reasons,
-        price: parseFloat(signal.entry),
+        price: {
+          source: 'live',
+          status: 'active',
+          lastUpdated: new Date().toISOString()
+        },
         entry: signal.entry,
         stopLoss: signal.stopLoss,
         takeProfit: signal.takeProfit,
         riskReward: signal.riskReward,
-        notes: signal.reasoning || '',
+        notes: signal.reasons.join(', '),
         timeValidity: new Date(signal.timestamp).toISOString(),
         session: 'London',
         id: signal.id,
