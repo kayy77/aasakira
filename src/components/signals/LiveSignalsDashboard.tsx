@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -203,15 +204,19 @@ const LiveSignalsDashboard: React.FC = () => {
       }
 
       // Apply trade type and risk level adjustments to SL/TP
+      const baseStopLoss = typeof signalDNA.structure.stopLoss === 'number' ? signalDNA.structure.stopLoss : parseFloat(signalDNA.structure.stopLoss.toString());
+      const baseTakeProfit = typeof signalDNA.structure.takeProfit === 'number' ? signalDNA.structure.takeProfit : parseFloat(signalDNA.structure.takeProfit.toString());
+      const entryPrice = typeof signalDNA.structure.entry === 'number' ? signalDNA.structure.entry : parseFloat(signalDNA.structure.entry.toString());
+      
       const adjustedStopLoss = getAdjustedStopLoss(
-        signalDNA.structure.stopLoss, 
-        signalDNA.structure.entry, 
+        baseStopLoss, 
+        entryPrice, 
         signalConfig.tradeType
       );
       
       const adjustedTakeProfit = getAdjustedTakeProfit(
-        signalDNA.structure.takeProfit, 
-        signalDNA.structure.entry, 
+        baseTakeProfit, 
+        entryPrice, 
         signalConfig.tradeType,
         signalConfig.riskLevel
       );
@@ -219,7 +224,7 @@ const LiveSignalsDashboard: React.FC = () => {
       // Update signal with adjusted values
       signalDNA.structure.stopLoss = adjustedStopLoss;
       signalDNA.structure.takeProfit = adjustedTakeProfit;
-      signalDNA.structure.rr = Math.abs((adjustedTakeProfit - signalDNA.structure.entry) / (signalDNA.structure.entry - adjustedStopLoss));
+      signalDNA.structure.rr = Math.abs((adjustedTakeProfit - entryPrice) / (entryPrice - adjustedStopLoss));
 
       // Set breakdown for modal - mapping to correct properties
       setCurrentBreakdown({

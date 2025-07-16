@@ -26,6 +26,7 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
 
   const generateShareText = (includeResults = false) => {
     const frameworks = Object.values(signal.origin).filter(Boolean).length;
+    const entry = typeof signal.structure.entry === 'number' ? signal.structure.entry : parseFloat(signal.structure.entry.toString());
     const baseText = `📈 ${signal.symbol} ${signal.type} (${frameworks}/6) – Hybrid Strategy – Confidence: ${signal.confidence}%`;
     
     if (includeResults) {
@@ -88,9 +89,13 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
     ctx.fillText(`${signal.confidence}% Confidence`, 200, 190);
     
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`Entry: ${signal.structure.entry}`, 200, 240);
-    ctx.fillText(`SL: ${signal.structure.stopLoss}`, 200, 270);
-    ctx.fillText(`TP: ${signal.structure.takeProfit}`, 200, 300);
+    const entry = typeof signal.structure.entry === 'number' ? signal.structure.entry : parseFloat(signal.structure.entry.toString());
+    const stopLoss = typeof signal.structure.stopLoss === 'number' ? signal.structure.stopLoss : parseFloat(signal.structure.stopLoss.toString());
+    const takeProfit = typeof signal.structure.takeProfit === 'number' ? signal.structure.takeProfit : parseFloat(signal.structure.takeProfit.toString());
+    
+    ctx.fillText(`Entry: ${entry}`, 200, 240);
+    ctx.fillText(`SL: ${stopLoss}`, 200, 270);
+    ctx.fillText(`TP: ${takeProfit}`, 200, 300);
     ctx.fillText(`R/R: ${signal.structure.rr.toFixed(1)}:1`, 200, 330);
     
     // Simulate P/L
@@ -116,6 +121,9 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
   };
 
   const frameworks = Object.values(signal.origin).filter(Boolean).length;
+  const entry = typeof signal.structure.entry === 'number' ? signal.structure.entry : parseFloat(signal.structure.entry.toString());
+  const stopLoss = typeof signal.structure.stopLoss === 'number' ? signal.structure.stopLoss : parseFloat(signal.structure.stopLoss.toString());
+  const takeProfit = typeof signal.structure.takeProfit === 'number' ? signal.structure.takeProfit : parseFloat(signal.structure.takeProfit.toString());
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -157,15 +165,15 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between text-gray-300">
                     <span>Entry:</span>
-                    <span className="font-mono">{signal.structure.entry}</span>
+                    <span className="font-mono">{entry}</span>
                   </div>
                   <div className="flex justify-between text-gray-300">
                     <span>Stop Loss:</span>
-                    <span className="font-mono">{signal.structure.stopLoss}</span>
+                    <span className="font-mono">{stopLoss}</span>
                   </div>
                   <div className="flex justify-between text-gray-300">
                     <span>Take Profit:</span>
-                    <span className="font-mono">{signal.structure.takeProfit}</span>
+                    <span className="font-mono">{takeProfit}</span>
                   </div>
                   <div className="flex justify-between text-gray-300">
                     <span>Risk/Reward:</span>
