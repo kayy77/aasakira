@@ -93,9 +93,9 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
     const stopLoss = typeof signal.structure.stopLoss === 'number' ? signal.structure.stopLoss : parseFloat(signal.structure.stopLoss.toString());
     const takeProfit = typeof signal.structure.takeProfit === 'number' ? signal.structure.takeProfit : parseFloat(signal.structure.takeProfit.toString());
     
-    ctx.fillText(`Entry: ${entry}`, 200, 240);
-    ctx.fillText(`SL: ${stopLoss}`, 200, 270);
-    ctx.fillText(`TP: ${takeProfit}`, 200, 300);
+    ctx.fillText(`Entry: ${entry.toFixed(signal.symbol.includes('JPY') ? 3 : 5)}`, 200, 240);
+    ctx.fillText(`SL: ${stopLoss.toFixed(signal.symbol.includes('JPY') ? 3 : 5)}`, 200, 270);
+    ctx.fillText(`TP: ${takeProfit.toFixed(signal.symbol.includes('JPY') ? 3 : 5)}`, 200, 300);
     ctx.fillText(`R/R: ${signal.structure.rr.toFixed(1)}:1`, 200, 330);
     
     // Simulate P/L
@@ -165,15 +165,15 @@ const ShareableSignalCard: React.FC<ShareableSignalCardProps> = ({
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between text-gray-300">
                     <span>Entry:</span>
-                    <span className="font-mono">{entry}</span>
+                    <span className="font-mono">{entry.toFixed(signal.symbol.includes('JPY') ? 3 : 5)}</span>
                   </div>
                   <div className="flex justify-between text-gray-300">
                     <span>Stop Loss:</span>
-                    <span className="font-mono">{stopLoss}</span>
+                    <span className="font-mono">{stopLoss.toFixed(signal.symbol.includes('JPY') ? 3 : 5)}</span>
                   </div>
                   <div className="flex justify-between text-gray-300">
                     <span>Take Profit:</span>
-                    <span className="font-mono">{takeProfit}</span>
+                    <span className="font-mono">{takeProfit.toFixed(signal.symbol.includes('JPY') ? 3 : 5)}</span>
                   </div>
                   <div className="flex justify-between text-gray-300">
                     <span>Risk/Reward:</span>
