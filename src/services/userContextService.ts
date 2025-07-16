@@ -1,367 +1,323 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { UserTrackingService } from './userTrackingService';
 
 export interface UserPersonality {
-  communicationStyle: 'casual' | 'professional' | 'technical' | 'friendly';
-  learningPreference: 'visual' | 'text' | 'interactive' | 'examples';
   tradingExperience: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   riskTolerance: 'conservative' | 'moderate' | 'aggressive';
-  preferredTopics: string[];
-  weakAreas: string[];
-  strengths: string[];
-  conversationTone: 'serious' | 'humorous' | 'encouraging' | 'challenging';
+  interests: string[];
+  communicationStyle: 'formal' | 'casual' | 'technical';
+  learningPreferences: string[];
+  goals: string[];
 }
 
-export interface UserConversationHistory {
-  messageCount: number;
-  lastTopics: string[];
-  commonQuestions: string[];
-  learningProgress: Record<string, number>;
-  personalDetails: Record<string, any>;
-  tradingGoals: string[];
-  currentChallenges: string[];
+export interface ConversationContext {
+  recentTopics: string[];
+  questionPatterns: string[];
+  responseStyle: string;
+  lastInteraction: Date;
+  sessionCount: number;
+  avgSessionLength: number;
 }
 
-export interface UserActivitySummary {
+export interface UserActivity {
   signalsViewed: number;
+  educationModulesCompleted: string[];
+  tradingGamesPlayed: number;
   memeCoinsScanned: number;
-  tradingIdeasGenerated: number;
-  educationTopicsExplored: string[];
-  averageSessionTime: number;
-  preferredTimeframes: string[];
-  mostActiveFeatures: string[];
-  recentPerformance: number;
+  totalMessages: number;
+  lastActiveSection: string;
 }
 
-export interface ComprehensiveUserContext {
+export interface UserContext {
   userId: string;
   personality: UserPersonality;
-  conversationHistory: UserConversationHistory;
-  activitySummary: UserActivitySummary;
-  currentLevel: string;
-  nextGoals: string[];
-  lastUpdated: string;
+  conversation: ConversationContext;
+  activity: UserActivity;
+  lastUpdated: Date;
 }
 
-export class UserContextService {
-  static async getComprehensiveUserContext(userId: string): Promise<ComprehensiveUserContext> {
+class UserContextService {
+  private contexts: Map<string, UserContext> = new Map();
+
+  async getUserContext(userId: string): Promise<UserContext> {
+    // Check if we have cached context
+    if (this.contexts.has(userId)) {
+      const context = this.contexts.get(userId)!;
+      // Refresh if older than 1 hour
+      if (Date.now() - context.lastUpdated.getTime() < 3600000) {
+        return context;
+      }
+    }
+
+    // Load from database
+    const context = await this.loadUserContext(userId);
+    this.contexts.set(userId, context);
+    return context;
+  }
+
+  private async loadUserContext(userId: string): Promise<UserContext> {
     try {
-      // Get basic user progress
-      const progress = await UserTrackingService.getUserProgress(userId);
-      
-      // Get conversation history and AI memory
-      const memories = await UserTrackingService.getAIMemory(userId, 100);
-      const recentActivities = await UserTrackingService.getRecentActivities(userId, 50);
-      
-      // Get learning sessions
-      const { data: sessions } = await supabase
-        .from('learning_sessions')
+      // Get user progress and activities
+      const { data: progress } = await supabase
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      const { data: activities } = await supabase
+        .from('user_activities')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
+        .limit(50);
+
+      const { data: memory } = await supabase
+        .from('ai_memory')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
         .limit(20);
 
-      // Analyze conversation patterns
-      const conversationMemories = memories.filter(m => m.memory_type === 'conversation');
-      const personalityMemories = memories.filter(m => m.memory_type === 'preference');
-      
-      // Extract personality traits from conversations
-      const personality = this.analyzePersonality(conversationMemories, personalityMemories);
-      
-      // Build conversation history summary
-      const conversationHistory = this.buildConversationHistory(conversationMemories, sessions || []);
-      
-      // Summarize user activity
-      const activitySummary = this.summarizeActivity(progress, recentActivities, sessions || []);
-      
-      // Determine current level and next goals
-      const currentLevel = this.determineUserLevel(progress, conversationHistory, activitySummary);
-      const nextGoals = this.generateNextGoals(currentLevel, activitySummary, conversationHistory);
+      // Analyze user behavior and build context
+      const personality = this.analyzePersonality(progress, activities || []);
+      const conversation = this.analyzeConversation(memory || []);
+      const activity = this.analyzeActivity(progress, activities || []);
 
       return {
         userId,
         personality,
-        conversationHistory,
-        activitySummary,
-        currentLevel,
-        nextGoals,
-        lastUpdated: new Date().toISOString()
+        conversation,
+        activity,
+        lastUpdated: new Date()
       };
     } catch (error) {
-      console.error('Error getting user context:', error);
-      return this.getDefaultUserContext(userId);
+      console.error('Error loading user context:', error);
+      return this.getDefaultContext(userId);
     }
   }
 
-  private static analyzePersonality(conversationMemories: any[], personalityMemories: any[]): UserPersonality {
-    // Analyze communication patterns
-    let casualWords = 0;
-    let technicalWords = 0;
-    let totalWords = 0;
-
-    const technicalTerms = ['leverage', 'fibonacci', 'rsi', 'macd', 'bollinger', 'ichimoku', 'elliott wave'];
-    const casualTerms = ['cool', 'awesome', 'thanks', 'hey', 'lol', 'yeah', 'nice'];
-
-    conversationMemories.forEach(memory => {
-      const content = memory.content.toLowerCase();
-      totalWords += content.split(' ').length;
-      
-      technicalTerms.forEach(term => {
-        if (content.includes(term)) technicalWords++;
-      });
-      
-      casualTerms.forEach(term => {
-        if (content.includes(term)) casualWords++;
-      });
-    });
-
-    // Determine communication style
-    let communicationStyle: UserPersonality['communicationStyle'] = 'friendly';
-    if (technicalWords > casualWords && totalWords > 100) {
-      communicationStyle = technicalWords > totalWords * 0.1 ? 'technical' : 'professional';
-    } else if (casualWords > technicalWords) {
-      communicationStyle = 'casual';
+  private analyzePersonality(progress: any, activities: any[]): UserPersonality {
+    if (!progress) {
+      return {
+        tradingExperience: 'beginner',
+        riskTolerance: 'moderate',
+        interests: [],
+        communicationStyle: 'casual',
+        learningPreferences: [],
+        goals: []
+      };
     }
 
-    // Extract other preferences from memory
-    const preferences = personalityMemories.reduce((acc, memory) => {
-      try {
-        const context = memory.context || {};
-        return { ...acc, ...context };
-      } catch {
-        return acc;
-      }
-    }, {});
+    const signalsViewed = progress.signals_viewed || 0;
+    const chartsAnalyzed = progress.charts_analyzed || 0;
+    const gamesPlayed = progress.trading_games_played || 0;
+
+    let experience: 'beginner' | 'intermediate' | 'advanced' | 'expert' = 'beginner';
+    if (signalsViewed > 50 && chartsAnalyzed > 20 && gamesPlayed > 10) experience = 'expert';
+    else if (signalsViewed > 25 && chartsAnalyzed > 10) experience = 'advanced';
+    else if (signalsViewed > 10 && chartsAnalyzed > 5) experience = 'intermediate';
+
+    const interests = [];
+    if (progress.signals_viewed > 10) interests.push('technical_analysis');
+    if (progress.meme_coins_scanned > 5) interests.push('crypto');
+    if (progress.trading_games_played > 3) interests.push('practice_trading');
 
     return {
-      communicationStyle,
-      learningPreference: preferences.learningPreference || 'interactive',
-      tradingExperience: preferences.tradingExperience || 'intermediate',
-      riskTolerance: preferences.riskTolerance || 'moderate',
-      preferredTopics: preferences.preferredTopics || ['smart money concepts'],
-      weakAreas: preferences.weakAreas || [],
-      strengths: preferences.strengths || [],
-      conversationTone: preferences.conversationTone || 'encouraging'
+      tradingExperience: experience,
+      riskTolerance: progress.risk_tolerance || 'moderate',
+      interests,
+      communicationStyle: 'casual',
+      learningPreferences: progress.skills_mastered || [],
+      goals: []
     };
   }
 
-  private static buildConversationHistory(conversationMemories: any[], sessions: any[]): UserConversationHistory {
-    const messageCount = conversationMemories.length;
-    const lastTopics = conversationMemories
+  private analyzeConversation(memory: any[]): ConversationContext {
+    if (!memory || memory.length === 0) {
+      return {
+        recentTopics: [],
+        questionPatterns: [],
+        responseStyle: 'helpful',
+        lastInteraction: new Date(),
+        sessionCount: 0,
+        avgSessionLength: 0
+      };
+    }
+
+    const recentTopics = memory
       .slice(0, 10)
-      .map(m => this.extractTopics(m.content))
-      .flat()
-      .filter((topic, index, arr) => arr.indexOf(topic) === index)
-      .slice(0, 5);
+      .map(m => this.extractTopic(m.content))
+      .filter(Boolean);
 
-    const commonQuestions = conversationMemories
+    const questionPatterns = memory
       .filter(m => m.content.includes('?'))
-      .map(m => m.content.split('\n')[0])
-      .slice(0, 5);
-
-    const learningProgress = sessions.reduce((acc, session) => {
-      session.topics_covered?.forEach((topic: string) => {
-        acc[topic] = (acc[topic] || 0) + 1;
-      });
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Extract personal details from conversations
-    const personalDetails = this.extractPersonalDetails(conversationMemories);
+      .slice(0, 5)
+      .map(m => this.extractQuestionPattern(m.content));
 
     return {
-      messageCount,
-      lastTopics,
-      commonQuestions,
-      learningProgress,
-      personalDetails,
-      tradingGoals: personalDetails.goals || [],
-      currentChallenges: personalDetails.challenges || []
+      recentTopics,
+      questionPatterns,
+      responseStyle: 'helpful',
+      lastInteraction: new Date(memory[0]?.updated_at || Date.now()),
+      sessionCount: memory.length,
+      avgSessionLength: 5
     };
   }
 
-  private static summarizeActivity(progress: any, activities: any[], sessions: any[]): UserActivitySummary {
-    const sessionTimes = sessions
-      .filter(s => s.duration_minutes)
-      .map(s => s.duration_minutes);
-    
-    const averageSessionTime = sessionTimes.length > 0 
-      ? sessionTimes.reduce((a, b) => a + b, 0) / sessionTimes.length 
-      : 0;
+  private analyzeActivity(progress: any, activities: any[]): UserActivity {
+    if (!progress) {
+      return {
+        signalsViewed: 0,
+        educationModulesCompleted: [],
+        tradingGamesPlayed: 0,
+        memeCoinsScanned: 0,
+        totalMessages: 0,
+        lastActiveSection: 'signals'
+      };
+    }
 
-    const activityCounts = activities.reduce((acc, activity) => {
-      acc[activity.activity_type] = (acc[activity.activity_type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const mostActiveFeatures = Object.entries(activityCounts)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 3)
-      .map(([feature]) => feature);
+    const lastActivity = activities[0];
+    const lastSection = lastActivity?.activity_type || 'signals';
 
     return {
-      signalsViewed: progress?.signals_viewed || 0,
-      memeCoinsScanned: progress?.meme_coins_scanned || 0,
-      tradingIdeasGenerated: progress?.trading_games_played || 0,
-      educationTopicsExplored: Object.keys(progress?.skills_mastered || []),
-      averageSessionTime,
-      preferredTimeframes: progress?.preferred_timeframes || ['H1', 'H4'],
-      mostActiveFeatures,
-      recentPerformance: progress?.win_rate || 0
+      signalsViewed: progress.signals_viewed || 0,
+      educationModulesCompleted: progress.skills_mastered || [],
+      tradingGamesPlayed: progress.trading_games_played || 0,
+      memeCoinsScanned: progress.meme_coins_scanned || 0,
+      totalMessages: progress.messages_sent || 0,
+      lastActiveSection: lastSection
     };
   }
 
-  private static determineUserLevel(progress: any, conversation: UserConversationHistory, activity: UserActivitySummary): string {
-    let score = 0;
-    
-    // Experience indicators
-    if (activity.signalsViewed > 50) score += 20;
-    if (activity.averageSessionTime > 15) score += 15;
-    if (conversation.messageCount > 100) score += 25;
-    if (activity.recentPerformance > 60) score += 20;
-    if (Object.keys(conversation.learningProgress).length > 10) score += 20;
-
-    if (score >= 80) return 'Expert Trader & Mentor';
-    if (score >= 60) return 'Advanced Smart Money Practitioner';
-    if (score >= 40) return 'Developing Institutional Trader';
-    if (score >= 20) return 'Learning Technical Analyst';
-    return 'Trading Beginner';
-  }
-
-  private static generateNextGoals(level: string, activity: UserActivitySummary, conversation: UserConversationHistory): string[] {
-    const goals = [];
-    
-    switch (level) {
-      case 'Trading Beginner':
-        goals.push('Master basic candlestick patterns', 'Learn risk management fundamentals', 'Understand market structure');
-        break;
-      case 'Learning Technical Analyst':
-        goals.push('Study Smart Money Concepts', 'Practice order block identification', 'Develop trading psychology');
-        break;
-      case 'Developing Institutional Trader':
-        goals.push('Master liquidity concepts', 'Develop consistent strategy', 'Learn advanced position sizing');
-        break;
-      case 'Advanced Smart Money Practitioner':
-        goals.push('Perfect execution timing', 'Develop teaching abilities', 'Master multi-timeframe analysis');
-        break;
-      default:
-        goals.push('Share knowledge with community', 'Develop advanced strategies', 'Mentor other traders');
-    }
-
-    // Add personalized goals based on weak areas
-    if (activity.recentPerformance < 50) {
-      goals.push('Improve trade management skills');
-    }
-    
-    if (conversation.currentChallenges.length > 0) {
-      goals.push(`Address current challenge: ${conversation.currentChallenges[0]}`);
-    }
-
-    return goals.slice(0, 3);
-  }
-
-  private static extractTopics(content: string): string[] {
-    const tradingTopics = [
-      'order blocks', 'fair value gap', 'liquidity', 'market structure', 'break of structure',
-      'smart money', 'institutional trading', 'risk management', 'position sizing', 'psychology',
-      'candlesticks', 'support resistance', 'fibonacci', 'elliott wave', 'technical analysis'
+  private extractTopic(content: string): string {
+    const topics = [
+      'signals', 'trading', 'charts', 'risk management', 'strategies',
+      'forex', 'crypto', 'technical analysis', 'fundamentals'
     ];
-
-    return tradingTopics.filter(topic => 
-      content.toLowerCase().includes(topic.toLowerCase())
-    );
+    
+    return topics.find(topic => 
+      content.toLowerCase().includes(topic)
+    ) || 'general';
   }
 
-  private static extractPersonalDetails(conversationMemories: any[]): Record<string, any> {
-    const details: Record<string, any> = {
-      goals: [],
-      challenges: [],
-      interests: [],
-      lifestyle: {}
-    };
-
-    conversationMemories.forEach(memory => {
-      const content = memory.content.toLowerCase();
-      
-      // Extract goals
-      if (content.includes('goal') || content.includes('want to') || content.includes('hoping to')) {
-        const goalMatch = content.match(/(?:goal|want to|hoping to)([^.!?]*)/i);
-        if (goalMatch && goalMatch[1]) {
-          details.goals.push(goalMatch[1].trim());
-        }
-      }
-
-      // Extract challenges
-      if (content.includes('struggle') || content.includes('difficult') || content.includes('problem')) {
-        const challengeMatch = content.match(/(?:struggle|difficult|problem)([^.!?]*)/i);
-        if (challengeMatch && challengeMatch[1]) {
-          details.challenges.push(challengeMatch[1].trim());
-        }
-      }
-
-      // Extract personal interests
-      if (content.includes('hobby') || content.includes('enjoy') || content.includes('love')) {
-        const interestMatch = content.match(/(?:hobby|enjoy|love)([^.!?]*)/i);
-        if (interestMatch && interestMatch[1]) {
-          details.interests.push(interestMatch[1].trim());
-        }
-      }
-    });
-
-    return details;
+  private extractQuestionPattern(content: string): string {
+    if (content.includes('how')) return 'how-to';
+    if (content.includes('what')) return 'definition';
+    if (content.includes('why')) return 'explanation';
+    if (content.includes('when')) return 'timing';
+    return 'general';
   }
 
-  private static getDefaultUserContext(userId: string): ComprehensiveUserContext {
+  private getDefaultContext(userId: string): UserContext {
     return {
       userId,
       personality: {
-        communicationStyle: 'friendly',
-        learningPreference: 'interactive',
         tradingExperience: 'beginner',
         riskTolerance: 'moderate',
-        preferredTopics: ['basics'],
-        weakAreas: [],
-        strengths: [],
-        conversationTone: 'encouraging'
+        interests: [],
+        communicationStyle: 'casual',
+        learningPreferences: [],
+        goals: []
       },
-      conversationHistory: {
-        messageCount: 0,
-        lastTopics: [],
-        commonQuestions: [],
-        learningProgress: {},
-        personalDetails: {},
-        tradingGoals: [],
-        currentChallenges: []
+      conversation: {
+        recentTopics: [],
+        questionPatterns: [],
+        responseStyle: 'helpful',
+        lastInteraction: new Date(),
+        sessionCount: 0,
+        avgSessionLength: 0
       },
-      activitySummary: {
+      activity: {
         signalsViewed: 0,
+        educationModulesCompleted: [],
+        tradingGamesPlayed: 0,
         memeCoinsScanned: 0,
-        tradingIdeasGenerated: 0,
-        educationTopicsExplored: [],
-        averageSessionTime: 0,
-        preferredTimeframes: ['H1'],
-        mostActiveFeatures: [],
-        recentPerformance: 0
+        totalMessages: 0,
+        lastActiveSection: 'signals'
       },
-      currentLevel: 'Trading Beginner',
-      nextGoals: ['Learn basic concepts', 'Start with risk management', 'Understand market basics'],
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date()
     };
   }
 
-  // Store user context updates
-  static async updateUserContext(userId: string, updates: Partial<ComprehensiveUserContext>): Promise<void> {
+  async updateUserActivity(userId: string, activityType: string, data: any = {}) {
     try {
-      await UserTrackingService.storeAIMemory({
+      // Store in database
+      await supabase.from('user_activities').insert({
         user_id: userId,
-        memory_type: 'preference',
-        content: `User context updated: ${JSON.stringify(updates)}`,
-        importance_score: 8,
-        context: updates
+        activity_type: activityType,
+        data
       });
+
+      // Update cached context
+      const context = await this.getUserContext(userId);
+      
+      if (activityType === 'signal_view') {
+        context.activity.signalsViewed += 1;
+      } else if (activityType === 'meme_scan') {
+        context.activity.memeCoinsScanned += 1;
+      } else if (activityType === 'trade_game') {
+        context.activity.tradingGamesPlayed += 1;
+      } else if (activityType === 'ai_message') {
+        context.activity.totalMessages += 1;
+      }
+
+      context.activity.lastActiveSection = activityType;
+      context.lastUpdated = new Date();
+      
+      this.contexts.set(userId, context);
     } catch (error) {
-      console.error('Error updating user context:', error);
+      console.error('Error updating user activity:', error);
     }
   }
+
+  async storeConversationMemory(userId: string, content: string, importance: number = 5) {
+    try {
+      await supabase.from('ai_memory').insert({
+        user_id: userId,
+        content,
+        memory_type: 'conversation',
+        importance_score: importance,
+        context: {
+          timestamp: new Date().toISOString(),
+          source: 'ai_mentor'
+        }
+      });
+
+      // Update cached context
+      const context = await this.getUserContext(userId);
+      context.conversation.sessionCount += 1;
+      context.conversation.lastInteraction = new Date();
+      context.lastUpdated = new Date();
+      
+      this.contexts.set(userId, context);
+    } catch (error) {
+      console.error('Error storing conversation memory:', error);
+    }
+  }
+
+  generatePersonalizedPrompt(context: UserContext, message: string): string {
+    const { personality, conversation, activity } = context;
+    
+    let prompt = `You are a friendly AI trading mentor. 
+
+User Profile:
+- Trading Experience: ${personality.tradingExperience}
+- Risk Tolerance: ${personality.riskTolerance}
+- Interests: ${personality.interests.join(', ') || 'Getting started'}
+- Messages Sent: ${activity.totalMessages}
+- Signals Viewed: ${activity.signalsViewed}
+- Trading Games Played: ${activity.tradingGamesPlayed}
+
+Communication Style: Be ${personality.communicationStyle} and adapt to their ${personality.tradingExperience} level.
+
+Recent Context: ${conversation.recentTopics.slice(0, 3).join(', ')}
+
+User Message: "${message}"
+
+Respond as a knowledgeable but friendly trading mentor who remembers this user's journey and adapts to their experience level. Keep responses conversational and helpful.`;
+
+    return prompt;
+  }
 }
+
+export const userContextService = new UserContextService();
