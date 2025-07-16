@@ -12,6 +12,7 @@ export interface SignalConfig {
   minFilters: number;
   assetClass: AssetClass;
   pairFilter: 'all' | 'majors' | 'eurusd';
+  timeValidity?: string;
 }
 
 export interface SavedPreset {

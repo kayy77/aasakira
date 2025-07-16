@@ -572,18 +572,18 @@ const LiveSignalsDashboard: React.FC = () => {
         <StrategyBreakdownModal
           open={showStrategyBreakdown}
           onOpenChange={setShowStrategyBreakdown}
-          signal={selectedSignal}
+          signalDNA={selectedSignal}
         />
 
         <WebhookManager
-          isOpen={showWebhookManager}
+          open={showWebhookManager}
           onClose={() => setShowWebhookManager(false)}
         />
 
         <SignalMemoryDashboard
           open={showMemoryDashboard}
           onOpenChange={setShowMemoryDashboard}
-          signals={[...signals, ...premiumSignals]}
+          signals={signals}
         />
 
         <AutoJournalModal
