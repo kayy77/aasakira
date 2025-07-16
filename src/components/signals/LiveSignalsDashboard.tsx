@@ -12,6 +12,11 @@ import SignalCardV2 from './SignalCardV2';
 import EnhancedTacticalParameters from './EnhancedTacticalParameters';
 import StrategyBreakdownModal from './StrategyBreakdownModal';
 import WebhookManager from './WebhookManager';
+import SignalMemoryDashboard from './SignalMemoryDashboard';
+import AutoJournalModal from './AutoJournalModal';
+import ABTestingFramework from './ABTestingFramework';
+import AISignalDigest from './AISignalDigest';
+import ShareableSignalCard from './ShareableSignalCard';
 import { 
   Brain, 
   Activity, 
@@ -24,7 +29,12 @@ import {
   AlertTriangle,
   Info,
   Crown,
-  Lock
+  Lock,
+  TrendingUp,
+  BookOpen,
+  FlaskConical,
+  FileText,
+  Share2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -41,6 +51,12 @@ const LiveSignalsDashboard: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<string | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showMemory, setShowMemory] = useState(false);
+  const [showJournal, setShowJournal] = useState(false);
+  const [showABTesting, setShowABTesting] = useState(false);
+  const [showDigest, setShowDigest] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
+  const [selectedSignalForShare, setSelectedSignalForShare] = useState<SignalDNA | null>(null);
   const [currentBreakdown, setCurrentBreakdown] = useState<StrategyBreakdown>({
     smc: false,
     liquidity: false,
@@ -205,14 +221,14 @@ const LiveSignalsDashboard: React.FC = () => {
       signalDNA.structure.takeProfit = adjustedTakeProfit;
       signalDNA.structure.rr = Math.abs((adjustedTakeProfit - signalDNA.structure.entry) / (signalDNA.structure.entry - adjustedStopLoss));
 
-      // Set breakdown for modal
+      // Set breakdown for modal - mapping to correct properties
       setCurrentBreakdown({
-        smc: signalDNA.origin.smartMoney || false,
-        liquidity: signalDNA.origin.liquidity || false,
-        fvg: signalDNA.origin.fvg || false,
-        volume: signalDNA.origin.volume || false,
-        session: signalDNA.origin.session || false,
-        rsiEma: signalDNA.origin.technical || false
+        smc: signalDNA.origin.smc || false,
+        liquidity: signalDNA.origin.institutional || false,
+        fvg: signalDNA.origin.quant || false,
+        volume: signalDNA.origin.volatility || false,
+        session: signalDNA.origin.visual || false,
+        rsiEma: signalDNA.origin.mentor || false
       });
       setCurrentConfidence(signalDNA.confidence);
 
@@ -333,6 +349,11 @@ const LiveSignalsDashboard: React.FC = () => {
     });
   };
 
+  const handleShareSignal = (signal: SignalDNA) => {
+    setSelectedSignalForShare(signal);
+    setShowShareCard(true);
+  };
+
   // Auto-refresh prices every 5 seconds using REAL price service (NEVER CHANGE THIS)
   useEffect(() => {
     if (militarySignals.length === 0) return;
@@ -400,7 +421,7 @@ const LiveSignalsDashboard: React.FC = () => {
                   ⛩️ AASAKIRA ENHANCED SIGNAL SYSTEM
                 </h2>
                 <p className="text-xs md:text-sm text-gray-400 font-shippori">
-                  God-tier signal generation with trade type optimization and risk level adaptation.
+                  God-tier signal generation with advanced analytics and social sharing.
                 </p>
                 <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2">
                   <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs font-zen-maru glow-soft">
@@ -425,20 +446,68 @@ const LiveSignalsDashboard: React.FC = () => {
                   Last: {lastUpdate.toLocaleTimeString()}
                 </div>
               )}
-              {!isMobile && (
-                <Button
-                  onClick={() => setShowWebhookManager(!showWebhookManager)}
-                  variant="outline"
-                  size="sm"
-                  className="border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-zen-maru glow-soft"
-                >
-                  <Webhook className="w-4 h-4 mr-2" />
-                  Webhooks
-                </Button>
-              )}
             </div>
           </CardTitle>
         </CardHeader>
+      </Card>
+
+      {/* Power Features Navigation */}
+      <Card className="bg-gradient-to-r from-blue-950/20 via-indigo-950/20 to-blue-950/20 border border-blue-500/30">
+        <CardHeader>
+          <CardTitle className="text-blue-400 text-lg md:text-xl flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            🚀 Power Features
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+            <Button
+              onClick={() => setShowMemory(true)}
+              variant="outline"
+              size={isMobile ? "sm" : "default"}
+              className="border-purple-500/30 hover:bg-purple-500/20 text-purple-400 font-zen-maru glow-soft"
+            >
+              <TrendingUp className="w-4 h-4 mr-1" />
+              Memory
+            </Button>
+            <Button
+              onClick={() => setShowJournal(true)}
+              variant="outline"
+              size={isMobile ? "sm" : "default"}
+              className="border-green-500/30 hover:bg-green-500/20 text-green-400 font-zen-maru glow-soft"
+            >
+              <BookOpen className="w-4 h-4 mr-1" />
+              Journal
+            </Button>
+            <Button
+              onClick={() => setShowABTesting(true)}
+              variant="outline"
+              size={isMobile ? "sm" : "default"}
+              className="border-orange-500/30 hover:bg-orange-500/20 text-orange-400 font-zen-maru glow-soft"
+            >
+              <FlaskConical className="w-4 h-4 mr-1" />
+              A/B Test
+            </Button>
+            <Button
+              onClick={() => setShowDigest(true)}
+              variant="outline"
+              size={isMobile ? "sm" : "default"}
+              className="border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-400 font-zen-maru glow-soft"
+            >
+              <FileText className="w-4 h-4 mr-1" />
+              Digest
+            </Button>
+            <Button
+              onClick={() => setShowWebhookManager(!showWebhookManager)}
+              variant="outline"
+              size={isMobile ? "sm" : "default"}
+              className="border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-zen-maru glow-soft"
+            >
+              <Webhook className="w-4 h-4 mr-1" />
+              {isMobile ? 'Hook' : 'Webhooks'}
+            </Button>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Free User Limit Display */}
@@ -572,6 +641,37 @@ const LiveSignalsDashboard: React.FC = () => {
         confidence={currentConfidence}
       />
 
+      {/* Power Feature Modals */}
+      <SignalMemoryDashboard
+        open={showMemory}
+        onOpenChange={setShowMemory}
+        signals={militarySignals}
+      />
+
+      <AutoJournalModal
+        open={showJournal}
+        onOpenChange={setShowJournal}
+        signals={militarySignals}
+      />
+
+      <ABTestingFramework
+        open={showABTesting}
+        onOpenChange={setShowABTesting}
+        signals={militarySignals}
+      />
+
+      <AISignalDigest
+        open={showDigest}
+        onOpenChange={setShowDigest}
+        signals={militarySignals}
+      />
+
+      <ShareableSignalCard
+        open={showShareCard}
+        onOpenChange={setShowShareCard}
+        signal={selectedSignalForShare}
+      />
+
       {/* System Status */}
       {militarySignals.length > 0 && (
         <Alert className="border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10 glow-soft animate-section-load">
@@ -579,7 +679,7 @@ const LiveSignalsDashboard: React.FC = () => {
           <AlertDescription className="text-green-400 font-zen-maru text-sm md:text-base">
             ⛩️ ENHANCED AASAKIRA SYSTEM OPERATIONAL - {militarySignals.length} Active Enhanced Signals | Auto-refresh: 5s intervals
             <div className="mt-1 text-xs text-green-300 font-noto">
-              Enhanced strategic intelligence with trade type optimization and live price feeds
+              Enhanced strategic intelligence with advanced analytics and social sharing
             </div>
           </AlertDescription>
         </Alert>
@@ -601,6 +701,7 @@ const LiveSignalsDashboard: React.FC = () => {
               onRemove={removeMilitarySignal}
               onRefresh={() => refreshSignalPrice(signal.id)}
               onBacktest={() => handleBacktest(signal)}
+              onShare={() => handleShareSignal(signal)}
               isUpdating={isAnalyzing === signal.id}
             />
           </motion.div>
