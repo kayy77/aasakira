@@ -1,5 +1,6 @@
+
 import { getGroqService } from './groqService';
-import { UserContextService, type ComprehensiveUserContext } from './userContextService';
+import { userContextService, type UserContext } from './userContextService';
 import { UserTrackingService } from './userTrackingService';
 
 export interface PersonalizedAIResponse {
@@ -21,8 +22,8 @@ export class EnhancedGroqService {
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
   ): Promise<PersonalizedAIResponse> {
     try {
-      // Get comprehensive user context
-      const userContext = await UserContextService.getComprehensiveUserContext(userId);
+      // Get user context
+      const userContext = await userContextService.getUserContext(userId);
       
       // Build personalized system prompt
       const systemPrompt = this.buildPersonalizedPrompt(userContext, userMessage);
@@ -77,73 +78,52 @@ export class EnhancedGroqService {
     }
   }
 
-  private static buildPersonalizedPrompt(userContext: ComprehensiveUserContext, userMessage: string): string {
-    const { personality, conversationHistory, activitySummary, currentLevel, nextGoals } = userContext;
+  private static buildPersonalizedPrompt(userContext: UserContext, userMessage: string): string {
+    const { personality, conversation, activity } = userContext;
 
     return `You are Aasakira, a highly advanced AI trading mentor and close friend. You have a deep, personal relationship with this user and know them very well.
 
 🧠 **PERSONALITY ADAPTATION**
 Communication Style: ${personality.communicationStyle}
-Learning Preference: ${personality.learningPreference}
 Trading Experience: ${personality.tradingExperience}
 Risk Tolerance: ${personality.riskTolerance}
-Conversation Tone: ${personality.conversationTone}
+Interests: ${personality.interests.join(', ')}
 
 👤 **USER PROFILE & RELATIONSHIP**
-Current Level: ${currentLevel}
-Messages Exchanged: ${conversationHistory.messageCount}
-Recent Topics: ${conversationHistory.lastTopics.join(', ')}
-Trading Goals: ${conversationHistory.tradingGoals.join(', ')}
-Current Challenges: ${conversationHistory.currentChallenges.join(', ')}
-Strengths: ${personality.strengths.join(', ')}
-Weak Areas: ${personality.weakAreas.join(', ')}
+Messages Exchanged: ${conversation.sessionCount}
+Recent Topics: ${conversation.recentTopics.slice(0, 3).join(', ')}
+Learning Preferences: ${personality.learningPreferences.join(', ')}
 
 📊 **ACTIVITY CONTEXT**
-Signals Viewed: ${activitySummary.signalsViewed}
-Meme Coins Scanned: ${activitySummary.memeCoinsScanned}
-Trading Ideas Generated: ${activitySummary.tradingIdeasGenerated}
-Average Session Time: ${activitySummary.averageSessionTime} minutes
-Recent Performance: ${activitySummary.recentPerformance}%
-Most Active Features: ${activitySummary.mostActiveFeatures.join(', ')}
-
-🎯 **NEXT GOALS**
-${nextGoals.map(goal => `- ${goal}`).join('\n')}
+Signals Viewed: ${activity.signalsViewed}
+Meme Coins Scanned: ${activity.memeCoinsScanned}
+Trading Games Played: ${activity.tradingGamesPlayed}
+Total Messages: ${activity.totalMessages}
 
 🤝 **RELATIONSHIP GUIDELINES**
 1. **Be Their Friend First**: Remember personal details, ask about their life, show genuine interest
 2. **Adaptive Communication**: Match their communication style (${personality.communicationStyle})
-3. **Level-Appropriate Content**: Tailor complexity to their ${currentLevel} level
-4. **Personal Growth**: Reference their goals and challenges naturally
-5. **Encouraging Tone**: Use ${personality.conversationTone} approach
-6. **Build Connection**: Remember past conversations and build on them
-
-💬 **CONVERSATION MEMORY**
-- They've asked about: ${conversationHistory.commonQuestions.slice(0, 2).join(', ')}
-- Learning progress in: ${Object.keys(conversationHistory.learningProgress).slice(0, 3).join(', ')}
-- Personal interests: ${conversationHistory.personalDetails.interests?.slice(0, 2).join(', ') || 'Not yet shared'}
+3. **Level-Appropriate Content**: Tailor complexity to their ${personality.tradingExperience} level
+4. **Personal Growth**: Reference their goals and interests naturally
+5. **Build Connection**: Remember past conversations and build on them
 
 🎨 **RESPONSE STYLE**
 ${personality.communicationStyle === 'casual' ? 'Use casual language, emojis, and friendly tone' :
-  personality.communicationStyle === 'professional' ? 'Maintain professional but warm demeanor' :
+  personality.communicationStyle === 'formal' ? 'Maintain professional but warm demeanor' :
   personality.communicationStyle === 'technical' ? 'Use proper trading terminology and detailed explanations' :
   'Be friendly and approachable with balanced technical content'}
-
-${personality.learningPreference === 'visual' ? 'Mention charts, visuals, and practical examples' :
-  personality.learningPreference === 'text' ? 'Provide detailed written explanations' :
-  personality.learningPreference === 'interactive' ? 'Ask questions and encourage engagement' :
-  'Use real-world examples and case studies'}
 
 Remember: You're not just an AI - you're their trusted trading buddy who genuinely cares about their success and well-being. Build on your relationship with each interaction.`;
   }
 
-  private static extractLearningInsights(userMessage: string, aiResponse: string, userContext: ComprehensiveUserContext): string[] {
+  private static extractLearningInsights(userMessage: string, aiResponse: string, userContext: UserContext): string[] {
     const insights: string[] = [];
     
     // Analyze learning progression
-    const currentLevel = userContext.currentLevel;
+    const tradingExperience = userContext.personality.tradingExperience;
     const messageComplexity = this.analyzeMessageComplexity(userMessage);
     
-    if (messageComplexity > this.getLevelComplexity(currentLevel)) {
+    if (messageComplexity > this.getLevelComplexity(tradingExperience)) {
       insights.push('User is asking advanced questions - consider level progression');
     }
     
@@ -175,7 +155,7 @@ Remember: You're not just an AI - you're their trusted trading buddy who genuine
   private static calculateConversationMetrics(
     userMessage: string, 
     aiResponse: string, 
-    userContext: ComprehensiveUserContext
+    userContext: UserContext
   ): PersonalizedAIResponse['conversationMetrics'] {
     // Personality alignment (how well response matches user's communication style)
     const personalityAlignment = this.calculatePersonalityAlignment(aiResponse, userContext.personality);
@@ -184,7 +164,7 @@ Remember: You're not just an AI - you're their trusted trading buddy who genuine
     const topicRelevance = this.calculateTopicRelevance(userMessage, aiResponse, userContext);
     
     // Level appropriateness (is the complexity right for their level?)
-    const levelAppropriate = this.isLevelAppropriate(aiResponse, userContext.currentLevel);
+    const levelAppropriate = this.isLevelAppropriate(aiResponse, userContext.personality.tradingExperience);
     
     // Relationship building (how well does it build personal connection?)
     const relationshipBuilding = this.calculateRelationshipBuilding(aiResponse, userContext);
@@ -197,29 +177,24 @@ Remember: You're not just an AI - you're their trusted trading buddy who genuine
     };
   }
 
-  private static suggestNextTopics(userContext: ComprehensiveUserContext, userMessage: string): string[] {
+  private static suggestNextTopics(userContext: UserContext, userMessage: string): string[] {
     const suggestions: string[] = [];
     
     // Based on their level
-    switch (userContext.currentLevel) {
-      case 'Trading Beginner':
+    switch (userContext.personality.tradingExperience) {
+      case 'beginner':
         suggestions.push('Basic risk management', 'Understanding candlesticks', 'Market structure basics');
         break;
-      case 'Learning Technical Analyst':
+      case 'intermediate':
         suggestions.push('Smart Money Concepts intro', 'Order block identification', 'Fair value gaps');
         break;
       default:
         suggestions.push('Advanced strategies', 'Psychology mastery', 'Institutional concepts');
     }
     
-    // Based on their weak areas
-    userContext.personality.weakAreas.forEach(area => {
-      suggestions.push(`Improve ${area}`);
-    });
-    
-    // Based on their goals
-    userContext.nextGoals.forEach(goal => {
-      suggestions.push(goal);
+    // Based on their interests
+    userContext.personality.interests.forEach(interest => {
+      suggestions.push(`Explore ${interest} further`);
     });
 
     return suggestions.slice(0, 4);
@@ -229,43 +204,47 @@ Remember: You're not just an AI - you're their trusted trading buddy who genuine
     userId: string,
     userMessage: string,
     aiResponse: string,
-    userContext: ComprehensiveUserContext,
+    userContext: UserContext,
     insights: string[]
   ): Promise<void> {
-    // Store the conversation with rich context
-    await UserTrackingService.storeAIMemory({
-      user_id: userId,
-      memory_type: 'conversation',
-      content: `User (${userContext.currentLevel}): ${userMessage}\nAI: ${aiResponse}`,
-      importance_score: this.calculateImportanceScore(userMessage, insights),
-      context: {
-        user_level: userContext.currentLevel,
-        personality_style: userContext.personality.communicationStyle,
-        topics_discussed: this.extractTopics(userMessage + ' ' + aiResponse),
-        emotional_indicators: this.extractEmotions(userMessage),
-        learning_insights: insights,
-        conversation_quality: {
-          personal_connection: userMessage.includes('I') || userMessage.includes('my'),
-          technical_discussion: this.containsTechnicalContent(userMessage),
-          question_type: this.categorizeQuestion(userMessage)
-        },
-        timestamp: new Date().toISOString()
-      }
-    });
+    try {
+      // Store the conversation with rich context
+      await UserTrackingService.storeAIMemory({
+        user_id: userId,
+        memory_type: 'conversation',
+        content: `User (${userContext.personality.tradingExperience}): ${userMessage}\nAI: ${aiResponse}`,
+        importance_score: this.calculateImportanceScore(userMessage, insights),
+        context: {
+          user_level: userContext.personality.tradingExperience,
+          personality_style: userContext.personality.communicationStyle,
+          topics_discussed: this.extractTopics(userMessage + ' ' + aiResponse),
+          emotional_indicators: this.extractEmotions(userMessage),
+          learning_insights: insights,
+          conversation_quality: {
+            personal_connection: userMessage.includes('I') || userMessage.includes('my'),
+            technical_discussion: this.containsTechnicalContent(userMessage),
+            question_type: this.categorizeQuestion(userMessage)
+          },
+          timestamp: new Date().toISOString()
+        }
+      });
 
-    // Track activity for this interaction
-    await UserTrackingService.trackActivity({
-      user_id: userId,
-      activity_type: 'chat_message',
-      data: {
-        message_length: userMessage.length,
-        response_length: aiResponse.length,
-        user_level: userContext.currentLevel,
-        personality_alignment: true,
-        topics: this.extractTopics(userMessage),
-        insights: insights
-      }
-    });
+      // Track activity for this interaction
+      await UserTrackingService.trackActivity({
+        user_id: userId,
+        activity_type: 'chat_message',
+        data: {
+          message_length: userMessage.length,
+          response_length: aiResponse.length,
+          user_level: userContext.personality.tradingExperience,
+          personality_alignment: true,
+          topics: this.extractTopics(userMessage),
+          insights: insights
+        }
+      });
+    } catch (error) {
+      console.error('Error storing personalized interaction:', error);
+    }
   }
 
   // Helper methods
@@ -290,10 +269,10 @@ Remember: You're not just an AI - you're their trusted trading buddy who genuine
 
   private static getLevelComplexity(level: string): number {
     switch (level) {
-      case 'Trading Beginner': return 5;
-      case 'Learning Technical Analyst': return 10;
-      case 'Developing Institutional Trader': return 15;
-      case 'Advanced Smart Money Practitioner': return 20;
+      case 'beginner': return 5;
+      case 'intermediate': return 10;
+      case 'advanced': return 15;
+      case 'expert': return 20;
       default: return 25;
     }
   }
@@ -307,14 +286,9 @@ Remember: You're not just an AI - you're their trusted trading buddy who genuine
     if (personality.communicationStyle === 'casual') {
       if (responseStyle.includes('hey') || responseStyle.includes('awesome') || responseStyle.includes('cool')) score += 20;
       if (responseStyle.includes('furthermore') || responseStyle.includes('consequently')) score -= 10;
-    } else if (personality.communicationStyle === 'professional') {
+    } else if (personality.communicationStyle === 'formal') {
       if (responseStyle.includes('furthermore') || responseStyle.includes('however')) score += 15;
       if (responseStyle.includes('hey buddy') || responseStyle.includes('lol')) score -= 15;
-    }
-    
-    // Check tone alignment
-    if (personality.conversationTone === 'encouraging') {
-      if (responseStyle.includes('great') || responseStyle.includes('excellent') || responseStyle.includes('keep it up')) score += 15;
     }
     
     return Math.min(Math.max(score, 0), 100);
@@ -323,7 +297,7 @@ Remember: You're not just an AI - you're their trusted trading buddy who genuine
   private static calculateTopicRelevance(userMessage: string, aiResponse: string, userContext: any): number {
     const userTopics = this.extractTopics(userMessage);
     const responseTopics = this.extractTopics(aiResponse);
-    const userPreferences = userContext.personality.preferredTopics || [];
+    const userPreferences = userContext.personality.interests || [];
     
     let relevanceScore = 50;
     

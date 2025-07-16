@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { enhancedGroqService } from '@/services/enhancedGroqService';
+import { EnhancedGroqService } from '@/services/enhancedGroqService';
 import { userContextService } from '@/services/userContextService';
 import { Loader2 } from 'lucide-react';
 
@@ -45,19 +46,17 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
       if (user?.id) {
         await userContextService.updateUserActivity(user.id, 'ai_message', { message: input });
         
-        const context = await userContextService.getUserContext(user.id);
-        const personalizedPrompt = userContextService.generatePersonalizedPrompt(context, input);
-        
-        const response = await enhancedGroqService.getPersonalizedResponse(
-          personalizedPrompt,
-          user.id
+        const response = await EnhancedGroqService.generatePersonalizedResponse(
+          input,
+          user.id,
+          messages.map(msg => ({ role: msg.role, content: msg.content }))
         );
         
         if (response) {
           const assistantMessage: Message = {
             id: Date.now() + 1,
             role: 'assistant',
-            content: response
+            content: response.response
           };
           
           setMessages(prev => [...prev, assistantMessage]);
@@ -65,7 +64,7 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
           // Store conversation memory
           await userContextService.storeConversationMemory(
             user.id,
-            `User: ${input}\nAssistant: ${response}`,
+            `User: ${input}\nAssistant: ${response.response}`,
             7
           );
         } else {
@@ -131,8 +130,8 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
                   </div>
                   {message.role === 'user' && (
                     <Avatar style={avatarStyle} className="ml-2">
-                      <AvatarImage src={user?.image || ""} alt={user?.name || "User"} />
-                      <AvatarFallback>{user?.name?.slice(0, 2).toUpperCase() || 'US'}</AvatarFallback>
+                      <AvatarImage src={user?.user_metadata?.avatar_url || ""} alt={user?.user_metadata?.full_name || "User"} />
+                      <AvatarFallback>{user?.user_metadata?.full_name?.slice(0, 2).toUpperCase() || 'US'}</AvatarFallback>
                     </Avatar>
                   )}
                 </div>
