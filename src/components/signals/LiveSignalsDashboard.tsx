@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +43,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { SignalConfig } from '@/types/signalConfig';
 
 interface TacticalParams {
   minConfidence: number;
@@ -74,6 +74,18 @@ const LiveSignalsDashboard: React.FC = () => {
     allowedPairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'],
     riskLevel: 'MODERATE'
   });
+
+  // Convert TacticalParams to SignalConfig for EnhancedTacticalParameters
+  const signalConfig: SignalConfig = {
+    strategyType: 'Hybrid',
+    tradeType: 'intraday',
+    confidenceThreshold: tacticalParams.minConfidence,
+    riskLevel: tacticalParams.riskLevel.toLowerCase() as 'conservative' | 'moderate' | 'aggressive',
+    minFilters: 3,
+    assetClass: 'forex',
+    pairFilter: 'majors',
+    timeValidity: '1h'
+  };
 
   const { toast } = useToast();
   const { isSubscribed } = useSubscription();
@@ -295,6 +307,15 @@ const LiveSignalsDashboard: React.FC = () => {
     setShowStrategyBreakdown(true);
   };
 
+  const handleConfigChange = (config: SignalConfig) => {
+    setTacticalParams({
+      minConfidence: config.confidenceThreshold,
+      maxSignals: 3,
+      allowedPairs: tacticalParams.allowedPairs,
+      riskLevel: config.riskLevel.toUpperCase()
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -443,8 +464,11 @@ const LiveSignalsDashboard: React.FC = () => {
 
         {/* Enhanced Tactical Parameters */}
         <EnhancedTacticalParameters
-          tacticalParams={tacticalParams}
-          onParamsChange={setTacticalParams}
+          config={signalConfig}
+          onConfigChange={handleConfigChange}
+          onShowBreakdown={() => setShowStrategyBreakdown(true)}
+          onGenerateSignal={generateStandardSignal}
+          isGenerating={isGenerating}
         />
 
         {/* Premium Signals Section */}
