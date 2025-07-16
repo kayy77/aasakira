@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -209,7 +210,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
         </div>
         <div className="glass-card p-4 border-red-500/20">
           <AlertCircle className="w-6 h-6 text-red-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">REJECTED (<4/6)</h4>
+          <h4 className="text-white font-semibold mb-1">REJECTED (&lt;4/6)</h4>
           <p className="text-sm text-gray-400">Filter gate failed</p>
           <p className="text-xs text-red-400">No signal generated</p>
         </div>
