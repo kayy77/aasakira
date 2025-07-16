@@ -84,7 +84,7 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Entry Details */}
+        {/* Trading Levels */}
         <div className="grid grid-cols-3 gap-3 text-sm">
           <div className="bg-gray-800/30 rounded-lg p-3 text-center">
             <div className="text-gray-400 mb-1">Entry</div>
@@ -120,8 +120,8 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-yellow-400" />
-            <span className="text-gray-400">Valid Until:</span>
-            <span className="text-yellow-400 font-bold">{signal.timeValidity.split(' ')[2]}</span>
+            <span className="text-gray-400">Generated:</span>
+            <span className="text-yellow-400 font-bold">{new Date(signal.timestamp).toLocaleTimeString()}</span>
           </div>
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-purple-400" />

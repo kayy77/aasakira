@@ -1,21 +1,25 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { ChartAnalysis, ChartMarkup } from '@/services/enhancedSignalAnalyzer';
+import { ChartAnalysis } from '@/services/enhancedSignalAnalyzer';
 
 interface MiniChartProps {
   analysis: ChartAnalysis;
+  pair?: string;
   width?: number;
   height?: number;
+  className?: string;
 }
 
 const MiniChart: React.FC<MiniChartProps> = ({ 
   analysis, 
+  pair = 'Chart',
   width = 300, 
-  height = 200 
+  height = 200,
+  className = ''
 }) => {
   return (
-    <Card className="bg-gray-900/50 border border-gray-700/50 p-4">
+    <Card className={`bg-gray-900/50 border border-gray-700/50 p-4 ${className}`}>
       <div 
         className="bg-gradient-to-br from-gray-900 to-gray-800 rounded border border-gray-600 flex items-center justify-center relative overflow-hidden"
         style={{ width, height }}
@@ -90,7 +94,7 @@ const MiniChart: React.FC<MiniChartProps> = ({
 
         {/* Chart Title */}
         <div className="absolute top-2 left-2 text-xs text-gray-400">
-          Mini Chart Analysis
+          {pair} Analysis
         </div>
       </div>
 

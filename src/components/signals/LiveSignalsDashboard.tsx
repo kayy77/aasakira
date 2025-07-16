@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,13 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
+interface TacticalParams {
+  minConfidence: number;
+  maxSignals: number;
+  allowedPairs: string[];
+  riskLevel: string;
+}
+
 const LiveSignalsDashboard: React.FC = () => {
   const [signals, setSignals] = useState<SignalDNA[]>([]);
   const [premiumSignals, setPremiumSignals] = useState<EnhancedSignal[]>([]);
@@ -60,7 +68,7 @@ const LiveSignalsDashboard: React.FC = () => {
   const [showAIDigest, setShowAIDigest] = useState(false);
   const [showShareableCard, setShowShareableCard] = useState(false);
   const [signalToShare, setSignalToShare] = useState<SignalDNA | null>(null);
-  const [tacticalParams, setTacticalParams] = useState({
+  const [tacticalParams, setTacticalParams] = useState<TacticalParams>({
     minConfidence: 70,
     maxSignals: 3,
     allowedPairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'],
@@ -435,7 +443,7 @@ const LiveSignalsDashboard: React.FC = () => {
 
         {/* Enhanced Tactical Parameters */}
         <EnhancedTacticalParameters
-          params={tacticalParams}
+          tacticalParams={tacticalParams}
           onParamsChange={setTacticalParams}
         />
 
@@ -540,7 +548,7 @@ const LiveSignalsDashboard: React.FC = () => {
         <StrategyBreakdownModal
           open={showStrategyBreakdown}
           onOpenChange={setShowStrategyBreakdown}
-          signalDNA={selectedSignal}
+          signal={selectedSignal}
         />
 
         <WebhookManager

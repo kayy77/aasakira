@@ -53,8 +53,17 @@ const SignalMemoryDashboard: React.FC<SignalMemoryDashboardProps> = ({
       const pairCount: { [key: string]: number } = {};
       
       signals.forEach(signal => {
-        const strategy = 'strategy' in signal ? signal.strategy : 
-                        'origin' in signal ? signal.origin : 'Unknown';
+        let strategy = 'Unknown';
+        if ('strategy' in signal) {
+          strategy = signal.strategy;
+        } else if ('origin' in signal) {
+          if (typeof signal.origin === 'string') {
+            strategy = signal.origin;
+          } else {
+            strategy = 'Multi-Source';
+          }
+        }
+        
         const pair = 'pair' in signal ? signal.pair : signal.symbol;
         
         strategyCount[strategy] = (strategyCount[strategy] || 0) + 1;
@@ -99,8 +108,16 @@ const SignalMemoryDashboard: React.FC<SignalMemoryDashboardProps> = ({
   };
 
   const getSignalStrategy = (signal: SignalDNA | EnhancedSignal) => {
-    return 'strategy' in signal ? signal.strategy : 
-           'origin' in signal ? signal.origin : 'Unknown';
+    if ('strategy' in signal) {
+      return signal.strategy;
+    } else if ('origin' in signal) {
+      if (typeof signal.origin === 'string') {
+        return signal.origin;
+      } else {
+        return 'Multi-Source';
+      }
+    }
+    return 'Unknown';
   };
 
   const getSignalTimestamp = (signal: SignalDNA | EnhancedSignal) => {

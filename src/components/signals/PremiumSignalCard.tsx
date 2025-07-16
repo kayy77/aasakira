@@ -115,7 +115,7 @@ const PremiumSignalCard: React.FC<PremiumSignalCardProps> = ({
                 <BarChart3 className="w-4 h-4 text-blue-400" />
                 <span className="text-blue-400 text-sm font-medium">Visual Evidence</span>
               </div>
-              <MiniChart chartAnalysis={signal.chartAnalysis} pair={signal.pair} />
+              <MiniChart analysis={signal.chartAnalysis} pair={signal.pair} />
             </div>
 
             {/* Trading Levels */}
@@ -224,7 +224,7 @@ const PremiumSignalCard: React.FC<PremiumSignalCardProps> = ({
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Visual Analysis</h3>
               <MiniChart 
-                chartAnalysis={signal.chartAnalysis} 
+                analysis={signal.chartAnalysis} 
                 pair={signal.pair} 
                 className="h-64"
               />
