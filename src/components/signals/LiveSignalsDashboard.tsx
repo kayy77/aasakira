@@ -370,7 +370,6 @@ const LiveSignalsDashboard: React.FC = () => {
           status: 'active',
           lastUpdated: new Date().toISOString()
         },
-        notes: signal.reasons.join(', '),
         timeValidity: new Date(signal.timestamp).toISOString(),
         session: 'London',
         id: signal.id,
