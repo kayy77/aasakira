@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SignalConfig } from '@/types/signalConfig';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TacticalParams {
   minConfidence: number;
@@ -62,7 +64,7 @@ interface WebhookManagerProps {
 const WebhookManagerComponent: React.FC<WebhookManagerProps> = ({ open, onClose }) => {
   return open ? (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-      <div className="bg-gray-900 p-6 rounded-lg max-w-md w-full mx-4">
+      <div className="bg-gray-900 p-4 md:p-6 rounded-lg max-w-md w-full mx-4">
         <h3 className="text-white text-lg font-bold mb-4">Webhook Manager</h3>
         <p className="text-gray-400 mb-4">Configure your trading webhooks here.</p>
         <Button onClick={onClose} className="w-full">Close</Button>
@@ -108,6 +110,7 @@ const LiveSignalsDashboard: React.FC = () => {
 
   const { toast } = useToast();
   const { isSubscribed } = useSubscription();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchInitialPrices = async () => {
@@ -120,6 +123,7 @@ const LiveSignalsDashboard: React.FC = () => {
         }
         setLivePrices(initialPrices);
         setIsConnected(true);
+        console.log('✅ Initial prices fetched:', initialPrices);
       } catch (error) {
         console.error('Failed to fetch initial prices:', error);
         toast({
@@ -142,7 +146,13 @@ const LiveSignalsDashboard: React.FC = () => {
             const priceData = await trueLivePriceService.getTrueLivePrice(pair);
             updatedPrices[pair] = typeof priceData === 'number' ? priceData : priceData.price;
           }
-          setLivePrices(updatedPrices);
+          setLivePrices(prev => {
+            const hasChanges = JSON.stringify(prev) !== JSON.stringify(updatedPrices);
+            if (hasChanges) {
+              console.log('📈 Live prices updated:', updatedPrices);
+            }
+            return updatedPrices;
+          });
           setIsConnected(true);
         } catch (error) {
           console.error('Failed to update prices:', error);
@@ -243,6 +253,8 @@ const LiveSignalsDashboard: React.FC = () => {
       
       const priceData = await trueLivePriceService.getTrueLivePrice(randomPair);
       const livePrice = typeof priceData === 'number' ? priceData : priceData.price;
+      console.log(`💰 Using live price for ${randomPair}: ${livePrice}`);
+      
       const signalDNA = await multiIntelligenceCore.generateSignalDNA(randomPair, livePrice);
       
       if (signalDNA && signalDNA.confidence >= tacticalParams.minConfidence) {
@@ -375,8 +387,8 @@ const LiveSignalsDashboard: React.FC = () => {
         aiThought: 'Enhanced signal analysis with visual evidence',
         backtest: {
           winRate: 85,
-          averageRR: signal.riskReward,
-          sampleSize: 100
+          totalTrades: 100,
+          avgRR: signal.riskReward
         },
         timeframe: '15m',
         id: signal.id,
@@ -401,28 +413,28 @@ const LiveSignalsDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 p-2 md:p-4">
+      <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
         {/* Header Section */}
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-3 md:space-y-4">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-center gap-3"
+            className="flex items-center justify-center gap-2 md:gap-3"
           >
-            <Brain className="w-8 h-8 text-pink-400" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+            <Brain className="w-6 h-6 md:w-8 md:h-8 text-pink-400" />
+            <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
               ⛩️ Aasakira AI - Live Signals
             </h1>
           </motion.div>
           
-          <p className="text-gray-400 max-w-2xl mx-auto">
+          <p className="text-gray-400 max-w-2xl mx-auto text-sm md:text-base px-4">
             Multi-intelligence AI council generating institutional-grade trading signals with visual evidence and premium validation
           </p>
 
           <div className="flex items-center justify-center gap-2">
-            <Activity className={`w-4 h-4 ${isConnected ? 'text-green-400 animate-pulse' : 'text-red-400'}`} />
-            <span className={`text-sm ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+            <Activity className={`w-3 h-3 md:w-4 md:h-4 ${isConnected ? 'text-green-400 animate-pulse' : 'text-red-400'}`} />
+            <span className={`text-xs md:text-sm ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
               {isConnected ? 'Live Price Feed Active' : 'Connecting to Live Prices...'}
             </span>
           </div>
@@ -431,7 +443,7 @@ const LiveSignalsDashboard: React.FC = () => {
         {/* Risk Disclaimer */}
         <Alert className="bg-yellow-900/20 border border-yellow-500/30">
           <AlertTriangle className="w-4 h-4 text-yellow-400" />
-          <AlertDescription className="text-yellow-200">
+          <AlertDescription className="text-yellow-200 text-sm md:text-base">
             <strong>Risk Disclaimer:</strong> These signals are powerful AI analysis tools, not guaranteed profits. 
             Always manage your own risk and trades. Don't blindly follow the TP and SL levels - manage your own risk 
             and close positions when you feel comfortable. Trading involves substantial risk and may not be suitable for all investors.
@@ -440,23 +452,23 @@ const LiveSignalsDashboard: React.FC = () => {
 
         {/* Enhanced Control Panel */}
         <Card className="bg-gray-900/50 border border-blue-500/20">
-          <CardHeader>
-            <CardTitle className="text-blue-400 flex items-center gap-2">
-              <Target className="w-5 h-5" />
+          <CardHeader className="pb-3 md:pb-4">
+            <CardTitle className="text-blue-400 flex items-center gap-2 text-lg md:text-xl">
+              <Target className="w-4 h-4 md:w-5 md:h-5" />
               Signal Generation Hub
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="space-y-3 md:space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <Button
                 onClick={generatePremiumSignal}
                 disabled={isGenerating}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-12"
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-10 md:h-12 text-sm md:text-base"
               >
                 {isGenerating ? (
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  <RefreshCw className="w-3 h-3 md:w-4 md:h-4 mr-2 animate-spin" />
                 ) : (
-                  <Crown className="w-4 h-4 mr-2" />
+                  <Crown className="w-3 h-3 md:w-4 md:h-4 mr-2" />
                 )}
                 Generate Premium Signal
               </Button>
@@ -465,12 +477,12 @@ const LiveSignalsDashboard: React.FC = () => {
                 onClick={generateStandardSignal}
                 disabled={isGenerating}
                 variant="outline"
-                className="border-pink-500/30 text-pink-400 hover:bg-pink-500/20 h-12"
+                className="border-pink-500/30 text-pink-400 hover:bg-pink-500/20 h-10 md:h-12 text-sm md:text-base"
               >
                 {isGenerating ? (
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  <RefreshCw className="w-3 h-3 md:w-4 md:h-4 mr-2 animate-spin" />
                 ) : (
-                  <Brain className="w-4 h-4 mr-2" />
+                  <Brain className="w-3 h-3 md:w-4 md:h-4 mr-2" />
                 )}
                 Generate Standard Signal
               </Button>
@@ -481,50 +493,50 @@ const LiveSignalsDashboard: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowMemoryDashboard(true)}
-                className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
+                className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20 text-xs md:text-sm"
               >
                 <BookOpen className="w-3 h-3 mr-1" />
-                Memory
+                {!isMobile && "Memory"}
               </Button>
               
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowJournalModal(true)}
-                className="border-green-500/30 text-green-400 hover:bg-green-500/20"
+                className="border-green-500/30 text-green-400 hover:bg-green-500/20 text-xs md:text-sm"
               >
                 <FileText className="w-3 h-3 mr-1" />
-                Journal
+                {!isMobile && "Journal"}
               </Button>
               
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowABTesting(true)}
-                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
+                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/20 text-xs md:text-sm"
               >
                 <FlaskConical className="w-3 h-3 mr-1" />
-                A/B Test
+                {!isMobile && "A/B Test"}
               </Button>
               
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowAIDigest(true)}
-                className="border-orange-500/30 text-orange-400 hover:bg-orange-500/20"
+                className="border-orange-500/30 text-orange-400 hover:bg-orange-500/20 text-xs md:text-sm"
               >
                 <Brain className="w-3 h-3 mr-1" />
-                Digest
+                {!isMobile && "Digest"}
               </Button>
               
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowWebhookManager(true)}
-                className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20"
+                className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 text-xs md:text-sm"
               >
                 <Webhook className="w-3 h-3 mr-1" />
-                Webhook
+                {!isMobile && "Webhook"}
               </Button>
               
               <Button
@@ -541,15 +553,15 @@ const LiveSignalsDashboard: React.FC = () => {
                     });
                   }
                 }}
-                className="border-pink-500/30 text-pink-400 hover:bg-pink-500/20"
+                className="border-pink-500/30 text-pink-400 hover:bg-pink-500/20 text-xs md:text-sm"
               >
                 <Share2 className="w-3 h-3 mr-1" />
-                Share
+                {!isMobile && "Share"}
               </Button>
             </div>
 
             {lastGenerated && (
-              <div className="text-center text-sm text-gray-400">
+              <div className="text-center text-xs md:text-sm text-gray-400">
                 Last generated: {lastGenerated.toLocaleTimeString()}
               </div>
             )}
@@ -567,16 +579,16 @@ const LiveSignalsDashboard: React.FC = () => {
 
         {/* Premium Signals Section */}
         {premiumSignals.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div className="flex items-center gap-2">
-              <Crown className="w-5 h-5 text-yellow-400" />
-              <h2 className="text-xl font-bold text-white">⚔️ Premium Signals</h2>
-              <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black">
+              <Crown className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
+              <h2 className="text-lg md:text-xl font-bold text-white">⚔️ Premium Signals</h2>
+              <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black text-xs md:text-sm">
                 Institutional Grade
               </Badge>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               <AnimatePresence>
                 {premiumSignals.map((signal) => (
                   <PremiumSignalCard
@@ -607,16 +619,16 @@ const LiveSignalsDashboard: React.FC = () => {
 
         {/* Standard Signals Section */}
         {signals.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-blue-400" />
-              <h2 className="text-xl font-bold text-white">🧠 AI Council Signals</h2>
-              <Badge variant="outline" className="border-blue-500/30 text-blue-400">
+              <Brain className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
+              <h2 className="text-lg md:text-xl font-bold text-white">🧠 AI Council Signals</h2>
+              <Badge variant="outline" className="border-blue-500/30 text-blue-400 text-xs md:text-sm">
                 Multi-Intelligence
               </Badge>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               <AnimatePresence>
                 {signals.map((signal, index) => (
                   <SignalCardV2
@@ -648,13 +660,13 @@ const LiveSignalsDashboard: React.FC = () => {
 
         {/* Empty State */}
         {signals.length === 0 && premiumSignals.length === 0 && (
-          <Card className="bg-gray-900/30 border border-gray-700/50 p-8">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto">
-                <Brain className="w-8 h-8 text-blue-400" />
+          <Card className="bg-gray-900/30 border border-gray-700/50 p-6 md:p-8">
+            <div className="text-center space-y-3 md:space-y-4">
+              <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto">
+                <Brain className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white">Ready to Generate Signals</h3>
-              <p className="text-gray-400 max-w-md mx-auto">
+              <h3 className="text-lg md:text-xl font-semibold text-white">Ready to Generate Signals</h3>
+              <p className="text-gray-400 max-w-md mx-auto text-sm md:text-base">
                 Click "Generate Premium Signal" for institutional-grade setups with visual evidence, 
                 or "Generate Standard Signal" for AI council validated trades.
               </p>
