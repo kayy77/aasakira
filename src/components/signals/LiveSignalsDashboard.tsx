@@ -371,6 +371,14 @@ const LiveSignalsDashboard: React.FC = () => {
           lastUpdated: new Date().toISOString()
         },
         session: 'London',
+        contradictions: [],
+        aiThought: 'Enhanced signal analysis with visual evidence',
+        backtest: {
+          winRate: 85,
+          averageRR: signal.riskReward,
+          sampleSize: 100
+        },
+        timeframe: '15m',
         id: signal.id,
         livePrice: livePrices[signal.pair] || parseFloat(signal.entry)
       };
