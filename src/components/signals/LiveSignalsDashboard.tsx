@@ -370,7 +370,6 @@ const LiveSignalsDashboard: React.FC = () => {
           status: 'active',
           lastUpdated: new Date().toISOString()
         },
-        timeValidity: new Date(signal.timestamp).toISOString(),
         session: 'London',
         id: signal.id,
         livePrice: livePrices[signal.pair] || parseFloat(signal.entry)
@@ -420,6 +419,16 @@ const LiveSignalsDashboard: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* Risk Disclaimer */}
+        <Alert className="bg-yellow-900/20 border border-yellow-500/30">
+          <AlertTriangle className="w-4 h-4 text-yellow-400" />
+          <AlertDescription className="text-yellow-200">
+            <strong>Risk Disclaimer:</strong> These signals are powerful AI analysis tools, not guaranteed profits. 
+            Always manage your own risk and trades. Don't blindly follow the TP and SL levels - manage your own risk 
+            and close positions when you feel comfortable. Trading involves substantial risk and may not be suitable for all investors.
+          </AlertDescription>
+        </Alert>
 
         {/* Enhanced Control Panel */}
         <Card className="bg-gray-900/50 border border-blue-500/20">
