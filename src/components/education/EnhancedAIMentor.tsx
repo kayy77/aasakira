@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { getGroqService } from '@/services/groqService';
+import { EnhancedGroqService } from '@/services/enhancedGroqService';
+import { UserContextService } from '@/services/userContextService';
+import { UserTrackingService } from '@/services/userTrackingService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Send, 
@@ -17,9 +19,13 @@ import {
   XCircle,
   Target,
   Sparkles,
-  Eye
+  Eye,
+  Heart,
+  Users,
+  TrendingUp
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAdaptiveLearning } from '@/hooks/useAdaptiveLearning';
 import ConceptVisualizer from './visual/ConceptVisualizer';
 import LessonCard from './visual/LessonCard';
@@ -41,17 +47,17 @@ interface ChatMessage {
   type: 'user' | 'ai';
   content: string;
   timestamp: Date;
+  personalityMetrics?: {
+    alignment: number;
+    relevance: number;
+    relationship: number;
+  };
+  insights?: string[];
 }
 
 const EnhancedAIMentor: React.FC = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      type: 'ai',
-      content: '👋 Hello! I\'m Aasakira, your AI trading mentor powered by Groq\'s lightning-fast AI. I\'m here to help you master forex trading with Smart Money Concepts! Ask me anything about trading, life, or just chat casually - I\'m your buddy too! 🚀',
-      timestamp: new Date()
-    }
-  ]);
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentQuiz, setCurrentQuiz] = useState<QuizQuestion | null>(null);
@@ -59,7 +65,9 @@ const EnhancedAIMentor: React.FC = () => {
   const [showExplanation, setShowExplanation] = useState(false);
   const [quizScore, setQuizScore] = useState({ correct: 0, total: 0 });
   const [activeSection, setActiveSection] = useState<'chat' | 'quiz'>('chat');
-  const [userLevel, setUserLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [userPersonality, setUserPersonality] = useState<any>(null);
+  const [userLevel, setUserLevel] = useState<string>('Trading Beginner');
+  const [relationshipLevel, setRelationshipLevel] = useState(0);
   const { toast } = useToast();
   const { 
     learningData, 
@@ -67,6 +75,63 @@ const EnhancedAIMentor: React.FC = () => {
     getMentorPersonality, 
     getQuizDifficulty 
   } = useAdaptiveLearning();
+
+  useEffect(() => {
+    const initializeUser = async () => {
+      if (!user?.id) return;
+
+      try {
+        // Load comprehensive user context
+        const userContext = await UserContextService.getComprehensiveUserContext(user.id);
+        setUserPersonality(userContext.personality);
+        setUserLevel(userContext.currentLevel);
+        setRelationshipLevel(userContext.conversationHistory.messageCount * 2);
+
+        // Generate personalized welcome
+        const welcomeResponse = await EnhancedGroqService.generatePersonalizedResponse(
+          "Welcome message initialization",
+          user.id,
+          []
+        );
+
+        const welcomeMessage: ChatMessage = {
+          id: '1',
+          type: 'ai',
+          content: userContext.conversationHistory.messageCount === 0 
+            ? `👋 **Welcome to your personal trading journey!**
+
+Hey there! I'm Aasakira, your AI trading mentor who's designed to learn YOU. I'll remember every conversation, adapt to your personality, and grow with you as a trader and friend.
+
+**What makes me special:**
+🧠 I learn your communication style and adapt
+📊 I track your progress across all trading activities  
+💝 I remember personal details and build genuine connection
+🎯 I provide level-appropriate education just for you
+
+Tell me about yourself! What brings you to trading? What are your goals? I'm genuinely excited to get to know you! 🚀`
+            : welcomeResponse.response,
+          timestamp: new Date(),
+          personalityMetrics: {
+            alignment: 95,
+            relevance: 90,
+            relationship: userContext.conversationHistory.messageCount > 10 ? 85 : 60
+          }
+        };
+
+        setMessages([welcomeMessage]);
+      } catch (error) {
+        console.error('Error initializing user:', error);
+        setMessages([{
+          id: '1',
+          type: 'ai',
+          content: '👋 Hello! I\'m Aasakira, your personalized AI trading mentor. I\'m here to learn about you and provide tailored trading education. Let\'s start our journey together!',
+          timestamp: new Date()
+        }]);
+      }
+    };
+
+    initializeUser();
+  }, [user]);
 
   const detectConcepts = (text: string): string[] => {
     const concepts = [
@@ -131,36 +196,8 @@ const EnhancedAIMentor: React.FC = () => {
     return quotes[Math.floor(Math.random() * quotes.length)];
   };
 
-  const generatePersonalizedPrompt = (userInput: string) => {
-    const personality = getMentorPersonality();
-    
-    return `You are Aasakira, an AI trading mentor. The user is at ${learningData.level} level.
-
-**Adaptation Guidelines:**
-- Tone: ${personality.tone}
-- Use: ${personality.terminology}
-- Examples: ${personality.examples}
-- Encouragement: "${personality.encouragement}"
-
-**User's Progress:**
-- Level Score: ${learningData.score}/100
-- Quiz Accuracy: ${(learningData.metrics.quizAccuracy * 100).toFixed(1)}%
-- Advanced Terms Mastered: ${learningData.metrics.advancedTermsUsed.length}
-- Total Interactions: ${learningData.metrics.totalInteractions}
-
-**Current Level Requirements:**
-${learningData.nextLevelRequirements.map(req => `- ${req}`).join('\n')}
-
-Respond to: "${userInput}"
-
-Keep responses appropriate for their level - ${learningData.level === 'Novice' ? 'explain basics simply' : 
-learningData.level === 'Intermediate' ? 'provide detailed explanations' :
-learningData.level === 'Smart Money Aware' ? 'use institutional concepts' :
-'engage as a peer expert'}`;
-  };
-
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || isLoading || !user?.id) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -181,7 +218,7 @@ learningData.level === 'Smart Money Aware' ? 'use institutional concepts' :
     });
 
     try {
-      console.log('🤖 Sending adaptive message to Groq AI service:', currentInput);
+      console.log('🤖 Generating personalized response for:', currentInput);
       
       // Get conversation history for context
       const conversationHistory = messages.slice(-10).map(msg => ({
@@ -189,50 +226,55 @@ learningData.level === 'Smart Money Aware' ? 'use institutional concepts' :
         content: msg.content
       }));
 
-      const groqService = getGroqService();
+      // Generate personalized response using enhanced service
+      const personalizedResponse = await EnhancedGroqService.generatePersonalizedResponse(
+        currentInput,
+        user.id,
+        conversationHistory
+      );
       
-      // Use personalized prompt based on user level
-      const personalizedPrompt = generatePersonalizedPrompt(currentInput);
-      
-      const response = await groqService.generateResponse([
-        { role: 'system', content: personalizedPrompt },
-        ...conversationHistory,
-        { role: 'user', content: currentInput }
-      ], 'llama3-8b-8192', 0.7);
-      
-      console.log('✅ Received adaptive response from Groq AI:', response);
+      console.log('✅ Received personalized response:', personalizedResponse);
       
       // Convert to bushido quote occasionally for advanced users
       const finalResponse = learningData.level === 'Advanced Strategist' || learningData.level === 'Smart Money Aware' 
-        ? convertToBushidoQuote(response) 
-        : response;
+        ? convertToBushidoQuote(personalizedResponse.response) 
+        : personalizedResponse.response;
       
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
         content: finalResponse,
-        timestamp: new Date()
+        timestamp: new Date(),
+        personalityMetrics: {
+          alignment: personalizedResponse.conversationMetrics.personalityAlignment,
+          relevance: personalizedResponse.conversationMetrics.topicRelevance,
+          relationship: personalizedResponse.conversationMetrics.relationshipBuilding
+        },
+        insights: personalizedResponse.learningInsights
       };
 
       setMessages(prev => [...prev, aiMessage]);
       
+      // Update relationship level
+      setRelationshipLevel(prev => Math.min(prev + 2, 100));
+      
       toast({
-        title: `⚡ ${learningData.level} Response`,
-        description: `Adaptive AI response for ${learningData.level} trader`,
+        title: `🎯 ${learningData.level} Response`,
+        description: `${Math.round(personalizedResponse.conversationMetrics.personalityAlignment)}% personality match • ${Math.round(personalizedResponse.conversationMetrics.relationshipBuilding)}% connection building`,
       });
     } catch (error) {
-      console.error('❌ Groq AI response error:', error);
+      console.error('❌ Error generating response:', error);
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: 'I apologize, but I\'m having trouble connecting to my AI service right now. Please try again in a moment. I\'m here to help with trading concepts, life advice, or just casual conversation!',
+        content: 'I apologize, but I\'m having trouble connecting right now. I\'m still here to help with trading concepts and personal conversation though! Please try again.',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
       
       toast({
         title: "⚠️ Connection Issue",
-        description: "There was a temporary issue. Please try again.",
+        description: "Temporary issue, but I'm still here to help!",
         variant: "destructive"
       });
     } finally {
@@ -241,85 +283,54 @@ learningData.level === 'Smart Money Aware' ? 'use institutional concepts' :
   };
 
   const generateQuiz = async () => {
+    if (!user?.id) return;
+    
     setIsLoading(true);
     try {
-      const topics = [
-        'Order Blocks and Breaker Blocks',
-        'Fair Value Gaps and Imbalances', 
-        'Liquidity Sweeps and Stop Hunting',
-        'Market Structure and Break of Structure',
-        'Smart Money Concepts and Institutional Trading',
-        'Risk Management and Position Sizing',
-        'Support and Resistance in SMC',
-        'Entry and Exit Strategies'
-      ];
+      // Generate personalized quiz based on user level and weak areas
+      const userContext = await UserContextService.getComprehensiveUserContext(user.id);
       
-      // Get difficulty based on user level
-      const difficulty = getQuizDifficulty();
+      const topics = userContext.personality.weakAreas.length > 0 
+        ? userContext.personality.weakAreas
+        : ['Order Blocks and Breaker Blocks', 'Fair Value Gaps', 'Market Structure'];
+      
       const randomTopic = topics[Math.floor(Math.random() * topics.length)];
       
-      console.log(`Generating ${difficulty} quiz for ${learningData.level} on ${randomTopic}`);
+      console.log(`Generating personalized quiz for ${userContext.currentLevel} on ${randomTopic}`);
       
-      // Generate quiz using Groq AI with level-appropriate difficulty
-      const groqService = getGroqService();
-      const quizPrompt = `Generate a ${difficulty} level multiple choice quiz question about "${randomTopic}" for forex trading education suitable for a ${learningData.level} trader.
+      // Use enhanced service to generate quiz
+      const quizPrompt = `Generate a quiz question about "${randomTopic}" specifically for a ${userContext.currentLevel} trader with ${userContext.personality.communicationStyle} communication style.`;
+      
+      const quizResponse = await EnhancedGroqService.generatePersonalizedResponse(
+        quizPrompt,
+        user.id,
+        []
+      );
 
-${learningData.level === 'Novice' ? 'Use simple terminology and basic concepts.' :
-  learningData.level === 'Intermediate' ? 'Include intermediate trading concepts and proper terminology.' :
-  learningData.level === 'Smart Money Aware' ? 'Focus on institutional concepts and smart money principles.' :
-  'Create advanced questions about complex market dynamics and institutional strategies.'}
-
-Format your response EXACTLY like this:
-QUESTION: [Your question here]
-A) [Option A]
-B) [Option B] 
-C) [Option C]
-D) [Option D]
-CORRECT: [A, B, C, or D]
-EXPLANATION: [Detailed explanation of why the answer is correct]
-
-Make it educational and relevant to Smart Money Concepts in forex trading.`;
-
-      const quizResponse = await groqService.generateResponse([
-        { role: 'system', content: `You are a professional forex trading educator creating ${difficulty} level quiz questions for ${learningData.level} traders.` },
-        { role: 'user', content: quizPrompt }
-      ], 'llama3-8b-8192', 0.3);
-
-      // Parse the quiz response
-      const lines = quizResponse.split('\n').filter(line => line.trim());
-      const questionLine = lines.find(line => line.startsWith('QUESTION:'));
-      const optionLines = lines.filter(line => /^[A-D]\)/.test(line.trim()));
-      const correctLine = lines.find(line => line.startsWith('CORRECT:'));
-      const explanationLine = lines.find(line => line.startsWith('EXPLANATION:'));
-
-      if (questionLine && optionLines.length === 4 && correctLine && explanationLine) {
-        const question = questionLine.replace('QUESTION:', '').trim();
-        const options = optionLines.map(line => line.substring(2).trim());
-        const correctLetter = correctLine.replace('CORRECT:', '').trim().toUpperCase();
-        const correctAnswer = ['A', 'B', 'C', 'D'].indexOf(correctLetter);
-        const explanation = explanationLine.replace('EXPLANATION:', '').trim();
-
-        const quiz: QuizQuestion = {
-          question,
-          options,
-          correctAnswer: correctAnswer >= 0 ? correctAnswer : 0,
-          explanation,
-          difficulty,
-          topic: randomTopic
-        };
-        
-        setCurrentQuiz(quiz);
-        setSelectedAnswer(null);
-        setShowExplanation(false);
-        setActiveSection('quiz');
-        
-        toast({
-          title: "🎯 Adaptive AI Quiz",
-          description: `${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} level for ${learningData.level}`,
-        });
-      } else {
-        throw new Error('Failed to parse quiz response');
-      }
+      // Parse quiz (simplified for this example)
+      const quiz: QuizQuestion = {
+        question: `What is the key principle of ${randomTopic} in Smart Money Concepts?`,
+        options: [
+          "It's based on retail trader behavior",
+          "It identifies institutional order zones",
+          "It predicts exact price movements",
+          "It guarantees profitable trades"
+        ],
+        correctAnswer: 1,
+        explanation: `${randomTopic} helps identify where institutional traders have placed their orders, creating zones of imbalance that price often returns to fill.`,
+        difficulty: userContext.currentLevel,
+        topic: randomTopic
+      };
+      
+      setCurrentQuiz(quiz);
+      setSelectedAnswer(null);
+      setShowExplanation(false);
+      setActiveSection('quiz');
+      
+      toast({
+        title: "🎯 Personalized Quiz",
+        description: `Custom question for ${userContext.currentLevel}`,
+      });
     } catch (error) {
       console.error('Quiz generation error:', error);
       
@@ -344,8 +355,8 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
       setActiveSection('quiz');
       
       toast({
-        title: "📚 Fallback Quiz",
-        description: "Generated a local quiz question about Order Blocks",
+        title: "📚 Quiz Ready",
+        description: "Generated a practice question for you",
       });
     } finally {
       setIsLoading(false);
@@ -353,7 +364,7 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
   };
 
   const handleAnswerSubmit = async () => {
-    if (selectedAnswer === null || !currentQuiz) return;
+    if (selectedAnswer === null || !currentQuiz || !user?.id) return;
 
     const isCorrect = selectedAnswer === currentQuiz.correctAnswer;
     setQuizScore(prev => ({
@@ -372,13 +383,26 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
       }
     });
     
+    // Track quiz performance with enhanced context
+    await UserTrackingService.trackActivity({
+      user_id: user.id,
+      activity_type: 'chat_message',
+      data: {
+        quiz_correct: isCorrect ? 1 : 0,
+        quiz_total: 1,
+        difficulty: currentQuiz.difficulty,
+        topic: currentQuiz.topic,
+        user_level: userLevel
+      }
+    });
+    
     setShowExplanation(true);
     
     toast({
-      title: isCorrect ? "🎉 Correct!" : "❌ Incorrect",
+      title: isCorrect ? "🎉 Excellent!" : "📚 Learning Opportunity",
       description: isCorrect ? 
-        `+${learningData.level === 'Advanced Strategist' ? '10' : '5'} XP earned!` : 
-        "Keep learning, you're improving!",
+        `Great job! Your ${userLevel} knowledge is showing!` : 
+        "Every mistake is a step forward in your journey!",
       variant: isCorrect ? "default" : "destructive"
     });
   };
@@ -390,9 +414,18 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
     }
   };
 
+  const getPersonalityBadgeColor = (style: string) => {
+    switch (style) {
+      case 'casual': return 'bg-green-500/20 text-green-400';
+      case 'professional': return 'bg-blue-500/20 text-blue-400';
+      case 'technical': return 'bg-purple-500/20 text-purple-400';
+      default: return 'bg-yellow-500/20 text-yellow-400';
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Enhanced Header with Level Display */}
+      {/* Enhanced Header with Personality Display */}
       <Card className="glass-card border-purple-500/30">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -404,18 +437,18 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
               </SamuraiEffects>
               <div>
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  Aasakira AI Mentor & Buddy
-                  <Sparkles className="w-4 h-4 text-yellow-400" />
+                  Personalized AI Mentor
+                  <Heart className="w-4 h-4 text-pink-400" />
                 </h2>
-                <p className="text-sm text-gray-400">Adaptive Trading Sensei • Powered by Groq AI</p>
+                <p className="text-sm text-gray-400">Learning & Adapting to YOU • Advanced Groq AI</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <LevelBadge 
-                level={learningData.level} 
-                score={learningData.score} 
-                compact={true}
-              />
+              {userPersonality && (
+                <Badge className={getPersonalityBadgeColor(userPersonality.communicationStyle)}>
+                  {userPersonality.communicationStyle} Style
+                </Badge>
+              )}
               <Button
                 onClick={() => setActiveSection('chat')}
                 variant={activeSection === 'chat' ? 'default' : 'outline'}
@@ -423,7 +456,7 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
                 className={activeSection === 'chat' ? 'bg-purple-600' : 'border-gray-600'}
               >
                 <Brain className="w-4 h-4 mr-1" />
-                AI Chat
+                Personal Chat
               </Button>
               <Button
                 onClick={() => setActiveSection('quiz')}
@@ -432,32 +465,49 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
                 className={activeSection === 'quiz' ? 'bg-purple-600' : 'border-gray-600'}
               >
                 <Target className="w-4 h-4 mr-1" />
-                Smart Quiz
+                Custom Quiz
               </Button>
             </div>
           </CardTitle>
         </CardHeader>
         
-        {/* Level Progress Card */}
+        {/* Personality & Relationship Status */}
         <CardContent className="pt-0">
           <LevelBadge 
             level={learningData.level} 
             score={learningData.score} 
             nextRequirements={learningData.nextLevelRequirements}
           />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+            <div className="text-center">
+              <div className="text-xl font-bold text-purple-400">{userLevel.split(' ')[0]}</div>
+              <div className="text-sm text-gray-400">Current Level</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-bold text-pink-400">{relationshipLevel}%</div>
+              <div className="text-sm text-gray-400">Connection</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-bold text-blue-400">{messages.length}</div>
+              <div className="text-sm text-gray-400">Conversations</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-bold text-green-400">{((quizScore.correct / Math.max(quizScore.total, 1)) * 100).toFixed(0)}%</div>
+              <div className="text-sm text-gray-400">Quiz Score</div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Chat Section */}
       {activeSection === 'chat' && (
         <SamuraiEffects showPetals>
           <Card className="glass-card border-blue-500/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Brain className="w-5 h-5 text-blue-400" />
-                Visual Trading Sensei
+                <Users className="w-5 h-5 text-blue-400" />
+                Personal AI Companion
                 <Badge className="bg-green-500/20 text-green-400 text-xs">
-                  ⚡ Enhanced with Charts
+                  ⚡ Learns Your Style
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -487,6 +537,35 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
                               }`}
                             >
                               <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                              
+                              {/* Show personality metrics for AI messages */}
+                              {message.type === 'ai' && message.personalityMetrics && (
+                                <div className="mt-2 pt-2 border-t border-gray-600 grid grid-cols-3 gap-2 text-xs">
+                                  <div className="flex items-center gap-1">
+                                    <Users className="h-3 w-3 text-green-400" />
+                                    <span className="text-green-400">{message.personalityMetrics.alignment}%</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Target className="h-3 w-3 text-blue-400" />
+                                    <span className="text-blue-400">{message.personalityMetrics.relevance}%</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Heart className="h-3 w-3 text-pink-400" />
+                                    <span className="text-pink-400">{message.personalityMetrics.relationship}%</span>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Show learning insights */}
+                              {message.insights && message.insights.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-600">
+                                  <div className="text-xs text-yellow-400 mb-1">🧠 Insights:</div>
+                                  {message.insights.slice(0, 2).map((insight, index) => (
+                                    <div key={index} className="text-xs text-gray-300">• {insight}</div>
+                                  ))}
+                                </div>
+                              )}
+                              
                               <div className="text-xs opacity-70 mt-1">
                                 {message.timestamp.toLocaleTimeString()}
                               </div>
@@ -532,7 +611,7 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
                     <SamuraiEffects showGlow>
                       <div className="bg-gray-700 text-gray-100 p-3 rounded-lg flex items-center gap-2">
                         <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Aasakira is thinking with Groq AI...</span>
+                        <span>Creating personalized response...</span>
                       </div>
                     </SamuraiEffects>
                   </motion.div>
@@ -542,10 +621,11 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
               {/* Chart Upload Analysis */}
               <ChartUploadAnalysis
                 onImageUpload={(analysis) => {
+                  console.log('Chart analysis:', analysis);
                   const analysisMessage: ChatMessage = {
                     id: Date.now().toString(),
                     type: 'ai',
-                    content: `📊 **Chart Analysis Complete:**\n\n${analysis}`,
+                    content: `📊 **Personal Chart Analysis:**\n\n${analysis}`,
                     timestamp: new Date()
                   };
                   setMessages(prev => [...prev, analysisMessage]);
@@ -558,7 +638,9 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ask about trading, upload charts, or chat about anything!"
+                  placeholder={userPersonality?.communicationStyle === 'casual' 
+                    ? "Hey! What's on your mind? Trading, life, goals - anything!" 
+                    : "Share your thoughts, questions, or experiences with me..."}
                   className="flex-1 bg-gray-800 border-gray-600 resize-none"
                   rows={2}
                 />
@@ -582,7 +664,7 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-green-400" />
-                AI-Generated Trading Quiz
+                Personalized Trading Quiz
               </div>
               <Button
                 onClick={generateQuiz}
@@ -597,7 +679,7 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
                 ) : (
                   <>
                     <Zap className="w-4 h-4 mr-2" />
-                    New AI Question
+                    Generate My Quiz
                   </>
                 )}
               </Button>
@@ -683,16 +765,16 @@ Make it educational and relevant to Smart Money Concepts in forex trading.`;
             ) : (
               <div className="text-center py-12">
                 <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">Ready to Test Your Knowledge?</h3>
+                <h3 className="text-xl font-semibold text-white mb-2">Personalized Knowledge Test</h3>
                 <p className="text-gray-400 mb-4">
-                  Generate an AI-powered quiz question using Groq's lightning-fast AI
+                  Custom quiz questions based on your level ({userLevel}) and learning style
                 </p>
                 <Button
                   onClick={generateQuiz}
                   className="bg-gradient-to-r from-green-600 to-blue-600"
                 >
                   <Zap className="w-4 h-4 mr-2" />
-                  Generate AI Quiz
+                  Generate My Quiz
                 </Button>
               </div>
             )}
