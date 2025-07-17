@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { EnhancedGroqService } from '@/services/enhancedGroqService';
-import { userContextService } from '@/services/userContextService';
+import { UserTrackingService } from '@/services/userTrackingService';
 import { Loader2 } from 'lucide-react';
 
 interface Message {
@@ -42,14 +42,24 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
     onFeatureUse?.();
 
     try {
-      // Track user activity and get personalized response
       if (user?.id) {
-        await userContextService.updateUserActivity(user.id, 'ai_message', { message: input });
+        // Track the mentor prompt with comprehensive context
+        await UserTrackingService.trackMentorPrompt(user.id, input, {
+          page: 'mentor',
+          sessionTime: new Date().toISOString(),
+          messageCount: messages.length + 1
+        });
+        
+        // Get comprehensive user behavior context for AI
+        const userContext = await UserTrackingService.getUserBehaviorContext(user.id);
+        
+        console.log('🧠 AI MENTOR CONTEXT:', userContext);
         
         const response = await EnhancedGroqService.generatePersonalizedResponse(
           input,
           user.id,
-          messages.map(msg => ({ role: msg.role, content: msg.content }))
+          messages.map(msg => ({ role: msg.role, content: msg.content })),
+          userContext // Pass the rich context to AI
         );
         
         if (response) {
@@ -61,18 +71,25 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
           
           setMessages(prev => [...prev, assistantMessage]);
           
-          // Store conversation memory
-          await userContextService.storeConversationMemory(
-            user.id,
-            `User: ${input}\nAssistant: ${response.response}`,
-            7
-          );
+          // Store the interaction in AI memory
+          await UserTrackingService.storeAIMemory({
+            user_id: user.id,
+            memory_type: 'conversation',
+            content: `User: ${input}\nAssistant: ${response.response}`,
+            importance_score: 7,
+            context: {
+              interaction_type: 'mentor_chat',
+              user_message_length: input.length,
+              response_length: response.response.length,
+              session_context: userContext?.behaviorPatterns || {}
+            }
+          });
         } else {
           throw new Error('No response received');
         }
       } else {
         // Fallback for non-authenticated users
-        const fallbackResponse = "I'm here to help with your trading questions! Please sign in for a more personalized experience.";
+        const fallbackResponse = "I'm here to help with your trading questions! Please sign in for a more personalized experience with full AI memory and behavior tracking.";
         const assistantMessage: Message = {
           id: Date.now() + 1,
           role: 'assistant',
@@ -110,7 +127,10 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
     <Card className="h-full flex flex-col glass-card">
       <CardHeader>
         <CardTitle className="text-md font-semibold">
-          Super AI Trading Mentor
+          🧠 Aasakira Elite AI Mentor
+          <div className="text-xs text-gray-400 font-normal mt-1">
+            Full behavior tracking • Memory-enhanced responses
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
@@ -122,7 +142,7 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
                   {message.role === 'assistant' && (
                     <Avatar style={avatarStyle} className="mr-2">
                       <AvatarImage src="/ai-mentor.png" alt="AI Mentor" />
-                      <AvatarFallback>AI</AvatarFallback>
+                      <AvatarFallback>🧠</AvatarFallback>
                     </Avatar>
                   )}
                   <div className={`rounded-lg p-3 text-sm w-64 md:w-96 ${message.role === 'user' ? 'bg-blue-500/20 text-right' : 'bg-gray-800/40'}`}>
@@ -142,10 +162,11 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
                 <div className="flex flex-row items-start">
                   <Avatar style={avatarStyle} className="mr-2">
                     <AvatarImage src="/ai-mentor.png" alt="AI Mentor" />
-                    <AvatarFallback>AI</AvatarFallback>
+                    <AvatarFallback>🧠</AvatarFallback>
                   </Avatar>
                   <div className="rounded-lg p-3 text-sm w-64 md:w-96 bg-gray-800/40">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+                    Analyzing your behavior patterns...
                   </div>
                 </div>
               </div>
@@ -157,7 +178,7 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
         <div className="w-full flex items-center space-x-2">
           <Input
             type="text"
-            placeholder="Ask me anything..."
+            placeholder="Ask Aasakira anything..."
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -168,7 +189,7 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending...
+                Analyzing...
               </>
             ) : (
               'Send'

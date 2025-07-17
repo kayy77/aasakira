@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export interface TradeRecord {
-  id: string;
+  id?: string;
   userId: string;
   pair: string;
   type: 'Buy' | 'Sell';
@@ -114,7 +114,7 @@ class EliteTradeMemory {
     };
   }
 
-  private calculateImportance(trade: TradeRecord): number {
+  private calculateImportance(trade: Omit<TradeRecord, 'id'>): number {
     let score = 5; // base importance
     
     if (trade.result === 'Loss') score += 3;
