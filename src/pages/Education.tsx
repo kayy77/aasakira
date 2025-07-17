@@ -5,48 +5,47 @@ import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  BookOpen, 
   Brain, 
   Target, 
   BarChart3,
   Gamepad2,
   MessageSquare,
   GraduationCap,
-  TestTube
+  BookOpen
 } from 'lucide-react';
 import TradingJournal from '@/components/education/TradingJournal';
 import BacktestLab from '@/components/education/BacktestLab';
 import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
 import CombatMode from '@/components/education/CombatMode';
-import BeginnerFoundations from '@/components/education/BeginnerFoundations';
+import SimpleFoundations from '@/components/education/SimpleFoundations';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Education = () => {
-  const [activeTab, setActiveTab] = useState('foundations');
+  const [activeTab, setActiveTab] = useState('mentor');
   const isMobile = useIsMobile();
 
   const features = [
     {
-      icon: <GraduationCap className="w-6 h-6 md:w-8 md:h-8 text-green-400" />,
-      title: "Foundation Course",
-      description: "Start from zero - learn trading basics step by step",
-      tab: "foundations"
-    },
-    {
       icon: <Brain className="w-6 h-6 md:w-8 md:h-8 text-purple-400" />,
       title: "AI Mentor",
-      description: "Get personalized guidance adapted to your level",
+      description: "Chat with Aasakira - learn trading through conversation",
       tab: "mentor"
+    },
+    {
+      icon: <GraduationCap className="w-6 h-6 md:w-8 md:h-8 text-green-400" />,
+      title: "Learning Path",
+      description: "Structured journey from beginner to pro",
+      tab: "foundations"
     },
     {
       icon: <BookOpen className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />,
       title: "Trading Journal",
-      description: "Track your progress and learn from every trade",
+      description: "Track progress and analyze your trades",
       tab: "journal"
     },
     {
-      icon: <TestTube className="w-6 h-6 md:w-8 md:h-8 text-yellow-400" />,
+      icon: <BarChart3 className="w-6 h-6 md:w-8 md:h-8 text-yellow-400" />,
       title: "Backtest Lab",
       description: "Test strategies with historical data",
       tab: "backtest"
@@ -54,7 +53,7 @@ const Education = () => {
     {
       icon: <Gamepad2 className="w-6 h-6 md:w-8 md:h-8 text-red-400" />,
       title: "Combat Mode",
-      description: "Gamified learning with trading challenges",
+      description: "Gamified trading challenges",
       tab: "combat"
     }
   ];
@@ -68,10 +67,10 @@ const Education = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8 md:mb-12">
             <h1 className="text-2xl md:text-4xl font-bold gradient-text mb-4">
-              Trading Education Hub
+              Learn Trading with AI
             </h1>
             <p className="text-gray-300 text-sm md:text-lg max-w-3xl mx-auto px-4">
-              Start from complete beginner and progress to professional trader with AI-powered education
+              Skip the boring courses. Chat with your AI mentor and learn trading through personalized conversations.
             </p>
           </div>
 
@@ -106,12 +105,22 @@ const Education = () => {
               ))}
             </div>
 
-            <TabsContent value="foundations">
-              <BeginnerFoundations />
+            <TabsContent value="mentor">
+              <Card className="glass-card h-[600px]">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-purple-400">
+                    <Brain className="w-6 h-6 mr-2" />
+                    AI Trading Mentor
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="h-full p-0">
+                  <EnhancedAIMentor />
+                </CardContent>
+              </Card>
             </TabsContent>
 
-            <TabsContent value="mentor">
-              <EnhancedAIMentor />
+            <TabsContent value="foundations">
+              <SimpleFoundations onStartAIMentor={() => setActiveTab('mentor')} />
             </TabsContent>
 
             <TabsContent value="journal">

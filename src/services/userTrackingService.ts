@@ -3,12 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface UserBehaviorContext {
   recentSignals: any[];
+  tradingExperience: string;
   preferredPairs: string[];
-  averageConfidenceThreshold: number;
-  tradingStyle: string;
-  weaknesses: string[];
-  strengths: string[];
-  lastActive: string;
+  riskTolerance: string;
+  learningGoals: string[];
+  behaviorPatterns: any;
 }
 
 export class UserTrackingService {
@@ -99,43 +98,63 @@ export class UserTrackingService {
         .limit(50);
 
       const signalViews = activities?.filter(a => a.activity_type === 'signal_view') || [];
-      const pairs = signalViews.map(s => s.data?.pair).filter(Boolean);
-      const confidences = signalViews.map(s => s.data?.confidence).filter(Boolean);
+      const pairs = signalViews
+        .map(s => s.data && typeof s.data === 'object' && 'pair' in s.data ? (s.data as any).pair : null)
+        .filter(Boolean);
+      const confidences = signalViews
+        .map(s => s.data && typeof s.data === 'object' && 'confidence' in s.data ? (s.data as any).confidence : null)
+        .filter(Boolean);
 
       return {
         recentSignals: signalViews.slice(0, 10),
+        tradingExperience: 'beginner',
         preferredPairs: [...new Set(pairs)].slice(0, 5),
-        averageConfidenceThreshold: confidences.length > 0 ? 
-          confidences.reduce((a, b) => a + b, 0) / confidences.length : 70,
-        tradingStyle: 'conservative',
-        weaknesses: ['risk-management', 'patience'],
-        strengths: ['technical-analysis'],
-        lastActive: new Date().toISOString()
+        riskTolerance: 'conservative',
+        learningGoals: ['basic-trading', 'risk-management'],
+        behaviorPatterns: {
+          averageConfidenceThreshold: confidences.length > 0 ? 
+            confidences.reduce((a, b) => a + b, 0) / confidences.length : 70,
+          tradingStyle: 'conservative',
+          weaknesses: ['risk-management', 'patience'],
+          strengths: ['technical-analysis'],
+          lastActive: new Date().toISOString()
+        }
       };
     } catch (error) {
       console.error('Error getting behavior context:', error);
       return {
         recentSignals: [],
+        tradingExperience: 'beginner',
         preferredPairs: [],
-        averageConfidenceThreshold: 70,
-        tradingStyle: 'beginner',
-        weaknesses: [],
-        strengths: [],
-        lastActive: new Date().toISOString()
+        riskTolerance: 'conservative',
+        learningGoals: ['basic-trading'],
+        behaviorPatterns: {
+          averageConfidenceThreshold: 70,
+          tradingStyle: 'beginner',
+          weaknesses: [],
+          strengths: [],
+          lastActive: new Date().toISOString()
+        }
       };
     }
   }
 
-  static async storeAIMemory(userId: string, content: string, memoryType: string, context?: any) {
+  static async storeAIMemory(data: {
+    user_id: string;
+    content: string;
+    memory_type: string;
+    context?: any;
+    importance_score?: number;
+  }) {
     try {
       await supabase
         .from('ai_memory')
         .insert({
-          user_id: userId,
-          content,
-          memory_type: memoryType,
-          context,
-          importance_score: 5
+          user_id: data.user_id,
+          content: data.content,
+          memory_type: data.memory_type,
+          context: data.context,
+          importance_score: data.importance_score || 5
         });
     } catch (error) {
       console.error('Error storing AI memory:', error);
