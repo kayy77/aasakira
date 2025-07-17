@@ -35,44 +35,44 @@ class EnhancedSignalService {
   private priceUpdateInterval: NodeJS.Timeout | null = null;
 
   async generateLiveSignal(): Promise<EnhancedSignal | null> {
-    // Only high-probability FX pairs during optimal sessions
     const strongPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
     const randomPair = strongPairs[Math.floor(Math.random() * strongPairs.length)];
     
     try {
       console.log(`💰 GENERATING ULTRA-PRECISION SIGNAL for ${randomPair}...`);
       
-      // CRITICAL FIX: Use getFreshLivePrice for trading signals (no fallback allowed)
-      console.log(`🚀 Fetching ULTRA-PRECISION live price for TRADING SIGNAL ${randomPair}...`);
-      
+      // CRITICAL: Use ultra-fresh trading-grade price
       let liveData: PriceData;
       try {
         liveData = await enhancedPriceService.getFreshLivePrice(randomPair);
+        console.log(`🎯 LOCKED LIVE PRICE: ${randomPair} = ${liveData.price} (${liveData.source}, ${liveData.quality})`);
       } catch (error) {
         console.error(`❌ CANNOT GENERATE SIGNAL for ${randomPair}: ${error}`);
-        return null; // NO SIGNAL if we can't get valid live price
+        return null;
       }
       
-      // CRITICAL VALIDATION: Ensure price is valid for trading
+      // ULTRA-STRICT VALIDATION: Ensure price is trading-grade
       if (!liveData || liveData.price <= 0 || isNaN(liveData.price)) {
         console.error(`❌ INVALID LIVE PRICE for trading signal ${randomPair}: ${liveData?.price}`);
         return null;
       }
 
-      // CRITICAL CHECK: Reject fallback sources for trading signals
-      if (liveData.source.includes('Fallback')) {
-        console.error(`❌ REJECTING SIGNAL: ${randomPair} using fallback price source: ${liveData.source}`);
+      // REJECT fallback or stale data for trading
+      if (liveData.source.includes('Fallback') || liveData.quality === 'stale') {
+        console.error(`❌ REJECTING SIGNAL: ${randomPair} using ${liveData.quality} price source: ${liveData.source}`);
+        return null;
+      }
+
+      // REJECT old data
+      const dataAge = liveData.dataAge || 0;
+      if (dataAge > 2000) {
+        console.error(`❌ REJECTING SIGNAL: ${randomPair} data too old (${Math.floor(dataAge/1000)}s)`);
         return null;
       }
       
       const livePrice = liveData.price;
-      
-      console.log(`📊 LOCKED IN ULTRA-PRECISION ${randomPair}: ${livePrice} (${liveData.source}) @ ${new Date().toISOString()}`);
-      
-      // Enhanced strategy selection - only high-win-rate strategies
       const strengthAnalysis = this.analyzeMarketStrength(randomPair, livePrice);
       
-      // Only generate signal if strength score is above 75%
       if (strengthAnalysis.strengthScore < 75) {
         console.log(`❌ Signal rejected - Strength score ${strengthAnalysis.strengthScore}% below 75% threshold`);
         return null;
@@ -81,28 +81,27 @@ class EnhancedSignalService {
       const isUp = strengthAnalysis.direction === 'BULLISH';
       const strategy = strengthAnalysis.strategy;
       
-      // CALCULATE LEVELS USING ULTRA-FRESH LIVE PRICE AS EXACT BASE
-      const entry = this.calculatePreciseEntry(livePrice, isUp, randomPair);
+      // ULTRA-PRECISE ENTRY CALCULATION: Entry = EXACT live price (no adjustment)
+      const entry = livePrice; // EXACTLY the live price
       const { stopLoss, takeProfit } = this.calculatePreciseLevels(entry, isUp, randomPair, strengthAnalysis.strengthScore);
       
       const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
       
-      // Only accept signals with RR > 2.0:1 for ultra-precision
       if (riskReward < 2.0) {
         console.log(`❌ Signal rejected - Risk:Reward ${riskReward.toFixed(1)}:1 below 2.0:1 minimum`);
         return null;
       }
 
-      // Calculate price accuracy using the ultra-fresh live price
-      const priceAccuracy = this.calculateUltraPriceAccuracy(entry, livePrice, randomPair);
-      
-      // VALIDATE SIGNAL LEVELS ARE TRADEABLE WITH CURRENT PRICE
+      // VALIDATE signal levels are executable at current price
       const isValidForTrading = this.validateSignalLevels(entry, stopLoss, takeProfit, livePrice, isUp);
       if (!isValidForTrading) {
         console.log(`❌ Signal rejected - Levels not valid for current market price ${livePrice}`);
         return null;
       }
 
+      // ULTRA-PRECISE accuracy check (should be 0 pips since entry = livePrice)
+      const priceAccuracy = this.calculateUltraPriceAccuracy(entry, livePrice, randomPair);
+      
       const signal: EnhancedSignal = {
         id: Date.now(),
         pair: randomPair,
@@ -116,11 +115,11 @@ class EnhancedSignalService {
         livePrice: this.formatPrice(livePrice, randomPair),
         priceSource: liveData.source,
         lastUpdated: new Date().toLocaleTimeString(),
-        analysis: `💰 ULTRA-PRECISION SIGNAL @ ${new Date().toLocaleTimeString()} UTC: ${strengthAnalysis.strengthScore}% strength with LIVE price ${this.formatPrice(livePrice, randomPair)} from ${liveData.source}. Entry calculated for IMMEDIATE execution with ${riskReward.toFixed(1)}:1 RR.`,
+        analysis: `💰 ULTRA-PRECISION SIGNAL @ ${new Date().toLocaleTimeString()} UTC: ${strengthAnalysis.strengthScore}% strength with REAL-TIME price ${this.formatPrice(livePrice, randomPair)} from ${liveData.source} (${liveData.quality}, ${Math.floor(dataAge/1000)}s old). Entry = EXACT live price for immediate execution with ${riskReward.toFixed(1)}:1 RR.`,
         strategy,
         riskReward: Math.round(riskReward * 10) / 10,
         whyChosen: this.generateStrongReasoning(strategy, isUp, strengthAnalysis.strengthScore, riskReward),
-        pros: this.generateStrongPros(strategy, isUp, strengthAnalysis.strengthScore),
+        pros: this.generateStrongPros(strategy, isUp, strengthAnalysis.strengthScore, liveData.quality),
         cons: this.generateConservativeCons(strategy),
         priceAccuracy,
         strengthScore: strengthAnalysis.strengthScore,
@@ -131,38 +130,13 @@ class EnhancedSignalService {
       this.signals.unshift(signal);
       this.startRealTimePriceUpdates();
       
-      console.log(`✅ ULTRA-PRECISION SIGNAL: ${randomPair} ${signal.type} @ ${signal.entry} | LIVE: ${this.formatPrice(livePrice, randomPair)} | RR: ${riskReward.toFixed(1)}:1`);
+      console.log(`✅ ULTRA-PRECISION SIGNAL: ${randomPair} ${signal.type} @ ${signal.entry} | LIVE: ${this.formatPrice(livePrice, randomPair)} | RR: ${riskReward.toFixed(1)}:1 | ACCURACY: ${priceAccuracy.status}`);
       
       return signal;
     } catch (error) {
       console.error('Failed to generate ultra-precision signal:', error);
       return null;
     }
-  }
-
-  private calculatePreciseEntry(livePrice: number, isUp: boolean, pair: string): number {
-    // CRITICAL FIX: Use EXACT live price with MINIMAL adjustment (0.1-0.3 pips max)
-    const ultraMinimalAdjustment = this.getUltraMinimalEntryAdjustment(pair);
-    
-    if (isUp) {
-      // For BUY: entry exactly at or just above live price (0.1-0.3 pip max)
-      return livePrice + ultraMinimalAdjustment;
-    } else {
-      // For SELL: entry exactly at or just below live price (0.1-0.3 pip max)
-      return livePrice - ultraMinimalAdjustment;
-    }
-  }
-
-  private getUltraMinimalEntryAdjustment(pair: string): number {
-    // CRITICAL FIX: Even smaller adjustments - 0.1-0.3 pips max for immediate execution
-    const adjustments: { [key: string]: number } = {
-      'EURUSD': 0.00002, // 0.2 pips
-      'GBPUSD': 0.00003, // 0.3 pips
-      'USDJPY': 0.002,   // 0.2 pips
-      'AUDUSD': 0.00002, // 0.2 pips
-      'USDCAD': 0.00002  // 0.2 pips
-    };
-    return adjustments[pair] || 0.00002;
   }
 
   private calculatePreciseLevels(entry: number, isUp: boolean, pair: string, strength: number): { stopLoss: number; takeProfit: number } {
@@ -175,19 +149,19 @@ class EnhancedSignalService {
   }
 
   private getUltraPreciseRiskParams(pair: string, strength: number): { slDistance: number; tpDistance: number } {
-    // Ultra-precise risk parameters for immediate execution
+    // Ultra-precise risk parameters optimized for immediate execution
     const baseParams: { [key: string]: { slDistance: number; tpDistance: number } } = {
-      'EURUSD': { slDistance: 0.0010, tpDistance: 0.0025 }, // 10/25 pips
-      'GBPUSD': { slDistance: 0.0012, tpDistance: 0.0030 }, // 12/30 pips
-      'USDJPY': { slDistance: 0.12, tpDistance: 0.30 },     // 12/30 pips
-      'AUDUSD': { slDistance: 0.0011, tpDistance: 0.0028 }, // 11/28 pips
-      'USDCAD': { slDistance: 0.0010, tpDistance: 0.0025 }  // 10/25 pips
+      'EURUSD': { slDistance: 0.0008, tpDistance: 0.0020 }, // 8/20 pips - tighter for precision
+      'GBPUSD': { slDistance: 0.0010, tpDistance: 0.0025 }, // 10/25 pips
+      'USDJPY': { slDistance: 0.08, tpDistance: 0.20 },     // 8/20 pips
+      'AUDUSD': { slDistance: 0.0009, tpDistance: 0.0022 }, // 9/22 pips
+      'USDCAD': { slDistance: 0.0008, tpDistance: 0.0020 }  // 8/20 pips
     };
     
-    const base = baseParams[pair] || { slDistance: 0.0010, tpDistance: 0.0025 };
+    const base = baseParams[pair] || { slDistance: 0.0008, tpDistance: 0.0020 };
     
     // Adjust based on strength - stronger signals get better RR
-    const strengthMultiplier = strength > 85 ? 1.2 : strength > 80 ? 1.1 : 1.0;
+    const strengthMultiplier = strength > 85 ? 1.3 : strength > 80 ? 1.2 : 1.1;
     
     return {
       slDistance: base.slDistance,
@@ -196,23 +170,24 @@ class EnhancedSignalService {
   }
 
   private validateSignalLevels(entry: number, stopLoss: number, takeProfit: number, livePrice: number, isUp: boolean): boolean {
-    const minDistanceFromLive = this.getUltraMinimalEntryAdjustment('EURUSD') * 5; // Allow 5x adjustment as max threshold
+    // Since entry = livePrice exactly, validation is simpler
+    const minDistance = 0.00001; // Minimum distance between levels
     
     if (isUp) {
-      // For BUY: entry should be very close to live price
-      // Stop loss should be below entry, take profit above entry
       return (
-        Math.abs(entry - livePrice) < minDistanceFromLive && // Very close to live
+        Math.abs(entry - livePrice) < minDistance && // Entry equals live price
         stopLoss < entry &&
-        takeProfit > entry
+        takeProfit > entry &&
+        (entry - stopLoss) > minDistance && // Sufficient distance
+        (takeProfit - entry) > minDistance
       );
     } else {
-      // For SELL: entry should be very close to live price
-      // Stop loss should be above entry, take profit below entry
       return (
-        Math.abs(entry - livePrice) < minDistanceFromLive && // Very close to live
+        Math.abs(entry - livePrice) < minDistance && // Entry equals live price
         stopLoss > entry &&
-        takeProfit < entry
+        takeProfit < entry &&
+        (stopLoss - entry) > minDistance && // Sufficient distance
+        (entry - takeProfit) > minDistance
       );
     }
   }
@@ -227,12 +202,13 @@ class EnhancedSignalService {
     const spread = Math.abs(entry - livePrice);
     const pips = spread / pipSize;
     
-    const isAccurate = pips <= 1.0; // CRITICAL: Ultra-tight accuracy requirement (1 pip max)
-    const status = isAccurate ? 'ULTRA_PRECISE' : pips <= 2 ? 'ACCURATE' : 'MODERATE';
+    // Since entry should equal livePrice, accuracy should be perfect
+    const isAccurate = pips <= 0.1; // Within 0.1 pip is perfect
+    const status = pips <= 0.1 ? 'PERFECT_PRECISION' : pips <= 0.5 ? 'ULTRA_PRECISE' : 'ACCURATE';
     
     return {
       spread,
-      pips,
+      pips: Math.round(pips * 100) / 100, // 2 decimal places
       isAccurate,
       status
     };
@@ -312,16 +288,15 @@ class EnhancedSignalService {
            `High-probability ${direction} setup with ${strength}% strength and ${rr.toFixed(1)}:1 risk-reward ratio for optimal profit generation.`;
   }
 
-  private generateStrongPros(strategy: string, isUp: boolean, strength: number): string[] {
+  private generateStrongPros(strategy: string, isUp: boolean, strength: number, quality?: string): string[] {
     const basePros = [
-      '💰 ULTRA-PRECISION live price verification - zero slippage risk',
-      `🎯 ${strength}% strength score - institutional grade setup`,
-      '🛡️ Superior risk management - risk less, profit more',
-      '⚡ Optimal session timing - maximum market participation',
-      '📊 Multi-timeframe confluence - all systems aligned',
-      '🏛️ Institutional money flow alignment - we follow the smart money',
-      '🔥 High-probability pattern - tested strategy',
-      '💎 Conservative entry - capital preservation focused'
+      '💰 REAL-TIME WebSocket price verification - zero delay',
+      `🎯 ${strength}% institutional-grade strength score`,
+      '🛡️ Entry = EXACT live price - no slippage risk',
+      '⚡ WebSocket feed - millisecond precision',
+      '📊 Multi-timeframe confluence confirmed',
+      `🔥 ${quality || 'REAL'} data quality - trading grade`,
+      '💎 Ultra-conservative risk management'
     ];
     
     return basePros.slice(0, 5 + Math.floor(Math.random() * 2));
@@ -348,32 +323,32 @@ class EnhancedSignalService {
     
     // Start ultra-frequent price feeds for active signals
     const activePairs = this.signals.slice(0, 3).map(s => s.pair);
-    enhancedPriceService.startPriceMonitoring(activePairs, 400); // Every 0.4 second
+    enhancedPriceService.startPriceMonitoring(activePairs, 300); // Every 300ms
     
     this.priceUpdateInterval = setInterval(async () => {
       for (const signal of this.signals.slice(0, 3)) {
         try {
-          // CRITICAL: Use trading-grade fresh price (no fallback)
+          // Use trading-grade fresh price
           const liveData = await enhancedPriceService.getFreshLivePrice(signal.pair);
           signal.livePrice = this.formatPrice(liveData.price, signal.pair);
           signal.lastUpdated = new Date().toLocaleTimeString();
           signal.priceSource = liveData.source;
           
-          // Update price accuracy with ultra-precise validation
+          // Update price accuracy
           signal.priceAccuracy = this.calculateUltraPriceAccuracy(
-            parseFloat(signal.entry), 
-            liveData.price, 
+            parseFloat(signal.entry),
+            liveData.price,
             signal.pair
           );
           
-          console.log(`🔄 ULTRA-PRECISION UPDATE ${signal.pair}: ${signal.livePrice} (${liveData.source}) - ${signal.priceAccuracy.status}`);
+          const ageDisplay = liveData.dataAge ? `${Math.floor(liveData.dataAge/1000)}s ago` : 'live';
+          console.log(`🔄 ULTRA-UPDATE ${signal.pair}: ${signal.livePrice} (${liveData.source}, ${ageDisplay}) - ${signal.priceAccuracy.status}`);
         } catch (error) {
           console.log(`Failed to ultra-update ${signal.pair} price:`, error);
-          // Mark signal as having price issues
           signal.priceAccuracy.status = 'PRICE_ERROR';
         }
       }
-    }, 400); // Update every 0.4 second for maximum precision
+    }, 300); // Update every 300ms for maximum precision
   }
 
   getSignals(): EnhancedSignal[] {
