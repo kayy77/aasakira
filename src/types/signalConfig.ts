@@ -47,7 +47,7 @@ export interface Signal {
   risk: 'Low' | 'Medium' | 'High';
   reason: string;
   pips?: number;
-  riskReward?: number;
+  riskReward: number; // Made required since it's used in multiple places
   signalStrength?: string;
   filtersScore?: number;
   maxFilters?: number;

@@ -69,39 +69,11 @@ const ImprovedMemeCoinScanner = () => {
       console.log('🔍 Starting enhanced meme coin scan...');
       const freshCoins = await liveMemeCoinService.scanLiveCoins();
       
-      // Enhanced analysis for each coin
-      const enhancedCoins = await Promise.all(
-        freshCoins.map(async (coin) => {
-          // Generate health metrics
-          const healthMetrics = tokenHealthService.generateMockHealthMetrics();
-          const healthScore = tokenHealthService.calculateHealthScore(healthMetrics);
-          const riskQuadrant = tokenHealthService.calculateRiskQuadrant(
-            healthScore, 
-            coin.priceChange24h, 
-            coin.volume24h
-          );
-
-          // Get whale activity
-          const whales = await whaleTrackingService.trackWhaleActivity(coin.address);
-          
-          // Enhanced coin with new data
-          return {
-            ...coin,
-            healthScore: healthScore.overall,
-            healthLabel: healthScore.label,
-            riskQuadrant: riskQuadrant.quadrant,
-            whaleActivity: whales.length,
-            stealthLaunch: coin.pairAge < 1 && coin.liquidity > 20000 && Math.random() > 0.7,
-            whaleTransactions: whales
-          };
-        })
-      );
-
-      setCoins(enhancedCoins);
+      setCoins(freshCoins);
       setLastRefresh(new Date());
 
       // Scan for alerts
-      const alerts = await alphaAlertsService.scanForAlerts(enhancedCoins);
+      const alerts = await alphaAlertsService.scanForAlerts(freshCoins);
       setActiveAlerts(alerts);
 
       // Send critical alerts
@@ -113,7 +85,7 @@ const ImprovedMemeCoinScanner = () => {
         const criticalAlerts = alerts.filter(a => a.priority === 'critical').length;
         toast({
           title: criticalAlerts > 0 ? "🚨 Critical Alpha Detected!" : "🎯 Fresh Alpha Detected!",
-          description: `Found ${enhancedCoins.length} opportunities${criticalAlerts > 0 ? ` with ${criticalAlerts} critical alerts` : ''}`,
+          description: `Found ${freshCoins.length} opportunities${criticalAlerts > 0 ? ` with ${criticalAlerts} critical alerts` : ''}`,
         });
       }
     } catch (error) {
@@ -310,20 +282,20 @@ const ImprovedMemeCoinScanner = () => {
                   <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold relative">
                     {coin.symbol.charAt(0)}
                     {coin.stealthLaunch && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-400 rounded-full animate-pulse" title="Stealth Launch"></div>
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
                     )}
                     {coin.volumeSpike && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse" title="Volume Spike"></div>
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
                     )}
                     {coin.whaleActivity > 0 && (
-                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-400 rounded-full animate-pulse" title="Whale Activity"></div>
+                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
                     )}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-semibold text-white">{coin.name}</h3>
                       {coin.healthScore >= 80 && <Star className="w-4 h-4 text-yellow-400" />}
-                      {coin.stealthLaunch && <Eye className="w-4 h-4 text-purple-400" title="Stealth Launch" />}
+                      {coin.stealthLaunch && <Eye className="w-4 h-4 text-purple-400" />}
                     </div>
                     <p className="text-gray-400">${coin.symbol}</p>
                     <div className="flex items-center gap-2 text-xs">
