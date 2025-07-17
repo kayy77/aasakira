@@ -8,19 +8,56 @@ interface GroqOptions {
 class GroqService {
   private readonly baseUrl = 'https://api.groq.com/openai/v1';
   private apiKey: string | null = null;
+  private initialized = false;
 
   constructor() {
-    // Initialize without process.env since it's not available in browser
-    this.apiKey = null;
+    this.initializeApiKey();
+  }
+
+  private async initializeApiKey(): Promise<void> {
+    if (this.initialized) return;
+    
+    try {
+      // Try to get API key from Supabase edge function or environment
+      const response = await fetch('/api/groq-config', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }).catch(() => null);
+
+      if (response?.ok) {
+        const data = await response.json();
+        this.apiKey = data.apiKey;
+      } else {
+        // Fallback: set the API key directly (temporary solution)
+        this.apiKey = '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';
+      }
+      
+      this.initialized = true;
+      console.log('🧠 GROQ API KEY CONFIGURED - AI validation is now active');
+    } catch (error) {
+      console.error('Failed to initialize GROQ API key:', error);
+      // Use the provided key as fallback
+      this.apiKey = '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';
+      this.initialized = true;
+    }
   }
 
   async generateResponse(prompt: string, options: GroqOptions = {}): Promise<string> {
+    // Ensure API key is initialized
+    if (!this.initialized) {
+      await this.initializeApiKey();
+    }
+
     if (!this.apiKey) {
-      console.warn('⚠️ Groq API key not available - signal validation disabled');
+      console.error('❌ GROQ API key not available - signal validation DISABLED');
       throw new Error('Groq API key not configured');
     }
 
     try {
+      console.log('🧠 GROQ API CALL INITIATED - Analyzing signal...');
+      
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -38,11 +75,16 @@ class GroqService {
       });
 
       if (!response.ok) {
-        throw new Error(`Groq API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`❌ GROQ API ERROR ${response.status}:`, errorText);
+        throw new Error(`Groq API error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
-      return data.choices[0]?.message?.content || '';
+      const result = data.choices[0]?.message?.content || '';
+      
+      console.log('✅ GROQ ANALYSIS COMPLETE - Response received');
+      return result;
     } catch (error) {
       console.error('❌ Groq API call failed:', error);
       throw error;
@@ -51,10 +93,18 @@ class GroqService {
 
   setApiKey(key: string): void {
     this.apiKey = key;
+    this.initialized = true;
+    console.log('🧠 GROQ API KEY SET MANUALLY - AI validation active');
   }
 
   isConfigured(): boolean {
-    return !!this.apiKey;
+    return !!this.apiKey && this.initialized;
+  }
+
+  getStatus(): string {
+    if (!this.initialized) return 'Initializing...';
+    if (!this.apiKey) return 'Not configured';
+    return 'Ready';
   }
 }
 

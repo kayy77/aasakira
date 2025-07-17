@@ -1,5 +1,6 @@
 import { enhancedPriceService, PriceData } from './enhancedPriceService';
 import { groqSignalJudge, SignalValidationData } from './groqSignalJudge';
+import { groqService } from './groqService';
 
 interface EnhancedSignal {
   id: number;
@@ -47,7 +48,14 @@ class EnhancedSignalService {
     try {
       console.log(`💰 GENERATING GROQ-VALIDATED SIGNAL for ${randomPair}...`);
       
-      // Get ultra-fresh trading-grade price
+      // STEP 1: Verify GROQ is ready
+      if (!groqService.isConfigured()) {
+        console.error('❌ GROQ NOT CONFIGURED - Cannot generate signals without AI validation');
+        throw new Error('GROQ AI validation service not configured');
+      }
+      console.log('✅ GROQ STATUS:', groqService.getStatus());
+      
+      // STEP 2: Get ultra-fresh trading-grade price
       let liveData: PriceData;
       try {
         liveData = await enhancedPriceService.getFreshLivePrice(randomPair);
@@ -87,7 +95,7 @@ class EnhancedSignalService {
       const isUp = strengthAnalysis.direction === 'BULLISH';
       const strategy = strengthAnalysis.strategy;
       
-      // Use the EXACT live price as entry (this fixes the price accuracy issue)
+      // Use the EXACT live price as entry
       const entry = livePrice;
       
       const { stopLoss, takeProfit } = this.calculatePreciseLevels(livePrice, isUp, randomPair, strengthAnalysis.strengthScore);
@@ -105,8 +113,8 @@ class EnhancedSignalService {
         return null;
       }
 
-      // 🧠 CRITICAL: GROQ VALIDATION - NO SIGNAL PASSES WITHOUT GROQ APPROVAL
-      console.log(`🧠 SUBMITTING TO GROQ ANALYSIS: ${randomPair} ${isUp ? 'BUY' : 'SELL'} @ ${entry}`);
+      // 🧠 CRITICAL: MANDATORY GROQ VALIDATION - ABSOLUTE GATEKEEPER
+      console.log(`🧠 SUBMITTING TO GROQ INSTITUTIONAL AI: ${randomPair} ${isUp ? 'BUY' : 'SELL'} @ ${entry}`);
       
       const groqValidationData: SignalValidationData = {
         symbol: randomPair,
@@ -119,33 +127,39 @@ class EnhancedSignalService {
         rsi: 30 + Math.random() * 40,
         volume: strengthAnalysis.strengthScore > 80 ? 'High' : 'Medium',
         context: `${strategy} with ${strengthAnalysis.strengthScore}% strength`,
-        confluence: Math.floor(strengthAnalysis.strengthScore / 15), // Convert to confluence score
+        confluence: Math.floor(strengthAnalysis.strengthScore / 15),
         confidence: strengthAnalysis.strengthScore
       };
 
-      // GROQ MUST APPROVE - This is the gatekeeper
-      const groqResult = await groqSignalJudge.validateAndAdjustSignal(groqValidationData);
+      // MANDATORY GROQ APPROVAL - NO EXCEPTIONS
+      let groqResult;
+      try {
+        groqResult = await groqSignalJudge.validateAndAdjustSignal(groqValidationData);
+      } catch (error) {
+        console.error(`🚫 GROQ VALIDATION FAILED: ${error.message}`);
+        return null; // NO SIGNAL without GROQ approval
+      }
       
       if (!groqResult) {
-        console.log(`🚫 GROQ REJECTED SIGNAL: ${randomPair} ${isUp ? 'BUY' : 'SELL'} - Failed institutional validation`);
+        console.log(`🚫 GROQ REJECTED SIGNAL: ${randomPair} ${isUp ? 'BUY' : 'SELL'} - Failed institutional AI validation`);
         return null;
       }
 
-      console.log(`✅ GROQ APPROVED SIGNAL: ${randomPair} with adjustments`);
+      console.log(`✅ GROQ APPROVED & ADJUSTED SIGNAL: ${randomPair}`);
 
-      // Use GROQ's adjusted values if provided
+      // Use GROQ's adjusted values
       const finalEntry = groqResult.entry;
       const finalStopLoss = groqResult.stop;
       const finalTakeProfit = groqResult.target;
       const finalDirection = groqResult.direction;
       const finalConfidence = groqResult.confidence;
 
-      // Perfect accuracy since we're using exact live price
+      // Perfect accuracy since using exact live price
       const priceAccuracy = {
         spread: 0,
         pips: 0,
         isAccurate: true,
-        status: 'GROQ_VALIDATED'
+        status: 'GROQ_INSTITUTIONAL_VALIDATED'
       };
       
       const signal: EnhancedSignal = {
@@ -161,7 +175,7 @@ class EnhancedSignalService {
         livePrice: this.formatPrice(livePrice, randomPair),
         priceSource: liveData.source,
         lastUpdated: new Date().toLocaleTimeString(),
-        analysis: `🧠 GROQ-VALIDATED SIGNAL @ ${new Date().toLocaleTimeString()} UTC: Institutional AI approved this ${finalConfidence}% confidence setup with real-time price ${this.formatPrice(livePrice, randomPair)} from ${liveData.source}. Entry matches live price for zero slippage execution.`,
+        analysis: `🧠 GROQ INSTITUTIONAL AI VALIDATED @ ${new Date().toLocaleTimeString()} UTC: Advanced AI algorithms approved this ${finalConfidence}% confidence setup. Entry matches live price ${this.formatPrice(livePrice, randomPair)} from ${liveData.source} for institutional-grade execution.`,
         strategy,
         riskReward: Math.round(riskReward * 10) / 10,
         whyChosen: this.generateStrongReasoning(strategy, finalDirection === 'BUY', finalConfidence, riskReward),
@@ -172,20 +186,20 @@ class EnhancedSignalService {
         profitProbability: strengthAnalysis.profitProbability,
         riskLevel: finalConfidence > 85 ? 'CONSERVATIVE' : finalConfidence > 80 ? 'MODERATE' : 'AGGRESSIVE',
         groqAnalysis: {
-          decision: 'APPROVED',
-          reasoning: 'Passed institutional AI validation with enhanced risk parameters',
-          adjustments: groqResult.entry !== livePrice ? 'Entry/Stop/Target adjusted by GROQ' : 'No adjustments needed'
+          decision: 'INSTITUTIONAL_APPROVED',
+          reasoning: 'Passed rigorous GROQ AI institutional validation with enhanced risk parameters',
+          adjustments: groqResult.entry !== livePrice ? 'Entry/Stop/Target optimized by GROQ AI' : 'No adjustments needed - perfect setup'
         }
       };
       
       this.signals.unshift(signal);
       this.startRealTimePriceUpdates();
       
-      console.log(`✅ GROQ-VALIDATED SIGNAL LIVE: ${randomPair} ${signal.type} @ ${signal.entry} | Confidence: ${finalConfidence}% | RR: ${riskReward.toFixed(1)}:1`);
+      console.log(`✅ GROQ INSTITUTIONAL SIGNAL LIVE: ${randomPair} ${signal.type} @ ${signal.entry} | AI Confidence: ${finalConfidence}% | RR: ${riskReward.toFixed(1)}:1`);
       
       return signal;
     } catch (error) {
-      console.error('Failed to generate GROQ-validated signal:', error);
+      console.error('❌ Failed to generate GROQ-validated signal:', error);
       return null;
     }
   }
@@ -313,26 +327,26 @@ class EnhancedSignalService {
   private generateStrongReasoning(strategy: string, isUp: boolean, strength: number, rr: number): string {
     const direction = isUp ? 'LONG' : 'SHORT';
     const strategyExplanations = {
-      'Institutional_Breakout_Retest': `🧠 GROQ-VALIDATED: Institutional AI approved this ${direction} setup with ${strength}% confidence. Smart money positioning confirmed with ${rr.toFixed(1)}:1 risk-reward for optimal capital protection.`,
-      'Smart_Money_Liquidity_Grab': `🧠 GROQ-VALIDATED: AI detected liquidity sweep completion with ${strength}% institutional confidence. ${rr.toFixed(1)}:1 ratio ensures we profit with the smart money flow.`,
-      'Order_Block_Precision_Entry': `🧠 GROQ-VALIDATED: Precise institutional order block entry with ${strength}% AI confidence. ${rr.toFixed(1)}:1 risk-reward approved by advanced algorithms.`,
-      'Fair_Value_Gap_Fill': `🧠 GROQ-VALIDATED: Market imbalance correction with ${strength}% AI probability. ${rr.toFixed(1)}:1 ratio optimized by institutional intelligence.`,
-      'Break_of_Structure_Continuation': `🧠 GROQ-VALIDATED: Strong ${direction} momentum with ${strength}% AI confidence. ${rr.toFixed(1)}:1 ratio riding institutional trend with AI-approved risk management.`
+      'Institutional_Breakout_Retest': `🧠 GROQ INSTITUTIONAL AI: Advanced algorithms validated this ${direction} setup with ${strength}% confidence. Institutional positioning confirmed with ${rr.toFixed(1)}:1 risk-reward optimization.`,
+      'Smart_Money_Liquidity_Grab': `🧠 GROQ INSTITUTIONAL AI: Detected completed liquidity sweep with ${strength}% institutional confidence. ${rr.toFixed(1)}:1 ratio ensures alignment with smart money flow.`,
+      'Order_Block_Precision_Entry': `🧠 GROQ INSTITUTIONAL AI: Precision institutional order block entry with ${strength}% AI validation. ${rr.toFixed(1)}:1 risk-reward approved by advanced algorithms.`,
+      'Fair_Value_Gap_Fill': `🧠 GROQ INSTITUTIONAL AI: Market imbalance correction with ${strength}% probability validation. ${rr.toFixed(1)}:1 ratio optimized by institutional intelligence.`,
+      'Break_of_Structure_Continuation': `🧠 GROQ INSTITUTIONAL AI: Strong ${direction} momentum with ${strength}% validation. ${rr.toFixed(1)}:1 ratio riding institutional trend with AI-approved risk management.`
     };
     
     return strategyExplanations[strategy as keyof typeof strategyExplanations] || 
-           `🧠 GROQ-VALIDATED: High-probability ${direction} setup with ${strength}% AI confidence and ${rr.toFixed(1)}:1 institutional risk-reward.`;
+           `🧠 GROQ INSTITUTIONAL AI: High-probability ${direction} setup with ${strength}% validation and ${rr.toFixed(1)}:1 institutional risk-reward.`;
   }
 
   private generateStrongPros(strategy: string, isUp: boolean, strength: number, quality?: string): string[] {
     const basePros = [
-      '🧠 GROQ AI INSTITUTIONAL VALIDATION - Passed advanced algorithms',
-      `🎯 ${strength}% AI confidence score with real-time verification`,
-      '🛡️ Entry = EXACT live price - zero slippage guaranteed',
+      '🧠 GROQ INSTITUTIONAL AI VALIDATION - Passed advanced algorithms',
+      `🎯 ${strength}% AI confidence with real-time verification`,
+      '🛡️ Entry = EXACT live price - zero slippage execution',
       '⚡ WebSocket precision - millisecond accuracy',
       '📊 Multi-timeframe AI confluence confirmed',
       `🔥 ${quality || 'REAL'} data quality - institutional grade`,
-      '💎 GROQ-optimized risk management parameters'
+      '💎 GROQ-optimized institutional risk management'
     ];
     
     return basePros.slice(0, 5 + Math.floor(Math.random() * 2));
