@@ -1,3 +1,4 @@
+
 interface PriceData {
   price: number;
   timestamp: number;
@@ -14,7 +15,7 @@ interface PriceAPI {
 
 class EnhancedPriceService {
   private cache = new Map<string, { data: PriceData; timestamp: number }>();
-  private readonly CACHE_DURATION = 500; // Ultra-short 0.5 second cache for maximum freshness
+  private readonly CACHE_DURATION = 100; // Ultra-short 0.1 second cache for maximum freshness
   private priceWatchers = new Map<string, NodeJS.Timeout>();
   private lastPrices = new Map<string, number>();
 
@@ -51,7 +52,7 @@ class EnhancedPriceService {
   ];
 
   async getLivePrice(symbol: string): Promise<PriceData> {
-    console.log(`🚀 ULTRA-FAST live price fetch for ${symbol} - simultaneous multi-source...`);
+    console.log(`🚀 ULTRA-PRECISION live price fetch for ${symbol} - simultaneous multi-source...`);
     
     // Check ultra-short cache first
     const cached = this.cache.get(symbol);
@@ -68,7 +69,7 @@ class EnhancedPriceService {
       const bestResult = this.selectBestPriceResult(results);
       this.cache.set(symbol, { data: bestResult, timestamp: Date.now() });
       
-      console.log(`✅ STRONGEST price selected for ${symbol}: ${bestResult.price} from ${bestResult.source}`);
+      console.log(`✅ ULTRA-PRECISION price selected for ${symbol}: ${bestResult.price} from ${bestResult.source}`);
       
       // Check for significant price movement
       await this.checkPriceMovement(symbol, bestResult.price);
@@ -81,8 +82,8 @@ class EnhancedPriceService {
     return this.getEnhancedFallback(symbol);
   }
 
-  private async fetchFromMultipleSourcesSimultaneously(symbol: string): Promise<PriceData[]> {
-    console.log(`🔄 Launching SIMULTANEOUS fetch for ${symbol} across all sources...`);
+  private async fetchFromMultipleSourcesSimultaneously(symbol: string): Promise<(PriceData & { responseTime: number })[]> {
+    console.log(`🔄 Launching ULTRA-PRECISION simultaneous fetch for ${symbol} across all sources...`);
     
     // Launch all API calls simultaneously for maximum speed
     const promises = this.apis.map(async (api) => {
@@ -91,13 +92,13 @@ class EnhancedPriceService {
         const result = await Promise.race([
           api.fetch(symbol),
           new Promise<null>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 2000) // 2 second timeout
+            setTimeout(() => reject(new Error('Timeout')), 1500) // 1.5 second timeout for faster response
           )
         ]);
         const responseTime = Date.now() - startTime;
         
         if (result && result.price > 0) {
-          console.log(`✅ ${api.name} SUCCESS: ${result.price} (${responseTime}ms)`);
+          console.log(`✅ ${api.name} ULTRA-SUCCESS: ${result.price} (${responseTime}ms)`);
           return { ...result, responseTime };
         }
         return null;
@@ -114,21 +115,25 @@ class EnhancedPriceService {
       )
       .map(result => result.value);
 
-    console.log(`📊 Got ${validResults.length} valid prices for ${symbol}`);
+    console.log(`📊 Got ${validResults.length} ULTRA-PRECISION prices for ${symbol}`);
     return validResults;
   }
 
   private selectBestPriceResult(results: (PriceData & { responseTime: number })[]): PriceData {
-    if (results.length === 1) return results[0];
+    if (results.length === 1) {
+      const { responseTime, ...priceData } = results[0];
+      return priceData;
+    }
 
     // Sort by response time and source reliability
     const sorted = results.sort((a, b) => {
       // Prefer certain sources for accuracy
       const sourceScore = (source: string) => {
         if (source === 'AlphaVantage') return 100;
-        if (source === 'FreeForexAPI') return 90;
-        if (source === 'ExchangeRate.host') return 80;
-        if (source === 'Frankfurter') return 70;
+        if (source === 'FreeForexAPI') return 95;
+        if (source === 'ExchangeRate.host') return 85;
+        if (source === 'Frankfurter') return 80;
+        if (source === 'Polygon') return 90;
         return 50;
       };
 
@@ -139,9 +144,10 @@ class EnhancedPriceService {
     });
 
     const selected = sorted[0];
-    console.log(`🎯 Selected best price: ${selected.price} from ${selected.source} (${selected.responseTime}ms)`);
+    console.log(`🎯 Selected ULTRA-PRECISION price: ${selected.price} from ${selected.source} (${selected.responseTime}ms)`);
     
-    return selected;
+    const { responseTime, ...priceData } = selected;
+    return priceData;
   }
 
   private async fetchFromPolygon(symbol: string): Promise<PriceData | null> {
@@ -289,9 +295,9 @@ class EnhancedPriceService {
     if (lastPrice) {
       const changePercent = Math.abs((currentPrice - lastPrice) / lastPrice) * 100;
       
-      if (changePercent >= 0.5) { // 0.5% movement threshold
+      if (changePercent >= 0.3) { // 0.3% movement threshold for ultra-sensitivity
         const reason = `Price moved ${changePercent.toFixed(2)}% in last update`;
-        console.log(`🚨 Significant price movement detected for ${symbol}: ${reason}`);
+        console.log(`🚨 ULTRA-PRECISION price movement detected for ${symbol}: ${reason}`);
         
         // Import and trigger webhook
         try {
@@ -343,8 +349,8 @@ class EnhancedPriceService {
     };
     
     const basePrice = basePrices[symbol] || 1.0000;
-    // Add realistic micro-movement (±0.02% variation)
-    const variation = (Math.random() - 0.5) * 0.0002;
+    // Add ultra-minimal micro-movement (±0.01% variation)
+    const variation = (Math.random() - 0.5) * 0.0001;
     const finalPrice = basePrice * (1 + variation);
     
     return {
@@ -357,13 +363,13 @@ class EnhancedPriceService {
 
   // Force refresh live price (no cache) with maximum accuracy
   async getFreshLivePrice(symbol: string): Promise<PriceData> {
-    console.log(`🔄 ULTRA-FORCE REFRESH: Getting strongest possible price for ${symbol}`);
+    console.log(`🔄 ULTRA-PRECISION FORCE REFRESH: Getting strongest possible price for ${symbol}`);
     this.cache.delete(symbol); // Clear cache
     return await this.getLivePrice(symbol);
   }
 
   // Start ultra-frequent price monitoring
-  startPriceMonitoring(symbols: string[], intervalMs: number = 1000): void {
+  startPriceMonitoring(symbols: string[], intervalMs: number = 500): void {
     symbols.forEach(symbol => {
       if (this.priceWatchers.has(symbol)) {
         const existingInterval = this.priceWatchers.get(symbol);
@@ -381,7 +387,7 @@ class EnhancedPriceService {
       }, intervalMs) as NodeJS.Timeout;
 
       this.priceWatchers.set(symbol, intervalId);
-      console.log(`👁️ Started ULTRA-FREQUENT price monitoring for ${symbol} (${intervalMs}ms interval)`);
+      console.log(`👁️ Started ULTRA-PRECISION price monitoring for ${symbol} (${intervalMs}ms interval)`);
     });
   }
 
