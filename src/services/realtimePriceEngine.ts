@@ -55,7 +55,7 @@ class RealTimePriceEngine {
         // Subscribe to major forex pairs for INSTANT updates
         const symbols = ['frxEURUSD', 'frxGBPUSD', 'frxUSDJPY', 'frxAUDUSD', 'frxUSDCAD'];
         symbols.forEach(symbol => {
-          this.derivWS?.send(JSON.stringify({
+          this.safeWebSocketSend(this.derivWS, JSON.stringify({
             ticks: symbol,
             subscribe: 1
           }));
@@ -149,6 +149,26 @@ class RealTimePriceEngine {
     } catch (error) {
       console.error('Failed to setup Binance WebSocket:', error);
       this.handleWebSocketReconnect('binance');
+    }
+  }
+
+  private safeWebSocketSend(ws: WebSocket | undefined, message: string): boolean {
+    if (!ws) {
+      console.warn('❌ WebSocket is undefined, cannot send message');
+      return false;
+    }
+
+    if (ws.readyState !== WebSocket.OPEN) {
+      console.warn(`❌ WebSocket not ready (state: ${ws.readyState}), cannot send: ${message.substring(0, 50)}...`);
+      return false;
+    }
+
+    try {
+      ws.send(message);
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to send WebSocket message:', error);
+      return false;
     }
   }
 
