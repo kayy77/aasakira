@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { trueLivePriceService } from '@/services/trueLivePriceService';
+import { enhancedPriceService } from '@/services/enhancedPriceService';
 import { useToast } from '@/hooks/use-toast';
 
 interface UseLivePricesProps {
@@ -35,8 +35,8 @@ export const useLivePrices = ({ allowedPairs, updateInterval = 5000 }: UseLivePr
     try {
       const updatedPrices: { [key: string]: number } = {};
       for (const pair of pairs) {
-        const priceData = await trueLivePriceService.getTrueLivePrice(pair);
-        updatedPrices[pair] = typeof priceData === 'number' ? priceData : priceData.price;
+        const priceData = await enhancedPriceService.getLivePrice(pair);
+        updatedPrices[pair] = priceData.price;
       }
       return updatedPrices;
     } catch (error) {

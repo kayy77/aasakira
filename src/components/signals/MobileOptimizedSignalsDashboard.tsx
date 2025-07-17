@@ -1,6 +1,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Activity, AlertTriangle, Crown } from 'lucide-react';
@@ -243,7 +244,7 @@ const MobileOptimizedSignalsDashboard: React.FC = () => {
         backtest: {
           winRate: 85,
           totalTrades: 100,
-          averageRR: signal.riskReward
+          avgRR: signal.riskReward
         },
         timeframe: '15m',
         id: signal.id,
