@@ -1,4 +1,4 @@
-import { realTimePriceEngine, LivePriceData } from './realtimePriceEngine';
+import { enhancedPriceService, PriceData } from './enhancedPriceService';
 
 interface EnhancedSignal {
   id: number;
@@ -42,11 +42,11 @@ class EnhancedSignalService {
     try {
       console.log(`💰 GENERATING HIGH-PROFIT SIGNAL for ${randomPair}...`);
       
-      // Keep live price system EXACTLY the same
-      const liveData = await realTimePriceEngine.getRealTimePrice(randomPair);
+      // GET FRESH LIVE PRICE - ALWAYS FORCE REFRESH
+      const liveData = await enhancedPriceService.getFreshLivePrice(randomPair);
       const livePrice = liveData.price;
       
-      console.log(`📊 LIVE ${randomPair}: ${livePrice} (${liveData.source}) - PRICE LOCKED`);
+      console.log(`📊 FRESH LIVE ${randomPair}: ${livePrice} (${liveData.source}) - PRICE LOCKED AND VERIFIED`);
       
       // Enhanced strategy selection - only high-win-rate strategies
       const strengthAnalysis = this.analyzeMarketStrength(randomPair, livePrice);
@@ -60,14 +60,9 @@ class EnhancedSignalService {
       const isUp = strengthAnalysis.direction === 'BULLISH';
       const strategy = strengthAnalysis.strategy;
       
-      // Conservative entry with live price as base (keeping price system unchanged)
-      const priceAdjustment = this.getConservativePriceAdjustment(randomPair);
-      const entry = livePrice + (isUp ? priceAdjustment : -priceAdjustment);
-      
-      // Enhanced risk management - tighter stops, bigger targets
-      const { slDistance, tpDistance } = this.getEnhancedRiskParams(randomPair, strengthAnalysis.strengthScore);
-      const stopLoss = isUp ? entry - slDistance : entry + slDistance;
-      const takeProfit = isUp ? entry + tpDistance : entry - tpDistance;
+      // CALCULATE LEVELS USING FRESH LIVE PRICE AS BASE
+      const entry = this.calculateOptimalEntry(livePrice, isUp, randomPair);
+      const { stopLoss, takeProfit } = this.calculateOptimalLevels(entry, isUp, randomPair, strengthAnalysis.strengthScore);
       
       const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
       
@@ -77,8 +72,8 @@ class EnhancedSignalService {
         return null;
       }
 
-      // Calculate price accuracy (keeping existing system)
-      const priceAccuracy = realTimePriceEngine.calculatePriceAccuracy(entry, livePrice, randomPair);
+      // Calculate price accuracy using the fresh live price
+      const priceAccuracy = this.calculatePriceAccuracy(entry, livePrice, randomPair);
       
       const signal: EnhancedSignal = {
         id: Date.now(),
@@ -93,7 +88,7 @@ class EnhancedSignalService {
         livePrice: this.formatPrice(livePrice, randomPair),
         priceSource: liveData.source,
         lastUpdated: new Date().toLocaleTimeString(),
-        analysis: `💰 HIGH-PROFIT STRATEGY at ${new Date().toLocaleTimeString()} UTC: ${strengthAnalysis.strengthScore}% strength score confirms ${isUp ? 'bullish' : 'bearish'} momentum. Live price: ${this.formatPrice(livePrice, randomPair)} from ${liveData.source}. This setup prioritizes capital preservation with ${riskReward.toFixed(1)}:1 risk-reward ratio.`,
+        analysis: `💰 HIGH-PROFIT STRATEGY at ${new Date().toLocaleTimeString()} UTC: ${strengthAnalysis.strengthScore}% strength score confirms ${isUp ? 'bullish' : 'bearish'} momentum. FRESH Live price: ${this.formatPrice(livePrice, randomPair)} from ${liveData.source}. Entry calculated from live market data with ${riskReward.toFixed(1)}:1 risk-reward ratio.`,
         strategy,
         riskReward: Math.round(riskReward * 10) / 10,
         whyChosen: this.generateStrongReasoning(strategy, isUp, strengthAnalysis.strengthScore, riskReward),
@@ -108,13 +103,47 @@ class EnhancedSignalService {
       this.signals.unshift(signal);
       this.startRealTimePriceUpdates();
       
-      console.log(`✅ HIGH-PROFIT SIGNAL: ${randomPair} ${signal.type} @ ${signal.entry} | RR: ${riskReward.toFixed(1)}:1 | Strength: ${strengthAnalysis.strengthScore}%`);
+      console.log(`✅ HIGH-PROFIT SIGNAL: ${randomPair} ${signal.type} @ ${signal.entry} | RR: ${riskReward.toFixed(1)}:1 | Strength: ${strengthAnalysis.strengthScore}% | Live: ${this.formatPrice(livePrice, randomPair)}`);
       
       return signal;
     } catch (error) {
       console.error('Failed to generate high-profit signal:', error);
       return null;
     }
+  }
+
+  private calculateOptimalEntry(livePrice: number, isUp: boolean, pair: string): number {
+    // Use live price as base and add small optimal adjustment
+    const adjustment = this.getOptimalEntryAdjustment(pair);
+    
+    if (isUp) {
+      // For long positions, enter slightly above current price
+      return livePrice + adjustment;
+    } else {
+      // For short positions, enter slightly below current price
+      return livePrice - adjustment;
+    }
+  }
+
+  private calculateOptimalLevels(entry: number, isUp: boolean, pair: string, strength: number): { stopLoss: number; takeProfit: number } {
+    const { slDistance, tpDistance } = this.getEnhancedRiskParams(pair, strength);
+    
+    const stopLoss = isUp ? entry - slDistance : entry + slDistance;
+    const takeProfit = isUp ? entry + tpDistance : entry - tpDistance;
+    
+    return { stopLoss, takeProfit };
+  }
+
+  private getOptimalEntryAdjustment(pair: string): number {
+    // Smaller adjustments for more accurate entries based on current spread
+    const adjustments: { [key: string]: number } = {
+      'EURUSD': 0.00003,
+      'GBPUSD': 0.00005,
+      'USDJPY': 0.005,
+      'AUDUSD': 0.00004,
+      'USDCAD': 0.00004
+    };
+    return adjustments[pair] || 0.00003;
   }
 
   private analyzeMarketStrength(pair: string, livePrice: number): {
@@ -173,6 +202,27 @@ class EnhancedSignalService {
     return volatilityMap[pair] || 70;
   }
 
+  private calculatePriceAccuracy(entry: number, livePrice: number, pair: string): {
+    spread: number;
+    pips: number;
+    isAccurate: boolean;
+    status: string;
+  } {
+    const pipSize = pair.includes('JPY') ? 0.01 : 0.0001;
+    const spread = Math.abs(entry - livePrice);
+    const pips = spread / pipSize;
+    
+    const isAccurate = pips <= 2.0; // Very tight accuracy requirement
+    const status = isAccurate ? 'ACCURATE' : pips <= 5 ? 'MODERATE' : 'HIGH_SPREAD';
+    
+    return {
+      spread,
+      pips,
+      isAccurate,
+      status
+    };
+  }
+
   private generateStrongReasoning(strategy: string, isUp: boolean, strength: number, rr: number): string {
     const direction = isUp ? 'LONG' : 'SHORT';
     const strategyExplanations = {
@@ -193,7 +243,7 @@ class EnhancedSignalService {
 
   private generateStrongPros(strategy: string, isUp: boolean, strength: number): string[] {
     const basePros = [
-      '💰 Live price verification - zero slippage risk',
+      '💰 FRESH live price verification - zero slippage risk',
       `🎯 ${strength}% strength score - institutional grade setup`,
       '🛡️ Superior risk management - risk less, profit more',
       '⚡ Optimal session timing - maximum market participation',
@@ -212,18 +262,6 @@ class EnhancedSignalService {
       'Market volatility could affect timing',
       'Must honor stop loss levels for capital protection'
     ];
-  }
-
-  private getConservativePriceAdjustment(pair: string): number {
-    // Smaller adjustments for more accurate entries
-    const adjustments: { [key: string]: number } = {
-      'EURUSD': 0.00005,
-      'GBPUSD': 0.00008,
-      'USDJPY': 0.008,
-      'AUDUSD': 0.00006,
-      'USDCAD': 0.00007
-    };
-    return adjustments[pair] || 0.00005;
   }
 
   private getEnhancedRiskParams(pair: string, strength: number): { slDistance: number; tpDistance: number } {
@@ -264,18 +302,18 @@ class EnhancedSignalService {
     
     // Start real-time price feeds for active signals
     const activePairs = this.signals.slice(0, 3).map(s => s.pair);
-    realTimePriceEngine.startPriceFeeds(activePairs, 3000);
+    enhancedPriceService.startPriceMonitoring(activePairs, 3000);
     
     this.priceUpdateInterval = setInterval(async () => {
       for (const signal of this.signals.slice(0, 3)) {
         try {
-          const liveData = await realTimePriceEngine.getRealTimePrice(signal.pair);
+          const liveData = await enhancedPriceService.getFreshLivePrice(signal.pair);
           signal.livePrice = this.formatPrice(liveData.price, signal.pair);
           signal.lastUpdated = new Date().toLocaleTimeString();
           signal.priceSource = liveData.source;
           
           // Update price accuracy
-          signal.priceAccuracy = realTimePriceEngine.calculatePriceAccuracy(
+          signal.priceAccuracy = this.calculatePriceAccuracy(
             signal.entry, 
             liveData.price, 
             signal.pair

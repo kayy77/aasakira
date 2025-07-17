@@ -15,46 +15,58 @@ interface PriceAPI {
 
 class EnhancedPriceService {
   private cache = new Map<string, { data: PriceData; timestamp: number }>();
-  private readonly CACHE_DURATION = 3000; // 3 seconds
+  private readonly CACHE_DURATION = 2000; // 2 seconds for fresher data
   private priceWatchers = new Map<string, NodeJS.Timeout>();
   private lastPrices = new Map<string, number>();
 
   // Working API Keys - these are public keys safe for frontend use
   private readonly ALPHA_VANTAGE_KEY = 'UWQPDL73VSZSERTZ';
-  private readonly EXCHANGE_RATE_API = 'https://api.exchangerate-api.com/v4/latest/USD';
+  private readonly POLYGON_KEY = 'YOUR_POLYGON_KEY'; // Add your key here
 
   private apis: PriceAPI[] = [
     {
-      name: 'AlphaVantage',
+      name: 'Polygon',
       priority: 1,
+      fetch: this.fetchFromPolygon.bind(this)
+    },
+    {
+      name: 'AlphaVantage',
+      priority: 2,
       fetch: this.fetchFromAlphaVantage.bind(this)
     },
     {
-      name: 'ExchangeRateAPI',
-      priority: 2,
-      fetch: this.fetchFromExchangeRateAPI.bind(this)
+      name: 'FreeForexAPI',
+      priority: 3,
+      fetch: this.fetchFromFreeForexAPI.bind(this)
     },
     {
-      name: 'CoinGecko',
-      priority: 3,
-      fetch: this.fetchFromCoinGecko.bind(this)
+      name: 'ExchangeRateHost',
+      priority: 4,
+      fetch: this.fetchFromExchangeRateHost.bind(this)
+    },
+    {
+      name: 'Frankfurter',
+      priority: 5,
+      fetch: this.fetchFromFrankfurter.bind(this)
     }
   ];
 
   async getLivePrice(symbol: string): Promise<PriceData> {
-    console.log(`🔍 Fetching live price for ${symbol} using working APIs...`);
+    console.log(`🔍 Fetching FRESH live price for ${symbol} using multi-source fallback...`);
     
-    // Check cache first
+    // Check cache first, but with shorter duration for fresher data
     const cached = this.cache.get(symbol);
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      console.log(`📦 Using cached price for ${symbol}: ${cached.data.price} (${cached.data.source})`);
       return cached.data;
     }
 
-    // Try APIs in priority order with fallback
+    // Try APIs in priority order with comprehensive fallback
     for (const api of this.apis.sort((a, b) => a.priority - b.priority)) {
       try {
+        console.log(`🔄 Trying ${api.name} for ${symbol}...`);
         const result = await api.fetch(symbol);
-        if (result) {
+        if (result && result.price > 0) {
           console.log(`✅ ${api.name} SUCCESS for ${symbol}: ${result.price}`);
           this.cache.set(symbol, { data: result, timestamp: Date.now() });
           
@@ -62,15 +74,50 @@ class EnhancedPriceService {
           await this.checkPriceMovement(symbol, result.price);
           
           return result;
+        } else {
+          console.log(`⚠️ ${api.name} returned invalid data for ${symbol}`);
         }
       } catch (error) {
         console.log(`❌ ${api.name} failed for ${symbol}:`, error);
       }
     }
 
-    // Final fallback
+    // Enhanced fallback with current market approximation
     console.log(`⚠️ All APIs failed for ${symbol}, using enhanced fallback`);
     return this.getEnhancedFallback(symbol);
+  }
+
+  private async fetchFromPolygon(symbol: string): Promise<PriceData | null> {
+    try {
+      const [base, quote] = this.splitPair(symbol);
+      const pairNoSlash = `${base}${quote}`;
+      console.log(`📡 Trying Polygon for ${symbol} (${pairNoSlash})`);
+      
+      if (!this.POLYGON_KEY || this.POLYGON_KEY === 'YOUR_POLYGON_KEY') {
+        throw new Error('Polygon API key not configured');
+      }
+      
+      const response = await fetch(
+        `https://api.polygon.io/v1/last_quote/currencies/${pairNoSlash}?apiKey=${this.POLYGON_KEY}`,
+        { cache: "no-store" }
+      );
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+      
+      if (data?.last?.ask && data.last.ask > 0) {
+        return {
+          price: parseFloat(data.last.ask),
+          timestamp: Date.now(),
+          source: 'Polygon'
+        };
+      }
+      return null;
+    } catch (error) {
+      console.log(`❌ Polygon error for ${symbol}:`, error);
+      return null;
+    }
   }
 
   private async fetchFromAlphaVantage(symbol: string): Promise<PriceData | null> {
@@ -88,9 +135,8 @@ class EnhancedPriceService {
       const data = await response.json();
       const rate = data['Realtime Currency Exchange Rate'];
       
-      if (rate && rate['5. Exchange Rate']) {
+      if (rate && rate['5. Exchange Rate'] && parseFloat(rate['5. Exchange Rate']) > 0) {
         const price = parseFloat(rate['5. Exchange Rate']);
-        const lastRefreshed = rate['6. Last Refreshed'];
         
         return {
           price: price,
@@ -106,14 +152,14 @@ class EnhancedPriceService {
     }
   }
 
-  private async fetchFromExchangeRateAPI(symbol: string): Promise<PriceData | null> {
+  private async fetchFromFreeForexAPI(symbol: string): Promise<PriceData | null> {
     try {
-      const [from, to] = this.splitPair(symbol);
-      console.log(`📡 Trying ExchangeRateAPI for ${symbol} (${from}/${to})`);
+      const [base, quote] = this.splitPair(symbol);
+      const pairNoSlash = `${base}${quote}`;
+      console.log(`📡 Trying FreeForexAPI for ${symbol} (${pairNoSlash})`);
       
-      // Get rates with USD as base
       const response = await fetch(
-        `https://api.exchangerate-api.com/v4/latest/${from}`,
+        `https://www.freeforexapi.com/api/live?pairs=${pairNoSlash}`,
         { cache: "no-store" }
       );
 
@@ -121,48 +167,72 @@ class EnhancedPriceService {
 
       const data = await response.json();
       
-      if (data.rates && data.rates[to]) {
-        const price = data.rates[to];
-        
+      if (data?.rates?.[pairNoSlash]?.rate && parseFloat(data.rates[pairNoSlash].rate) > 0) {
         return {
-          price: price,
+          price: parseFloat(data.rates[pairNoSlash].rate),
           timestamp: Date.now(),
-          source: 'ExchangeRateAPI'
+          source: 'FreeForexAPI'
         };
       }
       return null;
     } catch (error) {
-      console.log(`❌ ExchangeRateAPI error for ${symbol}:`, error);
+      console.log(`❌ FreeForexAPI error for ${symbol}:`, error);
       return null;
     }
   }
 
-  private async fetchFromCoinGecko(symbol: string): Promise<PriceData | null> {
+  private async fetchFromExchangeRateHost(symbol: string): Promise<PriceData | null> {
     try {
-      if (!this.isCryptoSymbol(symbol)) return null;
-      
-      const coinId = this.convertToCoinGeckoId(symbol);
-      console.log(`📡 Trying CoinGecko for ${symbol} (${coinId})`);
+      const [base, quote] = this.splitPair(symbol);
+      console.log(`📡 Trying ExchangeRate.host for ${symbol} (${base}/${quote})`);
       
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`,
+        `https://api.exchangerate.host/convert?from=${base}&to=${quote}`,
         { cache: "no-store" }
       );
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-      if (data[coinId]?.usd) {
+      
+      if (data?.info?.rate && parseFloat(data.info.rate) > 0) {
         return {
-          price: data[coinId].usd,
+          price: parseFloat(data.info.rate),
           timestamp: Date.now(),
-          source: 'CoinGecko',
-          changePercent: data[coinId].usd_24h_change?.toFixed(2) + '%'
+          source: 'ExchangeRate.host'
         };
       }
       return null;
     } catch (error) {
-      console.log(`❌ CoinGecko error for ${symbol}:`, error);
+      console.log(`❌ ExchangeRate.host error for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  private async fetchFromFrankfurter(symbol: string): Promise<PriceData | null> {
+    try {
+      const [base, quote] = this.splitPair(symbol);
+      console.log(`📡 Trying Frankfurter for ${symbol} (${base}/${quote})`);
+      
+      const response = await fetch(
+        `https://api.frankfurter.app/latest?from=${base}&to=${quote}`,
+        { cache: "no-store" }
+      );
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+      
+      if (data?.rates?.[quote] && parseFloat(data.rates[quote]) > 0) {
+        return {
+          price: parseFloat(data.rates[quote]),
+          timestamp: Date.now(),
+          source: 'Frankfurter'
+        };
+      }
+      return null;
+    } catch (error) {
+      console.log(`❌ Frankfurter error for ${symbol}:`, error);
       return null;
     }
   }
@@ -208,21 +278,6 @@ class EnhancedPriceService {
     return specialPairs[pair] || [pair.slice(0, 3), pair.slice(3)];
   }
 
-  private convertToCoinGeckoId(symbol: string): string {
-    const mapping: { [key: string]: string } = {
-      'BTCUSD': 'bitcoin',
-      'ETHUSD': 'ethereum',
-      'ADAUSD': 'cardano',
-      'DOTUSD': 'polkadot',
-      'LINKUSD': 'chainlink'
-    };
-    return mapping[symbol] || 'bitcoin';
-  }
-
-  private isCryptoSymbol(symbol: string): boolean {
-    return ['BTCUSD', 'ETHUSD', 'ADAUSD', 'DOTUSD', 'LINKUSD'].includes(symbol);
-  }
-
   private getEnhancedFallback(symbol: string): PriceData {
     // Current accurate market prices (updated January 2025)
     const basePrices: { [key: string]: number } = {
@@ -253,8 +308,15 @@ class EnhancedPriceService {
     };
   }
 
+  // Force refresh live price (no cache)
+  async getFreshLivePrice(symbol: string): Promise<PriceData> {
+    console.log(`🔄 FORCE REFRESH: Getting fresh price for ${symbol}`);
+    this.cache.delete(symbol); // Clear cache
+    return await this.getLivePrice(symbol);
+  }
+
   // Start price monitoring for significant movements
-  startPriceMonitoring(symbols: string[], intervalMs: number = 5000): void {
+  startPriceMonitoring(symbols: string[], intervalMs: number = 3000): void {
     symbols.forEach(symbol => {
       if (this.priceWatchers.has(symbol)) {
         const existingInterval = this.priceWatchers.get(symbol);
@@ -265,7 +327,7 @@ class EnhancedPriceService {
 
       const intervalId = setInterval(async () => {
         try {
-          await this.getLivePrice(symbol);
+          await this.getFreshLivePrice(symbol);
         } catch (error) {
           console.error(`Error monitoring ${symbol}:`, error);
         }
