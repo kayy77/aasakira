@@ -1,5 +1,4 @@
-
-import { getGroqService } from './groqService';
+import { groqService } from './groqService';
 import { userContextService, type UserContext } from './userContextService';
 import { UserTrackingService } from './userTrackingService';
 
@@ -29,12 +28,10 @@ export class EnhancedGroqService {
       const systemPrompt = this.buildPersonalizedPrompt(userContext, userMessage);
       
       // Generate response using Groq
-      const groqService = getGroqService();
-      const response = await groqService.generateResponse([
-        { role: 'system', content: systemPrompt },
-        ...conversationHistory.slice(-10), // Keep last 10 messages for context
-        { role: 'user', content: userMessage }
-      ], 'llama3-70b-8192', 0.8);
+      const response = await groqService.generateResponse(systemPrompt + '\n\nUser: ' + userMessage, {
+        model: 'llama3-70b-8192',
+        temperature: 0.8
+      });
 
       // Analyze the conversation for insights
       const insights = this.extractLearningInsights(userMessage, response, userContext);
@@ -58,11 +55,10 @@ export class EnhancedGroqService {
       console.error('Error generating personalized response:', error);
       
       // Fallback to basic response
-      const groqService = getGroqService();
-      const basicResponse = await groqService.generateResponse([
-        { role: 'system', content: 'You are Aasakira, a friendly AI trading mentor. Be helpful and encouraging.' },
-        { role: 'user', content: userMessage }
-      ], 'llama3-8b-8192', 0.7);
+      const basicResponse = await groqService.generateResponse('You are Aasakira, a friendly AI trading mentor. Be helpful and encouraging.\n\nUser: ' + userMessage, {
+        model: 'llama3-8b-8192',
+        temperature: 0.7
+      });
 
       return {
         response: basicResponse,
