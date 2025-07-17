@@ -399,8 +399,8 @@ class RealTimePriceEngine {
   }
 
   private async fetchFromPolygon(symbol: string): Promise<LivePriceData | null> {
-    if (!this.POLYGON_KEY || this.POLYGON_KEY === 'YOUR_POLYGON_KEY') {
-      console.warn('⚠️ Polygon API key is missing. Skipping this source.');
+    if (!this.POLYGON_KEY || this.POLYGON_KEY.length < 10) {
+      console.warn('⚠️ Polygon API key is missing or invalid. Skipping this source.');
       return null;
     }
 

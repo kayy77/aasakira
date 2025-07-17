@@ -41,7 +41,7 @@ class EnhancedSignalService {
     try {
       console.log(`💰 GENERATING ULTRA-PRECISION SIGNAL for ${randomPair}...`);
       
-      // CRITICAL: Use ultra-fresh trading-grade price
+      // Get ultra-fresh trading-grade price
       let liveData: PriceData;
       try {
         liveData = await enhancedPriceService.getFreshLivePrice(randomPair);
@@ -81,8 +81,9 @@ class EnhancedSignalService {
       const isUp = strengthAnalysis.direction === 'BULLISH';
       const strategy = strengthAnalysis.strategy;
       
-      // ULTRA-PRECISE ENTRY CALCULATION: Entry = EXACT live price (no adjustment)
-      const entry = livePrice; // EXACTLY the live price
+      // CRITICAL CHANGE: Entry = EXACT live price (no adjustment whatsoever)
+      const entry = livePrice; // EXACTLY the live price with no modification
+      
       const { stopLoss, takeProfit } = this.calculatePreciseLevels(entry, isUp, randomPair, strengthAnalysis.strengthScore);
       
       const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
@@ -92,15 +93,20 @@ class EnhancedSignalService {
         return null;
       }
 
-      // VALIDATE signal levels are executable at current price
+      // Since entry = livePrice exactly, validation is simpler
       const isValidForTrading = this.validateSignalLevels(entry, stopLoss, takeProfit, livePrice, isUp);
       if (!isValidForTrading) {
         console.log(`❌ Signal rejected - Levels not valid for current market price ${livePrice}`);
         return null;
       }
 
-      // ULTRA-PRECISE accuracy check (should be 0 pips since entry = livePrice)
-      const priceAccuracy = this.calculateUltraPriceAccuracy(entry, livePrice, randomPair);
+      // Perfect accuracy since entry = livePrice exactly
+      const priceAccuracy = {
+        spread: 0,
+        pips: 0,
+        isAccurate: true,
+        status: 'PERFECT_MATCH'
+      };
       
       const signal: EnhancedSignal = {
         id: Date.now(),
@@ -115,7 +121,7 @@ class EnhancedSignalService {
         livePrice: this.formatPrice(livePrice, randomPair),
         priceSource: liveData.source,
         lastUpdated: new Date().toLocaleTimeString(),
-        analysis: `💰 ULTRA-PRECISION SIGNAL @ ${new Date().toLocaleTimeString()} UTC: ${strengthAnalysis.strengthScore}% strength with REAL-TIME price ${this.formatPrice(livePrice, randomPair)} from ${liveData.source} (${liveData.quality}, ${Math.floor(dataAge/1000)}s old). Entry = EXACT live price for immediate execution with ${riskReward.toFixed(1)}:1 RR.`,
+        analysis: `💰 ULTRA-PRECISION SIGNAL @ ${new Date().toLocaleTimeString()} UTC: ${strengthAnalysis.strengthScore}% strength with REAL-TIME price ${this.formatPrice(livePrice, randomPair)} from ${liveData.source} (${liveData.quality}, ${Math.floor(dataAge/1000)}s old). Entry = EXACT live price for perfect execution with ${riskReward.toFixed(1)}:1 RR.`,
         strategy,
         riskReward: Math.round(riskReward * 10) / 10,
         whyChosen: this.generateStrongReasoning(strategy, isUp, strengthAnalysis.strengthScore, riskReward),
@@ -130,7 +136,7 @@ class EnhancedSignalService {
       this.signals.unshift(signal);
       this.startRealTimePriceUpdates();
       
-      console.log(`✅ ULTRA-PRECISION SIGNAL: ${randomPair} ${signal.type} @ ${signal.entry} | LIVE: ${this.formatPrice(livePrice, randomPair)} | RR: ${riskReward.toFixed(1)}:1 | ACCURACY: ${priceAccuracy.status}`);
+      console.log(`✅ ULTRA-PRECISION SIGNAL: ${randomPair} ${signal.type} @ ${signal.entry} | LIVE: ${this.formatPrice(livePrice, randomPair)} | RR: ${riskReward.toFixed(1)}:1 | ACCURACY: PERFECT_MATCH`);
       
       return signal;
     } catch (error) {
