@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
 
-export type TraderLevel = 'Novice' | 'Learning' | 'Intermediate' | 'Advanced' | 'Expert' | 'Master';
+export type TraderLevel = 'Novice' | 'Intermediate' | 'Smart Money Aware' | 'Advanced Strategist';
 
 export interface AdaptiveLearningData {
   level: TraderLevel;
@@ -66,11 +67,9 @@ export const useAdaptiveLearning = (userId?: string) => {
 
   const calculateLevel = (hoursStudied: number, conceptsMastered: number): TraderLevel => {
     if (hoursStudied < 10) return 'Novice';
-    if (hoursStudied < 25) return 'Learning';
     if (hoursStudied < 50) return 'Intermediate';
-    if (hoursStudied < 100) return 'Advanced';
-    if (hoursStudied < 200) return 'Expert';
-    return 'Master';
+    if (hoursStudied < 100) return 'Smart Money Aware';
+    return 'Advanced Strategist';
   };
 
   return {

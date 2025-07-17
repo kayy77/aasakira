@@ -30,3 +30,43 @@ export interface StrategyBreakdown {
   session: boolean;
   rsiEma: boolean;
 }
+
+// Enhanced Signal interface with all required properties
+export interface Signal {
+  id: number;
+  pair: string;
+  type: 'BUY' | 'SELL';
+  confidence: number;
+  entry: string | number;
+  stopLoss: string | number;
+  takeProfit: string | number;
+  status: 'active' | 'monitoring' | 'confirmed' | 'completed';
+  timestamp: string;
+  analysis: string;
+  timeframe: string;
+  risk: 'Low' | 'Medium' | 'High';
+  reason: string;
+  pips?: number;
+  riskReward?: number;
+  signalStrength?: string;
+  filtersScore?: number;
+  maxFilters?: number;
+  confluenceScore?: number;
+  filtersPassed?: string[];
+  sessionContext?: string;
+  sessionActive?: boolean;
+  enhancedValidation?: boolean;
+  validationReason?: string;
+  qualityScore?: number;
+  rejectionReason?: string;
+}
+
+// Elite Signal interface extending Signal
+export interface EliteSignal extends Signal {
+  filtersScore: number;
+  maxFilters: number;
+  riskReward: number;
+  signalStrength: string;
+  confidenceReason: string;
+  timeGenerated: string;
+}

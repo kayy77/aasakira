@@ -22,9 +22,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { signalService } from '@/services/signalService';
 import { enhancedSignalValidator, SignalValidationInput } from '@/services/enhancedSignalValidator';
+import { Signal } from '@/types/signalConfig';
 
 interface EnhancedSignalGeneratorProps {
-  onSignalGenerated?: (signal: any) => void;
+  onSignalGenerated?: (signal: Signal) => void;
   onFeatureUse?: () => void;
 }
 
@@ -93,12 +94,12 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             continue;
           }
 
-          // Prepare validation input
+          // Prepare validation input with proper type conversion
           const validationInput: SignalValidationInput = {
             pair: baseSignal.pair,
-            entry: parseFloat(baseSignal.entry),
-            stopLoss: parseFloat(baseSignal.stopLoss),
-            takeProfit: parseFloat(baseSignal.takeProfit),
+            entry: typeof baseSignal.entry === 'string' ? parseFloat(baseSignal.entry) : baseSignal.entry,
+            stopLoss: typeof baseSignal.stopLoss === 'string' ? parseFloat(baseSignal.stopLoss) : baseSignal.stopLoss,
+            takeProfit: typeof baseSignal.takeProfit === 'string' ? parseFloat(baseSignal.takeProfit) : baseSignal.takeProfit,
             confidence: baseSignal.confidence,
             rrr: baseSignal.riskReward || 2.0,
             confluenceScore: baseSignal.confluenceScore || 0,
@@ -120,13 +121,16 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           }
 
           // Final enhanced signal
-          const enhancedSignal = {
+          const enhancedSignal: Signal = {
             ...baseSignal,
             sessionContext: getCurrentSession(),
             sessionActive: requirements.sessionActive,
             enhancedValidation: true,
             validationReason: validationResult.reason,
-            qualityScore: Math.min(95, baseSignal.confidence + 5)
+            qualityScore: Math.min(95, baseSignal.confidence + 5),
+            signalStrength: baseSignal.confidence >= 90 ? 'ULTRA' : 
+                           baseSignal.confidence >= 85 ? 'STRONG' : 'MEDIUM',
+            riskReward: baseSignal.riskReward || 2.0
           };
 
           setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${validationResult.reason}`]);
