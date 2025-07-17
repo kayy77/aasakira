@@ -9,7 +9,7 @@ export interface EliteSignal {
   stopLoss: number;
   takeProfit: number;
   confidence: number;
-  signalStrength: 'ULTRA' | 'STRONG' | 'MEDIUM' | 'WEAK';
+  signalStrength: 'ULTRA' | 'STRONG' | 'MEDIUM' | 'STANDARD';
   filtersScore: number;
   maxFilters: number;
   timestamp: string;
@@ -21,28 +21,57 @@ export interface EliteSignal {
   lotSize: number;
   sessionInfo: string;
   strategy: string;
+  // Additional properties expected by EliteSignalCard
+  sniperMode: boolean;
+  suggestedLot: number;
+  livePrice: number;
+  filters: {
+    structureBreak: boolean;
+    liquiditySweep: boolean;
+    fairValueGap: boolean;
+    volumeSpike: boolean;
+    rsiDivergence: boolean;
+    sessionFilter: boolean;
+  };
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  analysis: string;
 }
 
 class EliteSignalEngine {
+  private readonly ANCHOR_FILTERS = ['structureBreak', 'liquiditySweep', 'fairValueGap', 'rsiDivergence'];
+
   async generateEliteSignal(livePrice: number, pair: string): Promise<EliteSignal | null> {
     console.log(`🎯 Running ELITE Signal Analysis for ${pair} @ ${livePrice}...`);
     
     // Run institutional-grade filtering
     const filterResults: FilterResults = institutionalSignalFilter.runInstitutionalFilters(pair, livePrice);
     
-    // Reject if doesn't meet minimum confluence
+    // STRICT REJECTION: Must pass minimum 3/6 filters
     if (!institutionalSignalFilter.isSignalValid(filterResults)) {
       console.log(`❌ Signal REJECTED: Only ${filterResults.passedFilters}/6 filters passed (minimum 3 required)`);
       return null;
     }
 
+    // ANCHOR REQUIREMENT: Must have at least one anchor filter for standard+ signals
+    const hasAnchorFilter = this.checkAnchorRequirement(filterResults);
+    if (!hasAnchorFilter) {
+      console.log(`❌ Signal REJECTED: No anchor filter passed (need Structure/Liquidity/FVG/RSI)`);
+      return null;
+    }
+
     console.log(`✅ Signal APPROVED: ${filterResults.passedFilters}/6 filters passed - ${filterResults.confidence} grade`);
 
-    // Determine trade direction based on dominant filter signals
+    // Determine trade direction with stricter bias requirement
     const tradeDirection = this.determineTradeDirection(filterResults);
     
     if (!tradeDirection) {
       console.log(`❌ Signal REJECTED: No clear directional bias from filters`);
+      return null;
+    }
+
+    // CHOP FILTER: Reject sideways markets
+    if (this.isChoppyMarket(filterResults)) {
+      console.log(`❌ Signal REJECTED: Choppy market conditions detected`);
       return null;
     }
 
@@ -54,9 +83,10 @@ class EliteSignalEngine {
       filterResults.confidence
     );
 
-    // Validate risk/reward
-    if (riskReward < 2.0) {
-      console.log(`❌ Signal REJECTED: Risk/Reward ${riskReward.toFixed(1)}:1 below 2.0:1 minimum`);
+    // Enhanced risk/reward validation based on signal grade
+    const minRiskReward = this.getMinimumRiskReward(filterResults.confidence);
+    if (riskReward < minRiskReward) {
+      console.log(`❌ Signal REJECTED: Risk/Reward ${riskReward.toFixed(1)}:1 below ${minRiskReward}:1 minimum for ${filterResults.confidence}`);
       return null;
     }
 
@@ -66,6 +96,9 @@ class EliteSignalEngine {
     // Calculate lot size based on signal strength
     const lotSize = this.calculateLotSize(filterResults.confidence);
 
+    // Map confidence to signalStrength
+    const signalStrength = this.mapConfidenceToStrength(filterResults.confidence);
+
     const signal: EliteSignal = {
       id: `elite_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       pair,
@@ -74,7 +107,7 @@ class EliteSignalEngine {
       stopLoss,
       takeProfit,
       confidence: Math.round(filterResults.totalScore / filterResults.passedFilters),
-      signalStrength: filterResults.confidence,
+      signalStrength,
       filtersScore: filterResults.passedFilters,
       maxFilters: 6,
       timestamp: new Date().toISOString(),
@@ -82,12 +115,62 @@ class EliteSignalEngine {
       riskReward,
       lotSize,
       sessionInfo: this.getSessionInfo(),
-      strategy: 'Institutional_Multi_Confluence'
+      strategy: 'Institutional_Multi_Confluence',
+      // Additional properties for EliteSignalCard compatibility
+      sniperMode: filterResults.passedFilters >= 5,
+      suggestedLot: lotSize,
+      livePrice: livePrice,
+      filters: {
+        structureBreak: filterResults.structureBreak.passed,
+        liquiditySweep: filterResults.liquiditySweep.passed,
+        fairValueGap: filterResults.fairValueGap.passed,
+        volumeSpike: filterResults.volumeSpike.passed,
+        rsiDivergence: filterResults.rsiDivergence.passed,
+        sessionFilter: filterResults.sessionFilter.passed
+      },
+      riskLevel: this.calculateRiskLevel(filterResults.passedFilters),
+      analysis: this.generateAnalysis(filterResults, tradeDirection)
     };
 
-    console.log(`🚨 ELITE ${signal.signalStrength} SIGNAL: ${pair} ${tradeDirection} @ ${livePrice} | Filters: ${filterResults.passedFilters}/6 | RR: ${riskReward.toFixed(1)}:1`);
+    console.log(`🚨 ${signal.signalStrength} SIGNAL: ${pair} ${tradeDirection} @ ${livePrice} | Filters: ${filterResults.passedFilters}/6 | RR: ${riskReward.toFixed(1)}:1`);
     
     return signal;
+  }
+
+  private checkAnchorRequirement(filterResults: FilterResults): boolean {
+    return filterResults.structureBreak.passed || 
+           filterResults.liquiditySweep.passed || 
+           filterResults.fairValueGap.passed || 
+           filterResults.rsiDivergence.passed;
+  }
+
+  private isChoppyMarket(filterResults: FilterResults): boolean {
+    // If RSI is neutral (45-55) AND no strong volume AND no structure break = choppy
+    const neutralRSI = !filterResults.rsiDivergence.passed;
+    const lowVolume = !filterResults.volumeSpike.passed;
+    const noStructure = !filterResults.structureBreak.passed;
+    
+    return neutralRSI && lowVolume && noStructure;
+  }
+
+  private getMinimumRiskReward(confidence: 'ELITE' | 'STRONG' | 'MEDIUM' | 'WEAK'): number {
+    const minimums = {
+      'ELITE': 2.5,
+      'STRONG': 2.2,
+      'MEDIUM': 2.0,
+      'WEAK': 1.8
+    };
+    return minimums[confidence];
+  }
+
+  private mapConfidenceToStrength(confidence: 'ELITE' | 'STRONG' | 'MEDIUM' | 'WEAK'): 'ULTRA' | 'STRONG' | 'MEDIUM' | 'STANDARD' {
+    const mapping = {
+      'ELITE': 'ULTRA' as const,
+      'STRONG': 'STRONG' as const,
+      'MEDIUM': 'MEDIUM' as const,
+      'WEAK': 'STANDARD' as const
+    };
+    return mapping[confidence];
   }
 
   private determineTradeDirection(filterResults: FilterResults): 'BUY' | 'SELL' | null {
@@ -102,8 +185,8 @@ class EliteSignalEngine {
 
     // Liquidity sweep direction (opposite of sweep direction)
     if (filterResults.liquiditySweep.passed) {
-      if (filterResults.liquiditySweep.reason.includes('down')) bullishSignals++; // Sweep down = bullish reversal
-      if (filterResults.liquiditySweep.reason.includes('up')) bearishSignals++; // Sweep up = bearish reversal
+      if (filterResults.liquiditySweep.reason.includes('down')) bullishSignals++;
+      if (filterResults.liquiditySweep.reason.includes('up')) bearishSignals++;
     }
 
     // FVG direction
@@ -124,14 +207,14 @@ class EliteSignalEngine {
       if (filterResults.rsiDivergence.reason.includes('BEARISH')) bearishSignals++;
     }
 
-    // Need clear directional bias (at least 2:1 ratio)
-    if (bullishSignals >= 2 && bullishSignals > bearishSignals * 2) {
+    // STRICTER REQUIREMENT: Need clear 2:1 directional bias minimum
+    if (bullishSignals >= 2 && bullishSignals >= bearishSignals * 2) {
       return 'BUY';
-    } else if (bearishSignals >= 2 && bearishSignals > bullishSignals * 2) {
+    } else if (bearishSignals >= 2 && bearishSignals >= bullishSignals * 2) {
       return 'SELL';
     }
 
-    return null; // No clear bias
+    return null; // No clear bias - REJECT
   }
 
   private calculateEliteLevels(
@@ -141,7 +224,7 @@ class EliteSignalEngine {
     strength: 'ELITE' | 'STRONG' | 'MEDIUM' | 'WEAK'
   ): { stopLoss: number; takeProfit: number; riskReward: number } {
     
-    // Base risk parameters (tighter for institutional precision)
+    // Enhanced risk parameters based on signal grade
     const baseParams: { [key: string]: { slPips: number; tpMultiplier: number } } = {
       'EURUSD': { slPips: 8, tpMultiplier: 2.5 },
       'GBPUSD': { slPips: 10, tpMultiplier: 2.8 },
@@ -152,11 +235,11 @@ class EliteSignalEngine {
 
     const params = baseParams[pair] || { slPips: 10, tpMultiplier: 2.5 };
     
-    // Adjust based on signal strength
+    // Adjust based on signal strength with better ratios
     const strengthMultiplier = {
-      'ELITE': 1.4,    // Best RR for elite signals
-      'STRONG': 1.2,
-      'MEDIUM': 1.1,
+      'ELITE': 1.5,    // Best RR for elite signals
+      'STRONG': 1.3,
+      'MEDIUM': 1.15,
       'WEAK': 1.0
     }[strength];
 
@@ -182,13 +265,26 @@ class EliteSignalEngine {
 
   private calculateLotSize(strength: 'ELITE' | 'STRONG' | 'MEDIUM' | 'WEAK'): number {
     const lotSizes = {
-      'ELITE': 1.0,    // Full conviction
-      'STRONG': 0.75,  // Strong conviction
-      'MEDIUM': 0.5,   // Medium conviction
-      'WEAK': 0.25     // Light conviction
+      'ELITE': 1.0,      // Full conviction
+      'STRONG': 0.75,    // Strong conviction
+      'MEDIUM': 0.5,     // Medium conviction
+      'WEAK': 0.4        // Light conviction (was 0.25, now more reasonable)
     };
 
     return lotSizes[strength];
+  }
+
+  private calculateRiskLevel(passedFilters: number): 'LOW' | 'MEDIUM' | 'HIGH' {
+    if (passedFilters >= 5) return 'LOW';
+    if (passedFilters >= 4) return 'MEDIUM';
+    return 'HIGH';
+  }
+
+  private generateAnalysis(filterResults: FilterResults, direction: 'BUY' | 'SELL'): string {
+    const passedCount = filterResults.passedFilters;
+    const grade = filterResults.confidence;
+    
+    return `${grade} signal with ${passedCount}/6 institutional filters confirmed. ${direction} bias established through confluence analysis.`;
   }
 
   private getSessionInfo(): string {

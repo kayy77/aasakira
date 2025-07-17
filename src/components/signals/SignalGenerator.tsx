@@ -32,6 +32,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
   const [lastFilterResults, setLastFilterResults] = useState<string[]>([]);
+  const [lastRejectionReason, setLastRejectionReason] = useState<string>('');
   const { toast } = useToast();
 
   const generateEliteSignal = async () => {
@@ -40,6 +41,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
 
     setIsGenerating(true);
     setAnalysisStatus('🎯 INSTITUTIONAL SIGNAL PROTOCOL INITIALIZING...');
+    setLastRejectionReason('');
 
     try {
       // Phase 1: Get live price (KEEPING EXACTLY THE SAME)
@@ -50,10 +52,10 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       const livePriceData = await trueLivePriceService.getTrueLivePrice(selectedPair);
       const livePrice = livePriceData.price;
       
-      setAnalysisStatus('🧠 Running Institutional 6-Filter Analysis...');
+      setAnalysisStatus('🧠 Running Enhanced 6-Filter Analysis...');
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      setAnalysisStatus('⚡ Institutional Signal Engine Processing...');
+      setAnalysisStatus('⚡ Institutional Grade Validation...');
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Phase 2: Generate elite signal using upgraded engine
@@ -70,7 +72,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
           'ULTRA': '🚨',
           'STRONG': '⚡',
           'MEDIUM': '⚠️',
-          'WEAK': '❌'
+          'STANDARD': '📊'
         };
         
         toast({
@@ -80,9 +82,10 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       } else {
         setAnalysisStatus('❌ Signal rejected by Institutional Filter Gate');
         setLastFilterResults([]);
+        setLastRejectionReason('Signal failed to meet institutional criteria: <3/6 confluence OR no anchor filter OR choppy market OR insufficient directional bias');
         toast({
           title: "Institutional Filter Gate Rejection",
-          description: "Signal failed to meet institutional criteria (minimum 3/6 confluence filters required)",
+          description: "Signal blocked by enhanced filtering system. This prevents weak trades in choppy conditions.",
           variant: "destructive"
         });
       }
@@ -107,14 +110,14 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             <Crown className="w-6 h-6 text-yellow-400" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">Institutional Signal Protocol</h2>
-            <p className="text-gray-400">6-filter confluence system with smart rejection</p>
+            <h2 className="text-xl font-bold text-white">Enhanced Institutional Protocol</h2>
+            <p className="text-gray-400">Stricter 6-filter system with anchor requirements</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
           <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 animate-pulse">
             <Crown className="w-3 h-3 mr-1" />
-            INSTITUTIONAL
+            ENHANCED
           </Badge>
           <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
             <Activity className="w-3 h-3 mr-1" />
@@ -126,7 +129,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       <div className="glass-card p-6 mb-6 border-purple-500/10">
         <div className="flex items-center space-x-2 mb-4">
           <Shield className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg font-semibold text-white">6-Filter Institutional Analysis</h3>
+          <h3 className="text-lg font-semibold text-white">Enhanced 6-Filter Analysis</h3>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
@@ -156,14 +159,24 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
           </div>
         </div>
 
-        <Alert className="mb-6 border-yellow-500/30 bg-yellow-500/10">
-          <Crown className="h-4 w-4 text-yellow-400" />
-          <AlertDescription className="text-yellow-300">
-            <strong>INSTITUTIONAL PROTOCOL:</strong> Signals must pass minimum 3/6 institutional filters. 
-            Strength scoring: 6/6 = ELITE, 5/6 = STRONG, 4/6 = MEDIUM, 3/6 = WEAK.
-            Smart rejection prevents weak entries. Live prices remain unchanged.
+        <Alert className="mb-6 border-red-500/30 bg-red-500/10">
+          <AlertCircle className="h-4 w-4 text-red-400" />
+          <AlertDescription className="text-red-300">
+            <strong>ENHANCED PROTOCOL:</strong> Signals require minimum 3/6 filters + 1 anchor filter (Structure/Liquidity/FVG/RSI). 
+            Added chop filter and 2:1 directional bias requirement. Weak signals are automatically rejected.
           </AlertDescription>
         </Alert>
+
+        {/* Last Rejection Reason */}
+        {lastRejectionReason && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <div className="flex items-center space-x-2 mb-3">
+              <AlertCircle className="w-4 h-4 text-red-400" />
+              <span className="text-red-300 font-semibold">Signal Rejection Analysis:</span>
+            </div>
+            <p className="text-sm text-red-200">{lastRejectionReason}</p>
+          </div>
+        )}
 
         {/* Last Filter Results */}
         {lastFilterResults.length > 0 && (
@@ -202,43 +215,43 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             {isGenerating ? (
               <>
                 <Loader className="w-5 h-5 mr-2 animate-spin" />
-                Institutional Analysis...
+                Enhanced Analysis...
               </>
             ) : (
               <>
                 <Crown className="w-5 h-5 mr-2" />
-                Generate Institutional Signal
+                Generate Enhanced Signal
               </>
             )}
           </Button>
         </div>
       </div>
 
-      {/* Signal Strength Guide */}
+      {/* Enhanced Signal Strength Guide */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="glass-card p-4 border-yellow-500/20">
           <Crown className="w-6 h-6 text-yellow-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">ELITE (6/6)</h4>
-          <p className="text-sm text-gray-400">All filters aligned</p>
-          <p className="text-xs text-yellow-400">1.0 lot | 2.8:1 RR</p>
+          <h4 className="text-white font-semibold mb-1">ULTRA (6/6)</h4>
+          <p className="text-sm text-gray-400">Perfect confluence</p>
+          <p className="text-xs text-yellow-400">1.0 lot | 3.0:1 RR</p>
         </div>
         <div className="glass-card p-4 border-green-500/20">
           <Zap className="w-6 h-6 text-green-400 mb-2" />
           <h4 className="text-white font-semibold mb-1">STRONG (5/6)</h4>
-          <p className="text-sm text-gray-400">Strong confluence</p>
-          <p className="text-xs text-green-400">0.75 lot | 2.5:1 RR</p>
+          <p className="text-sm text-gray-400">Elite confluence</p>
+          <p className="text-xs text-green-400">0.75 lot | 2.6:1 RR</p>
         </div>
         <div className="glass-card p-4 border-blue-500/20">
           <Target className="w-6 h-6 text-blue-400 mb-2" />
           <h4 className="text-white font-semibold mb-1">MEDIUM (4/6)</h4>
-          <p className="text-sm text-gray-400">Good setup</p>
-          <p className="text-xs text-blue-400">0.5 lot | 2.2:1 RR</p>
+          <p className="text-sm text-gray-400">Solid setup</p>
+          <p className="text-xs text-blue-400">0.5 lot | 2.3:1 RR</p>
         </div>
-        <div className="glass-card p-4 border-red-500/20">
-          <AlertCircle className="w-6 h-6 text-red-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">REJECTED (&lt;3/6)</h4>
-          <p className="text-sm text-gray-400">Filter gate failed</p>
-          <p className="text-xs text-red-400">No signal generated</p>
+        <div className="glass-card p-4 border-orange-500/20">
+          <BarChart3 className="w-6 h-6 text-orange-400 mb-2" />
+          <h4 className="text-white font-semibold mb-1">STANDARD (3/6)</h4>
+          <p className="text-sm text-gray-400">Must have anchor</p>
+          <p className="text-xs text-orange-400">0.4 lot | 2.0:1 RR</p>
         </div>
       </div>
     </div>
