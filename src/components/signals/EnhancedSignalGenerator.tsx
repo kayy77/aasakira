@@ -20,8 +20,8 @@ import {
   Clock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { groqSignalJudge } from '@/services/groqSignalJudge';
 import { signalService } from '@/services/signalService';
+import { enhancedSignalValidator, SignalValidationInput } from '@/services/enhancedSignalValidator';
 
 interface EnhancedSignalGeneratorProps {
   onSignalGenerated?: (signal: any) => void;
@@ -37,7 +37,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
   const [lastFilterResults, setLastFilterResults] = useState<string[]>([]);
   const [lastRejectionReason, setLastRejectionReason] = useState<string>('');
   const [rejectionCount, setRejectionCount] = useState<number>(0);
-  const [groqValidationLog, setGroqValidationLog] = useState<string[]>([]);
+  const [validationLog, setValidationLog] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Session-aware quality requirements
@@ -46,54 +46,11 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     const isActiveSession = (hour >= 6 && hour <= 16); // London + NY sessions
     
     return {
-      minConfidence: isActiveSession ? 85 : 90,
-      minConfluence: isActiveSession ? 4 : 5,
-      minRiskReward: isActiveSession ? 2.5 : 3.0,
+      minConfidence: isActiveSession ? 75 : 80,
+      minConfluence: isActiveSession ? 5 : 6,
+      minRiskReward: isActiveSession ? 2.0 : 2.5,
       sessionActive: isActiveSession
     };
-  };
-
-  const validateSignalWithGroq = async (signalData: any): Promise<any | null> => {
-    setAnalysisStatus('🧠 Groq AI Institutional Validation...');
-    
-    try {
-      const validationData = {
-        symbol: signalData.pair,
-        direction: signalData.type,
-        entry: signalData.entry,
-        stop: signalData.stopLoss,
-        target: signalData.takeProfit,
-        frameworks: signalData.filtersPassed || [],
-        session: getCurrentSession(),
-        confluence: signalData.confluenceScore || 0,
-        confidence: signalData.confidence,
-        context: `${signalData.pair} analysis: Entry at ${signalData.entry}, targeting ${signalData.takeProfit} with stop at ${signalData.stopLoss}. Frameworks: ${signalData.filtersPassed?.join(', ') || 'Standard analysis'}`
-      };
-
-      const groqResult = await groqSignalJudge.validateAndAdjustSignal(validationData);
-      
-      if (!groqResult) {
-        const rejection = `Groq AI rejected: Institutional standards not met for ${signalData.pair}`;
-        setGroqValidationLog(prev => [...prev, rejection]);
-        return null;
-      }
-
-      const validation = `Groq AI approved: ${signalData.pair} meets institutional criteria`;
-      setGroqValidationLog(prev => [...prev, validation]);
-      
-      return {
-        ...signalData,
-        entry: groqResult.entry,
-        stopLoss: groqResult.stop,
-        takeProfit: groqResult.target,
-        confidence: groqResult.confidence,
-        groqValidated: true
-      };
-    } catch (error) {
-      console.error('Groq validation failed:', error);
-      setGroqValidationLog(prev => [...prev, `Groq validation error: ${error}`]);
-      return null;
-    }
   };
 
   const getCurrentSession = (): string => {
@@ -112,7 +69,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     setAnalysisStatus('🏛️ ENHANCED INSTITUTIONAL PROTOCOL INITIALIZING...');
     setLastRejectionReason('');
     setRejectionCount(0);
-    setGroqValidationLog([]);
+    setValidationLog([]);
 
     const requirements = getSessionRequirements();
     
@@ -136,37 +93,43 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             continue;
           }
 
-          // Apply session-specific quality gates
-          if (baseSignal.confidence < requirements.minConfidence) {
-            setRejectionCount(prev => prev + 1);
-            setLastRejectionReason(`Confidence ${baseSignal.confidence}% below ${requirements.minConfidence}% threshold for ${getCurrentSession()} session`);
-            continue;
-          }
+          // Prepare validation input
+          const validationInput: SignalValidationInput = {
+            pair: baseSignal.pair,
+            entry: parseFloat(baseSignal.entry),
+            stopLoss: parseFloat(baseSignal.stopLoss),
+            takeProfit: parseFloat(baseSignal.takeProfit),
+            confidence: baseSignal.confidence,
+            rrr: baseSignal.riskReward || 2.0,
+            confluenceScore: baseSignal.confluenceScore || 0,
+            filtersPassed: baseSignal.filtersPassed || [],
+            session: getCurrentSession(),
+            timeframe: '15m'
+          };
 
-          if ((baseSignal.confluenceScore || 0) < requirements.minConfluence) {
-            setRejectionCount(prev => prev + 1);
-            setLastRejectionReason(`Confluence ${baseSignal.confluenceScore}/6 below ${requirements.minConfluence} minimum for current session`);
-            continue;
-          }
-
-          // MANDATORY Groq validation
-          const groqValidatedSignal = await validateSignalWithGroq(baseSignal);
+          setAnalysisStatus(`🧠 Enhanced AI validation for ${baseSignal.pair}...`);
           
-          if (!groqValidatedSignal) {
+          // ENHANCED VALIDATION WITH LOCAL + GROQ
+          const validationResult = await enhancedSignalValidator.validateWithSessionContext(validationInput);
+          
+          if (!validationResult.isValid) {
             setRejectionCount(prev => prev + 1);
-            setLastRejectionReason('Signal rejected by Groq AI institutional validation');
+            setLastRejectionReason(validationResult.reason);
+            setValidationLog(prev => [...prev, `❌ ${baseSignal.pair}: ${validationResult.reason}`]);
             continue;
           }
 
           // Final enhanced signal
           const enhancedSignal = {
-            ...groqValidatedSignal,
+            ...baseSignal,
             sessionContext: getCurrentSession(),
             sessionActive: requirements.sessionActive,
             enhancedValidation: true,
-            groqApproved: true,
-            qualityScore: Math.min(95, groqValidatedSignal.confidence + 5)
+            validationReason: validationResult.reason,
+            qualityScore: Math.min(95, baseSignal.confidence + 5)
           };
+
+          setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${validationResult.reason}`]);
 
           if (onSignalGenerated) {
             onSignalGenerated(enhancedSignal);
@@ -174,7 +137,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             
             toast({
               title: `🚨 ENHANCED ${enhancedSignal.signalStrength} SIGNAL APPROVED!`,
-              description: `${enhancedSignal.pair} ${enhancedSignal.type} | Groq Validated | Session: ${getCurrentSession()}`,
+              description: `${enhancedSignal.pair} ${enhancedSignal.type} | Enhanced Validated | Session: ${getCurrentSession()}`,
             });
           }
           
@@ -188,10 +151,10 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
       }
       
       // All attempts failed
-      setLastRejectionReason(`ENHANCED FILTERING: All ${maxAttempts} attempts rejected. Current ${getCurrentSession()} session requires ${requirements.minConfidence}%+ confidence, ${requirements.minConfluence}/6+ confluence, and Groq AI approval.`);
+      setLastRejectionReason(`ENHANCED FILTERING: All ${maxAttempts} attempts rejected. Current ${getCurrentSession()} session requires ${requirements.minConfidence}%+ confidence, ${requirements.minConfluence}/6+ confluence, BOS+FVG filters, and AI approval.`);
       toast({
         title: "🏛️ Enhanced Filter Gate - All Signals Rejected",
-        description: `${rejectionCount} signals blocked by enhanced institutional filtering + Groq AI validation`,
+        description: `${rejectionCount} signals blocked by enhanced institutional filtering + AI validation`,
         variant: "destructive"
       });
       
@@ -219,7 +182,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">🧠 Enhanced AI Signal Protocol</h2>
-            <p className="text-gray-400">Session-Aware + Mandatory Groq Validation</p>
+            <p className="text-gray-400">Session-Aware + Enhanced Validation</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -227,9 +190,9 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             <Clock className="w-3 h-3 mr-1" />
             {getCurrentSession()}
           </Badge>
-          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
             <Brain className="w-3 h-3 mr-1" />
-            GROQ AI
+            ENHANCED AI
           </Badge>
         </div>
       </div>
@@ -251,24 +214,24 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             <div className="text-xs text-gray-400">{requirements.minConfluence}/6</div>
           </div>
           <div className="glass-card p-3 text-center border-yellow-500/20">
-            <div className="text-sm text-yellow-400 font-semibold">Min R:R</div>
-            <div className="text-xs text-gray-400">{requirements.minRiskReward}:1</div>
+            <div className="text-sm text-yellow-400 font-semibold">Required</div>
+            <div className="text-xs text-gray-400">BOS + FVG</div>
           </div>
           <div className="glass-card p-3 text-center border-blue-500/20">
-            <div className="text-sm text-blue-400 font-semibold">Groq AI</div>
+            <div className="text-sm text-blue-400 font-semibold">AI Valid</div>
             <div className="text-xs text-gray-400">MANDATORY</div>
           </div>
         </div>
 
-        {/* Groq Validation Log */}
-        {groqValidationLog.length > 0 && (
-          <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+        {/* Validation Log */}
+        {validationLog.length > 0 && (
+          <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg max-h-32 overflow-y-auto">
             <div className="flex items-center space-x-2 mb-2">
-              <Brain className="w-4 h-4 text-blue-400" />
-              <span className="text-blue-300 font-semibold">Groq AI Validation Log:</span>
+              <Brain className="w-4 h-4 text-purple-400" />
+              <span className="text-purple-300 font-semibold">Enhanced Validation Log:</span>
             </div>
-            {groqValidationLog.slice(-3).map((log, index) => (
-              <p key={index} className="text-sm text-blue-200 mb-1">{log}</p>
+            {validationLog.slice(-3).map((log, index) => (
+              <p key={index} className="text-sm text-purple-200 mb-1">{log}</p>
             ))}
           </div>
         )}
