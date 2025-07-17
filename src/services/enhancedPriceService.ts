@@ -1,4 +1,3 @@
-
 interface PriceData {
   price: number;
   timestamp: number;
@@ -15,7 +14,7 @@ interface PriceAPI {
 
 class EnhancedPriceService {
   private cache = new Map<string, { data: PriceData; timestamp: number }>();
-  private readonly CACHE_DURATION = 2000; // 2 seconds for fresher data
+  private readonly CACHE_DURATION = 500; // Ultra-short 0.5 second cache for maximum freshness
   private priceWatchers = new Map<string, NodeJS.Timeout>();
   private lastPrices = new Map<string, number>();
 
@@ -52,34 +51,29 @@ class EnhancedPriceService {
   ];
 
   async getLivePrice(symbol: string): Promise<PriceData> {
-    console.log(`🔍 Fetching FRESH live price for ${symbol} using multi-source fallback...`);
+    console.log(`🚀 ULTRA-FAST live price fetch for ${symbol} - simultaneous multi-source...`);
     
-    // Check cache first, but with shorter duration for fresher data
+    // Check ultra-short cache first
     const cached = this.cache.get(symbol);
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
-      console.log(`📦 Using cached price for ${symbol}: ${cached.data.price} (${cached.data.source})`);
+      console.log(`⚡ Ultra-fresh cached price for ${symbol}: ${cached.data.price} (${cached.data.source})`);
       return cached.data;
     }
 
-    // Try APIs in priority order with comprehensive fallback
-    for (const api of this.apis.sort((a, b) => a.priority - b.priority)) {
-      try {
-        console.log(`🔄 Trying ${api.name} for ${symbol}...`);
-        const result = await api.fetch(symbol);
-        if (result && result.price > 0) {
-          console.log(`✅ ${api.name} SUCCESS for ${symbol}: ${result.price}`);
-          this.cache.set(symbol, { data: result, timestamp: Date.now() });
-          
-          // Check for significant price movement
-          await this.checkPriceMovement(symbol, result.price);
-          
-          return result;
-        } else {
-          console.log(`⚠️ ${api.name} returned invalid data for ${symbol}`);
-        }
-      } catch (error) {
-        console.log(`❌ ${api.name} failed for ${symbol}:`, error);
-      }
+    // SIMULTANEOUS API CALLS for maximum speed and accuracy
+    const results = await this.fetchFromMultipleSourcesSimultaneously(symbol);
+    
+    if (results.length > 0) {
+      // Use the most accurate result (prefer live APIs over delayed ones)
+      const bestResult = this.selectBestPriceResult(results);
+      this.cache.set(symbol, { data: bestResult, timestamp: Date.now() });
+      
+      console.log(`✅ STRONGEST price selected for ${symbol}: ${bestResult.price} from ${bestResult.source}`);
+      
+      // Check for significant price movement
+      await this.checkPriceMovement(symbol, bestResult.price);
+      
+      return bestResult;
     }
 
     // Enhanced fallback with current market approximation
@@ -87,11 +81,73 @@ class EnhancedPriceService {
     return this.getEnhancedFallback(symbol);
   }
 
+  private async fetchFromMultipleSourcesSimultaneously(symbol: string): Promise<PriceData[]> {
+    console.log(`🔄 Launching SIMULTANEOUS fetch for ${symbol} across all sources...`);
+    
+    // Launch all API calls simultaneously for maximum speed
+    const promises = this.apis.map(async (api) => {
+      try {
+        const startTime = Date.now();
+        const result = await Promise.race([
+          api.fetch(symbol),
+          new Promise<null>((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 2000) // 2 second timeout
+          )
+        ]);
+        const responseTime = Date.now() - startTime;
+        
+        if (result && result.price > 0) {
+          console.log(`✅ ${api.name} SUCCESS: ${result.price} (${responseTime}ms)`);
+          return { ...result, responseTime };
+        }
+        return null;
+      } catch (error) {
+        console.log(`❌ ${api.name} failed/timeout:`, error);
+        return null;
+      }
+    });
+
+    const results = await Promise.allSettled(promises);
+    const validResults = results
+      .filter((result): result is PromiseFulfilledResult<PriceData & { responseTime: number }> => 
+        result.status === 'fulfilled' && result.value !== null
+      )
+      .map(result => result.value);
+
+    console.log(`📊 Got ${validResults.length} valid prices for ${symbol}`);
+    return validResults;
+  }
+
+  private selectBestPriceResult(results: (PriceData & { responseTime: number })[]): PriceData {
+    if (results.length === 1) return results[0];
+
+    // Sort by response time and source reliability
+    const sorted = results.sort((a, b) => {
+      // Prefer certain sources for accuracy
+      const sourceScore = (source: string) => {
+        if (source === 'AlphaVantage') return 100;
+        if (source === 'FreeForexAPI') return 90;
+        if (source === 'ExchangeRate.host') return 80;
+        if (source === 'Frankfurter') return 70;
+        return 50;
+      };
+
+      const aScore = sourceScore(a.source) - (a.responseTime / 10);
+      const bScore = sourceScore(b.source) - (b.responseTime / 10);
+      
+      return bScore - aScore;
+    });
+
+    const selected = sorted[0];
+    console.log(`🎯 Selected best price: ${selected.price} from ${selected.source} (${selected.responseTime}ms)`);
+    
+    return selected;
+  }
+
   private async fetchFromPolygon(symbol: string): Promise<PriceData | null> {
     try {
       const [base, quote] = this.splitPair(symbol);
       const pairNoSlash = `${base}${quote}`;
-      console.log(`📡 Trying Polygon for ${symbol} (${pairNoSlash})`);
       
       if (!this.POLYGON_KEY || this.POLYGON_KEY === 'YOUR_POLYGON_KEY') {
         throw new Error('Polygon API key not configured');
@@ -115,7 +171,6 @@ class EnhancedPriceService {
       }
       return null;
     } catch (error) {
-      console.log(`❌ Polygon error for ${symbol}:`, error);
       return null;
     }
   }
@@ -123,7 +178,6 @@ class EnhancedPriceService {
   private async fetchFromAlphaVantage(symbol: string): Promise<PriceData | null> {
     try {
       const [from, to] = this.splitPair(symbol);
-      console.log(`📡 Trying AlphaVantage for ${symbol} (${from}/${to})`);
       
       const response = await fetch(
         `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${from}&to_currency=${to}&apikey=${this.ALPHA_VANTAGE_KEY}`,
@@ -147,7 +201,6 @@ class EnhancedPriceService {
       }
       return null;
     } catch (error) {
-      console.log(`❌ AlphaVantage error for ${symbol}:`, error);
       return null;
     }
   }
@@ -156,7 +209,6 @@ class EnhancedPriceService {
     try {
       const [base, quote] = this.splitPair(symbol);
       const pairNoSlash = `${base}${quote}`;
-      console.log(`📡 Trying FreeForexAPI for ${symbol} (${pairNoSlash})`);
       
       const response = await fetch(
         `https://www.freeforexapi.com/api/live?pairs=${pairNoSlash}`,
@@ -176,7 +228,6 @@ class EnhancedPriceService {
       }
       return null;
     } catch (error) {
-      console.log(`❌ FreeForexAPI error for ${symbol}:`, error);
       return null;
     }
   }
@@ -184,7 +235,6 @@ class EnhancedPriceService {
   private async fetchFromExchangeRateHost(symbol: string): Promise<PriceData | null> {
     try {
       const [base, quote] = this.splitPair(symbol);
-      console.log(`📡 Trying ExchangeRate.host for ${symbol} (${base}/${quote})`);
       
       const response = await fetch(
         `https://api.exchangerate.host/convert?from=${base}&to=${quote}`,
@@ -204,7 +254,6 @@ class EnhancedPriceService {
       }
       return null;
     } catch (error) {
-      console.log(`❌ ExchangeRate.host error for ${symbol}:`, error);
       return null;
     }
   }
@@ -212,7 +261,6 @@ class EnhancedPriceService {
   private async fetchFromFrankfurter(symbol: string): Promise<PriceData | null> {
     try {
       const [base, quote] = this.splitPair(symbol);
-      console.log(`📡 Trying Frankfurter for ${symbol} (${base}/${quote})`);
       
       const response = await fetch(
         `https://api.frankfurter.app/latest?from=${base}&to=${quote}`,
@@ -232,7 +280,6 @@ class EnhancedPriceService {
       }
       return null;
     } catch (error) {
-      console.log(`❌ Frankfurter error for ${symbol}:`, error);
       return null;
     }
   }
@@ -308,15 +355,15 @@ class EnhancedPriceService {
     };
   }
 
-  // Force refresh live price (no cache)
+  // Force refresh live price (no cache) with maximum accuracy
   async getFreshLivePrice(symbol: string): Promise<PriceData> {
-    console.log(`🔄 FORCE REFRESH: Getting fresh price for ${symbol}`);
+    console.log(`🔄 ULTRA-FORCE REFRESH: Getting strongest possible price for ${symbol}`);
     this.cache.delete(symbol); // Clear cache
     return await this.getLivePrice(symbol);
   }
 
-  // Start price monitoring for significant movements
-  startPriceMonitoring(symbols: string[], intervalMs: number = 3000): void {
+  // Start ultra-frequent price monitoring
+  startPriceMonitoring(symbols: string[], intervalMs: number = 1000): void {
     symbols.forEach(symbol => {
       if (this.priceWatchers.has(symbol)) {
         const existingInterval = this.priceWatchers.get(symbol);
@@ -334,7 +381,7 @@ class EnhancedPriceService {
       }, intervalMs) as NodeJS.Timeout;
 
       this.priceWatchers.set(symbol, intervalId);
-      console.log(`👁️ Started price monitoring for ${symbol} (${intervalMs}ms interval)`);
+      console.log(`👁️ Started ULTRA-FREQUENT price monitoring for ${symbol} (${intervalMs}ms interval)`);
     });
   }
 
