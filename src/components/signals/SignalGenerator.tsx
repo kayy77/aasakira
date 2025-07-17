@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +13,8 @@ import {
   Activity,
   BarChart3,
   Crown,
-  Shield
+  Shield,
+  CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { eliteSignalEngine, EliteSignal } from '@/services/eliteSignalEngine';
@@ -31,6 +31,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
+  const [lastFilterResults, setLastFilterResults] = useState<string[]>([]);
   const { toast } = useToast();
 
   const generateEliteSignal = async () => {
@@ -38,7 +39,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
     onFeatureUse?.();
 
     setIsGenerating(true);
-    setAnalysisStatus('🎯 A+ GRADE SIGNAL PROTOCOL INITIALIZING...');
+    setAnalysisStatus('🎯 INSTITUTIONAL SIGNAL PROTOCOL INITIALIZING...');
 
     try {
       // Phase 1: Get live price (KEEPING EXACTLY THE SAME)
@@ -49,15 +50,21 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       const livePriceData = await trueLivePriceService.getTrueLivePrice(selectedPair);
       const livePrice = livePriceData.price;
       
-      setAnalysisStatus('🧠 Running A+ Grade Filter Analysis (6 Elite Filters)...');
+      setAnalysisStatus('🧠 Running Institutional 6-Filter Analysis...');
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Phase 2: Generate elite signal using new engine
-      setAnalysisStatus('⚡ A+ Grade Signal Engine Processing...');
+      setAnalysisStatus('⚡ Institutional Signal Engine Processing...');
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Phase 2: Generate elite signal using upgraded engine
+      setAnalysisStatus('🏛️ Validating Institutional-Grade Confluence...');
       const eliteSignal = await eliteSignalEngine.generateEliteSignal(livePrice, selectedPair);
 
       if (eliteSignal && onSignalGenerated) {
         onSignalGenerated(eliteSignal);
+        
+        // Store filter results for display
+        setLastFilterResults(eliteSignal.filterBreakdown.passed);
         
         const strengthEmoji = {
           'ULTRA': '🚨',
@@ -67,21 +74,22 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
         };
         
         toast({
-          title: `${strengthEmoji[eliteSignal.signalStrength]} ${eliteSignal.signalStrength} SIGNAL GENERATED!`,
-          description: `${eliteSignal.pair} ${eliteSignal.type} @ ${eliteSignal.entry} | Filters: ${eliteSignal.filtersScore}/6 | Confidence: ${eliteSignal.confidence}%`,
+          title: `${strengthEmoji[eliteSignal.signalStrength]} ${eliteSignal.signalStrength} INSTITUTIONAL SIGNAL!`,
+          description: `${eliteSignal.pair} ${eliteSignal.type} @ ${eliteSignal.entry} | Filters: ${eliteSignal.filtersScore}/6 | RR: ${eliteSignal.riskReward.toFixed(1)}:1 | Lot: ${eliteSignal.lotSize}`,
         });
       } else {
-        setAnalysisStatus('❌ Signal rejected by A+ Grade Filter Gate');
+        setAnalysisStatus('❌ Signal rejected by Institutional Filter Gate');
+        setLastFilterResults([]);
         toast({
-          title: "A+ Filter Gate Rejection",
-          description: "Signal failed to meet elite criteria (minimum 4/6 filters required)",
+          title: "Institutional Filter Gate Rejection",
+          description: "Signal failed to meet institutional criteria (minimum 3/6 confluence filters required)",
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('Elite signal generation error:', error);
+      console.error('Institutional signal generation error:', error);
       toast({
-        title: "A+ Signal Engine Error",
+        title: "Institutional Signal Engine Error",
         description: "Elite signal engine encountered an issue. Please try again.",
         variant: "destructive"
       });
@@ -99,14 +107,14 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             <Crown className="w-6 h-6 text-yellow-400" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">A+ Grade Signal Protocol</h2>
-            <p className="text-gray-400">Elite 6-filter system with strength scoring</p>
+            <h2 className="text-xl font-bold text-white">Institutional Signal Protocol</h2>
+            <p className="text-gray-400">6-filter confluence system with smart rejection</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
           <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 animate-pulse">
             <Crown className="w-3 h-3 mr-1" />
-            ELITE ENGINE
+            INSTITUTIONAL
           </Badge>
           <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
             <Activity className="w-3 h-3 mr-1" />
@@ -118,44 +126,62 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       <div className="glass-card p-6 mb-6 border-purple-500/10">
         <div className="flex items-center space-x-2 mb-4">
           <Shield className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg font-semibold text-white">6-Filter Elite Analysis</h3>
+          <h3 className="text-lg font-semibold text-white">6-Filter Institutional Analysis</h3>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
           <div className="glass-card p-3 text-center border-purple-500/10">
-            <div className="text-sm text-green-400 font-semibold">Market Structure</div>
-            <div className="text-xs text-gray-400">SMC + BOS</div>
+            <div className="text-sm text-green-400 font-semibold">Structure Break</div>
+            <div className="text-xs text-gray-400">BOS Confirmation</div>
           </div>
           <div className="glass-card p-3 text-center border-purple-500/10">
             <div className="text-sm text-blue-400 font-semibold">Liquidity Sweep</div>
-            <div className="text-xs text-gray-400">Hunt & React</div>
+            <div className="text-xs text-gray-400">Smart Money Hunt</div>
           </div>
           <div className="glass-card p-3 text-center border-purple-500/10">
             <div className="text-sm text-yellow-400 font-semibold">Fair Value Gap</div>
-            <div className="text-xs text-gray-400">Imbalance Zone</div>
+            <div className="text-xs text-gray-400">Order Block Touch</div>
           </div>
           <div className="glass-card p-3 text-center border-purple-500/10">
             <div className="text-sm text-purple-400 font-semibold">Volume Spike</div>
             <div className="text-xs text-gray-400">Institutional Flow</div>
           </div>
           <div className="glass-card p-3 text-center border-purple-500/10">
-            <div className="text-sm text-orange-400 font-semibold">Session Filter</div>
-            <div className="text-xs text-gray-400">London/NY Only</div>
+            <div className="text-sm text-orange-400 font-semibold">RSI Divergence</div>
+            <div className="text-xs text-gray-400">Extreme Levels</div>
           </div>
           <div className="glass-card p-3 text-center border-purple-500/10">
-            <div className="text-sm text-pink-400 font-semibold">RSI/EMA</div>
-            <div className="text-xs text-gray-400">Technical Edge</div>
+            <div className="text-sm text-pink-400 font-semibold">Session Filter</div>
+            <div className="text-xs text-gray-400">Active Sessions</div>
           </div>
         </div>
 
         <Alert className="mb-6 border-yellow-500/30 bg-yellow-500/10">
           <Crown className="h-4 w-4 text-yellow-400" />
           <AlertDescription className="text-yellow-300">
-            <strong>A+ GRADE PROTOCOL:</strong> Signals must pass minimum 4/6 elite filters. 
-            Strength scoring: 6/6 = ULTRA (1.0 lot), 5/6 = STRONG (0.75 lot), 4/6 = MEDIUM (0.5 lot).
-            Live prices remain unchanged from your trusted system.
+            <strong>INSTITUTIONAL PROTOCOL:</strong> Signals must pass minimum 3/6 institutional filters. 
+            Strength scoring: 6/6 = ELITE, 5/6 = STRONG, 4/6 = MEDIUM, 3/6 = WEAK.
+            Smart rejection prevents weak entries. Live prices remain unchanged.
           </AlertDescription>
         </Alert>
+
+        {/* Last Filter Results */}
+        {lastFilterResults.length > 0 && (
+          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <div className="flex items-center space-x-2 mb-3">
+              <CheckCircle2 className="w-4 h-4 text-green-400" />
+              <span className="text-green-300 font-semibold">Last Signal Passed Filters:</span>
+            </div>
+            <div className="space-y-1">
+              {lastFilterResults.map((filter, index) => (
+                <div key={index} className="text-sm text-green-200 flex items-center space-x-2">
+                  <div className="w-1 h-1 bg-green-400 rounded-full"></div>
+                  <span>{filter}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {isGenerating && analysisStatus && (
           <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
@@ -176,12 +202,12 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             {isGenerating ? (
               <>
                 <Loader className="w-5 h-5 mr-2 animate-spin" />
-                A+ Protocol Running...
+                Institutional Analysis...
               </>
             ) : (
               <>
                 <Crown className="w-5 h-5 mr-2" />
-                Generate A+ Signal
+                Generate Institutional Signal
               </>
             )}
           </Button>
@@ -192,25 +218,25 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="glass-card p-4 border-yellow-500/20">
           <Crown className="w-6 h-6 text-yellow-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">ULTRA (6/6)</h4>
-          <p className="text-sm text-gray-400">Institutional grade</p>
-          <p className="text-xs text-yellow-400">1.0 lot suggested</p>
+          <h4 className="text-white font-semibold mb-1">ELITE (6/6)</h4>
+          <p className="text-sm text-gray-400">All filters aligned</p>
+          <p className="text-xs text-yellow-400">1.0 lot | 2.8:1 RR</p>
         </div>
         <div className="glass-card p-4 border-green-500/20">
           <Zap className="w-6 h-6 text-green-400 mb-2" />
           <h4 className="text-white font-semibold mb-1">STRONG (5/6)</h4>
-          <p className="text-sm text-gray-400">High probability</p>
-          <p className="text-xs text-green-400">0.75 lot suggested</p>
+          <p className="text-sm text-gray-400">Strong confluence</p>
+          <p className="text-xs text-green-400">0.75 lot | 2.5:1 RR</p>
         </div>
         <div className="glass-card p-4 border-blue-500/20">
           <Target className="w-6 h-6 text-blue-400 mb-2" />
           <h4 className="text-white font-semibold mb-1">MEDIUM (4/6)</h4>
-          <p className="text-sm text-gray-400">Decent setup</p>
-          <p className="text-xs text-blue-400">0.5 lot suggested</p>
+          <p className="text-sm text-gray-400">Good setup</p>
+          <p className="text-xs text-blue-400">0.5 lot | 2.2:1 RR</p>
         </div>
         <div className="glass-card p-4 border-red-500/20">
           <AlertCircle className="w-6 h-6 text-red-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">REJECTED (&lt;4/6)</h4>
+          <h4 className="text-white font-semibold mb-1">REJECTED (&lt;3/6)</h4>
           <p className="text-sm text-gray-400">Filter gate failed</p>
           <p className="text-xs text-red-400">No signal generated</p>
         </div>
