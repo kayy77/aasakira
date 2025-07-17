@@ -1,4 +1,3 @@
-
 interface PriceData {
   price: number;
   timestamp: number;
@@ -13,11 +12,25 @@ interface PriceAPI {
   fetch: (symbol: string) => Promise<PriceData | null>;
 }
 
+interface ApiStats {
+  success: number;
+  fail: number;
+  avgTime: number;
+  lastFailure?: string;
+}
+
+interface PriceOptions {
+  allowFallback?: boolean;
+  forTrading?: boolean;
+}
+
 class EnhancedPriceService {
   private cache = new Map<string, { data: PriceData; timestamp: number }>();
-  private readonly CACHE_DURATION = 100; // Ultra-short 0.1 second cache for maximum freshness
+  private readonly CACHE_DURATION = 50; // Ultra-short 0.05 second cache for maximum freshness
   private priceWatchers = new Map<string, NodeJS.Timeout>();
   private lastPrices = new Map<string, number>();
+  private apiStats = new Map<string, ApiStats>();
+  private statCallCount = 0;
 
   // Working API Keys - these are public keys safe for frontend use
   private readonly ALPHA_VANTAGE_KEY = 'UWQPDL73VSZSERTZ';
@@ -51,14 +64,20 @@ class EnhancedPriceService {
     }
   ];
 
-  async getLivePrice(symbol: string): Promise<PriceData> {
+  async getLivePrice(symbol: string, options: PriceOptions = { allowFallback: true, forTrading: false }): Promise<PriceData> {
     console.log(`🚀 ULTRA-PRECISION live price fetch for ${symbol} - simultaneous multi-source...`);
     
     // Check ultra-short cache first
     const cached = this.cache.get(symbol);
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
-      console.log(`⚡ Ultra-fresh cached price for ${symbol}: ${cached.data.price} (${cached.data.source})`);
-      return cached.data;
+      // CRITICAL FIX 1: Validate cached price before using
+      if (cached.data.price <= 0) {
+        console.warn(`❌ Invalid cached price for ${symbol}: ${cached.data.price}`);
+        this.cache.delete(symbol); // Remove invalid cache
+      } else {
+        console.log(`⚡ Ultra-fresh cached price for ${symbol}: ${cached.data.price} (${cached.data.source})`);
+        return cached.data;
+      }
     }
 
     // SIMULTANEOUS API CALLS for maximum speed and accuracy
@@ -67,19 +86,47 @@ class EnhancedPriceService {
     if (results.length > 0) {
       // Use the most accurate result (prefer live APIs over delayed ones)
       const bestResult = this.selectBestPriceResult(results);
-      this.cache.set(symbol, { data: bestResult, timestamp: Date.now() });
       
-      console.log(`✅ ULTRA-PRECISION price selected for ${symbol}: ${bestResult.price} from ${bestResult.source}`);
-      
-      // Check for significant price movement
-      await this.checkPriceMovement(symbol, bestResult.price);
-      
-      return bestResult;
+      // CRITICAL FIX 1: Validate price before using
+      if (!bestResult || bestResult.price <= 0 || isNaN(bestResult.price)) {
+        console.error(`❌ Invalid live price for ${symbol}: ${bestResult?.price}`);
+        
+        // For trading signals, we CANNOT use invalid prices
+        if (options.forTrading) {
+          throw new Error(`Invalid live price for trading signal: ${symbol}`);
+        }
+        
+        // Fall through to fallback for non-trading use
+      } else {
+        this.cache.set(symbol, { data: bestResult, timestamp: Date.now() });
+        
+        console.log(`✅ ULTRA-PRECISION price selected for ${symbol}: ${bestResult.price} from ${bestResult.source}`);
+        
+        // Check for significant price movement
+        await this.checkPriceMovement(symbol, bestResult.price);
+        
+        return bestResult;
+      }
     }
 
-    // Enhanced fallback with current market approximation
-    console.log(`⚠️ All APIs failed for ${symbol}, using enhanced fallback`);
-    return this.getEnhancedFallback(symbol);
+    // CRITICAL FIX 2: Handle fallback properly for trading vs visualization
+    if (!options.allowFallback) {
+      throw new Error(`No valid live prices available for ${symbol} and fallback is disabled`);
+    }
+
+    if (options.forTrading) {
+      console.error(`⚠️ NO VALID LIVE PRICES for trading signal ${symbol} - REJECTING SIGNAL`);
+      throw new Error(`Cannot generate trading signal for ${symbol} - no valid live prices available`);
+    }
+
+    // Enhanced fallback with current market approximation (ONLY for visualization)
+    console.log(`⚠️ All APIs failed for ${symbol}, using enhanced fallback for visualization only`);
+    const fallbackPrice = this.getEnhancedFallback(symbol);
+    
+    // Mark fallback clearly
+    fallbackPrice.source = 'Enhanced Fallback (Visualization Only)';
+    
+    return fallbackPrice;
   }
 
   private async fetchFromMultipleSourcesSimultaneously(symbol: string): Promise<(PriceData & { responseTime: number })[]> {
@@ -87,23 +134,29 @@ class EnhancedPriceService {
     
     // Launch all API calls simultaneously for maximum speed
     const promises = this.apis.map(async (api) => {
+      const startTime = Date.now();
       try {
-        const startTime = Date.now();
         const result = await Promise.race([
           api.fetch(symbol),
           new Promise<null>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 1500) // 1.5 second timeout for faster response
+            setTimeout(() => reject(new Error('Timeout')), 1200) // 1.2 second timeout for faster response
           )
         ]);
         const responseTime = Date.now() - startTime;
         
-        if (result && result.price > 0) {
+        if (result && result.price > 0 && !isNaN(result.price)) {
           console.log(`✅ ${api.name} ULTRA-SUCCESS: ${result.price} (${responseTime}ms)`);
+          this.recordApiStat(api.name, responseTime, true);
           return { ...result, responseTime };
+        } else {
+          console.log(`⚠️ ${api.name} returned invalid price: ${result?.price}`);
+          this.recordApiStat(api.name, responseTime, false);
+          return null;
         }
-        return null;
       } catch (error) {
+        const responseTime = Date.now() - startTime;
         console.log(`❌ ${api.name} failed/timeout:`, error);
+        this.recordApiStat(api.name, responseTime, false);
         return null;
       }
     });
@@ -116,7 +169,48 @@ class EnhancedPriceService {
       .map(result => result.value);
 
     console.log(`📊 Got ${validResults.length} ULTRA-PRECISION prices for ${symbol}`);
+    
+    // Log API performance stats every 20 calls
+    this.statCallCount++;
+    if (this.statCallCount % 20 === 0) {
+      this.logApiPerformance();
+    }
+    
     return validResults;
+  }
+
+  // CRITICAL FIX 4: API Performance tracking and monitoring
+  private recordApiStat(name: string, responseTime: number, success: boolean): void {
+    const current = this.apiStats.get(name) || { success: 0, fail: 0, avgTime: 0 };
+    
+    if (success) {
+      current.success++;
+      current.avgTime = (current.avgTime * (current.success - 1) + responseTime) / current.success;
+    } else {
+      current.fail++;
+      current.lastFailure = new Date().toISOString();
+    }
+    
+    this.apiStats.set(name, current);
+  }
+
+  private logApiPerformance(): void {
+    console.log('\n📊 API PERFORMANCE STATS:');
+    console.log('=' .repeat(50));
+    
+    this.apiStats.forEach((stats, name) => {
+      const total = stats.success + stats.fail;
+      const successRate = total > 0 ? ((stats.success / total) * 100).toFixed(1) : '0';
+      const avgTime = stats.avgTime > 0 ? stats.avgTime.toFixed(0) : 'N/A';
+      
+      console.log(`${name}:`);
+      console.log(`  Success: ${stats.success}/${total} (${successRate}%)`);
+      console.log(`  Avg Time: ${avgTime}ms`);
+      if (stats.lastFailure) {
+        console.log(`  Last Fail: ${stats.lastFailure}`);
+      }
+      console.log('');
+    });
   }
 
   private selectBestPriceResult(results: (PriceData & { responseTime: number })[]): PriceData {
@@ -125,20 +219,20 @@ class EnhancedPriceService {
       return priceData;
     }
 
-    // Sort by response time and source reliability
+    // Sort by reliability score (success rate + speed)
     const sorted = results.sort((a, b) => {
-      // Prefer certain sources for accuracy
-      const sourceScore = (source: string) => {
-        if (source === 'AlphaVantage') return 100;
-        if (source === 'FreeForexAPI') return 95;
-        if (source === 'ExchangeRate.host') return 85;
-        if (source === 'Frankfurter') return 80;
-        if (source === 'Polygon') return 90;
-        return 50;
-      };
-
-      const aScore = sourceScore(a.source) - (a.responseTime / 10);
-      const bScore = sourceScore(b.source) - (b.responseTime / 10);
+      const aStats = this.apiStats.get(a.source) || { success: 1, fail: 0, avgTime: a.responseTime };
+      const bStats = this.apiStats.get(b.source) || { success: 1, fail: 0, avgTime: b.responseTime };
+      
+      const aTotal = aStats.success + aStats.fail;
+      const bTotal = bStats.success + bStats.fail;
+      
+      const aReliability = aTotal > 0 ? (aStats.success / aTotal) : 0.5;
+      const bReliability = bTotal > 0 ? (bStats.success / bTotal) : 0.5;
+      
+      // Combine reliability and speed (favor reliable + fast sources)
+      const aScore = aReliability * 100 - (a.responseTime / 10);
+      const bScore = bReliability * 100 - (b.responseTime / 10);
       
       return bScore - aScore;
     });
@@ -151,13 +245,15 @@ class EnhancedPriceService {
   }
 
   private async fetchFromPolygon(symbol: string): Promise<PriceData | null> {
+    // CRITICAL FIX 3: Proper API key validation
+    if (!this.POLYGON_KEY || this.POLYGON_KEY === 'YOUR_POLYGON_KEY') {
+      console.warn('⚠️ Polygon API key is missing. Skipping this source.');
+      return null;
+    }
+
     try {
       const [base, quote] = this.splitPair(symbol);
       const pairNoSlash = `${base}${quote}`;
-      
-      if (!this.POLYGON_KEY || this.POLYGON_KEY === 'YOUR_POLYGON_KEY') {
-        throw new Error('Polygon API key not configured');
-      }
       
       const response = await fetch(
         `https://api.polygon.io/v1/last_quote/currencies/${pairNoSlash}?apiKey=${this.POLYGON_KEY}`,
@@ -295,7 +391,7 @@ class EnhancedPriceService {
     if (lastPrice) {
       const changePercent = Math.abs((currentPrice - lastPrice) / lastPrice) * 100;
       
-      if (changePercent >= 0.3) { // 0.3% movement threshold for ultra-sensitivity
+      if (changePercent >= 0.2) { // 0.2% movement threshold for ultra-sensitivity
         const reason = `Price moved ${changePercent.toFixed(2)}% in last update`;
         console.log(`🚨 ULTRA-PRECISION price movement detected for ${symbol}: ${reason}`);
         
@@ -349,27 +445,27 @@ class EnhancedPriceService {
     };
     
     const basePrice = basePrices[symbol] || 1.0000;
-    // Add ultra-minimal micro-movement (±0.01% variation)
-    const variation = (Math.random() - 0.5) * 0.0001;
-    const finalPrice = basePrice * (1 + variation);
     
+    // CRITICAL FIX 2 NOTE: This fallback is ONLY for visualization
+    // Real trading signals will reject fallback prices
     return {
-      price: finalPrice,
+      price: basePrice,
       timestamp: Date.now(),
       source: 'Enhanced Fallback',
-      changePercent: (variation * 100).toFixed(2) + '%'
+      changePercent: '0.00%'
     };
   }
 
-  // Force refresh live price (no cache) with maximum accuracy
+  // Force refresh live price (no cache) with maximum accuracy - FOR TRADING SIGNALS
   async getFreshLivePrice(symbol: string): Promise<PriceData> {
-    console.log(`🔄 ULTRA-PRECISION FORCE REFRESH: Getting strongest possible price for ${symbol}`);
+    console.log(`🔄 ULTRA-PRECISION FORCE REFRESH FOR TRADING: Getting strongest possible price for ${symbol}`);
     this.cache.delete(symbol); // Clear cache
-    return await this.getLivePrice(symbol);
+    
+    // CRITICAL: For trading signals, we CANNOT allow fallback
+    return await this.getLivePrice(symbol, { allowFallback: false, forTrading: true });
   }
 
-  // Start ultra-frequent price monitoring
-  startPriceMonitoring(symbols: string[], intervalMs: number = 500): void {
+  startPriceMonitoring(symbols: string[], intervalMs: number = 400): void {
     symbols.forEach(symbol => {
       if (this.priceWatchers.has(symbol)) {
         const existingInterval = this.priceWatchers.get(symbol);
@@ -391,7 +487,6 @@ class EnhancedPriceService {
     });
   }
 
-  // Stop price monitoring
   stopPriceMonitoring(symbol?: string): void {
     if (symbol) {
       const intervalId = this.priceWatchers.get(symbol);
@@ -409,7 +504,12 @@ class EnhancedPriceService {
       this.priceWatchers.clear();
     }
   }
+
+  // Get API performance stats for monitoring
+  getApiStats(): Map<string, ApiStats> {
+    return new Map(this.apiStats);
+  }
 }
 
 export const enhancedPriceService = new EnhancedPriceService();
-export type { PriceData };
+export type { PriceData, PriceOptions };
