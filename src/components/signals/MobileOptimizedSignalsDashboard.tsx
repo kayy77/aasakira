@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +19,7 @@ import AutoJournalModal from './AutoJournalModal';
 import ABTestingFramework from './ABTestingFramework';
 import AISignalDigest from './AISignalDigest';
 import ShareableSignalCard from './ShareableSignalCard';
+import GroqTestPanel from './GroqTestPanel';
 import { useToast } from '@/hooks/use-toast';
 import { SignalConfig } from '@/types/signalConfig';
 
@@ -302,6 +302,9 @@ const MobileOptimizedSignalsDashboard: React.FC = () => {
             and close positions when you feel comfortable. Trading involves substantial risk.
           </AlertDescription>
         </Alert>
+
+        {/* GROQ Test Panel */}
+        <GroqTestPanel />
 
         {/* Signal Generation Hub */}
         <SignalGenerationHub

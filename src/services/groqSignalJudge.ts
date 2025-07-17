@@ -1,4 +1,3 @@
-
 import { groqService } from './groqService';
 
 interface SignalValidationData {
@@ -38,40 +37,52 @@ class GroqSignalJudge {
   private rejectedSignals: RejectedSignalLog[] = [];
 
   async evaluateSignal(signalData: SignalValidationData): Promise<GroqJudgment> {
-    console.log('🧠 GROQ EVALUATION STARTING - Institutional AI Analysis');
+    console.log('🏛️ GROQ INSTITUTIONAL EVALUATION STARTING...');
+    console.log('📊 Signal Data:', {
+      symbol: signalData.symbol,
+      direction: signalData.direction,
+      entry: signalData.entry,
+      confidence: signalData.confidence,
+      confluence: signalData.confluence
+    });
     
-    // CRITICAL: No fallback to auto-approval
+    // STRICT: Ensure GROQ is configured
     if (!groqService.isConfigured()) {
-      console.error('❌ GROQ NOT CONFIGURED - BLOCKING SIGNAL GENERATION');
+      console.error('❌ GROQ NOT CONFIGURED - BLOCKING ALL SIGNALS');
       throw new Error('GROQ AI validation service not configured - cannot generate signals');
     }
 
     try {
       const prompt = this.buildEvaluationPrompt(signalData);
       
-      console.log('🧠 SENDING TO GROQ AI - Institutional analysis in progress...');
+      console.log('🔄 SENDING TO GROQ AI for institutional analysis...');
       const response = await groqService.generateResponse(prompt, {
         model: 'mixtral-8x7b-32768',
-        temperature: 0.1, // Very low temperature for consistent institutional decisions
+        temperature: 0.1,
         max_tokens: 500
       });
 
-      console.log('🧠 GROQ RESPONSE RECEIVED - Parsing institutional decision...');
+      console.log('📥 RAW GROQ RESPONSE received');
       const judgment = this.parseGroqResponse(response);
       
-      console.log(`🧠 GROQ DECISION: ${judgment.decision.toUpperCase()} - ${judgment.reason}`);
+      console.log('🎯 GROQ INSTITUTIONAL DECISION:', {
+        decision: judgment.decision,
+        reason: judgment.reason,
+        adjustments: judgment.new_entry ? 'YES' : 'NO'
+      });
+      
       return judgment;
       
     } catch (error) {
       console.error('❌ GROQ EVALUATION CRITICAL FAILURE:', error);
-      // STRICT: NO fallback approval - must have GROQ validation
+      // NO FALLBACK - Must have GROQ validation
       throw new Error(`GROQ AI validation failed: ${error.message}`);
     }
   }
 
   private buildEvaluationPrompt(data: SignalValidationData): string {
-    return `
-🏛️ INSTITUTIONAL TRADING SIGNAL EVALUATION - GROQ AI ANALYSIS
+    const prompt = `
+🏛️ INSTITUTIONAL TRADING SIGNAL EVALUATION
 
 SIGNAL PARAMETERS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -80,76 +91,57 @@ SIGNAL PARAMETERS:
 💰 Entry Price: ${data.entry}
 🛡️ Stop Loss: ${data.stop}
 🎯 Take Profit: ${data.target}
-⚖️ Risk:Reward Ratio: ${((Math.abs(data.target - data.entry) / Math.abs(data.entry - data.stop))).toFixed(2)}:1
-🕐 Trading Session: ${data.session}
-📈 RSI Level: ${data.rsi || 'N/A'}
+⚖️ Risk:Reward: ${((Math.abs(data.target - data.entry) / Math.abs(data.entry - data.stop))).toFixed(2)}:1
+🕐 Session: ${data.session}
+📈 RSI: ${data.rsi || 'N/A'}
 📊 Volume: ${data.volume || 'N/A'}
-🎯 Confluence Score: ${data.confluence}/6
-💪 Base Confidence: ${data.confidence}%
+🎯 Confluence: ${data.confluence}/6
+💪 Confidence: ${data.confidence}%
 
-TECHNICAL FRAMEWORK ANALYSIS:
-${data.frameworks.map(f => `✅ ${f}`).join('\n')}
+FRAMEWORKS: ${data.frameworks.join(', ')}
+CONTEXT: ${data.context || 'Standard setup'}
 
-ADDITIONAL CONTEXT:
-${data.context || 'Standard institutional setup'}
-
-🔍 INSTITUTIONAL EVALUATION CRITERIA:
+EVALUATION CRITERIA:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Entry Timing (reject mid-push entries)
+2. Session Strength (verify institutional participation)
+3. Confluence Quality (validate authenticity)
+4. Structure Alignment (check major levels)
+5. Liquidity Detection (identify trap setups)
+6. Risk:Reward (minimum 2.0:1 required)
 
-1. 📊 ENTRY TIMING ANALYSIS
-   - Reject mid-push entries (>70% of move completed)
-   - Verify optimal entry positioning
-   - Check for liquidity hunt completion
+STRICT INSTITUTIONAL STANDARDS:
+- Minimum 85% confidence required
+- Minimum 2.5:1 risk-reward ratio
+- Active session required
+- Strong confluence validation
+- No obvious trap setups
 
-2. 🕐 SESSION STRENGTH VALIDATION
-   - Assess current session volatility
-   - Verify institutional participation levels
-   - Reject dead session without catalyst
-
-3. 🎯 CONFLUENCE QUALITY CHECK
-   - Validate confluence authenticity
-   - Detect manipulated/weak setups
-   - Ensure multi-timeframe alignment
-
-4. 🏗️ STRUCTURE ALIGNMENT AUDIT
-   - Check against major structural levels
-   - Verify institutional flow direction
-   - Assess liquidity pool positioning
-
-5. 🎣 LIQUIDITY TRAP DETECTION
-   - Identify obvious trap setups
-   - Verify genuine breakout/breakdown
-   - Check for stop hunt completion
-
-6. ⚖️ RISK:REWARD SUSTAINABILITY
-   - Minimum 2.0:1 requirement
-   - Realistic target achievability
-   - Optimal stop loss placement
-
-MANDATORY RESPONSE FORMAT (JSON ONLY):
+RESPONSE FORMAT (JSON ONLY):
 {
   "decision": "approve|reject|adjust",
-  "reason": "Detailed institutional reasoning (max 100 chars)",
-  "new_entry": optional_adjusted_entry_price,
-  "new_stop": optional_adjusted_stop_loss,
-  "new_target": optional_adjusted_take_profit,
-  "suggested_direction": optional_direction_correction,
-  "confidence_adjustment": optional_confidence_boost_or_reduction
+  "reason": "Brief institutional reasoning",
+  "new_entry": optional_price,
+  "new_stop": optional_price,
+  "new_target": optional_price,
+  "confidence_adjustment": optional_number
 }
 
-🚨 INSTITUTIONAL MANDATE: Apply STRICT institutional standards. Reject weak setups mercilessly. Only approve signals that meet professional trading criteria. No mercy for marginal setups.
+EVALUATE NOW - Apply BRUTAL institutional standards:`;
 
-EVALUATE NOW:`;
+    console.log('📝 GROQ PROMPT PREPARED:', prompt.length, 'characters');
+    return prompt;
   }
 
   private parseGroqResponse(response: string): GroqJudgment {
     try {
-      console.log('🧠 PARSING GROQ RESPONSE:', response.substring(0, 200) + '...');
+      console.log('🔍 PARSING GROQ RESPONSE...');
+      console.log('📄 Response preview:', response.substring(0, 300) + '...');
       
       // Extract JSON from response
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error('❌ NO JSON FOUND IN GROQ RESPONSE');
+        console.error('❌ NO VALID JSON FOUND IN GROQ RESPONSE');
         throw new Error('Invalid GROQ response: No JSON structure found');
       }
 
@@ -157,13 +149,13 @@ EVALUATE NOW:`;
       
       // Validate required fields
       if (!parsed.decision || !parsed.reason) {
-        console.error('❌ INVALID GROQ RESPONSE STRUCTURE');
+        console.error('❌ INVALID GROQ RESPONSE STRUCTURE:', parsed);
         throw new Error('Invalid GROQ response: Missing required fields');
       }
 
       // Ensure decision is valid
       if (!['approve', 'reject', 'adjust'].includes(parsed.decision)) {
-        console.error('❌ INVALID GROQ DECISION VALUE:', parsed.decision);
+        console.error('❌ INVALID GROQ DECISION:', parsed.decision);
         throw new Error(`Invalid GROQ decision: ${parsed.decision}`);
       }
 
@@ -179,6 +171,7 @@ EVALUATE NOW:`;
       };
     } catch (error) {
       console.error('❌ GROQ RESPONSE PARSING FAILED:', error);
+      console.error('📄 Raw response that failed:', response);
       throw new Error(`GROQ response parsing failed: ${error.message}`);
     }
   }
@@ -203,15 +196,16 @@ EVALUATE NOW:`;
   }
 
   async validateAndAdjustSignal(signalData: SignalValidationData): Promise<SignalValidationData | null> {
-    console.log('🧠 GROQ INSTITUTIONAL VALIDATION STARTING...');
+    console.log('🏛️ GROQ INSTITUTIONAL VALIDATION PROCESS STARTING...');
     
     const groqResult = await this.evaluateSignal(signalData);
+    console.log('🎯 GROQ DECISION RECEIVED:', groqResult.decision);
 
     switch (groqResult.decision) {
       case 'reject':
         this.logRejectedSignal(signalData, groqResult.reason);
         console.log(`🚫 GROQ INSTITUTIONAL REJECTION: ${signalData.symbol} - ${groqResult.reason}`);
-        return null; // Signal completely blocked
+        return null;
 
       case 'adjust':
         console.log(`🛠️ GROQ INSTITUTIONAL ADJUSTMENT: ${signalData.symbol} - ${groqResult.reason}`);
@@ -227,24 +221,28 @@ EVALUATE NOW:`;
             signalData.confidence
         };
         
-        console.log('✅ GROQ ADJUSTMENTS APPLIED - Signal optimized by institutional AI');
+        console.log('✅ GROQ ADJUSTMENTS APPLIED:', {
+          originalEntry: signalData.entry,
+          newEntry: adjustedSignal.entry,
+          originalConfidence: signalData.confidence,
+          newConfidence: adjustedSignal.confidence
+        });
         return adjustedSignal;
 
       case 'approve':
       default:
         console.log(`✅ GROQ INSTITUTIONAL APPROVAL: ${signalData.symbol} - ${groqResult.reason}`);
         
-        // Apply confidence boost if suggested
         if (groqResult.confidence_adjustment) {
           const boostedSignal = {
             ...signalData,
             confidence: Math.min(95, Math.max(60, signalData.confidence + groqResult.confidence_adjustment))
           };
-          console.log(`📈 GROQ CONFIDENCE BOOST APPLIED: +${groqResult.confidence_adjustment}%`);
+          console.log(`📈 GROQ CONFIDENCE BOOST: ${signalData.confidence}% → ${boostedSignal.confidence}%`);
           return boostedSignal;
         }
         
-        return signalData; // Signal approved as-is
+        return signalData;
     }
   }
 
@@ -305,6 +303,36 @@ EVALUATE NOW:`;
     }
     
     return contexts.join(', ') || 'standard technical setup';
+  }
+
+  // Test method to verify GROQ judge is working
+  async testGroqJudge(): Promise<boolean> {
+    try {
+      console.log('🧪 TESTING GROQ SIGNAL JUDGE...');
+      
+      const testSignal: SignalValidationData = {
+        symbol: 'EURUSD',
+        direction: 'BUY',
+        entry: 1.1000,
+        stop: 1.0950,
+        target: 1.1100,
+        frameworks: ['Order Block', 'Break of Structure'],
+        session: 'London',
+        rsi: 45,
+        volume: 'High',
+        context: 'Test signal for GROQ validation',
+        confluence: 4,
+        confidence: 85
+      };
+
+      const result = await this.evaluateSignal(testSignal);
+      console.log('🧪 GROQ JUDGE TEST RESULT:', result);
+      
+      return result.decision !== undefined && result.reason !== undefined;
+    } catch (error) {
+      console.error('🧪 GROQ JUDGE TEST FAILED:', error);
+      return false;
+    }
   }
 }
 
