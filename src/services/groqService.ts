@@ -21,13 +21,13 @@ class GroqService {
     }
 
     console.log('🧠 GROQ API REQUEST INITIATED');
-    console.log('📝 Model:', options.model || 'mixtral-8x7b-32768');
+    console.log('📝 Model:', options.model || 'llama3-8b-8192');
     console.log('🌡️ Temperature:', options.temperature || 0.1);
     console.log('📄 Prompt length:', prompt.length, 'characters');
 
     try {
       const requestBody = {
-        model: options.model || 'mixtral-8x7b-32768',
+        model: options.model || 'llama3-8b-8192',
         messages: [
           { role: 'user', content: prompt }
         ],
@@ -92,7 +92,7 @@ class GroqService {
       console.log('🧪 TESTING GROQ CONNECTION...');
       const testPrompt = 'Respond with "GROQ_TEST_SUCCESS" if you can see this message.';
       const response = await this.generateResponse(testPrompt, {
-        model: 'mixtral-8x7b-32768',
+        model: 'llama3-8b-8192',
         temperature: 0.1,
         max_tokens: 50
       });

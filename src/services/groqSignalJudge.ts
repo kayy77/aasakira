@@ -1,3 +1,4 @@
+
 import { groqService } from './groqService';
 
 interface SignalValidationData {
@@ -57,7 +58,7 @@ class GroqSignalJudge {
       
       console.log('🔄 SENDING TO GROQ AI for institutional analysis...');
       const response = await groqService.generateResponse(prompt, {
-        model: 'mixtral-8x7b-32768',
+        model: 'llama3-8b-8192',
         temperature: 0.1,
         max_tokens: 500
       });
