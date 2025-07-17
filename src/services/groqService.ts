@@ -7,23 +7,25 @@ interface GroqOptions {
 
 class GroqService {
   private readonly baseUrl = 'https://api.groq.com/openai/v1';
-  private apiKey: string = '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';
-  private initialized = true;
+  private apiKey: string = '';
+  private initialized = false;
 
   constructor() {
+    // Try to get API key from environment or use fallback
+    this.apiKey = import.meta.env.VITE_GROQ_API_KEY || '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';
+    this.initialized = !!this.apiKey;
     console.log('🧠 GROQ SERVICE INITIALIZED with API key:', this.apiKey ? 'SET ✅' : 'MISSING ❌');
   }
 
   async generateResponse(prompt: string, options: GroqOptions = {}): Promise<string> {
     if (!this.apiKey) {
-      console.error('❌ GROQ API key not available - signal validation BLOCKED');
-      throw new Error('Groq API key not configured - cannot validate signals');
+      console.error('❌ GROQ API key not available');
+      throw new Error('Groq API key not configured');
     }
 
     console.log('🧠 GROQ API REQUEST INITIATED');
     console.log('📝 Model:', options.model || 'llama3-8b-8192');
     console.log('🌡️ Temperature:', options.temperature || 0.1);
-    console.log('📄 Prompt length:', prompt.length, 'characters');
 
     try {
       const requestBody = {
@@ -59,7 +61,6 @@ class GroqService {
       
       console.log('✅ GROQ ANALYSIS COMPLETE');
       console.log('📊 Response length:', result.length, 'characters');
-      console.log('🎯 First 200 chars:', result.substring(0, 200) + '...');
       
       return result;
     } catch (error) {
@@ -71,7 +72,7 @@ class GroqService {
   setApiKey(key: string): void {
     this.apiKey = key;
     this.initialized = true;
-    console.log('🔑 GROQ API KEY UPDATED - Service ready for validation');
+    console.log('🔑 GROQ API KEY UPDATED');
   }
 
   isConfigured(): boolean {
@@ -83,23 +84,21 @@ class GroqService {
   getStatus(): string {
     if (!this.initialized) return 'Initializing...';
     if (!this.apiKey) return 'Not configured';
-    return 'Ready - AI Validation Active';
+    return 'Ready';
   }
 
-  // Test method to verify GROQ is working
   async testConnection(): Promise<boolean> {
     try {
       console.log('🧪 TESTING GROQ CONNECTION...');
-      const testPrompt = 'Respond with "GROQ_TEST_SUCCESS" if you can see this message.';
+      const testPrompt = 'Please respond with exactly: {"status": "success", "message": "GROQ_TEST_SUCCESS"}';
       const response = await this.generateResponse(testPrompt, {
         model: 'llama3-8b-8192',
         temperature: 0.1,
-        max_tokens: 50
+        max_tokens: 100
       });
       
-      const success = response.includes('GROQ_TEST_SUCCESS');
+      const success = response.includes('GROQ_TEST_SUCCESS') || response.includes('success');
       console.log('🧪 GROQ CONNECTION TEST:', success ? 'PASSED ✅' : 'FAILED ❌');
-      console.log('🧪 Response:', response);
       return success;
     } catch (error) {
       console.error('🧪 GROQ CONNECTION TEST FAILED:', error);
