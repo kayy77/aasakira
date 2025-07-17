@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -15,8 +15,7 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
-  Eye,
-  BarChart3
+  Eye
 } from 'lucide-react';
 import { EliteSignal } from '@/services/eliteSignalEngine';
 
@@ -53,6 +52,16 @@ const EliteSignalCard: React.FC<EliteSignalCardProps> = ({
 
   const confidenceProgress = (signal.confidence / 100) * 100;
   const filtersProgress = (signal.filtersScore / signal.maxFilters) * 100;
+
+  // Create filter array for display
+  const filterArray = [
+    { name: 'Structure Break', passed: signal.filters.structureBreak },
+    { name: 'Liquidity Sweep', passed: signal.filters.liquiditySweep },
+    { name: 'Fair Value Gap', passed: signal.filters.fairValueGap },
+    { name: 'Volume Spike', passed: signal.filters.volumeSpike },
+    { name: 'RSI Divergence', passed: signal.filters.rsiDivergence },
+    { name: 'Session Filter', passed: signal.filters.sessionFilter }
+  ];
 
   return (
     <Card className={`glass-card hover-glow border-2 transition-all duration-300 ${
@@ -93,7 +102,7 @@ const EliteSignalCard: React.FC<EliteSignalCardProps> = ({
                 )}
               </div>
               <div className="text-xs text-gray-400 mt-1">
-                Suggested Lot: {signal.suggestedLot} | {signal.sessionWindow}
+                Suggested Lot: {signal.suggestedLot} | {signal.sessionInfo}
               </div>
             </div>
           </div>
@@ -123,11 +132,11 @@ const EliteSignalCard: React.FC<EliteSignalCardProps> = ({
         {/* Filter Analysis */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-white">A+ Filter Analysis</h4>
+            <h4 className="text-sm font-semibold text-white">Institutional Filter Analysis</h4>
             <Progress value={filtersProgress} className="w-20 h-2" />
           </div>
           <div className="grid grid-cols-1 gap-2">
-            {signal.filters.map((filter, index) => (
+            {filterArray.map((filter, index) => (
               <div key={index} className={`flex items-center justify-between p-2 rounded text-xs ${
                 filter.passed ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'
               }`}>
@@ -168,8 +177,8 @@ const EliteSignalCard: React.FC<EliteSignalCardProps> = ({
         {/* Risk Analysis */}
         <div className="flex items-center justify-between">
           <Badge variant="outline" className={`border-0 ${
-            signal.riskLevel === 'Low' ? 'bg-green-500/20 text-green-400' :
-            signal.riskLevel === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
+            signal.riskLevel === 'LOW' ? 'bg-green-500/20 text-green-400' :
+            signal.riskLevel === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
             'bg-red-500/20 text-red-400'
           }`}>
             {signal.riskLevel} Risk
@@ -181,7 +190,7 @@ const EliteSignalCard: React.FC<EliteSignalCardProps> = ({
 
         {/* Elite Analysis */}
         <div className="bg-gray-800/20 rounded p-3">
-          <div className="text-xs text-gray-300 leading-relaxed whitespace-pre-line">
+          <div className="text-xs text-gray-300 leading-relaxed">
             {signal.analysis}
           </div>
         </div>

@@ -221,59 +221,59 @@ class InstitutionalSignalFilter {
     const rsi = this.analyzeRSIDivergence();
     const session = this.analyzeSessionFilter();
 
-    // Filter 1: Structure Break - STRICTER REQUIREMENTS
+    // Filter 1: Structure Break - ULTRA STRICT REQUIREMENTS
     const structureBreak = {
-      passed: structure.lastBreakDirection !== 'none' && structure.structureStrength > 70, // Raised from 65
+      passed: structure.lastBreakDirection !== 'none' && structure.structureStrength > 75, // Raised from 70
       score: structure.structureStrength,
       reason: structure.lastBreakDirection !== 'none' ? 
         `${structure.lastBreakDirection.toUpperCase()} structure break confirmed (${structure.structureStrength.toFixed(0)}%)` :
-        'No clear structure break detected'
+        'No institutional-grade structure break detected'
     };
 
-    // Filter 2: Liquidity Sweep - ENHANCED VALIDATION
+    // Filter 2: Liquidity Sweep - INSTITUTIONAL VALIDATION
     const liquiditySweepFilter = {
-      passed: liquiditySweep.detected && liquiditySweep.reversalConfirmed && liquiditySweep.sweepStrength > 65, // Raised from 60
+      passed: liquiditySweep.detected && liquiditySweep.reversalConfirmed && liquiditySweep.sweepStrength > 70, // Raised from 65
       score: liquiditySweep.sweepStrength,
       reason: liquiditySweep.detected && liquiditySweep.reversalConfirmed ? 
-        `Liquidity sweep ${liquiditySweep.direction} with reversal confirmation (${liquiditySweep.sweepStrength.toFixed(0)}%)` :
-        'No confirmed liquidity sweep with reversal'
+        `Institutional liquidity sweep ${liquiditySweep.direction} with reversal (${liquiditySweep.sweepStrength.toFixed(0)}%)` :
+        'No confirmed institutional liquidity sweep'
     };
 
-    // Filter 3: Fair Value Gap - HIGHER STANDARDS
+    // Filter 3: Fair Value Gap - ELITE STANDARDS
     const fairValueGapFilter = {
-      passed: fvg.detected && fvg.strength > 70, // Raised from 65
+      passed: fvg.detected && fvg.strength > 75, // Raised from 70
       score: fvg.strength,
       reason: fvg.detected ? 
-        `${fvg.type.toUpperCase()} FVG identified at ${fvg.level.toFixed(5)} (${fvg.strength.toFixed(0)}%)` :
-        'No significant Fair Value Gap detected'
+        `${fvg.type.toUpperCase()} FVG at ${fvg.level.toFixed(5)} (${fvg.strength.toFixed(0)}%)` :
+        'No institutional-grade Fair Value Gap'
     };
 
-    // Filter 4: Volume Spike - INSTITUTIONAL GRADE
+    // Filter 4: Volume Spike - SMART MONEY ONLY
     const volumeSpikeFilter = {
-      passed: volume.spikeDetected && volume.divergenceStrength > 70, // Raised from 65
+      passed: volume.spikeDetected && volume.divergenceStrength > 75, // Raised from 70
       score: volume.divergenceStrength,
       reason: volume.spikeDetected ? 
-        `Institutional ${volume.institutionalFlow} volume spike detected (${volume.divergenceStrength.toFixed(0)}%)` :
-        'No significant volume divergence'
+        `Smart money ${volume.institutionalFlow} detected (${volume.divergenceStrength.toFixed(0)}%)` :
+        'No institutional volume confirmation'
     };
 
-    // Filter 5: RSI Divergence - EXTREME LEVELS ONLY
+    // Filter 5: RSI Divergence - EXTREME LEVELS MANDATORY
     const rsiDivergenceFilter = {
-      passed: rsi.detected && rsi.strength > 75 && // Raised from 70
+      passed: rsi.detected && rsi.strength > 80 && // Raised from 75
         ((rsi.type === 'bullish' && rsi.oversoldBullish) || (rsi.type === 'bearish' && rsi.overboughtBearish)),
       score: rsi.strength,
       reason: rsi.detected && ((rsi.type === 'bullish' && rsi.oversoldBullish) || (rsi.type === 'bearish' && rsi.overboughtBearish)) ? 
-        `${rsi.type.toUpperCase()} RSI divergence confirmed (${rsi.strength.toFixed(0)}%)` :
-        'No valid RSI divergence at extreme levels'
+        `${rsi.type.toUpperCase()} RSI divergence at extreme level (${rsi.strength.toFixed(0)}%)` :
+        'No extreme-level RSI divergence confirmed'
     };
 
-    // Filter 6: Session Filter - ACTIVE SESSIONS ONLY
+    // Filter 6: Session Filter - INSTITUTIONAL HOURS ONLY
     const sessionFilterResult = {
-      passed: session.activeSession && session.volatilityScore > 75, // Raised from 70
+      passed: session.activeSession && session.volatilityScore > 80, // Raised from 75
       score: session.volatilityScore,
-      reason: session.activeSession && session.volatilityScore > 75 ? 
-        `Active ${session.sessionType} session with high volatility (${session.volatilityScore.toFixed(0)}%)` :
-        `${session.activeSession ? 'Moderate' : 'Low'} activity ${session.sessionType} session (${session.volatilityScore.toFixed(0)}%)`
+      reason: session.activeSession && session.volatilityScore > 80 ? 
+        `Peak institutional ${session.sessionType} session (${session.volatilityScore.toFixed(0)}%)` :
+        `Insufficient institutional activity - ${session.sessionType} (${session.volatilityScore.toFixed(0)}%)`
     };
 
     // Calculate results
@@ -289,9 +289,9 @@ class InstitutionalSignalFilter {
     } else if (passedFilters >= this.MEDIUM_THRESHOLD) {
       confidence = 'MEDIUM';
     } else if (passedFilters >= this.MIN_CONFLUENCE_FILTERS) {
-      confidence = 'WEAK'; // This is now STANDARD grade
+      confidence = 'WEAK'; // This is STANDARD grade
     } else {
-      confidence = 'WEAK'; // Will be rejected anyway
+      confidence = 'WEAK'; // Will be rejected
     }
 
     return {
@@ -308,7 +308,7 @@ class InstitutionalSignalFilter {
   }
 
   isSignalValid(filterResults: FilterResults): boolean {
-    // STRICT ENFORCEMENT: Must pass at least 3 filters
+    // ULTRA STRICT ENFORCEMENT: Must pass at least 3 filters
     return filterResults.passedFilters >= this.MIN_CONFLUENCE_FILTERS;
   }
 
