@@ -44,13 +44,10 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
     setLastRejectionReason('');
 
     try {
-      // Phase 1: Get live price (KEEPING EXACTLY THE SAME)
-      setAnalysisStatus('📡 Fetching LIVE market price (unchanged system)...');
+      // Phase 1: Select pair and start analysis
+      setAnalysisStatus('📡 Selecting market pair...');
       const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
       const selectedPair = pairs[Math.floor(Math.random() * pairs.length)];
-      
-      const livePriceData = await trueLivePriceService.getTrueLivePrice(selectedPair);
-      const livePrice = livePriceData.price;
       
       setAnalysisStatus('🧠 Running Enhanced 6-Filter Analysis...');
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -58,8 +55,13 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
       setAnalysisStatus('⚡ Institutional Grade Validation...');
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Phase 2: Generate elite signal using upgraded engine
-      setAnalysisStatus('🏛️ Validating Institutional-Grade Confluence...');
+      // Phase 2: Get FRESH live price at EXACT signal generation moment
+      setAnalysisStatus('🏛️ Fetching LIVE price for signal entry...');
+      const livePriceData = await trueLivePriceService.getTrueLivePrice(selectedPair);
+      const livePrice = livePriceData.price;
+      
+      // Generate elite signal with FRESH live price
+      setAnalysisStatus('⚡ Generating institutional signal...');
       const eliteSignal = await eliteSignalEngine.generateEliteSignal(livePrice, selectedPair);
 
       if (eliteSignal && onSignalGenerated) {
