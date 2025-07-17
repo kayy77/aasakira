@@ -1,3 +1,4 @@
+
 import { marketDataService } from './marketDataService';
 import { smartMoneyAnalyzer } from './smartMoneyAnalyzer';
 import { institutionalSignalValidator } from './institutionalSignalValidator';
@@ -201,7 +202,7 @@ class SignalService {
           session: this.getCurrentSession(),
           confluence: marketAnalysis.confluenceScore,
           confidence: preliminarySignal.confidence,
-          context: groqSignalJudge.generatePriceContext(pair, preliminarySignal.entry, preliminarySignal.filtersPassed || [])
+          context: `${pair} analysis: Entry at ${preliminarySignal.entry}, targeting ${preliminarySignal.takeProfit} with stop at ${preliminarySignal.stopLoss}. Frameworks: ${preliminarySignal.filtersPassed?.join(', ') || 'Standard analysis'}`
         };
 
         // Silent Groq evaluation
