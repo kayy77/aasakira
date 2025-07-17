@@ -1,126 +1,164 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export interface UserEvent {
-  user_id: string;
-  event_type: string;
-  event_data: any;
-  timestamp: string;
-  session_id?: string;
-}
-
 export interface UserBehaviorContext {
   recentSignals: any[];
-  tradingExperience: string;
   preferredPairs: string[];
-  riskTolerance: string;
-  learningGoals: string[];
-  behaviorPatterns: any;
+  averageConfidenceThreshold: number;
+  tradingStyle: string;
+  weaknesses: string[];
+  strengths: string[];
+  lastActive: string;
 }
 
-class UserTrackingService {
-  private sessionId: string;
-
-  constructor() {
-    this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  async trackEvent(userId: string, eventType: string, eventData: any): Promise<void> {
+export class UserTrackingService {
+  static async trackUserEvent(userId: string, event: string, data: any) {
     try {
-      console.log('📊 Tracking event:', { userId, eventType, eventData });
-      
-      const event: UserEvent = {
-        user_id: userId,
-        event_type: eventType,
-        event_data: eventData,
-        timestamp: new Date().toISOString(),
-        session_id: this.sessionId
-      };
-
-      // In a real implementation, this would go to your tracking database
-      // For now, we'll store in localStorage and console log
-      const existingEvents = JSON.parse(localStorage.getItem('user_events') || '[]');
-      existingEvents.push(event);
-      localStorage.setItem('user_events', JSON.stringify(existingEvents.slice(-100))); // Keep last 100 events
-
+      await supabase
+        .from('user_activities')
+        .insert({
+          user_id: userId,
+          activity_type: event,
+          data: {
+            ...data,
+            timestamp: new Date().toISOString()
+          }
+        });
     } catch (error) {
-      console.error('Error tracking event:', error);
+      console.error('Error tracking user event:', error);
     }
   }
 
-  async getUserBehaviorContext(userId: string): Promise<UserBehaviorContext | null> {
-    try {
-      const events = JSON.parse(localStorage.getItem('user_events') || '[]');
-      const userEvents = events.filter((e: UserEvent) => e.user_id === userId);
+  static async trackSignalView(userId: string, signal: any) {
+    return this.trackUserEvent(userId, 'signal_view', {
+      pair: signal.pair,
+      confidence: signal.confidence,
+      frameworks: signal.frameworks
+    });
+  }
 
-      return {
-        recentSignals: userEvents.filter(e => e.event_type === 'signal_view').slice(-5),
-        tradingExperience: this.inferExperience(userEvents),
-        preferredPairs: this.extractPreferredPairs(userEvents),
-        riskTolerance: 'Conservative',
-        learningGoals: ['Basic Trading Concepts'],
-        behaviorPatterns: this.analyzeBehaviorPatterns(userEvents)
+  static async trackSignalSkip(userId: string, signal: any) {
+    return this.trackUserEvent(userId, 'signal_skip', {
+      pair: signal.pair,
+      confidence: signal.confidence,
+      reason: 'skipped'
+    });
+  }
+
+  static async trackSignalAction(userId: string, signal: any, action: string) {
+    return this.trackUserEvent(userId, 'signal_action', {
+      pair: signal.pair,
+      action,
+      confidence: signal.confidence
+    });
+  }
+
+  static async trackMentorPrompt(userId: string, prompt: string, context?: any) {
+    return this.trackUserEvent(userId, 'mentor_prompt', {
+      prompt,
+      context
+    });
+  }
+
+  static async trackEducationView(userId: string, module: string, timeSpent?: number) {
+    return this.trackUserEvent(userId, 'education_view', {
+      module,
+      timeSpent
+    });
+  }
+
+  static async getUserProgress(userId: string) {
+    try {
+      const { data } = await supabase
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      
+      return data || {
+        charts_analyzed: 0,
+        signals_viewed: 0,
+        messages_sent: 0,
+        trading_games_played: 0,
+        skills_mastered: [],
+        weaknesses: []
       };
     } catch (error) {
-      console.error('Error getting user context:', error);
+      console.error('Error getting user progress:', error);
       return null;
     }
   }
 
-  async trackMentorPrompt(userId: string, prompt: string, context?: any): Promise<void> {
-    await this.trackEvent(userId, 'mentor_prompt', {
-      prompt,
-      context,
-      length: prompt.length
-    });
+  static async getUserBehaviorContext(userId: string): Promise<UserBehaviorContext> {
+    try {
+      const { data: activities } = await supabase
+        .from('user_activities')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      const signalViews = activities?.filter(a => a.activity_type === 'signal_view') || [];
+      const pairs = signalViews.map(s => s.data?.pair).filter(Boolean);
+      const confidences = signalViews.map(s => s.data?.confidence).filter(Boolean);
+
+      return {
+        recentSignals: signalViews.slice(0, 10),
+        preferredPairs: [...new Set(pairs)].slice(0, 5),
+        averageConfidenceThreshold: confidences.length > 0 ? 
+          confidences.reduce((a, b) => a + b, 0) / confidences.length : 70,
+        tradingStyle: 'conservative',
+        weaknesses: ['risk-management', 'patience'],
+        strengths: ['technical-analysis'],
+        lastActive: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error getting behavior context:', error);
+      return {
+        recentSignals: [],
+        preferredPairs: [],
+        averageConfidenceThreshold: 70,
+        tradingStyle: 'beginner',
+        weaknesses: [],
+        strengths: [],
+        lastActive: new Date().toISOString()
+      };
+    }
   }
 
-  async storeAIMemory(memory: any): Promise<void> {
+  static async storeAIMemory(userId: string, content: string, memoryType: string, context?: any) {
     try {
-      console.log('🧠 Storing AI memory:', memory);
-      // Store in localStorage for now
-      const existingMemory = JSON.parse(localStorage.getItem('ai_memory') || '[]');
-      existingMemory.push({ ...memory, timestamp: new Date().toISOString() });
-      localStorage.setItem('ai_memory', JSON.stringify(existingMemory.slice(-50)));
+      await supabase
+        .from('ai_memory')
+        .insert({
+          user_id: userId,
+          content,
+          memory_type: memoryType,
+          context,
+          importance_score: 5
+        });
     } catch (error) {
       console.error('Error storing AI memory:', error);
     }
   }
 
-  private inferExperience(events: UserEvent[]): string {
-    const totalEvents = events.length;
-    if (totalEvents < 10) return 'Complete Beginner';
-    if (totalEvents < 50) return 'Beginner';
-    if (totalEvents < 200) return 'Intermediate';
-    return 'Advanced';
-  }
+  static async getAIMemory(userId: string, memoryType?: string) {
+    try {
+      let query = supabase
+        .from('ai_memory')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-  private extractPreferredPairs(events: UserEvent[]): string[] {
-    const signalEvents = events.filter(e => e.event_type === 'signal_view');
-    const pairCounts: { [key: string]: number } = {};
-    
-    signalEvents.forEach(event => {
-      const pair = event.event_data?.pair;
-      if (pair) {
-        pairCounts[pair] = (pairCounts[pair] || 0) + 1;
+      if (memoryType) {
+        query = query.eq('memory_type', memoryType);
       }
-    });
 
-    return Object.entries(pairCounts)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 3)
-      .map(([pair]) => pair);
-  }
-
-  private analyzeBehaviorPatterns(events: UserEvent[]): any {
-    return {
-      totalInteractions: events.length,
-      averageSessionLength: '5 minutes',
-      mostActiveHours: ['14:00', '20:00'],
-      learningStyle: 'Visual'
-    };
+      const { data } = await query.limit(20);
+      return data || [];
+    } catch (error) {
+      console.error('Error getting AI memory:', error);
+      return [];
+    }
   }
 }
-
-export { UserTrackingService };
-export const userTrackingService = new UserTrackingService();
