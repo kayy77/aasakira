@@ -1,6 +1,8 @@
 import { marketDataService } from './marketDataService';
 import { smartMoneyAnalyzer } from './smartMoneyAnalyzer';
 import { institutionalSignalValidator } from './institutionalSignalValidator';
+import { groqSignalJudge } from './groqSignalJudge';
+import type { SignalValidationData } from './groqSignalJudge';
 
 interface Signal {
   id: number;
@@ -159,7 +161,7 @@ class SignalService {
     return basePrice * (1 + marketMovement);
   }
 
-  // 🏛️ BRUTAL INSTITUTIONAL SIGNAL GENERATION
+  // 🏛️ BRUTAL INSTITUTIONAL SIGNAL GENERATION WITH GROQ VALIDATION
   async generateLiveSignal(): Promise<Signal | null> {
     console.log('🏛️ INSTITUTIONAL SIGNAL PROTOCOL: Running brutal filtering system...');
     
@@ -186,12 +188,44 @@ class SignalService {
         }
         
         // Generate institutional-grade signal
-        const signal = await this.createInstitutionalSignal(pair, livePrice, marketAnalysis);
+        const preliminarySignal = await this.createInstitutionalSignal(pair, livePrice, marketAnalysis);
         
+        // 🧠 SILENT GROQ VALIDATION (New Layer)
+        const groqValidationData: SignalValidationData = {
+          symbol: pair,
+          direction: preliminarySignal.type,
+          entry: preliminarySignal.entry,
+          stop: preliminarySignal.stopLoss,
+          target: preliminarySignal.takeProfit,
+          frameworks: preliminarySignal.filtersPassed || [],
+          session: this.getCurrentSession(),
+          confluence: marketAnalysis.confluenceScore,
+          confidence: preliminarySignal.confidence,
+          context: groqSignalJudge.generatePriceContext(pair, preliminarySignal.entry, preliminarySignal.filtersPassed || [])
+        };
+
+        // Silent Groq evaluation
+        const groqValidatedSignal = await groqSignalJudge.validateAndAdjustSignal(groqValidationData);
+        
+        if (!groqValidatedSignal) {
+          console.log(`🧠 GROQ REJECTED: ${pair} failed AI institutional validation`);
+          continue; // Try next pair - Groq blocked it
+        }
+
+        // Apply Groq adjustments if any
+        const finalSignal: Signal = {
+          ...preliminarySignal,
+          entry: this.formatPrice(groqValidatedSignal.entry, pair),
+          stopLoss: this.formatPrice(groqValidatedSignal.stop, pair),
+          takeProfit: this.formatPrice(groqValidatedSignal.target, pair),
+          type: groqValidatedSignal.direction,
+          confidence: groqValidatedSignal.confidence
+        };
+
         // Final validation through institutional validator
         const validationResult = institutionalSignalValidator.validateSignal(
           {
-            ...signal,
+            ...finalSignal,
             confluenceScore: marketAnalysis.confluenceScore,
             rsiValue: marketAnalysis.rsiValue,
             volumeSpike: marketAnalysis.volumeSpike,
@@ -216,13 +250,13 @@ class SignalService {
         }
 
         // Apply confidence boost from validator
-        signal.confidence = Math.min(95, signal.confidence + validationResult.confidenceAdjustment);
+        finalSignal.confidence = Math.min(95, finalSignal.confidence + validationResult.confidenceAdjustment);
         
-        this.signals.unshift(signal);
+        this.signals.unshift(finalSignal);
         this.lastUpdate = Date.now();
         
-        console.log(`✅ INSTITUTIONAL SIGNAL APPROVED: ${pair} ${signal.type} @ ${signal.entry} | Confluence: ${marketAnalysis.confluenceScore}/6 | Confidence: ${signal.confidence}%`);
-        return signal;
+        console.log(`✅ GROQ-ENHANCED INSTITUTIONAL SIGNAL: ${pair} ${finalSignal.type} @ ${finalSignal.entry} | Confluence: ${marketAnalysis.confluenceScore}/6 | Confidence: ${finalSignal.confidence}%`);
+        return finalSignal;
         
       } catch (error) {
         console.error(`Failed to analyze ${pair}:`, error);
@@ -230,8 +264,18 @@ class SignalService {
       }
     }
     
-    console.log(`❌ NO INSTITUTIONAL SIGNALS FOUND: All ${maxAttempts} pairs rejected by brutal filtering system`);
+    console.log(`❌ NO INSTITUTIONAL SIGNALS FOUND: All ${maxAttempts} pairs rejected by brutal filtering system (including Groq AI validation)`);
     return null;
+  }
+
+  private getCurrentSession(): string {
+    const hour = new Date().getUTCHours();
+    
+    if (hour >= 8 && hour <= 17) return 'London';
+    if (hour >= 13 && hour <= 22) return 'New York';
+    if (hour >= 22 || hour <= 8) return 'Asian';
+    
+    return 'Off Hours';
   }
 
   // 🧠 ADVANCED INSTITUTIONAL MARKET ANALYSIS
@@ -586,7 +630,7 @@ class SignalService {
 
   async getLatestSignals(): Promise<Signal[]> {
     if (Date.now() - this.lastUpdate > this.UPDATE_INTERVAL || this.signals.length === 0) {
-      console.log('🔄 Auto-refreshing signals with institutional-grade filtering...');
+      console.log('🔄 Auto-refreshing signals with institutional-grade filtering + Groq AI validation...');
       await this.generateLiveSignal().catch(error => {
         console.error('Failed to generate institutional signal:', error);
       });
@@ -596,17 +640,20 @@ class SignalService {
   }
 
   getPerformanceStats() {
+    const groqStats = groqSignalJudge.getRejectionStats();
+    
     return {
       winRate: 87,
       totalSignals: this.signals.length + 156,
       activeSignals: this.signals.filter(s => s.status === 'active').length,
       avgRR: 2.8,
+      groqRejections: groqStats.total, // Internal tracking only
     };
   }
 
   startAutoRefresh() {
     setInterval(async () => {
-      console.log('🔄 Auto-refreshing with institutional-grade analysis...');
+      console.log('🔄 Auto-refreshing with institutional-grade analysis + Groq AI validation...');
       await this.generateLiveSignal().catch(console.error);
     }, this.UPDATE_INTERVAL);
   }
