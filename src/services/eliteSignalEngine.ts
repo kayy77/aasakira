@@ -1,5 +1,6 @@
 
 import { institutionalSignalFilter, FilterResults } from './institutionalSignalFilter';
+import { WebhookValidationService } from './webhookValidationService';
 
 export interface EliteSignal {
   id: string;
@@ -81,6 +82,39 @@ class EliteSignalEngine {
       return null;
     }
 
+    // 🔗 ENHANCED WEBHOOK VALIDATION WITH EXTERNAL APIS
+    const webhookValidation = await WebhookValidationService.validateSignal({
+      symbol: pair,
+      direction: tradeDirection.toLowerCase() as "buy" | "sell",
+      entry: livePrice,
+      stop: stopLoss,
+      target: takeProfit,
+      livePrice: livePrice,
+      session: this.getSessionInfo(),
+      volumeSpike: filterResults.volumeSpike.passed,
+      rsiValue: 50, // Mock RSI value - replace with actual
+      confidence: Math.round((filterResults.totalScore / 6) * 100),
+      filtersPassed: this.getPassedFilterNames(filterResults)
+    });
+
+    if (!webhookValidation.valid) {
+      const rejectionReason = webhookValidation.adjustments.join(', ');
+      console.log(`❌ WEBHOOK VALIDATION FAILED: ${rejectionReason}`);
+      return null;
+    }
+
+    // Apply enhanced confidence if provided
+    let finalConfidence = Math.round((filterResults.totalScore / 6) * 100);
+    if (webhookValidation.enhancedConfidence !== undefined) {
+      finalConfidence = webhookValidation.enhancedConfidence;
+      console.log(`🔧 Confidence adjusted by webhook: ${finalConfidence}%`);
+    }
+
+    // Log any warnings from webhook validation
+    if (webhookValidation.warnings.length > 0) {
+      console.warn('⚠️ Signal warnings:', webhookValidation.warnings);
+    }
+
     // TRANSPARENT filter breakdown for users
     const filterBreakdown = institutionalSignalFilter.getFilterBreakdown(filterResults);
 
@@ -96,7 +130,7 @@ class EliteSignalEngine {
       entry: livePrice, // 🔥 EXACT LIVE PRICE AT SIGNAL GENERATION MOMENT
       stopLoss,
       takeProfit,
-      confidence: Math.round((filterResults.totalScore / 6) * 100), // Percentage score
+      confidence: finalConfidence, // Enhanced by webhook validation
       signalStrength,
       filtersScore: filterResults.passedFilters,
       maxFilters: 6,
@@ -105,7 +139,7 @@ class EliteSignalEngine {
       riskReward,
       lotSize,
       sessionInfo: this.getSessionInfo(),
-      strategy: 'Institutional_War_Machine_v2',
+      strategy: 'Institutional_War_Machine_v3_Enhanced',
       sniperMode: filterResults.passedFilters >= 5,
       suggestedLot: lotSize,
       livePrice: livePrice, // Store exact live price for reference
@@ -121,7 +155,17 @@ class EliteSignalEngine {
       analysis: this.generateInstitutionalAnalysis(filterResults, tradeDirection)
     };
 
-    console.log(`🏛️ INSTITUTIONAL ${signal.signalStrength} APPROVED: ${pair} ${tradeDirection} @ ${livePrice} | ${filterResults.passedFilters}/6 filters | R:R ${riskReward.toFixed(1)}:1`);
+    // 📊 Track signal performance for continuous improvement
+    await WebhookValidationService.trackSignalPerformance({
+      symbol: pair,
+      direction: tradeDirection,
+      entry: livePrice,
+      stop: stopLoss,
+      target: takeProfit,
+      confidence: finalConfidence
+    });
+
+    console.log(`🏛️ INSTITUTIONAL ${signal.signalStrength} APPROVED: ${pair} ${tradeDirection} @ ${livePrice} | ${filterResults.passedFilters}/6 filters | R:R ${riskReward.toFixed(1)}:1 | Webhook Enhanced`);
     
     return signal;
   }
@@ -405,6 +449,19 @@ class EliteSignalEngine {
     } else {
       return 'Asian Session - Reduced Activity';
     }
+  }
+
+  private getPassedFilterNames(filterResults: FilterResults): string[] {
+    const passedFilters: string[] = [];
+    
+    if (filterResults.structureBreak.passed) passedFilters.push('Structure Break');
+    if (filterResults.liquiditySweep.passed) passedFilters.push('Liquidity Sweep');
+    if (filterResults.fairValueGap.passed) passedFilters.push('Fair Value Gap');
+    if (filterResults.volumeSpike.passed) passedFilters.push('Volume Spike');
+    if (filterResults.rsiDivergence.passed) passedFilters.push('RSI Divergence');
+    if (filterResults.sessionFilter.passed) passedFilters.push('Session Filter');
+    
+    return passedFilters;
   }
 }
 
