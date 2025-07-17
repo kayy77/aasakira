@@ -10,8 +10,8 @@ class GroqService {
   private apiKey: string | null = null;
 
   constructor() {
-    // In a real implementation, you'd get this from environment or user settings
-    this.apiKey = process.env.GROQ_API_KEY || null;
+    // Initialize without process.env since it's not available in browser
+    this.apiKey = null;
   }
 
   async generateResponse(prompt: string, options: GroqOptions = {}): Promise<string> {
