@@ -22,7 +22,7 @@ export const useUserTracking = () => {
     }
   }, [user?.id]);
 
-  const trackSignalInteraction = useCallback(async (signal: any, action: 'view' | 'skip' | 'copy' | 'screenshot') => {
+  const trackSignalInteraction = useCallback(async (signal: any, action: 'view' | 'skip' | 'copied' | 'screenshot') => {
     if (!user?.id) return;
     
     switch (action) {
@@ -32,7 +32,7 @@ export const useUserTracking = () => {
       case 'skip':
         await UserTrackingService.trackSignalSkip(user.id, signal);
         break;
-      case 'copy':
+      case 'copied':
       case 'screenshot':
         await UserTrackingService.trackSignalAction(user.id, signal, action);
         break;

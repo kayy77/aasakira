@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { EnhancedGroqService } from '@/services/enhancedGroqService';
+import { enhancedGroqService } from '@/services/enhancedGroqService';
 import { UserTrackingService } from '@/services/userTrackingService';
 import { Loader2 } from 'lucide-react';
 
@@ -55,7 +54,7 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
         
         console.log('🧠 AI MENTOR CONTEXT:', userContext);
         
-        const response = await EnhancedGroqService.generatePersonalizedResponse(
+        const response = await enhancedGroqService.generatePersonalizedResponse(
           input,
           user.id,
           messages.map(msg => ({ role: msg.role, content: msg.content })),
