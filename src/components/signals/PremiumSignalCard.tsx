@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,17 +37,21 @@ const PremiumSignalCard: React.FC<PremiumSignalCardProps> = ({
   const [showLogicBreakdown, setShowLogicBreakdown] = useState(false);
   const { toast } = useToast();
 
-  // 🔥 FORCE PREMIUM SIGNAL TO USE LIVE PRICE AS ENTRY
+  // 🔥 FORCE PREMIUM SIGNAL TO USE LIVE PRICE AS ENTRY - Fixed TypeScript errors
+  const originalEntry = parseFloat(signal.entry);
+  const originalStopLoss = parseFloat(signal.stopLoss);
+  const originalTakeProfit = parseFloat(signal.takeProfit);
+  
   const premiumSignal = {
     ...signal,
     entry: livePrice, // Override with accurate live price
     // Recalculate SL and TP based on live price for maximum accuracy
     stopLoss: signal.type === 'BUY' 
-      ? livePrice - (Math.abs(signal.stopLoss - signal.entry))
-      : livePrice + (Math.abs(signal.stopLoss - signal.entry)),
+      ? livePrice - Math.abs(originalStopLoss - originalEntry)
+      : livePrice + Math.abs(originalStopLoss - originalEntry),
     takeProfit: signal.type === 'BUY'
-      ? livePrice + (Math.abs(signal.takeProfit - signal.entry))
-      : livePrice - (Math.abs(signal.takeProfit - signal.entry))
+      ? livePrice + Math.abs(originalTakeProfit - originalEntry)
+      : livePrice - Math.abs(originalTakeProfit - originalEntry)
   };
 
   // Recalculate R:R based on corrected levels
