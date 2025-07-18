@@ -53,6 +53,35 @@ const EliteAIMentor: React.FC = () => {
   const { state: mentorData, addInteraction } = useMentorMemory();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Load user progress data
+  useEffect(() => {
+    const loadUserProgress = async () => {
+      if (!user) return;
+      
+      try {
+        const { data } = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (data) {
+          // Update assessment based on user progress
+          setAssessment(prev => ({
+            discipline: Math.min(100, prev.discipline + data.current_streak * 2),
+            framework: Math.min(100, prev.framework + data.skills_mastered?.length * 5 || 0),
+            risk: Math.min(100, prev.risk + (data.win_rate || 0)),
+            execution: Math.min(100, prev.execution + data.charts_analyzed)
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading user progress:', error);
+      }
+    };
+
+    loadUserProgress();
+  }, [user]);
+
   // Elite system prompt for GROQ
   const getEliteSystemPrompt = () => `You are Aasakira — a world-class AI trading strategist trained on elite institutional methodologies, smart money theory, and psychological performance coaching. You speak with clarity, intensity, and precision — never fluff.
 

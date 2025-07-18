@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import EnhancedTradingJournal from '@/components/education/EnhancedTradingJournal';
 import BacktestLab from '@/components/education/BacktestLab';
-import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
+import EliteAIMentor from '@/components/education/EliteAIMentor';
 import ComprehensiveLearningPath from '@/components/education/ComprehensiveLearningPath';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -104,19 +104,19 @@ const Education = () => {
             </div>
 
             <TabsContent value="path">
-              <ComprehensiveLearningPath onAskMentor={handleAskMentor} />
+              <ComprehensiveLearningPath />
             </TabsContent>
 
             <TabsContent value="mentor">
-              <Card className="glass-card h-[600px]">
+              <Card className="glass-card h-auto min-h-[600px]">
                 <CardHeader>
                   <CardTitle className="flex items-center text-purple-400">
                     <Brain className="w-6 h-6 mr-2" />
                     AI Trading Mentor
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="h-full p-0">
-                  <EnhancedAIMentor />
+                <CardContent className="p-6">
+                  <EliteAIMentor />
                 </CardContent>
               </Card>
             </TabsContent>
