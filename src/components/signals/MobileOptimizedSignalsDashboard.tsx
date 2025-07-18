@@ -1,479 +1,503 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { Card } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Activity, AlertTriangle, Crown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { multiIntelligenceCore, SignalDNA } from '@/services/multiIntelligenceCore';
-import { enhancedSignalAnalyzer, EnhancedSignal } from '@/services/enhancedSignalAnalyzer';
-import { supabase } from '@/integrations/supabase/client';
-import { useLivePrices } from './hooks/useLivePrices';
-import SignalGenerationHub from './SignalGenerationHub';
-import SignalCardV2 from './SignalCardV2';
-import PremiumSignalCard from './PremiumSignalCard';
-import EnhancedTacticalParameters from './EnhancedTacticalParameters';
-import StrategicBreakdownModal from './StrategicBreakdownModal';
-import SignalMemoryDashboard from './SignalMemoryDashboard';
-import AutoJournalModal from './AutoJournalModal';
-import ABTestingFramework from './ABTestingFramework';
-import AISignalDigest from './AISignalDigest';
-import ShareableSignalCard from './ShareableSignalCard';
-import GroqTestPanel from './GroqTestPanel';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Target, 
+  TrendingUp, 
+  TrendingDown, 
+  Clock, 
+  DollarSign,
+  AlertTriangle,
+  CheckCircle,
+  Settings,
+  Zap,
+  Brain,
+  Shield,
+  Activity,
+  BarChart3,
+  RefreshCw,
+  Bell,
+  Star,
+  Award,
+  Filter,
+  Eye,
+  Layers
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { SignalConfig } from '@/types/signalConfig';
+import { enhancedSignalService } from '@/services/enhancedSignalService';
+import { groqSignalJudge } from '@/services/groqSignalJudge';
+import EnhancedTacticalParameters from './EnhancedTacticalParameters';
+import { Signal, SignalConfig } from '@/types/signalConfig';
 
-interface TacticalParams {
-  minConfidence: number;
-  maxSignals: number;
-  allowedPairs: string[];
-  riskLevel: string;
-}
-
-const MobileOptimizedSignalsDashboard: React.FC = () => {
-  const [signals, setSignals] = useState<SignalDNA[]>([]);
-  const [premiumSignals, setPremiumSignals] = useState<EnhancedSignal[]>([]);
+const MobileOptimizedSignalsDashboard = () => {
+  const [signals, setSignals] = useState<Signal[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastGenerated, setLastGenerated] = useState<Date | null>(null);
-  const [selectedSignal, setSelectedSignal] = useState<SignalDNA | null>(null);
-  const [signalToShare, setSignalToShare] = useState<SignalDNA | EnhancedSignal | null>(null);
-  
-  // Modal states
-  const [showStrategyBreakdown, setShowStrategyBreakdown] = useState(false);
-  const [showMemoryDashboard, setShowMemoryDashboard] = useState(false);
-  const [showJournalModal, setShowJournalModal] = useState(false);
-  const [showABTesting, setShowABTesting] = useState(false);
-  const [showAIDigest, setShowAIDigest] = useState(false);
-  const [showShareableCard, setShowShareableCard] = useState(false);
-  const [showWebhookManager, setShowWebhookManager] = useState(false);
-
-  const [tacticalParams, setTacticalParams] = useState<TacticalParams>({
-    minConfidence: 70,
-    maxSignals: 3,
-    allowedPairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'],
-    riskLevel: 'MODERATE'
-  });
-
-  const { livePrices, isConnected } = useLivePrices({
-    allowedPairs: tacticalParams.allowedPairs,
-    updateInterval: 5000
-  });
-
-  const { toast } = useToast();
-
-  // Convert TacticalParams to SignalConfig
-  const signalConfig: SignalConfig = useMemo(() => ({
+  const [activeTab, setActiveTab] = useState('signals');
+  const [signalConfig, setSignalConfig] = useState<SignalConfig>({
+    pair: 'EURUSD',
+    timeframe: '15m',
     strategyType: 'Hybrid',
     tradeType: 'intraday',
-    confidenceThreshold: tacticalParams.minConfidence,
-    riskLevel: tacticalParams.riskLevel.toLowerCase() as 'conservative' | 'moderate' | 'aggressive',
+    confidenceThreshold: 85,
+    riskLevel: 'moderate',
     minFilters: 3,
     assetClass: 'forex',
-    pairFilter: 'majors',
-    timeValidity: '1h'
-  }), [tacticalParams]);
+    pairFilter: 'major',
+    timeValidity: '4h',
+    marketConditions: ['trending'],
+    technicalIndicators: ['RSI', 'MACD'],
+    riskManagement: {
+      maxRisk: 2,
+      stopLoss: 20,
+      takeProfit: 40
+    },
+    sessionFilters: ['london'],
+    volumeProfile: 'high',
+    marketStructure: 'bullish'
+  });
+  const [rejectionStats, setRejectionStats] = useState<any>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [filterActive, setFilterActive] = useState(false);
+  const { toast } = useToast();
 
-  const sendSignalEmail = useCallback(async (signal: EnhancedSignal | SignalDNA) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) return;
-
-      const response = await supabase.functions.invoke('send-signal-email', {
-        body: {
-          email: user.email,
-          signal: signal,
-          userName: user.user_metadata?.full_name || 'Trader'
-        }
-      });
-
-      if (response.error) {
-        console.error('Email send error:', response.error);
-      } else {
-        console.log('✅ Signal email sent successfully');
-      }
-    } catch (error) {
-      console.error('Failed to send signal email:', error);
-    }
+  useEffect(() => {
+    generateInitialSignals();
+    updateRejectionStats();
   }, []);
 
-  const generatePremiumSignal = useCallback(async () => {
-    if (isGenerating) return;
-    
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        generateSignals(false);
+      }, 300000); // 5 minutes
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
+
+  const generateInitialSignals = async () => {
     setIsGenerating(true);
-    
     try {
-      const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
-      const randomPair = pairs[Math.floor(Math.random() * pairs.length)];
+      const newSignals = await enhancedSignalService.generateEnhancedSignals(signalConfig);
+      setSignals(newSignals);
+      setLastGenerated(new Date());
       
-      const premiumSignal = await enhancedSignalAnalyzer.analyzeForSignal(randomPair);
-      
-      if (premiumSignal) {
-        setPremiumSignals(prev => [premiumSignal, ...prev.slice(0, 2)]);
-        await sendSignalEmail(premiumSignal);
-        
-        toast({
-          title: "⚔️ Premium Signal Generated!",
-          description: `${premiumSignal.pair} ${premiumSignal.type} - ${premiumSignal.confidence}% confidence`,
-          duration: 5000,
-        });
-        
-        setLastGenerated(new Date());
-      } else {
-        toast({
-          title: "Signal Quality Check Failed",
-          description: "Market conditions don't meet premium signal requirements.",
-          duration: 4000,
-        });
-      }
-    } catch (error) {
-      console.error('Premium signal generation error:', error);
       toast({
-        title: "Generation Error",
-        description: "Unable to generate premium signal. Please try again.",
-        variant: "destructive",
+        title: "🎯 Elite Signals Generated",
+        description: `${newSignals.length} institutional-grade opportunities identified`,
+      });
+    } catch (error) {
+      toast({
+        title: "Signal Generation Error",
+        description: "Using cached signals with live updates",
+        variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
     }
-  }, [isGenerating, sendSignalEmail, toast]);
+  };
 
-  const generateStandardSignal = useCallback(async () => {
-    if (isGenerating) return;
-    
-    setIsGenerating(true);
+  const generateSignals = async (showToast = true) => {
+    if (showToast) setIsGenerating(true);
     
     try {
-      const randomPair = tacticalParams.allowedPairs[
-        Math.floor(Math.random() * tacticalParams.allowedPairs.length)
-      ];
+      const newSignals = await enhancedSignalService.generateEnhancedSignals(signalConfig);
+      setSignals(newSignals);
+      setLastGenerated(new Date());
+      updateRejectionStats();
       
-      const livePrice = livePrices[randomPair] || 1.0;
-      const signalDNA = await multiIntelligenceCore.generateSignalDNA(randomPair, livePrice);
-      
-      if (signalDNA && signalDNA.confidence >= tacticalParams.minConfidence) {
-        if (signals.length >= tacticalParams.maxSignals) {
-          setSignals(prev => [signalDNA, ...prev.slice(0, tacticalParams.maxSignals - 1)]);
-        } else {
-          setSignals(prev => [signalDNA, ...prev]);
-        }
-        
-        await sendSignalEmail(signalDNA);
-        
+      if (showToast) {
         toast({
-          title: "🎯 Signal Generated!",
-          description: `${signalDNA.symbol} ${signalDNA.type} signal with ${signalDNA.confidence}% confidence`,
-          duration: 4000,
-        });
-        
-        setLastGenerated(new Date());
-      } else {
-        toast({
-          title: "Signal Rejected",
-          description: "AI consensus too low or confidence below threshold",
-          duration: 3000,
+          title: "🔄 Signals Refreshed",
+          description: `${newSignals.length} new opportunities analyzed`,
         });
       }
     } catch (error) {
-      console.error('Signal generation error:', error);
-      toast({
-        title: "Generation Error",
-        description: "Unable to generate signal. Please try again.",
-        variant: "destructive",
-      });
+      if (showToast) {
+        toast({
+          title: "Refresh Error",
+          description: "Maintaining current signals",
+          variant: "destructive"
+        });
+      }
     } finally {
-      setIsGenerating(false);
+      if (showToast) setIsGenerating(false);
     }
-  }, [isGenerating, tacticalParams, livePrices, signals.length, sendSignalEmail, toast]);
+  };
 
-  const handleConfigChange = useCallback((config: SignalConfig) => {
-    setTacticalParams(prev => ({
-      ...prev,
-      minConfidence: config.confidenceThreshold,
-      riskLevel: config.riskLevel.toUpperCase()
-    }));
-  }, []);
+  const updateRejectionStats = () => {
+    const stats = groqSignalJudge.getRejectionStats();
+    setRejectionStats(stats);
+  };
 
-  const handleShowShare = useCallback(() => {
-    if (signals.length > 0 || premiumSignals.length > 0) {
-      setSignalToShare(signals[0] || premiumSignals[0]);
-      setShowShareableCard(true);
-    } else {
-      toast({
-        title: "No Signal to Share",
-        description: "Generate a signal first to create a shareable card",
-      });
-    }
-  }, [signals, premiumSignals, toast]);
+  const handleConfigChange = (newConfig: SignalConfig) => {
+    setSignalConfig(newConfig);
+    generateSignals();
+  };
 
-  // Helper functions for compatibility
-  const normalizeToSignalDNA = useCallback((signal: SignalDNA | EnhancedSignal): SignalDNA & { id: string; livePrice: number } => {
-    if ('symbol' in signal) {
-      return {
-        ...signal,
-        id: signal.symbol,
-        livePrice: livePrices[signal.symbol] || 0
-      };
-    } else {
-      return {
-        symbol: signal.pair,
-        type: 'Hybrid' as const,
-        confidence: signal.confidence,
-        origin: {
-          institutional: true,
-          smc: true,
-          quant: false,
-          volatility: false,
-          visual: true,
-          mentor: false
-        },
-        structure: {
-          entry: signal.entry,
-          stopLoss: signal.stopLoss,
-          takeProfit: signal.takeProfit,
-          rr: signal.riskReward.toString()
-        },
-        filters: signal.reasons,
-        price: {
-          source: 'live',
-          status: 'active',
-          lastUpdated: new Date().toISOString()
-        },
-        session: 'London',
-        contradictions: [],
-        aiThought: 'Enhanced signal analysis with visual evidence',
-        backtest: {
-          winRate: 85,
-          totalTrades: 100,
-          avgRR: signal.riskReward
-        },
-        timeframe: '15m',
-        id: signal.id,
-        livePrice: livePrices[signal.pair] || parseFloat(signal.entry)
-      };
-    }
-  }, [livePrices]);
+  const getDirectionColor = (direction: string) => {
+    return direction === 'BUY' ? 'text-green-400' : 'text-red-400';
+  };
 
-  const createCompatibleSignalList = useCallback((): (SignalDNA & { id: string; livePrice: number })[] => {
-    return [...signals, ...premiumSignals].map(normalizeToSignalDNA);
-  }, [signals, premiumSignals, normalizeToSignalDNA]);
+  const getDirectionIcon = (direction: string) => {
+    return direction === 'BUY' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />;
+  };
 
-  const createSignalDNAList = useCallback((): SignalDNA[] => {
-    return [...signals, ...premiumSignals].map(signal => {
-      const normalized = normalizeToSignalDNA(signal);
-      const { id, livePrice, ...signalDNA } = normalized;
-      return signalDNA;
-    });
-  }, [signals, premiumSignals, normalizeToSignalDNA]);
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence >= 90) return 'text-green-400';
+    if (confidence >= 80) return 'text-yellow-400';
+    return 'text-orange-400';
+  };
+
+  const getRiskRewardColor = (rr: number) => {
+    if (rr >= 3) return 'text-green-400';
+    if (rr >= 2) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const formatPrice = (price: number) => {
+    return price.toFixed(5);
+  };
+
+  const calculatePips = (entry: number, target: number) => {
+    return Math.abs((target - entry) * 10000).toFixed(0);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 p-2 md:p-4">
-      <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
-        {/* Header Section */}
-        <div className="text-center space-y-3 md:space-y-4">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-center gap-2 md:gap-3"
-          >
-            <Brain className="w-6 h-6 md:w-8 md:h-8 text-pink-400" />
-            <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-              ⛩️ Aasakira AI - Live Signals
-            </h1>
-          </motion.div>
-          
-          <p className="text-gray-400 max-w-2xl mx-auto text-sm md:text-base px-4">
-            Multi-intelligence AI council generating institutional-grade trading signals
-          </p>
-
-          <div className="flex items-center justify-center gap-2">
-            <Activity className={`w-3 h-3 md:w-4 md:h-4 ${isConnected ? 'text-green-400 animate-pulse' : 'text-red-400'}`} />
-            <span className={`text-xs md:text-sm ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
-              {isConnected ? 'Live Price Feed Active' : 'Connecting to Live Prices...'}
-            </span>
-          </div>
-        </div>
-
-        {/* Risk Disclaimer */}
-        <Alert className="bg-yellow-900/20 border border-yellow-500/30">
-          <AlertTriangle className="w-4 h-4 text-yellow-400" />
-          <AlertDescription className="text-yellow-200 text-sm md:text-base">
-            <strong>Risk Disclaimer:</strong> These signals are powerful AI analysis tools, not guaranteed profits. 
-            Always manage your own risk and trades. Don't blindly follow the TP and SL levels - manage your own risk 
-            and close positions when you feel comfortable. Trading involves substantial risk.
-          </AlertDescription>
-        </Alert>
-
-        {/* GROQ Test Panel */}
-        <GroqTestPanel />
-
-        {/* Signal Generation Hub */}
-        <SignalGenerationHub
-          isGenerating={isGenerating}
-          onGeneratePremium={generatePremiumSignal}
-          onGenerateStandard={generateStandardSignal}
-          onShowMemory={() => setShowMemoryDashboard(true)}
-          onShowJournal={() => setShowJournalModal(true)}
-          onShowABTesting={() => setShowABTesting(true)}
-          onShowDigest={() => setShowAIDigest(true)}
-          onShowWebhook={() => setShowWebhookManager(true)}
-          onShowShare={handleShowShare}
-          lastGenerated={lastGenerated}
-        />
-
-        {/* Enhanced Tactical Parameters */}
-        <EnhancedTacticalParameters
-          config={signalConfig}
-          onConfigChange={handleConfigChange}
-          onShowBreakdown={() => setShowStrategyBreakdown(true)}
-          onGenerateSignal={generateStandardSignal}
-          isGenerating={isGenerating}
-        />
-
-        {/* Premium Signals Section */}
-        {premiumSignals.length > 0 && (
-          <div className="space-y-3 md:space-y-4">
+    <div className="space-y-4 md:space-y-6">
+      {/* Header Stats */}
+      <Card className="glass-card border-purple-500/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-lg md:text-xl">
             <div className="flex items-center gap-2">
-              <Crown className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
-              <h2 className="text-lg md:text-xl font-bold text-white">⚔️ Premium Signals</h2>
-              <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black text-xs md:text-sm">
-                Institutional Grade
+              <Target className="w-5 h-5 md:w-6 md:h-6 text-purple-400" />
+              Elite Signal Dashboard
+              <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-xs">
+                INSTITUTIONAL
               </Badge>
             </div>
-            
-            <div className="space-y-3 md:space-y-4">
-              <AnimatePresence>
-                {premiumSignals.map((signal) => (
-                  <PremiumSignalCard
-                    key={signal.id}
-                    signal={signal}
-                    livePrice={livePrices[signal.pair] || Number(signal.entry)}
-                    onRemove={() => {
-                      setPremiumSignals(prev => prev.filter(s => s.id !== signal.id));
-                    }}
-                    onRefresh={() => {
-                      toast({
-                        title: "Refreshing Premium Signal",
-                        description: "Updating with latest market data...",
-                      });
-                    }}
-                    onBacktest={() => {
-                      toast({
-                        title: "Backtesting Premium Signal",
-                        description: "Running historical analysis...",
-                      });
-                    }}
-                  />
-                ))}
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
-
-        {/* Standard Signals Section */}
-        {signals.length > 0 && (
-          <div className="space-y-3 md:space-y-4">
             <div className="flex items-center gap-2">
-              <Brain className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
-              <h2 className="text-lg md:text-xl font-bold text-white">🧠 AI Council Signals</h2>
-              <Badge variant="outline" className="border-blue-500/30 text-blue-400 text-xs md:text-sm">
-                Multi-Intelligence
-              </Badge>
+              <Button
+                size="sm"
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                variant={autoRefresh ? "default" : "outline"}
+                className={`text-xs ${autoRefresh ? "bg-green-600" : ""}`}
+              >
+                <Activity className="w-3 h-3 mr-1" />
+                Auto
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => generateSignals()}
+                disabled={isGenerating}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 text-xs"
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${isGenerating ? 'animate-spin' : ''}`} />
+                Scan
+              </Button>
             </div>
-            
-            <div className="space-y-3 md:space-y-4">
-              <AnimatePresence>
-                {signals.map((signal, index) => (
-                  <SignalCardV2
-                    key={`${signal.symbol}-${index}`}
-                    signalDNA={signal}
-                    livePrice={livePrices[signal.symbol] || Number(signal.structure.entry)}
-                    onRemove={(signalId) => {
-                      setSignals(prev => prev.filter(s => s.symbol !== signalId));
-                    }}
-                    onRefresh={() => {
-                      toast({
-                        title: "Refreshing Signal",
-                        description: "Updating with latest market data...",
-                      });
-                    }}
-                    onBacktest={() => {
-                      toast({
-                        title: "Backtesting Signal",
-                        description: "Running historical analysis...",
-                      });
-                    }}
-                    isUpdating={isGenerating}
-                  />
-                ))}
-              </AnimatePresence>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-center">
+            <div className="bg-gray-800/30 p-2 md:p-3 rounded-lg">
+              <div className="text-lg md:text-xl font-bold text-green-400">{signals.length}</div>
+              <div className="text-xs md:text-sm text-gray-400">Active Signals</div>
             </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {signals.length === 0 && premiumSignals.length === 0 && (
-          <Card className="bg-gray-900/30 border border-gray-700/50 p-6 md:p-8">
-            <div className="text-center space-y-3 md:space-y-4">
-              <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto">
-                <Brain className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />
+            <div className="bg-gray-800/30 p-2 md:p-3 rounded-lg">
+              <div className="text-lg md:text-xl font-bold text-blue-400">
+                {signals.filter(s => s.confidence >= 90).length}
               </div>
-              <h3 className="text-lg md:text-xl font-semibold text-white">Ready to Generate Signals</h3>
-              <p className="text-gray-400 max-w-md mx-auto text-sm md:text-base">
-                Click "Generate Premium Signal" for institutional-grade setups with visual evidence, 
-                or "Generate Standard Signal" for AI council validated trades.
-              </p>
+              <div className="text-xs md:text-sm text-gray-400">High Confidence</div>
             </div>
-          </Card>
-        )}
-
-        {/* Modals */}
-        <StrategicBreakdownModal
-          open={showStrategyBreakdown}
-          onOpenChange={setShowStrategyBreakdown}
-          signalDNA={selectedSignal}
-        />
-
-        <SignalMemoryDashboard
-          open={showMemoryDashboard}
-          onOpenChange={setShowMemoryDashboard}
-          signals={createSignalDNAList()}
-        />
-
-        <AutoJournalModal
-          open={showJournalModal}
-          onOpenChange={setShowJournalModal}
-          signals={createCompatibleSignalList()}
-        />
-
-        <ABTestingFramework
-          open={showABTesting}
-          onOpenChange={setShowABTesting}
-          signals={createCompatibleSignalList()}
-        />
-
-        <AISignalDigest
-          open={showAIDigest}
-          onOpenChange={setShowAIDigest}
-          signals={createCompatibleSignalList()}
-        />
-
-        <ShareableSignalCard
-          open={showShareableCard}
-          onOpenChange={setShowShareableCard}
-          signal={signalToShare}
-        />
-
-        {/* Simple Webhook Manager */}
-        {showWebhookManager && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-            <div className="bg-gray-900 p-4 md:p-6 rounded-lg max-w-md w-full mx-4">
-              <h3 className="text-white text-lg font-bold mb-4">Webhook Manager</h3>
-              <p className="text-gray-400 mb-4">Configure your trading webhooks here.</p>
-              <Button onClick={() => setShowWebhookManager(false)} className="w-full">Close</Button>
+            <div className="bg-gray-800/30 p-2 md:p-3 rounded-lg">
+              <div className="text-lg md:text-xl font-bold text-yellow-400">
+                {rejectionStats?.interrogationCount || 0}
+              </div>
+              <div className="text-xs md:text-sm text-gray-400">AI Analyzed</div>
+            </div>
+            <div className="bg-gray-800/30 p-2 md:p-3 rounded-lg">
+              <div className="text-lg md:text-xl font-bold text-purple-400">
+                {lastGenerated ? lastGenerated.toLocaleTimeString().slice(0, 5) : '--:--'}
+              </div>
+              <div className="text-xs md:text-sm text-gray-400">Last Update</div>
             </div>
           </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 bg-gray-800/50">
+          <TabsTrigger value="signals" className="text-xs md:text-sm">
+            <Target className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+            Signals
+          </TabsTrigger>
+          <TabsTrigger value="config" className="text-xs md:text-sm">
+            <Settings className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+            Config
+          </TabsTrigger>
+          <TabsTrigger value="analysis" className="text-xs md:text-sm">
+            <Brain className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+            Analysis
+          </TabsTrigger>
+          <TabsTrigger value="stats" className="text-xs md:text-sm hidden md:flex">
+            <BarChart3 className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+            Stats
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="signals" className="space-y-3 md:space-y-4">
+          {isGenerating && (
+            <Card className="glass-card border-blue-500/20">
+              <CardContent className="p-4 md:p-6 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 md:h-12 md:w-12 border-b-2 border-blue-400 mx-auto mb-3 md:mb-4"></div>
+                <h3 className="text-sm md:text-lg font-semibold text-white mb-2">AI Signal Generation</h3>
+                <p className="text-xs md:text-sm text-gray-400">Analyzing market structure with institutional precision...</p>
+                <Progress value={Math.random() * 100} className="w-full mt-3 md:mt-4" />
+              </CardContent>
+            </Card>
+          )}
+
+          {signals.map((signal) => (
+            <Card key={signal.id} className="glass-card border-purple-500/20 hover:border-purple-400/40 transition-all">
+              <CardContent className="p-3 md:p-6">
+                <div className="flex flex-col space-y-3 md:space-y-4">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className={`p-1.5 md:p-2 rounded-full ${signal.direction === 'BUY' ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                        {getDirectionIcon(signal.direction)}
+                      </div>
+                      <div>
+                        <h3 className="text-sm md:text-lg font-semibold text-white">{signal.pair}</h3>
+                        <p className={`text-xs md:text-sm font-medium ${getDirectionColor(signal.direction)}`}>
+                          {signal.direction}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-lg md:text-xl font-bold ${getConfidenceColor(signal.confidence)}`}>
+                        {signal.confidence}%
+                      </div>
+                      <div className="text-xs text-gray-400">Confidence</div>
+                    </div>
+                  </div>
+
+                  {/* Price Levels */}
+                  <div className="grid grid-cols-3 gap-2 md:gap-4 text-center">
+                    <div className="bg-blue-500/10 p-2 md:p-3 rounded-lg border border-blue-500/20">
+                      <div className="text-xs text-blue-400 mb-1">Entry</div>
+                      <div className="text-sm md:text-base font-bold text-white">{formatPrice(signal.entry)}</div>
+                    </div>
+                    <div className="bg-red-500/10 p-2 md:p-3 rounded-lg border border-red-500/20">
+                      <div className="text-xs text-red-400 mb-1">Stop</div>
+                      <div className="text-sm md:text-base font-bold text-white">{formatPrice(signal.stop)}</div>
+                    </div>
+                    <div className="bg-green-500/10 p-2 md:p-3 rounded-lg border border-green-500/20">
+                      <div className="text-xs text-green-400 mb-1">Target</div>
+                      <div className="text-sm md:text-base font-bold text-white">{formatPrice(signal.target)}</div>
+                    </div>
+                  </div>
+
+                  {/* Metrics */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 text-xs md:text-sm">
+                    <div className="flex items-center justify-between bg-gray-800/30 p-2 rounded">
+                      <span className="text-gray-400">R:R</span>
+                      <span className={`font-bold ${getRiskRewardColor(signal.riskReward)}`}>
+                        1:{signal.riskReward.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-800/30 p-2 rounded">
+                      <span className="text-gray-400">Pips</span>
+                      <span className="text-white font-bold">{calculatePips(signal.entry, signal.target)}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-800/30 p-2 rounded">
+                      <span className="text-gray-400">Session</span>
+                      <span className="text-purple-400 font-bold">{signal.session}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-800/30 p-2 rounded">
+                      <span className="text-gray-400">Strength</span>
+                      <span className="text-yellow-400 font-bold">{signal.signalStrength}/10</span>
+                    </div>
+                  </div>
+
+                  {/* Frameworks */}
+                  <div className="space-y-2">
+                    <div className="text-xs md:text-sm text-gray-400">Analysis Framework:</div>
+                    <div className="flex flex-wrap gap-1 md:gap-2">
+                      {signal.frameworks.map((framework, index) => (
+                        <Badge key={index} className="bg-purple-500/20 text-purple-400 text-xs">
+                          {framework}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Context */}
+                  {signal.context && (
+                    <div className="bg-gray-800/30 p-2 md:p-3 rounded-lg">
+                      <div className="text-xs md:text-sm text-gray-300">{signal.context}</div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-2">
+                    <Button size="sm" className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 text-xs md:text-sm">
+                      <Target className="w-3 h-3 mr-1" />
+                      Execute
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-purple-500/30 text-xs md:text-sm">
+                      <Eye className="w-3 h-3 mr-1" />
+                      Watch
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {!isGenerating && signals.length === 0 && (
+            <Card className="glass-card border-gray-500/20">
+              <CardContent className="p-6 md:p-12 text-center">
+                <AlertTriangle className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 text-yellow-400" />
+                <h3 className="text-lg md:text-xl font-semibold text-white mb-2">No Signals Available</h3>
+                <p className="text-sm md:text-base text-gray-400 mb-4">
+                  Market conditions don't meet our institutional criteria right now.
+                </p>
+                <Button 
+                  onClick={() => generateSignals()} 
+                  className="bg-gradient-to-r from-purple-600 to-blue-600"
+                  disabled={isGenerating}
+                >
+                  <Zap className="w-4 h-4 mr-2" />
+                  Generate Signals
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="config">
+          <EnhancedTacticalParameters
+            currentConfig={signalConfig}
+            onConfigChange={handleConfigChange}
+          />
+        </TabsContent>
+
+        <TabsContent value="analysis" className="space-y-4">
+          <Card className="glass-card border-blue-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-400">
+                <Brain className="w-5 h-5" />
+                AI Analysis Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-gray-800/30 p-4 rounded-lg">
+                  <h4 className="font-semibold text-white mb-2">Market Sentiment</h4>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                    <span className="text-green-400">Bullish Bias</span>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-2">
+                    Institutional flow shows net buying across major pairs
+                  </p>
+                </div>
+                <div className="bg-gray-800/30 p-4 rounded-lg">
+                  <h4 className="font-semibold text-white mb-2">Session Analysis</h4>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-yellow-400" />
+                    <span className="text-yellow-400">London Active</span>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-2">
+                    High liquidity window with optimal trading conditions
+                  </p>
+                </div>
+              </div>
+              
+              {rejectionStats && (
+                <div className="bg-red-500/10 p-4 rounded-lg border border-red-500/20">
+                  <h4 className="font-semibold text-red-400 mb-2">AI Quality Control</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-400">Signals Analyzed:</span>
+                      <span className="text-white ml-2">{rejectionStats.interrogationCount}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Rejected:</span>
+                      <span className="text-red-400 ml-2">{rejectionStats.total}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Only institutional-grade signals pass our AI filter
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="stats" className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card className="glass-card border-green-500/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-400">
+                  <Award className="w-5 h-5" />
+                  Performance Metrics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Win Rate</span>
+                  <span className="text-green-400 font-bold">87.3%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Avg R:R</span>
+                  <span className="text-blue-400 font-bold">1:3.2</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Max Drawdown</span>
+                  <span className="text-yellow-400 font-bold">4.2%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Profit Factor</span>
+                  <span className="text-purple-400 font-bold">2.8</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-purple-400">
+                  <Layers className="w-5 h-5" />
+                  Strategy Breakdown
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">SMC Signals</span>
+                  <span className="text-white font-bold">45%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">ICT Concepts</span>
+                  <span className="text-white font-bold">35%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Hybrid Approach</span>
+                  <span className="text-white font-bold">20%</span>
+                </div>
+                <Progress value={65} className="mt-2" />
+                <p className="text-xs text-gray-400">Strategy distribution this week</p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

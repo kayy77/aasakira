@@ -1,56 +1,76 @@
 
-export interface SignalConfig {
-  pair: string;
-  timeframe: string;
-  marketConditions: string[];
-  technicalIndicators: string[];
-  riskReward: number;
-  pairFilters: string[];
-  minConfidence: number;
-  maxSignalsPerHour: number;
-  enabled: boolean;
-  stopLoss: number;
-  takeProfit: number;
-  entryType: 'market' | 'limit';
-  // New properties for enhanced functionality
-  strategyType?: 'SMC' | 'ICT' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP';
-  tradeType?: 'SWING' | 'SCALP' | 'POSITION';
-  confidenceThreshold?: number;
-  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
-  minFilters?: number;
-  assetClass?: 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES';
-  pairFilter?: string;
-}
-
 export interface Signal {
   id: string;
   pair: string;
-  type: 'BUY' | 'SELL';
-  entryPrice: number;
-  stopLoss: number;
-  takeProfit: number;
+  direction: 'BUY' | 'SELL';
+  entry: number;
+  stop: number;
+  target: number;
+  frameworks: string[];
+  session: string;
+  rsi?: number;
+  volume?: string;
+  context?: string;
+  confluence: number;
   confidence: number;
-  analysis: string;
-  timestamp: string;
-  timeframe: string;
   riskReward: number;
-  strategy: string;
-  marketCondition: string;
-  technicalSetup: string;
-  entryReason: string;
-  riskManagement: string;
-  filtersPassed?: string[];
+  signalStrength: number;
+  sessionContext?: string;
+  timestamp?: string;
+  status?: 'active' | 'closed' | 'pending';
 }
 
-export type SavedPreset = {
-  id: string;
-  name: string;
-  config: Partial<SignalConfig>;
+export interface StrategyBreakdown {
+  title: string;
   description: string;
-  createdAt: string;
-};
+  keyPoints: string[];
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  timeframe: string;
+  successRate: number;
+}
 
-export type TradeType = 'SWING' | 'SCALP' | 'POSITION';
-export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
-export type AssetClass = 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES';
-export type StrategyType = 'SMC' | 'ICT' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP';
+export interface SignalConfig {
+  pair: string;
+  timeframe: string;
+  strategyType: 'SMC' | 'ICT' | 'Hybrid';
+  tradeType: 'scalp' | 'intraday' | 'swing';
+  confidenceThreshold: number;
+  riskLevel: 'conservative' | 'moderate' | 'aggressive';
+  minFilters: number;
+  assetClass: 'forex' | 'crypto' | 'stocks';
+  pairFilter: string;
+  timeValidity: string;
+  marketConditions: string[];
+  technicalIndicators: string[];
+  riskManagement: {
+    maxRisk: number;
+    stopLoss: number;
+    takeProfit: number;
+  };
+  sessionFilters: string[];
+  volumeProfile: string;
+  marketStructure: string;
+}
+
+export const defaultSignalConfig: SignalConfig = {
+  pair: 'EURUSD',
+  timeframe: '15m',
+  strategyType: 'Hybrid',
+  tradeType: 'intraday',
+  confidenceThreshold: 85,
+  riskLevel: 'moderate',
+  minFilters: 3,
+  assetClass: 'forex',
+  pairFilter: 'major',
+  timeValidity: '4h',
+  marketConditions: ['trending', 'ranging'],
+  technicalIndicators: ['RSI', 'MACD', 'OrderBlocks'],
+  riskManagement: {
+    maxRisk: 2,
+    stopLoss: 20,
+    takeProfit: 40
+  },
+  sessionFilters: ['london', 'newyork'],
+  volumeProfile: 'high',
+  marketStructure: 'bullish'
+};

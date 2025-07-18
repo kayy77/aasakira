@@ -1,430 +1,424 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { 
   Settings, 
-  Star, 
-  Eye, 
-  Save,
+  Target, 
+  Shield, 
   Clock,
-  Shield,
   TrendingUp,
-  Coins,
+  AlertTriangle,
+  Zap,
+  Activity,
   BarChart3,
-  Zap
+  Filter,
+  Globe,
+  Timer
 } from 'lucide-react';
-import { SignalConfig, SavedPreset, TradeType, RiskLevel, AssetClass, StrategyType } from '@/types/signalConfig';
-import { useToast } from '@/hooks/use-toast';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { SignalConfig, defaultSignalConfig } from '@/types/signalConfig';
 
 interface EnhancedTacticalParametersProps {
-  config: SignalConfig;
   onConfigChange: (config: SignalConfig) => void;
-  onShowBreakdown: () => void;
-  onGenerateSignal: () => void;
-  isGenerating: boolean;
+  currentConfig: SignalConfig;
 }
 
-const tradeTypeIcons = {
-  scalp: Clock,
-  intraday: Zap,
-  swing: TrendingUp,
-  position: BarChart3
-};
-
-const riskLevelColors = {
-  conservative: 'bg-green-500/20 text-green-400 border-green-500/30',
-  moderate: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  aggressive: 'bg-red-500/20 text-red-400 border-red-500/30'
-};
-
-const assetClassIcons = {
-  forex: Coins,
-  crypto: TrendingUp,
-  commodities: BarChart3,
-  indices: Shield
-};
-
-export const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProps> = ({
-  config,
+const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProps> = ({
   onConfigChange,
-  onShowBreakdown,
-  onGenerateSignal,
-  isGenerating
+  currentConfig
 }) => {
-  const [savedPresets, setSavedPresets] = useState<SavedPreset[]>([]);
-  const [presetName, setPresetName] = useState('');
-  const [showSaveForm, setShowSaveForm] = useState(false);
-  const { toast } = useToast();
-  const isMobile = useIsMobile();
+  const [config, setConfig] = useState<SignalConfig>(currentConfig || defaultSignalConfig);
+  const [lastUpdate, setLastUpdate] = useState<string>(new Date().toISOString());
 
   const updateConfig = (updates: Partial<SignalConfig>) => {
-    onConfigChange({ ...config, ...updates });
+    const newConfig = { ...config, ...updates };
+    setConfig(newConfig);
+    setLastUpdate(new Date().toISOString());
+    onConfigChange(newConfig);
   };
 
-  const savePreset = () => {
-    if (!presetName.trim()) {
-      toast({
-        title: "Name Required",
-        description: "Please enter a name for your preset",
-        variant: "destructive"
-      });
-      return;
-    }
+  const assetClasses = [
+    { value: 'forex', label: 'Forex', icon: <Globe className="w-4 h-4" /> },
+    { value: 'crypto', label: 'Crypto', icon: <Activity className="w-4 h-4" /> },
+    { value: 'stocks', label: 'Stocks', icon: <BarChart3 className="w-4 h-4" /> }
+  ];
 
-    const newPreset: SavedPreset = {
-      id: Date.now().toString(),
-      name: presetName.trim(),
-      config: { ...config },
-      createdAt: new Date()
-    };
+  const strategyTypes = [
+    { value: 'SMC', label: 'Smart Money Concepts' },
+    { value: 'ICT', label: 'Inner Circle Trader' },
+    { value: 'Hybrid', label: 'Hybrid Strategy' }
+  ];
 
-    setSavedPresets(prev => [newPreset, ...prev]);
-    setPresetName('');
-    setShowSaveForm(false);
-    
-    toast({
-      title: "Preset Saved",
-      description: `"${newPreset.name}" loadout saved successfully`,
-    });
-  };
+  const tradeTypes = [
+    { value: 'scalp', label: 'Scalping', duration: '1-15 min' },
+    { value: 'intraday', label: 'Intraday', duration: '15min-4h' },
+    { value: 'swing', label: 'Swing', duration: '4h-1D' }
+  ];
 
-  const loadPreset = (preset: SavedPreset) => {
-    onConfigChange(preset.config);
-    toast({
-      title: "Preset Loaded",
-      description: `"${preset.name}" configuration applied`,
-    });
-  };
+  const riskLevels = [
+    { value: 'conservative', label: 'Conservative', color: 'text-green-400' },
+    { value: 'moderate', label: 'Moderate', color: 'text-yellow-400' },
+    { value: 'aggressive', label: 'Aggressive', color: 'text-red-400' }
+  ];
 
-  const getTradeTypeDescription = (type: TradeType) => {
-    const descriptions = {
-      scalp: 'Quick 5-15min trades',
-      intraday: '1-4 hour trades',
-      swing: '1-5 day holds',
-      position: 'Weekly+ positions'
-    };
-    return descriptions[type];
-  };
-
-  const getRiskDescription = (risk: RiskLevel) => {
-    const descriptions = {
-      conservative: 'Safe zones, tight stops',
-      moderate: 'Balanced setup',
-      aggressive: 'High risk/reward'
-    };
-    return descriptions[risk];
-  };
-
-  const getAssetDescription = (asset: AssetClass) => {
-    const descriptions = {
-      forex: 'Currency pairs',
-      crypto: 'Digital assets',
-      commodities: 'Gold, Oil, etc.',
-      indices: 'Stock indices'
-    };
-    return descriptions[asset];
-  };
+  const timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1D'];
+  const sessions = ['london', 'newyork', 'tokyo', 'sydney'];
+  const marketConditions = ['trending', 'ranging', 'volatile', 'quiet'];
+  const technicalIndicators = ['RSI', 'MACD', 'OrderBlocks', 'FVG', 'Liquidity'];
 
   return (
-    <Card className="bg-gray-950/50 border-gray-600/30 glow-soft animate-section-load">
-      <CardHeader>
-        <CardTitle className="text-white flex items-center gap-2 font-zen-maru text-lg md:text-xl">
-          <Settings className="w-4 h-4 md:w-5 md:h-5" />
-          ENHANCED TACTICAL PARAMETERS
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 md:space-y-6">
-        {/* Main Configuration Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          {/* Strategy Type */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Strategy Type</label>
-            <Select value={config.strategyType} onValueChange={(value) => updateConfig({ strategyType: value as StrategyType })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="Hybrid">⚡ Hybrid</SelectItem>
-                <SelectItem value="Institutional">⛩️ Institutional</SelectItem>
-                <SelectItem value="SMC">🥋 SMC</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Trade Type */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Trade Type</label>
-            <Select value={config.tradeType} onValueChange={(value) => updateConfig({ tradeType: value as TradeType })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="scalp">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3 h-3" />
-                    Scalp
-                  </div>
-                </SelectItem>
-                <SelectItem value="intraday">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-3 h-3" />
-                    Intraday
-                  </div>
-                </SelectItem>
-                <SelectItem value="swing">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-3 h-3" />
-                    Swing
-                  </div>
-                </SelectItem>
-                <SelectItem value="position">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="w-3 h-3" />
-                    Position
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-1">{getTradeTypeDescription(config.tradeType)}</p>
-          </div>
-
-          {/* Min Confidence */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Min Confidence</label>
-            <Select value={config.confidenceThreshold.toString()} onValueChange={(value) => updateConfig({ confidenceThreshold: parseInt(value) })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="70">70%+</SelectItem>
-                <SelectItem value="80">80%+</SelectItem>
-                <SelectItem value="90">90%+</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Risk Level */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Risk Level</label>
-            <Select value={config.riskLevel} onValueChange={(value) => updateConfig({ riskLevel: value as RiskLevel })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="conservative">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-3 h-3 text-green-400" />
-                    Conservative
-                  </div>
-                </SelectItem>
-                <SelectItem value="moderate">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-3 h-3 text-yellow-400" />
-                    Moderate
-                  </div>
-                </SelectItem>
-                <SelectItem value="aggressive">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-3 h-3 text-red-400" />
-                    Aggressive
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-1">{getRiskDescription(config.riskLevel)}</p>
-          </div>
-        </div>
-
-        {/* Secondary Configuration Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          {/* Min Confluence */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Min Confluence</label>
-            <Select value={config.minFilters.toString()} onValueChange={(value) => updateConfig({ minFilters: parseInt(value) })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="3">3/6 Frameworks</SelectItem>
-                <SelectItem value="4">4/6 Frameworks</SelectItem>
-                <SelectItem value="5">5/6 Frameworks</SelectItem>
-                <SelectItem value="6">6/6 Frameworks (Elite)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Asset Class */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Asset Class</label>
-            <Select value={config.assetClass} onValueChange={(value) => updateConfig({ assetClass: value as AssetClass })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="forex">
-                  <div className="flex items-center gap-2">
-                    <Coins className="w-3 h-3" />
-                    Forex
-                  </div>
-                </SelectItem>
-                <SelectItem value="crypto">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-3 h-3" />
-                    Crypto
-                  </div>
-                </SelectItem>
-                <SelectItem value="commodities">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="w-3 h-3" />
-                    Commodities
-                  </div>
-                </SelectItem>
-                <SelectItem value="indices">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-3 h-3" />
-                    Indices
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-1">{getAssetDescription(config.assetClass)}</p>
-          </div>
-
-          {/* Pair Filter */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Pair Filter</label>
-            <Select value={config.pairFilter} onValueChange={(value) => updateConfig({ pairFilter: value as any })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="majors">Major Pairs</SelectItem>
-                <SelectItem value="eurusd">EUR/USD Only</SelectItem>
-                <SelectItem value="all">All Pairs</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Save Preset */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Save Loadout</label>
-            {!showSaveForm ? (
-              <Button
-                onClick={() => setShowSaveForm(true)}
-                variant="outline"
-                size="sm"
-                className="w-full border-purple-500/30 hover:bg-purple-500/20 text-purple-400 font-zen-maru glow-soft"
-              >
-                <Star className="w-3 h-3 mr-2" />
-                Save Preset
-              </Button>
-            ) : (
-              <div className="flex gap-1">
-                <input
-                  type="text"
-                  value={presetName}
-                  onChange={(e) => setPresetName(e.target.value)}
-                  placeholder="Preset name..."
-                  className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                  onKeyPress={(e) => e.key === 'Enter' && savePreset()}
-                />
-                <Button onClick={savePreset} size="sm" className="px-2">
-                  <Save className="w-3 h-3" />
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Current Configuration Display */}
-        <div className="bg-gray-800/30 rounded-lg p-3 md:p-4">
-          <h4 className="text-sm font-semibold text-white mb-2 font-zen-maru">Current Configuration:</h4>
-          <div className="flex flex-wrap gap-2">
-            <Badge className={riskLevelColors[config.riskLevel]}>
-              {config.riskLevel.toUpperCase()}
+    <div className="space-y-6">
+      <Card className="glass-card border-purple-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-purple-400">
+            <Settings className="w-5 h-5" />
+            Enhanced Tactical Parameters
+            <Badge className="bg-green-500/20 text-green-400">
+              Live Configuration
             </Badge>
-            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-              {config.tradeType.toUpperCase()}
-            </Badge>
-            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-              {config.assetClass.toUpperCase()}
-            </Badge>
-            <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-              {config.confidenceThreshold}%+ CONFIDENCE
-            </Badge>
-            <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
-              {config.minFilters}/6 FILTERS
-            </Badge>
-          </div>
-          {config.confidenceThreshold >= 90 && config.minFilters >= 5 && (
-            <div className="mt-2 p-2 bg-gold-500/10 border border-gold-500/30 rounded">
-              <p className="text-gold-400 text-xs font-semibold">🏆 INSTITUTIONAL GRADE CONFIGURATION DETECTED</p>
-            </div>
-          )}
-        </div>
-
-        {/* Saved Presets */}
-        {savedPresets.length > 0 && (
-          <div>
-            <h4 className="text-sm font-semibold text-white mb-2 font-zen-maru">Saved Presets:</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {savedPresets.map((preset) => (
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Asset Class Selection */}
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Globe className="w-5 h-5 text-blue-400" />
+              Asset Class
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              {assetClasses.map((asset) => (
                 <Button
-                  key={preset.id}
-                  onClick={() => loadPreset(preset)}
-                  variant="outline"
-                  size="sm"
-                  className="justify-start border-gray-600 hover:bg-gray-700/50 text-left"
+                  key={asset.value}
+                  variant={config.assetClass === asset.value ? "default" : "outline"}
+                  onClick={() => updateConfig({ assetClass: asset.value as any })}
+                  className={`flex items-center gap-2 ${
+                    config.assetClass === asset.value 
+                      ? 'bg-purple-600 hover:bg-purple-700' 
+                      : 'border-gray-600 hover:border-purple-500'
+                  }`}
                 >
-                  <Star className="w-3 h-3 mr-2 text-yellow-400" />
-                  <span className="truncate">{preset.name}</span>
+                  {asset.icon}
+                  {asset.label}
                 </Button>
               ))}
             </div>
           </div>
-        )}
 
-        {/* Action Buttons */}
-        <div className="flex flex-col md:flex-row gap-3 md:gap-4">
-          <Button
-            onClick={onShowBreakdown}
-            variant="outline"
-            className="flex-1 border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-zen-maru glow-soft"
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            Show Strategy Breakdown
-          </Button>
-          
-          <Button
-            onClick={onGenerateSignal}
-            disabled={isGenerating}
-            className="flex-1 bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/50 hover:bg-pink-500/30 font-zen-maru font-bold glow-intense"
-          >
-            {isGenerating ? (
-              <>
-                <Settings className="w-4 h-4 mr-2 animate-spin" />
-                AI COUNCIL VOTING...
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4 mr-2" />
-                GENERATE SIGNAL ⚔️
-              </>
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          {/* Strategy Configuration */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Target className="w-5 h-5 text-green-400" />
+                Strategy Type
+              </h3>
+              <div className="space-y-2">
+                {strategyTypes.map((strategy) => (
+                  <Button
+                    key={strategy.value}
+                    variant={config.strategyType === strategy.value ? "default" : "outline"}
+                    onClick={() => updateConfig({ strategyType: strategy.value as any })}
+                    className={`w-full justify-start ${
+                      config.strategyType === strategy.value 
+                        ? 'bg-green-600 hover:bg-green-700' 
+                        : 'border-gray-600 hover:border-green-500'
+                    }`}
+                  >
+                    {strategy.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Timer className="w-5 h-5 text-yellow-400" />
+                Trade Type
+              </h3>
+              <div className="space-y-2">
+                {tradeTypes.map((trade) => (
+                  <Button
+                    key={trade.value}
+                    variant={config.tradeType === trade.value ? "default" : "outline"}
+                    onClick={() => updateConfig({ tradeType: trade.value as any })}
+                    className={`w-full justify-between ${
+                      config.tradeType === trade.value 
+                        ? 'bg-yellow-600 hover:bg-yellow-700' 
+                        : 'border-gray-600 hover:border-yellow-500'
+                    }`}
+                  >
+                    <span>{trade.label}</span>
+                    <span className="text-xs text-gray-400">{trade.duration}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Risk Management */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Shield className="w-5 h-5 text-red-400" />
+              Risk Management
+            </h3>
+            
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">Risk Level</label>
+                <div className="space-y-2">
+                  {riskLevels.map((risk) => (
+                    <Button
+                      key={risk.value}
+                      variant={config.riskLevel === risk.value ? "default" : "outline"}
+                      onClick={() => updateConfig({ riskLevel: risk.value as any })}
+                      className={`w-full justify-start ${
+                        config.riskLevel === risk.value 
+                          ? 'bg-red-600 hover:bg-red-700' 
+                          : 'border-gray-600 hover:border-red-500'
+                      }`}
+                    >
+                      <span className={risk.color}>{risk.label}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">Max Risk per Trade (%)</label>
+                <div className="px-3 py-2 bg-gray-800 rounded border border-gray-600">
+                  <Slider
+                    value={[config.riskManagement.maxRisk]}
+                    onValueChange={(value) => updateConfig({
+                      riskManagement: { ...config.riskManagement, maxRisk: value[0] }
+                    })}
+                    max={5}
+                    min={0.5}
+                    step={0.1}
+                    className="w-full"
+                  />
+                  <div className="text-center text-white font-medium mt-2">
+                    {config.riskManagement.maxRisk}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">Confidence Threshold (%)</label>
+                <div className="px-3 py-2 bg-gray-800 rounded border border-gray-600">
+                  <Slider
+                    value={[config.confidenceThreshold]}
+                    onValueChange={(value) => updateConfig({ confidenceThreshold: value[0] })}
+                    max={95}
+                    min={60}
+                    step={5}
+                    className="w-full"
+                  />
+                  <div className="text-center text-white font-medium mt-2">
+                    {config.confidenceThreshold}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Timeframe and Sessions */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Clock className="w-5 h-5 text-blue-400" />
+                Timeframe
+              </h3>
+              <div className="grid grid-cols-4 gap-2">
+                {timeframes.map((tf) => (
+                  <Button
+                    key={tf}
+                    variant={config.timeframe === tf ? "default" : "outline"}
+                    onClick={() => updateConfig({ timeframe: tf })}
+                    size="sm"
+                    className={`${
+                      config.timeframe === tf 
+                        ? 'bg-blue-600 hover:bg-blue-700' 
+                        : 'border-gray-600 hover:border-blue-500'
+                    }`}
+                  >
+                    {tf}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Activity className="w-5 h-5 text-purple-400" />
+                Trading Sessions
+              </h3>
+              <div className="space-y-2">
+                {sessions.map((session) => (
+                  <div key={session} className="flex items-center justify-between">
+                    <label className="text-white capitalize">{session}</label>
+                    <Switch
+                      checked={config.sessionFilters.includes(session)}
+                      onCheckedChange={(checked) => {
+                        const newSessions = checked
+                          ? [...config.sessionFilters, session]
+                          : config.sessionFilters.filter(s => s !== session);
+                        updateConfig({ sessionFilters: newSessions });
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Market Conditions and Indicators */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-green-400" />
+                Market Conditions
+              </h3>
+              <div className="space-y-2">
+                {marketConditions.map((condition) => (
+                  <div key={condition} className="flex items-center justify-between">
+                    <label className="text-white capitalize">{condition}</label>
+                    <Switch
+                      checked={config.marketConditions.includes(condition)}
+                      onCheckedChange={(checked) => {
+                        const newConditions = checked
+                          ? [...config.marketConditions, condition]
+                          : config.marketConditions.filter(c => c !== condition);
+                        updateConfig({ marketConditions: newConditions });
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-yellow-400" />
+                Technical Indicators
+              </h3>
+              <div className="space-y-2">
+                {technicalIndicators.map((indicator) => (
+                  <div key={indicator} className="flex items-center justify-between">
+                    <label className="text-white">{indicator}</label>
+                    <Switch
+                      checked={config.technicalIndicators.includes(indicator)}
+                      onCheckedChange={(checked) => {
+                        const newIndicators = checked
+                          ? [...config.technicalIndicators, indicator]
+                          : config.technicalIndicators.filter(i => i !== indicator);
+                        updateConfig({ technicalIndicators: newIndicators });
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Advanced Filters */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Filter className="w-5 h-5 text-orange-400" />
+              Advanced Filters
+            </h3>
+            
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">Minimum Filters Required</label>
+                <div className="px-3 py-2 bg-gray-800 rounded border border-gray-600">
+                  <Slider
+                    value={[config.minFilters]}
+                    onValueChange={(value) => updateConfig({ minFilters: value[0] })}
+                    max={6}
+                    min={2}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="text-center text-white font-medium mt-2">
+                    {config.minFilters} filters
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">Pair Filter</label>
+                <select
+                  value={config.pairFilter}
+                  onChange={(e) => updateConfig({ pairFilter: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
+                >
+                  <option value="major">Major Pairs</option>
+                  <option value="minor">Minor Pairs</option>
+                  <option value="exotic">Exotic Pairs</option>
+                  <option value="all">All Pairs</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">Volume Profile</label>
+                <select
+                  value={config.volumeProfile}
+                  onChange={(e) => updateConfig({ volumeProfile: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
+                >
+                  <option value="high">High Volume</option>
+                  <option value="medium">Medium Volume</option>
+                  <option value="low">Low Volume</option>
+                  <option value="any">Any Volume</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Configuration Summary */}
+          <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-600">
+            <h4 className="font-semibold text-white mb-3">Configuration Summary</h4>
+            <div className="grid md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-400">Asset:</span> 
+                <span className="text-white ml-2 capitalize">{config.assetClass}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Strategy:</span> 
+                <span className="text-white ml-2">{config.strategyType}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Risk Level:</span> 
+                <span className="text-white ml-2 capitalize">{config.riskLevel}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Timeframe:</span> 
+                <span className="text-white ml-2">{config.timeframe}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Sessions:</span> 
+                <span className="text-white ml-2">{config.sessionFilters.join(', ')}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Last Updated:</span> 
+                <span className="text-white ml-2">{new Date(lastUpdate).toLocaleTimeString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Button 
+              onClick={() => updateConfig({})}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              Apply Configuration
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
