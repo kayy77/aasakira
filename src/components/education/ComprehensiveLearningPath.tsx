@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { InteractiveQuizGenerator } from './InteractiveQuizGenerator';
-import { VisualLessonCard } from './VisualLessonCard';
+import VisualLessonCard from './VisualLessonCard';
 
 interface LearningMission {
   id: string;
@@ -122,7 +121,36 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
         ]
       }
     },
-    // Add more missions as needed...
+    {
+      id: 'mission-3',
+      title: 'Risk Management',
+      description: 'Learn proper risk management techniques',
+      week: 3,
+      keyPoints: ['Position sizing', 'Stop losses', 'Risk-reward ratios'],
+      learningObjectives: ['Calculate position sizes', 'Set proper stop losses'],
+      difficulty: 'Intermediate' as const,
+      estimatedTime: '4-5 hours',
+      stage: 2,
+      prerequisites: ['mission-1'],
+      completed: false,
+      mentorPrompt: 'Teach me about risk management in trading',
+      content: 'Master the crucial skill of managing risk to protect your capital.',
+      practicalExercises: [
+        'Calculate position sizes for different account sizes',
+        'Practice setting stop losses',
+        'Analyze risk-reward scenarios'
+      ],
+      quiz: {
+        questions: [
+          {
+            question: 'What should your maximum risk per trade be?',
+            options: ['1-2% of account', '10% of account', '50% of account', 'All available capital'],
+            correct: 0,
+            explanation: 'Professional traders typically risk 1-2% of their account per trade to preserve capital.'
+          }
+        ]
+      }
+    }
   ];
 
   const handleMissionSelect = (mission: LearningMission) => {
@@ -293,15 +321,16 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
 
               {/* Visual Learning Component */}
               <VisualLessonCard
-                lessonType="chart"
                 title="Visual Learning: Chart Patterns"
                 description="Interactive visualization of trading concepts"
+                keyPoints={selectedMission.keyPoints}
+                visualType="chart"
+                difficulty={selectedMission.difficulty}
               />
 
               {/* Quiz Component */}
               {showQuiz && (
                 <InteractiveQuizGenerator
-                  topic={selectedMission.title}
                   difficulty={selectedMission.difficulty}
                   onComplete={(score) => {
                     console.log('Quiz completed with score:', score);
