@@ -21,7 +21,9 @@ import {
   Shield,
   Zap,
   Users,
-  Lightbulb
+  Lightbulb,
+  ChevronRight,
+  GraduationCap
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -94,6 +96,7 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
     setQuizMode(false);
     setShowResults(false);
     
+    // Generate content if not exists
     if (!mission.content) {
       const content = await comprehensiveLearningService.generateMissionContent(mission);
       setMissionContent(content);
@@ -102,6 +105,7 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
       setMissionContent(mission.content);
     }
 
+    // Generate quiz if not exists
     if (mission.quiz.length === 0) {
       const quiz = await comprehensiveLearningService.generateQuiz(mission);
       mission.quiz = quiz;
@@ -191,70 +195,85 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your personalized learning journey...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Overall Progress Header */}
-      <Card className="glass-card border-purple-500/20">
+      {/* Hero Section */}
+      <Card className="glass-card border-2 border-purple-500/30 bg-gradient-to-r from-purple-900/20 to-blue-900/20">
         <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <Trophy className="w-6 h-6 text-gold-400" />
-            6-Month Professional Trading Mastery Program
-            <Badge className="bg-gradient-to-r from-purple-500 to-blue-500">
-              Complete Path
+          <CardTitle className="flex items-center gap-3 text-2xl">
+            <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg">
+              <GraduationCap className="w-8 h-8 text-white" />
+            </div>
+            6-Month Professional Trading Mastery
+            <Badge className="bg-gradient-to-r from-gold-400 to-yellow-500 text-black font-bold">
+              COMPLETE JOURNEY
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="text-center p-4 bg-gray-800/30 rounded-lg">
-              <div className="text-2xl font-bold text-purple-400">{getOverallProgress().toFixed(0)}%</div>
-              <div className="text-sm text-gray-400">Overall Progress</div>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="text-center p-4 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-xl border border-purple-500/30">
+              <div className="text-3xl font-bold text-purple-400 mb-1">{getOverallProgress().toFixed(0)}%</div>
+              <div className="text-sm text-gray-400">Progress</div>
             </div>
-            <div className="text-center p-4 bg-gray-800/30 rounded-lg">
-              <div className="text-2xl font-bold text-green-400">{stages.filter(s => s.completed).length}</div>
-              <div className="text-sm text-gray-400">Stages Completed</div>
+            <div className="text-center p-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl border border-green-500/30">
+              <div className="text-3xl font-bold text-green-400 mb-1">{stages.filter(s => s.completed).length}</div>
+              <div className="text-sm text-gray-400">Stages Done</div>
             </div>
-            <div className="text-center p-4 bg-gray-800/30 rounded-lg">
-              <div className="text-2xl font-bold text-blue-400">
+            <div className="text-center p-4 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl border border-blue-500/30">
+              <div className="text-3xl font-bold text-blue-400 mb-1">
                 {stages.reduce((sum, stage) => sum + stage.missions.filter(m => m.completed).length, 0)}
               </div>
               <div className="text-sm text-gray-400">Missions Complete</div>
             </div>
-            <div className="text-center p-4 bg-gray-800/30 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-400">{currentStage}</div>
+            <div className="text-center p-4 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-xl border border-yellow-500/30">
+              <div className="text-3xl font-bold text-yellow-400 mb-1">{currentStage}</div>
               <div className="text-sm text-gray-400">Current Stage</div>
             </div>
           </div>
           
-          <div className="mb-4">
+          {/* Progress Bar */}
+          <div className="mb-6">
             <div className="flex justify-between text-sm text-gray-400 mb-2">
               <span>Journey Progress</span>
-              <span>{getOverallProgress().toFixed(0)}%</span>
+              <span>{getOverallProgress().toFixed(0)}% Complete</span>
             </div>
-            <Progress value={getOverallProgress()} className="h-3" />
+            <Progress value={getOverallProgress()} className="h-3 bg-gray-800">
+              <div 
+                className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-green-500 rounded-full transition-all duration-500"
+                style={{ width: `${getOverallProgress()}%` }}
+              />
+            </Progress>
           </div>
 
-          <div className="text-center p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-lg">
-            <h3 className="text-lg font-semibold text-white mb-2">Remember: Trading Mastery Takes Time</h3>
-            <p className="text-gray-300 text-sm">
+          {/* Motivational Quote */}
+          <div className="text-center p-6 bg-gradient-to-r from-gray-800/50 to-gray-900/50 border border-gray-700 rounded-xl">
+            <h3 className="text-xl font-bold text-white mb-2">Remember: Trading Mastery Takes Time</h3>
+            <p className="text-gray-300 text-lg mb-2">
               "You will not get rich quick. But you will get rich if you're obsessed with improving."
-              <br />Take notes, practice daily, and never stop learning.
+            </p>
+            <p className="text-gray-400 text-sm">
+              Take notes, practice daily, and never stop learning. Every professional trader started exactly where you are now.
             </p>
           </div>
         </CardContent>
       </Card>
 
       <Tabs value={selectedMission ? 'mission' : 'stages'} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-2 bg-gray-800/50">
           <TabsTrigger 
             value="stages" 
             onClick={() => setSelectedMission(null)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 data-[state=active]:bg-purple-600"
           >
             <BookOpen className="w-4 h-4" />
             Learning Stages
@@ -262,7 +281,7 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
           <TabsTrigger 
             value="mission" 
             disabled={!selectedMission}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 data-[state=active]:bg-blue-600"
           >
             <Target className="w-4 h-4" />
             Current Mission
@@ -272,44 +291,49 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
         <TabsContent value="stages">
           <div className="space-y-6">
             {stages.map((stage, index) => (
-              <Card key={stage.id} className={`glass-card transition-all duration-200 hover:border-purple-400/40 ${
-                currentStage === stage.id ? 'border-purple-500/50 bg-purple-500/5' : 'border-gray-700/50'
+              <Card key={stage.id} className={`glass-card transition-all duration-300 hover:border-purple-400/40 ${
+                currentStage === stage.id ? 'border-purple-500/50 bg-purple-500/5 shadow-lg shadow-purple-500/20' : 'border-gray-700/50'
               }`}>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                        stage.completed ? 'bg-green-500/20 text-green-400' : 
-                        currentStage === stage.id ? 'bg-purple-500/20 text-purple-400' : 
-                        'bg-gray-500/20 text-gray-400'
+                    <div className="flex items-center gap-4">
+                      <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold ${
+                        stage.completed ? 'bg-green-500/20 text-green-400 border-2 border-green-500' : 
+                        currentStage === stage.id ? 'bg-purple-500/20 text-purple-400 border-2 border-purple-500' : 
+                        'bg-gray-500/20 text-gray-400 border-2 border-gray-500'
                       }`}>
                         {stage.completed ? (
-                          <CheckCircle className="w-6 h-6" />
+                          <CheckCircle className="w-8 h-8" />
                         ) : currentStage === stage.id ? (
-                          <Play className="w-6 h-6" />
+                          <Play className="w-8 h-8" />
                         ) : currentStage > stage.id ? (
-                          <CheckCircle className="w-6 h-6" />
+                          <CheckCircle className="w-8 h-8" />
                         ) : (
-                          <Lock className="w-6 h-6" />
+                          stage.id
                         )}
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-white">Stage {stage.id}: {stage.title}</h3>
-                        <p className="text-gray-400">{stage.description}</p>
+                        <h3 className="text-2xl font-bold text-white mb-1">Stage {stage.id}: {stage.title}</h3>
+                        <p className="text-gray-400 text-lg">{stage.description}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Clock className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-500">{stage.duration}</span>
+                        </div>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      {stage.duration}
-                    </Badge>
+                    <div className="text-right">
+                      <Badge variant="outline" className="text-sm mb-2">
+                        {stage.missions.filter(m => m.completed).length}/{stage.missions.length} Complete
+                      </Badge>
+                      <div className="text-sm text-gray-400">
+                        {getStageProgress(stage).toFixed(0)}% Done
+                      </div>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 
                 <CardContent>
                   <div className="mb-4">
-                    <div className="flex justify-between text-sm text-gray-400 mb-2">
-                      <span>Stage Progress</span>
-                      <span>{getStageProgress(stage).toFixed(0)}%</span>
-                    </div>
                     <Progress value={getStageProgress(stage)} className="h-2" />
                   </div>
 
@@ -317,29 +341,31 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
                     {stage.missions.map((mission, missionIndex) => (
                       <div
                         key={mission.id}
-                        className={`p-4 rounded-lg border transition-all duration-200 cursor-pointer hover:border-purple-400/40 ${
-                          mission.completed ? 'border-green-500/30 bg-green-500/5' :
+                        className={`group p-4 rounded-xl border transition-all duration-200 cursor-pointer hover:border-purple-400/40 hover:bg-purple-500/5 ${
+                          mission.completed ? 'border-green-500/40 bg-green-500/5' :
                           isMissionUnlocked(mission) ? 'border-purple-500/30 bg-purple-500/5' :
                           'border-gray-600/30 bg-gray-800/20 opacity-60'
                         }`}
                         onClick={() => isMissionUnlocked(mission) && startMission(mission)}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
                               mission.completed ? 'bg-green-500/20 text-green-400' :
                               isMissionUnlocked(mission) ? 'bg-purple-500/20 text-purple-400' :
                               'bg-gray-500/20 text-gray-400'
                             }`}>
-                              {mission.completed ? '✓' : missionIndex + 1}
+                              {mission.completed ? <CheckCircle className="w-6 h-6" /> : missionIndex + 1}
                             </div>
-                            <div>
-                              <h4 className="font-semibold text-white">{mission.title}</h4>
-                              <p className="text-sm text-gray-400">{mission.description}</p>
+                            <div className="flex-1">
+                              <h4 className="font-bold text-white text-lg group-hover:text-purple-300 transition-colors">
+                                {mission.title}
+                              </h4>
+                              <p className="text-gray-400 text-sm mt-1">{mission.description}</p>
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
                             <Badge className={getDifficultyColor(mission.difficulty)}>
                               {mission.difficulty}
                             </Badge>
@@ -348,9 +374,12 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
                               {mission.estimatedTime}
                             </Badge>
                             {mission.completed && mission.score && (
-                              <Badge className="bg-green-500/20 text-green-400">
+                              <Badge className="bg-green-500/20 text-green-400 font-bold">
                                 {mission.score}%
                               </Badge>
+                            )}
+                            {isMissionUnlocked(mission) && (
+                              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-purple-400 transition-colors" />
                             )}
                           </div>
                         </div>
@@ -367,16 +396,16 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
           {selectedMission && (
             <div className="space-y-6">
               {/* Mission Header */}
-              <Card className="glass-card border-purple-500/30">
+              <Card className="glass-card border-purple-500/30 bg-gradient-to-r from-purple-900/20 to-blue-900/20">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                        <Target className="w-6 h-6" />
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                        <Target className="w-8 h-8" />
                       </div>
                       <div>
-                        <h2 className="text-2xl font-bold text-white">{selectedMission.title}</h2>
-                        <p className="text-gray-400">Stage {selectedMission.stage} • {selectedMission.estimatedTime}</p>
+                        <h2 className="text-3xl font-bold text-white">{selectedMission.title}</h2>
+                        <p className="text-gray-400 text-lg">Stage {selectedMission.stage} • {selectedMission.estimatedTime}</p>
                       </div>
                     </div>
                     <Button
@@ -396,24 +425,29 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
                 <Card className="glass-card">
                   <CardContent className="p-8">
                     <div className="prose prose-invert max-w-none">
-                      <div dangerouslySetInnerHTML={{ __html: missionContent.replace(/\n/g, '<br />') }} />
+                      <div 
+                        className="text-gray-300 leading-relaxed space-y-4"
+                        dangerouslySetInnerHTML={{ 
+                          __html: missionContent.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>') 
+                        }} 
+                      />
                     </div>
                     
                     <div className="mt-8 pt-6 border-t border-gray-700">
                       <div className="flex gap-4">
                         <Button
                           onClick={startQuiz}
-                          className="bg-green-600 hover:bg-green-700"
+                          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-lg"
                         >
-                          <Award className="w-4 h-4 mr-2" />
+                          <Award className="w-5 h-5 mr-2" />
                           Take Mission Quiz
                         </Button>
                         <Button
                           onClick={() => askMentor(selectedMission)}
                           variant="outline"
-                          className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
+                          className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20 px-6 py-3"
                         >
-                          <Brain className="w-4 h-4 mr-2" />
+                          <Brain className="w-5 h-5 mr-2" />
                           Ask Questions
                         </Button>
                       </div>
@@ -424,24 +458,24 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
 
               {/* Quiz Mode */}
               {quizMode && !showResults && (
-                <Card className="glass-card">
+                <Card className="glass-card border-yellow-500/30">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Award className="w-5 h-5 text-yellow-400" />
+                    <CardTitle className="flex items-center gap-2 text-yellow-400">
+                      <Award className="w-6 h-6" />
                       Mission Quiz: {selectedMission.title}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {selectedMission.quiz.map((question, index) => (
-                      <div key={question.id} className="p-4 bg-gray-800/30 rounded-lg">
-                        <h3 className="font-semibold text-white mb-3">
+                      <div key={question.id} className="p-6 bg-gray-800/50 rounded-xl border border-gray-700">
+                        <h3 className="font-bold text-white mb-4 text-lg">
                           {index + 1}. {question.question}
                         </h3>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {question.options.map((option, optionIndex) => (
                             <label
                               key={optionIndex}
-                              className="flex items-center space-x-3 cursor-pointer p-2 rounded hover:bg-gray-700/30"
+                              className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-700/50 transition-colors"
                             >
                               <input
                                 type="radio"
@@ -451,9 +485,9 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
                                   ...prev,
                                   [question.id]: parseInt(e.target.value)
                                 }))}
-                                className="text-purple-500"
+                                className="w-4 h-4 text-purple-500 focus:ring-purple-500"
                               />
-                              <span className="text-gray-300">{option}</span>
+                              <span className="text-gray-300 text-lg">{option}</span>
                             </label>
                           ))}
                         </div>
@@ -463,9 +497,9 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
                     <Button
                       onClick={submitQuiz}
                       disabled={Object.keys(quizAnswers).length < selectedMission.quiz.length}
-                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 text-lg"
                     >
-                      <CheckCircle className="w-4 h-4 mr-2" />
+                      <CheckCircle className="w-5 h-5 mr-2" />
                       Submit Quiz & Complete Mission
                     </Button>
                   </CardContent>
@@ -474,41 +508,50 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
 
               {/* Quiz Results */}
               {showResults && (
-                <Card className="glass-card border-green-500/30">
+                <Card className="glass-card border-green-500/30 bg-gradient-to-r from-green-900/20 to-emerald-900/20">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-green-400">
-                      <Trophy className="w-5 h-5" />
+                      <Trophy className="w-6 h-6" />
                       Mission Complete!
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center space-y-4">
-                      <div className="text-4xl font-bold text-green-400">
+                    <div className="text-center space-y-6">
+                      <div className="text-6xl font-bold text-green-400">
                         {selectedMission.score}%
                       </div>
-                      <p className="text-gray-300">
-                        {selectedMission.score && selectedMission.score >= 80 ? 
-                          "Excellent work! You've mastered this concept." :
-                          selectedMission.score && selectedMission.score >= 60 ?
-                          "Good progress! Review and move forward." :
-                          "Keep learning! Review the material and try again."
-                        }
-                      </p>
+                      <div className="max-w-2xl mx-auto">
+                        <p className="text-gray-300 text-lg mb-4">
+                          {selectedMission.score && selectedMission.score >= 80 ? 
+                            "🎉 Outstanding work! You've mastered this concept and are ready to move forward." :
+                            selectedMission.score && selectedMission.score >= 60 ?
+                            "👏 Good progress! You understand the basics. Review any unclear areas and continue." :
+                            "💪 Keep learning! This topic needs more review. Don't give up - every pro started here."
+                          }
+                        </p>
+                        
+                        <div className="bg-gray-800/50 rounded-xl p-4 mb-6">
+                          <p className="text-gray-400 text-sm italic">
+                            "Remember: You will not get rich quick. But you will get rich if you're obsessed with improving. 
+                            Every wrong answer is a step closer to mastery."
+                          </p>
+                        </div>
+                      </div>
                       
                       <div className="flex gap-4 justify-center">
                         <Button
                           onClick={() => setSelectedMission(null)}
-                          className="bg-purple-600 hover:bg-purple-700"
+                          className="bg-purple-600 hover:bg-purple-700 px-8 py-3"
                         >
-                          <Star className="w-4 h-4 mr-2" />
-                          Next Mission
+                          <Star className="w-5 h-5 mr-2" />
+                          Continue Journey
                         </Button>
                         <Button
                           onClick={() => askMentor(selectedMission)}
                           variant="outline"
-                          className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
+                          className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20 px-8 py-3"
                         >
-                          <MessageSquare className="w-4 h-4 mr-2" />
+                          <MessageSquare className="w-5 h-5 mr-2" />
                           Ask Mentor
                         </Button>
                       </div>

@@ -1,66 +1,62 @@
 
-export interface LiveMemeCoin {
-  id: string;
-  name: string;
-  symbol: string;
-  price: number;
-  priceChange1h: number;
-  priceChange24h: number;
-  liquidity: number;
-  volume24h: number;
-  txnsPerHour: number;
-  ageHours: number;
-  marketCap: number;
-  holders: number;
-  address?: string;
-  healthScore?: number;
-  healthLabel?: 'Safe' | 'Medium' | 'High Risk';
-  stealthLaunch?: boolean;
-  whaleActivity?: boolean;
-  whaleTransactions?: { wallet: string; amount: number; txHash: string }[];
-  riskQuadrant?: 'High Risk/Low Gain' | 'Low Risk/High Gain' | 'High Risk/High Gain' | 'Low Risk/Low Gain';
-  volumeSpike?: boolean;
-  listedAgo?: string;
-  lpLocked?: boolean;
-  exchangeUrl?: string;
-  whyChosen?: string;
-  alerts?: string[];
-  pairAge?: string;
-}
+import { LiveMemeCoin } from '@/integrations/supabase/types';
 
 export class LiveMemeCoinService {
-  async scanLiveCoins(): Promise<LiveMemeCoin[]> {
-    // Mock implementation for now
-    return [
+  private coins: LiveMemeCoin[] = [];
+
+  async getTokens(): Promise<LiveMemeCoin[]> {
+    // Mock data with all required properties
+    const mockTokens: LiveMemeCoin[] = [
       {
-        id: '1',
-        name: 'SafeMoon',
-        symbol: 'SAFEMOON',
-        price: 0.0001234,
-        priceChange1h: 5.2,
-        priceChange24h: 15.8,
-        liquidity: 850000,
-        volume24h: 2500000,
-        txnsPerHour: 245,
-        ageHours: 8,
+        name: "PepeCoin",
+        symbol: "PEPE", 
+        price: 0.000001234,
+        liquidity: 2500000,
+        volume24h: 1250000,
+        priceChange1h: 12.5,
+        priceChange24h: 45.2,
+        priceChange5m: 3.8,
+        txnsPerHour: 450,
+        txCount1h: 450,
+        ageHours: 24,
         marketCap: 125000000,
-        holders: 8500,
+        address: "0x1234567890abcdef",
         healthScore: 85,
-        healthLabel: 'Safe',
+        healthLabel: "Safe",
         stealthLaunch: false,
         whaleActivity: true,
-        volumeSpike: true,
-        listedAgo: '8h ago',
-        lpLocked: true,
-        exchangeUrl: 'https://poocoin.app',
-        whyChosen: 'Strong fundamentals',
-        alerts: ['Volume Spike', 'Whale Buy']
+        whaleTransactions: [
+          { wallet: "0xabcd...", amount: 50000, txHash: "0x123..." }
+        ],
+        riskQuadrant: "Low Risk/High Gain",
+        riskScore: 25,
+        rugRisk: false,
+        liquidityLocked: true,
+        miniChart: [],
+        lastUpdated: new Date().toISOString()
       }
     ];
+    
+    this.coins = mockTokens;
+    return mockTokens;
   }
 
-  async getCoins(): Promise<LiveMemeCoin[]> {
-    return this.scanLiveCoins();
+  async getAlerts(): Promise<any[]> {
+    return [];
+  }
+
+  getHealthScore(coin: LiveMemeCoin): number {
+    return coin.healthScore || 50;
+  }
+
+  private calculateHealthScore(coin: LiveMemeCoin): number {
+    let score = 50;
+    
+    if (coin.liquidity > 1000000) score += 20;
+    if (coin.ageHours > 24) score += 15;
+    if (!coin.rugRisk) score += 15;
+    
+    return Math.min(100, score);
   }
 }
 

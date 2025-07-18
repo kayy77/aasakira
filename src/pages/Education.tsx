@@ -8,7 +8,6 @@ import {
   Brain, 
   Target, 
   BarChart3,
-  Gamepad2,
   MessageSquare,
   GraduationCap,
   BookOpen,
@@ -17,8 +16,6 @@ import {
 import EnhancedTradingJournal from '@/components/education/EnhancedTradingJournal';
 import BacktestLab from '@/components/education/BacktestLab';
 import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
-import CombatMode from '@/components/education/CombatMode';
-import SimpleFoundations from '@/components/education/SimpleFoundations';
 import ComprehensiveLearningPath from '@/components/education/ComprehensiveLearningPath';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -37,19 +34,13 @@ const Education = () => {
     {
       icon: <Brain className="w-6 h-6 md:w-8 md:h-8 text-purple-400" />,
       title: "AI Mentor",
-      description: "Chat with Aasakira - learn trading through conversation",
+      description: "Your personal trading mentor with chart analysis",
       tab: "mentor"
-    },
-    {
-      icon: <GraduationCap className="w-6 h-6 md:w-8 md:h-8 text-green-400" />,
-      title: "Quick Start",
-      description: "Essential basics for immediate learning",
-      tab: "foundations"
     },
     {
       icon: <BookOpen className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />,
       title: "Trading Journal",
-      description: "Track progress and analyze your trades",
+      description: "Track progress and analyze your trades with AI",
       tab: "journal"
     },
     {
@@ -57,12 +48,6 @@ const Education = () => {
       title: "Backtest Lab",
       description: "Test strategies with historical data",
       tab: "backtest"
-    },
-    {
-      icon: <Gamepad2 className="w-6 h-6 md:w-8 md:h-8 text-red-400" />,
-      title: "Combat Mode",
-      description: "Gamified trading challenges",
-      tab: "combat"
     }
   ];
 
@@ -83,19 +68,19 @@ const Education = () => {
               Professional Trading Education
             </h1>
             <p className="text-gray-300 text-sm md:text-lg max-w-3xl mx-auto px-4">
-              Complete 6-month journey from absolute beginner to professional trader. Master the fundamentals, psychology, and advanced strategies.
+              Complete 6-month journey from absolute beginner to professional trader. Master the fundamentals, psychology, and advanced strategies with personalized AI mentorship.
             </p>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 md:space-y-8">
             <div className={`grid gap-3 md:gap-4 mb-6 md:mb-8 ${
-              isMobile ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-6'
+              isMobile ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-4'
             }`}>
               {features.map((feature, index) => (
                 <Card 
                   key={index}
                   className={`glass-card hover-glow cursor-pointer transition-all duration-300 ${
-                    activeTab === feature.tab ? 'border-purple-500/50 bg-purple-500/10' : 'border-gray-700/50'
+                    activeTab === feature.tab ? 'border-purple-500/50 bg-purple-500/10 shadow-lg shadow-purple-500/20' : 'border-gray-700/50'
                   }`}
                   onClick={() => setActiveTab(feature.tab)}
                 >
@@ -136,20 +121,12 @@ const Education = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="foundations">
-              <SimpleFoundations onStartAIMentor={() => setActiveTab('mentor')} />
-            </TabsContent>
-
             <TabsContent value="journal">
               <EnhancedTradingJournal />
             </TabsContent>
 
             <TabsContent value="backtest">
               <BacktestLab />
-            </TabsContent>
-
-            <TabsContent value="combat">
-              <CombatMode />
             </TabsContent>
           </Tabs>
         </div>
