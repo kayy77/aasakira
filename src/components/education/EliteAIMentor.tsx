@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { groqService } from '@/services/groqService';
 import { useMentorMemory } from './useMentorMemory';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   id: string;
