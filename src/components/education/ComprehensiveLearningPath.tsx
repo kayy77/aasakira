@@ -331,11 +331,14 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
               {/* Quiz Component */}
               {showQuiz && (
                 <InteractiveQuizGenerator
-                  difficulty={selectedMission.difficulty}
+                  missionTitle={selectedMission.title}
+                  keyPoints={selectedMission.keyPoints}
+                  learningObjectives={selectedMission.learningObjectives}
                   onComplete={(score) => {
                     console.log('Quiz completed with score:', score);
                     setShowQuiz(false);
                   }}
+                  onAskMentor={handleAskMentorClick}
                 />
               )}
             </>
