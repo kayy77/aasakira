@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +27,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { comprehensiveLearningService, LearningStage, LearningMission } from '@/services/comprehensiveLearningService';
+import InteractiveQuizGenerator from './InteractiveQuizGenerator';
+import VisualLessonCard from './VisualLessonCard';
 
 interface ComprehensiveLearningPathProps {
   onAskMentor?: (prompt: string) => void;
@@ -41,7 +42,6 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
   const [userProgress, setUserProgress] = useState<any>(null);
   const [missionContent, setMissionContent] = useState<string>('');
   const [quizMode, setQuizMode] = useState(false);
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
   const [showResults, setShowResults] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -104,28 +104,15 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
     } else {
       setMissionContent(mission.content);
     }
-
-    // Generate quiz if not exists
-    if (mission.quiz.length === 0) {
-      const quiz = await comprehensiveLearningService.generateQuiz(mission);
-      mission.quiz = quiz;
-    }
   };
 
   const startQuiz = () => {
     setQuizMode(true);
-    setQuizAnswers({});
     setShowResults(false);
   };
 
-  const submitQuiz = async () => {
+  const handleQuizComplete = async (score: number) => {
     if (!selectedMission || !user?.id) return;
-
-    const correctAnswers = selectedMission.quiz.filter(
-      (q, index) => quizAnswers[q.id] === q.correctAnswer
-    ).length;
-    
-    const score = Math.round((correctAnswers / selectedMission.quiz.length) * 100);
     
     setShowResults(true);
     
@@ -183,13 +170,15 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
     return totalMissions > 0 ? (completedMissions / totalMissions) * 100 : 0;
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Beginner': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'Intermediate': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'Advanced': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+  const getVisualType = (missionTitle: string) => {
+    if (missionTitle.toLowerCase().includes('chart') || missionTitle.toLowerCase().includes('candlestick')) {
+      return 'chart';
+    } else if (missionTitle.toLowerCase().includes('psychology') || missionTitle.toLowerCase().includes('mindset')) {
+      return 'psychology';
+    } else if (missionTitle.toLowerCase().includes('strategy') || missionTitle.toLowerCase().includes('smc')) {
+      return 'strategy';
     }
+    return 'concept';
   };
 
   if (loading) {
@@ -337,7 +326,21 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
                     <Progress value={getStageProgress(stage)} className="h-2" />
                   </div>
 
-                  <div className="grid gap-3">
+                  <div className="grid gap-4">
+                    {stage.missions.map((mission, missionIndex) => (
+                      <VisualLessonCard
+                        key={mission.id}
+                        title={mission.title}
+                        description={mission.description}
+                        keyPoints={mission.keyPoints}
+                        visualType={getVisualType(mission.title)}
+                        difficulty={mission.difficulty}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Mission List */}
+                  <div className="grid gap-3 mt-6">
                     {stage.missions.map((mission, missionIndex) => (
                       <div
                         key={mission.id}
@@ -366,7 +369,11 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
                           </div>
                           
                           <div className="flex items-center gap-3">
-                            <Badge className={getDifficultyColor(mission.difficulty)}>
+                            <Badge className={
+                              mission.difficulty === 'Beginner' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                              mission.difficulty === 'Intermediate' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                              'bg-red-500/20 text-red-400 border-red-500/30'
+                            }>
                               {mission.difficulty}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
@@ -456,54 +463,15 @@ export const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps>
                 </Card>
               )}
 
-              {/* Quiz Mode */}
+              {/* Interactive Quiz */}
               {quizMode && !showResults && (
-                <Card className="glass-card border-yellow-500/30">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-yellow-400">
-                      <Award className="w-6 h-6" />
-                      Mission Quiz: {selectedMission.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {selectedMission.quiz.map((question, index) => (
-                      <div key={question.id} className="p-6 bg-gray-800/50 rounded-xl border border-gray-700">
-                        <h3 className="font-bold text-white mb-4 text-lg">
-                          {index + 1}. {question.question}
-                        </h3>
-                        <div className="space-y-3">
-                          {question.options.map((option, optionIndex) => (
-                            <label
-                              key={optionIndex}
-                              className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-700/50 transition-colors"
-                            >
-                              <input
-                                type="radio"
-                                name={question.id}
-                                value={optionIndex}
-                                onChange={(e) => setQuizAnswers(prev => ({
-                                  ...prev,
-                                  [question.id]: parseInt(e.target.value)
-                                }))}
-                                className="w-4 h-4 text-purple-500 focus:ring-purple-500"
-                              />
-                              <span className="text-gray-300 text-lg">{option}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    
-                    <Button
-                      onClick={submitQuiz}
-                      disabled={Object.keys(quizAnswers).length < selectedMission.quiz.length}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 text-lg"
-                    >
-                      <CheckCircle className="w-5 h-5 mr-2" />
-                      Submit Quiz & Complete Mission
-                    </Button>
-                  </CardContent>
-                </Card>
+                <InteractiveQuizGenerator
+                  missionTitle={selectedMission.title}
+                  keyPoints={selectedMission.keyPoints}
+                  learningObjectives={selectedMission.learningObjectives}
+                  onComplete={handleQuizComplete}
+                  onAskMentor={() => askMentor(selectedMission)}
+                />
               )}
 
               {/* Quiz Results */}

@@ -1,62 +1,102 @@
+import { groqService } from '@/services/groqService';
 
-import { LiveMemeCoin } from '@/integrations/supabase/types';
+export interface LiveMemeCoin {
+  id: string;
+  symbol: string;
+  name: string;
+  current_price: number;
+  price_change_24h: number;
+  price_change_percentage_24h: number;
+  market_cap: number;
+  volume_24h: number;
+  circulating_supply: number;
+  total_supply: number;
+  max_supply: number;
+  ath: number;
+  ath_change_percentage: number;
+  ath_date: string;
+  atl: number;
+  atl_change_percentage: number;
+  atl_date: string;
+  last_updated: string;
+  sparkline_in_7d: {
+    price: number[];
+  };
+  price_change_percentage_7d_in_currency: number;
+  // Additional fields for enhanced analysis
+  sentiment_votes_up_percentage?: number;
+  sentiment_votes_down_percentage?: number;
+  market_cap_rank?: number;
+  coingecko_rank?: number;
+  coingecko_score?: number;
+  developer_score?: number;
+  community_score?: number;
+  liquidity_score?: number;
+  public_interest_score?: number;
+}
 
-export class LiveMemeCoinService {
-  private coins: LiveMemeCoin[] = [];
+class LiveMemeCoinService {
+  private baseUrl = 'https://api.coingecko.com/api/v3';
+  private cache = new Map<string, { data: any; timestamp: number }>();
+  private cacheTimeout = 60000; // 1 minute cache
 
-  async getTokens(): Promise<LiveMemeCoin[]> {
-    // Mock data with all required properties
-    const mockTokens: LiveMemeCoin[] = [
-      {
-        name: "PepeCoin",
-        symbol: "PEPE", 
-        price: 0.000001234,
-        liquidity: 2500000,
-        volume24h: 1250000,
-        priceChange1h: 12.5,
-        priceChange24h: 45.2,
-        priceChange5m: 3.8,
-        txnsPerHour: 450,
-        txCount1h: 450,
-        ageHours: 24,
-        marketCap: 125000000,
-        address: "0x1234567890abcdef",
-        healthScore: 85,
-        healthLabel: "Safe",
-        stealthLaunch: false,
-        whaleActivity: true,
-        whaleTransactions: [
-          { wallet: "0xabcd...", amount: 50000, txHash: "0x123..." }
-        ],
-        riskQuadrant: "Low Risk/High Gain",
-        riskScore: 25,
-        rugRisk: false,
-        liquidityLocked: true,
-        miniChart: [],
-        lastUpdated: new Date().toISOString()
+  private getCachedData(key: string): any | null {
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+      return cached.data;
+    }
+    return null;
+  }
+
+  private setCachedData(key: string, data: any): void {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  async scanLiveCoins(): Promise<LiveMemeCoin[]> {
+    const cacheKey = 'live-meme-coins';
+    const cached = this.getCachedData(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/coins/markets?vs_currency=usd&category=meme-token&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=7d`
+      );
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
       }
-    ];
-    
-    this.coins = mockTokens;
-    return mockTokens;
+
+      const data = await response.json();
+      this.setCachedData(cacheKey, data);
+      return data;
+    } catch (error) {
+      console.error('Error scanning live meme coins:', error);
+      return [];
+    }
   }
 
-  async getAlerts(): Promise<any[]> {
-    return [];
+  async getCoins(): Promise<LiveMemeCoin[]> {
+    return this.scanLiveCoins();
   }
 
-  getHealthScore(coin: LiveMemeCoin): number {
-    return coin.healthScore || 50;
+  async getTrendingCoins(): Promise<LiveMemeCoin[]> {
+    return this.scanLiveCoins();
   }
 
-  private calculateHealthScore(coin: LiveMemeCoin): number {
-    let score = 50;
-    
-    if (coin.liquidity > 1000000) score += 20;
-    if (coin.ageHours > 24) score += 15;
-    if (!coin.rugRisk) score += 15;
-    
-    return Math.min(100, score);
+  async getTopGainers(): Promise<LiveMemeCoin[]> {
+    const coins = await this.scanLiveCoins();
+    return coins
+      .filter(coin => coin.price_change_percentage_24h > 0)
+      .sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h)
+      .slice(0, 20);
+  }
+
+  async getTopLosers(): Promise<LiveMemeCoin[]> {
+    const coins = await this.scanLiveCoins();
+    return coins
+      .filter(coin => coin.price_change_percentage_24h < 0)
+      .sort((a, b) => a.price_change_percentage_24h - b.price_change_percentage_24h)
+      .slice(0, 20);
   }
 }
 

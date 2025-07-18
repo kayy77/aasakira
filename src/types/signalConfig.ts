@@ -1,81 +1,56 @@
 
 export interface SignalConfig {
-  rsi: {
-    enabled: boolean;
-    oversold: number;
-    overbought: number;
-    period: number;
-  };
-  macd: {
-    enabled: boolean;
-    fastPeriod: number;
-    slowPeriod: number;
-    signalPeriod: number;
-  };
-  bollinger: {
-    enabled: boolean;
-    period: number;
-    stdDev: number;
-  };
-  sma: {
-    enabled: boolean;
-    period: number;
-  };
-  volume: {
-    enabled: boolean;
-    threshold: number;
-  };
-  pairFilters: string[];
+  pair: string;
   timeframe: string;
+  marketConditions: string[];
+  technicalIndicators: string[];
+  riskReward: number;
+  pairFilters: string[];
   minConfidence: number;
+  maxSignalsPerHour: number;
+  enabled: boolean;
+  stopLoss: number;
+  takeProfit: number;
+  entryType: 'market' | 'limit';
+  // New properties for enhanced functionality
+  strategyType?: 'SMC' | 'ICT' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP';
+  tradeType?: 'SWING' | 'SCALP' | 'POSITION';
+  confidenceThreshold?: number;
+  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+  minFilters?: number;
+  assetClass?: 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES';
+  pairFilter?: string;
 }
 
 export interface Signal {
   id: string;
   pair: string;
   type: 'BUY' | 'SELL';
-  confidence: number;
-  entry: number;
+  entryPrice: number;
   stopLoss: number;
   takeProfit: number;
-  riskReward: number;
-  signalStrength: number;
-  filtersScore: number;
-  maxFilters: number;
-  timestamp: string;
-  indicators: {
-    rsi?: number;
-    macd?: {
-      macd: number;
-      signal: number;
-      histogram: number;
-    };
-    bollinger?: {
-      upper: number;
-      middle: number;
-      lower: number;
-    };
-    sma?: number;
-    volume?: number;
-  };
+  confidence: number;
   analysis: string;
+  timestamp: string;
+  timeframe: string;
+  riskReward: number;
+  strategy: string;
+  marketCondition: string;
+  technicalSetup: string;
+  entryReason: string;
+  riskManagement: string;
+  filtersPassed?: string[];
 }
 
-export interface EliteSignal extends Signal {
-  institutionalFlow: 'bullish' | 'bearish' | 'neutral';
-  smartMoneyActivity: boolean;
-  liquidityLevels: {
-    support: number[];
-    resistance: number[];
-  };
-  riskAssessment: {
-    probability: number;
-    riskLevel: 'low' | 'medium' | 'high';
-    maxDrawdown: number;
-  };
-  marketContext: {
-    trend: 'bullish' | 'bearish' | 'sideways';
-    volatility: 'low' | 'medium' | 'high';
-    newsImpact: 'low' | 'medium' | 'high';
-  };
-}
+export type SavedPreset = {
+  id: string;
+  name: string;
+  config: Partial<SignalConfig>;
+  description: string;
+  createdAt: string;
+};
+
+export type TradeType = 'SWING' | 'SCALP' | 'POSITION';
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export type AssetClass = 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES';
+export type StrategyType = 'SMC' | 'ICT' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP';
