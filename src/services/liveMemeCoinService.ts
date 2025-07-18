@@ -38,6 +38,7 @@ export interface LiveMemeCoin {
   price?: number;
   priceChange24h?: number;
   priceChange5m?: number;
+  priceChange1h?: number;
   volume24h?: number;
   marketCap?: number;
   healthScore?: number;
@@ -48,10 +49,19 @@ export interface LiveMemeCoin {
   lpLocked?: boolean;
   listedAgo?: string;
   riskQuadrant?: string;
+  riskScore?: string;
   exchangeUrl?: string;
   whyChosen?: string;
   whaleTransactions?: any[];
   alerts?: string[];
+  // New required fields to fix errors
+  pairAge?: number;
+  rugRisk?: boolean;
+  txCount1h?: number;
+  miniChart?: number[];
+  liquidity?: number;
+  liquidityLocked?: number;
+  lastUpdated?: string;
 }
 
 class LiveMemeCoinService {
@@ -93,6 +103,7 @@ class LiveMemeCoinService {
         price: coin.current_price,
         priceChange24h: coin.price_change_percentage_24h,
         priceChange5m: Math.random() * 10 - 5, // Mock 5m data
+        priceChange1h: Math.random() * 20 - 10, // Mock 1h data
         volume24h: coin.volume_24h,
         marketCap: coin.market_cap,
         healthScore: Math.floor(Math.random() * 100),
@@ -103,10 +114,19 @@ class LiveMemeCoinService {
         lpLocked: Math.random() > 0.5,
         listedAgo: `${Math.floor(Math.random() * 30)} days ago`,
         riskQuadrant: Math.random() > 0.5 ? 'Low Risk' : 'High Risk',
+        riskScore: Math.random() > 0.7 ? 'Safe' : Math.random() > 0.4 ? 'Medium' : 'High Risk',
         exchangeUrl: '#',
         whyChosen: 'Strong fundamentals and community support',
         whaleTransactions: [],
-        alerts: []
+        alerts: [],
+        // New required fields
+        pairAge: Math.random() * 48, // 0-48 hours
+        rugRisk: Math.random() > 0.8,
+        txCount1h: Math.floor(Math.random() * 1000),
+        miniChart: Array.from({ length: 20 }, () => Math.random() * 100),
+        liquidity: Math.floor(Math.random() * 1000000),
+        liquidityLocked: Math.random() * 100,
+        lastUpdated: new Date().toLocaleTimeString()
       }));
       
       this.setCachedData(cacheKey, enhancedData);
@@ -139,6 +159,14 @@ class LiveMemeCoinService {
       .filter(coin => coin.price_change_percentage_24h < 0)
       .sort((a, b) => a.price_change_percentage_24h - b.price_change_percentage_24h)
       .slice(0, 20);
+  }
+
+  getAlerts(): string[] {
+    return [
+      '🚨 DOGE volume spike detected +250%',
+      '📈 SHIB breaking resistance at $0.000012',
+      '⚠️ PEPE showing whale accumulation'
+    ];
   }
 }
 

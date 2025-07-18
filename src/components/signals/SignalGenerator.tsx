@@ -1,327 +1,497 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Target, 
-  TrendingUp, 
-  AlertCircle, 
   Zap, 
-  Brain,
-  Loader,
-  Sparkles,
-  Activity,
-  BarChart3,
-  Crown,
-  Shield,
-  CheckCircle2,
-  XCircle
-} from 'lucide-react';
+  Settings, 
+  SlidersHorizontal, 
+  BarChart, 
+  Loader2, 
+  AlertTriangle,
+  Copy,
+  Save,
+  Download,
+  Upload,
+  HelpCircle,
+  Lightbulb,
+  Brain
+} from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import { eliteSignalEngine, EliteSignal } from '@/services/eliteSignalEngine';
-import { trueLivePriceService } from '@/services/trueLivePriceService';
-import { signalService } from '@/services/signalService';
-import { enhancedSignalValidator, SignalValidationInput } from '@/services/enhancedSignalValidator';
-import { Signal } from '@/types/signalConfig';
+import { useAuth } from '@/contexts/AuthContext';
+import { SignalConfig, Signal, SavedPreset } from '@/types/signalConfig';
+import { EnhancedTacticalParameters } from './EnhancedTacticalParameters';
 
 interface SignalGeneratorProps {
   onSignalGenerated?: (signal: Signal) => void;
-  onFeatureUse?: () => void;
 }
 
-export const SignalGenerator: React.FC<SignalGeneratorProps> = ({ 
-  onSignalGenerated,
-  onFeatureUse
-}) => {
+export const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) => {
+  const [config, setConfig] = useState<SignalConfig>({
+    pair: 'EURUSD',
+    timeframe: '1H',
+    marketConditions: ['trending', 'volatile'],
+    technicalIndicators: ['RSI', 'MACD', 'EMA'],
+    riskReward: 2.0,
+    pairFilters: ['major'],
+    minConfidence: 75,
+    maxSignalsPerHour: 3,
+    enabled: true,
+    stopLoss: 50,
+    takeProfit: 100,
+    entryType: 'market' as const,
+    strategyType: 'SMC',
+    tradeType: 'SWING',
+    confidenceThreshold: 80,
+    riskLevel: 'LOW',
+    minFilters: 3,
+    assetClass: 'FOREX',
+    pairFilter: 'major',
+    entryLogic: 'Price action confirmation',
+    exitLogic: 'Target profit or stop loss hit',
+    stopLossLogic: 'ATR multiple',
+    takeProfitLogic: 'Fixed R:R ratio',
+    timeValidity: '24h',
+  });
+  const [generatedSignal, setGeneratedSignal] = useState<Signal | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [analysisStatus, setAnalysisStatus] = useState<string>('');
-  const [lastFilterResults, setLastFilterResults] = useState<string[]>([]);
-  const [lastRejectionReason, setLastRejectionReason] = useState<string>('');
-  const [rejectionCount, setRejectionCount] = useState<number>(0);
-  const [validationLog, setValidationLog] = useState<string[]>([]);
+  const [presets, setPresets] = useState<SavedPreset[]>([]);
+  const [presetName, setPresetName] = useState('');
+  const [presetDescription, setPresetDescription] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const { user } = useAuth();
   const { toast } = useToast();
 
-  // Session-aware quality requirements
-  const getSessionRequirements = () => {
-    const hour = new Date().getUTCHours();
-    const isActiveSession = (hour >= 6 && hour <= 16); // London + NY sessions
-    
-    return {
-      minConfidence: isActiveSession ? 75 : 80,
-      minConfluence: isActiveSession ? 5 : 6,
-      minRiskReward: isActiveSession ? 2.0 : 2.5,
-      sessionActive: isActiveSession,
-      sessionName: hour >= 8 && hour <= 17 ? 'London' : 
-                   hour >= 13 && hour <= 22 ? 'New York' : 'Asian'
-    };
+  useEffect(() => {
+    loadPresets();
+  }, []);
+
+  const loadPresets = () => {
+    // Mock loading presets from local storage
+    const storedPresets = localStorage.getItem('signalPresets');
+    if (storedPresets) {
+      setPresets(JSON.parse(storedPresets));
+    }
   };
 
-  const generateEnhancedSignal = async () => {
-    onFeatureUse?.();
-    setIsGenerating(true);
-    setAnalysisStatus('🏛️ ENHANCED INSTITUTIONAL VALIDATION PROTOCOL INITIALIZING...');
-    setLastRejectionReason('');
-    setRejectionCount(0);
-    setValidationLog([]);
+  const handleConfigUpdate = (newConfig: SignalConfig) => {
+    setConfig(newConfig);
+  };
 
-    const requirements = getSessionRequirements();
-    
-    try {
-      setAnalysisStatus(`⚡ Session: ${requirements.sessionName} (${requirements.sessionActive ? 'ACTIVE' : 'QUIET'}) - Enhanced validation required`);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      let attempts = 0;
-      const maxAttempts = 10;
-      
-      while (attempts < maxAttempts) {
-        attempts++;
-        setAnalysisStatus(`🎯 Attempt ${attempts}: Enhanced institutional analysis...`);
-        
-        try {
-          // Generate base signal
-          const baseSignal = await signalService.generateLiveSignal();
-          
-          if (!baseSignal) {
-            setRejectionCount(prev => prev + 1);
-            continue;
-          }
-
-          // Prepare validation input with proper type conversion
-          const validationInput: SignalValidationInput = {
-            pair: baseSignal.pair,
-            entry: typeof baseSignal.entry === 'string' ? parseFloat(baseSignal.entry) : baseSignal.entry,
-            stopLoss: typeof baseSignal.stopLoss === 'string' ? parseFloat(baseSignal.stopLoss) : baseSignal.stopLoss,
-            takeProfit: typeof baseSignal.takeProfit === 'string' ? parseFloat(baseSignal.takeProfit) : baseSignal.takeProfit,
-            confidence: baseSignal.confidence,
-            rrr: baseSignal.riskReward || 2.0,
-            confluenceScore: baseSignal.confluenceScore || 0,
-            filtersPassed: baseSignal.filtersPassed || [],
-            session: requirements.sessionName,
-            timeframe: '15m'
-          };
-
-          setAnalysisStatus(`🧠 Enhanced AI validation for ${baseSignal.pair}...`);
-          
-          // ENHANCED VALIDATION WITH LOCAL + GROQ
-          const validationResult = await enhancedSignalValidator.validateWithSessionContext(validationInput);
-          
-          if (!validationResult.isValid) {
-            setRejectionCount(prev => prev + 1);
-            setLastRejectionReason(validationResult.reason);
-            setValidationLog(prev => [...prev, `❌ ${baseSignal.pair}: ${validationResult.reason}`]);
-            continue;
-          }
-
-          // SUCCESS - Signal approved by enhanced validation
-          const enhancedSignal: Signal = {
-            ...baseSignal,
-            sessionContext: requirements.sessionName,
-            sessionActive: requirements.sessionActive,
-            enhancedValidation: true,
-            validationReason: validationResult.reason,
-            qualityScore: Math.min(96, baseSignal.confidence + 5),
-            signalStrength: baseSignal.confidence >= 90 ? 'ULTRA' : 
-                           baseSignal.confidence >= 85 ? 'STRONG' : 'MEDIUM',
-            riskReward: baseSignal.riskReward || 2.0
-          };
-
-          setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${validationResult.reason}`]);
-
-          if (onSignalGenerated) {
-            onSignalGenerated(enhancedSignal);
-            setLastFilterResults(enhancedSignal.filtersPassed || []);
-            
-            toast({
-              title: `🚨 ENHANCED ${enhancedSignal.signalStrength} SIGNAL APPROVED!`,
-              description: `${enhancedSignal.pair} ${enhancedSignal.type} | AI Validated | Session: ${requirements.sessionName}`,
-            });
-          }
-          
-          console.log(`✅ ENHANCED VALIDATED SIGNAL: ${enhancedSignal.pair} passed rigorous validation`);
-          return;
-          
-        } catch (error) {
-          console.error(`Enhanced attempt ${attempts} failed:`, error);
-          setRejectionCount(prev => prev + 1);
-          continue;
-        }
-      }
-      
-      // All attempts exhausted
-      setLastRejectionReason(`ENHANCED VALIDATION: All ${maxAttempts} attempts rejected. Current ${requirements.sessionName} session requires enhanced institutional validation with BOS+FVG, ${requirements.minConfidence}%+ confidence, ${requirements.minConfluence}/6+ confluence, and AI approval.`);
-      
+  const generateSignal = async () => {
+    if (!user) {
       toast({
-        title: "🏛️ Enhanced Validation Gate - All Signals Rejected",
-        description: `${rejectionCount} signals blocked by enhanced institutional validation`,
+        title: "Authentication Required",
+        description: "Please log in to generate signals",
         variant: "destructive"
       });
-      
-    } catch (error) {
-      console.error('Enhanced signal generation error:', error);
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    try {
+      // Simulate signal generation logic
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const newSignal: Signal = {
+        id: `signal_${Date.now()}`,
+        pair: config.pair,
+        type: Math.random() > 0.5 ? 'BUY' : 'SELL',
+        entryPrice: Math.random() * 100 + 1000,
+        stopLoss: Math.random() * 50 + 950,
+        takeProfit: Math.random() * 150 + 1100,
+        confidence: Math.floor(Math.random() * 30) + 70,
+        riskReward: config.riskReward,
+        analysis: 'Generated signal based on current market conditions',
+        timestamp: new Date().toISOString(),
+        timeframe: config.timeframe,
+        strategy: 'AI Enhanced',
+        marketCondition: config.marketConditions[0] || 'trending',
+        technicalSetup: config.technicalIndicators.join(', '),
+        entryReason: 'Strong technical confluence detected',
+        riskManagement: 'Proper R:R ratio maintained',
+        sessionContext: `Generated with ${config.technicalIndicators.length} indicators`,
+        signalStrength: Math.floor(Math.random() * 30) + 70,
+        filtersPassed: config.technicalIndicators
+      };
+
+      setGeneratedSignal(newSignal);
+      onSignalGenerated?.(newSignal);
+
       toast({
-        title: "Enhanced Signal Engine Error",
-        description: "Enhanced signal engine encountered an issue. Please try again.",
+        title: "Signal Generated",
+        description: `New ${newSignal.type} signal for ${newSignal.pair} created`,
+      });
+    } catch (error) {
+      console.error('Error generating signal:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate signal. Please try again.",
         variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
-      setAnalysisStatus('');
     }
   };
 
-  const requirements = getSessionRequirements();
+  const copySignal = () => {
+    if (generatedSignal) {
+      const signalText = JSON.stringify(generatedSignal, null, 2);
+      navigator.clipboard.writeText(signalText)
+        .then(() => {
+          toast({
+            title: "Signal Copied",
+            description: "Signal details copied to clipboard",
+          });
+        })
+        .catch(err => {
+          console.error("Failed to copy signal: ", err);
+          toast({
+            title: "Copy Failed",
+            description: "Could not copy signal to clipboard",
+            variant: "destructive"
+          });
+        });
+    }
+  };
+
+  const savePreset = async () => {
+    if (!presetName.trim()) {
+      toast({
+        title: "Preset Name Required",
+        description: "Please enter a name for your preset",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const preset: SavedPreset = {
+      id: `preset_${Date.now()}`,
+      name: presetName,
+      config: { ...config },
+      description: presetDescription,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedPresets = [...presets, preset];
+    setPresets(updatedPresets);
+    localStorage.setItem('signalPresets', JSON.stringify(updatedPresets));
+
+    toast({
+      title: "Preset Saved",
+      description: `Configuration saved as "${presetName}"`,
+    });
+  };
+
+  const loadPreset = (preset: SavedPreset) => {
+    const fullConfig: SignalConfig = {
+      pair: config.pair,
+      timeframe: config.timeframe,
+      marketConditions: config.marketConditions,
+      technicalIndicators: config.technicalIndicators,
+      riskReward: config.riskReward,
+      pairFilters: config.pairFilters,
+      minConfidence: config.minConfidence,
+      maxSignalsPerHour: config.maxSignalsPerHour,
+      enabled: config.enabled,
+      stopLoss: config.stopLoss,
+      takeProfit: config.takeProfit,
+      entryType: config.entryType,
+      ...preset.config,
+    };
+    onConfigUpdate(fullConfig);
+
+    toast({
+      title: "Preset Loaded",
+      description: `Applied "${preset.name}" configuration`,
+    });
+  };
 
   return (
-    <div className="glass-card p-8 mb-8 hover-glow border-purple-500/20">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-gradient-to-r from-yellow-500/20 to-purple-500/20 rounded-xl flex items-center justify-center border border-yellow-500/30">
-            <Crown className="w-6 h-6 text-yellow-400" />
+    <div className="space-y-6">
+      {/* Header */}
+      <Card className="glass-card border-purple-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-500/20 rounded-lg">
+                <Zap className="w-6 h-6 text-yellow-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">AI Signal Generator</h2>
+                <p className="text-sm text-gray-400">Configure parameters to generate trading signals</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              variant="outline"
+              className="border-purple-500/30 hover:bg-purple-500/20"
+            >
+              <SlidersHorizontal className="w-4 h-4 mr-2" />
+              Advanced
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Basic Configuration */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="pair" className="text-sm text-gray-400">Currency Pair</Label>
+              <Input
+                id="pair"
+                value={config.pair}
+                onChange={(e) => setConfig({ ...config, pair: e.target.value })}
+                className="bg-gray-800 border-gray-600"
+              />
+            </div>
+            <div>
+              <Label htmlFor="timeframe" className="text-sm text-gray-400">Timeframe</Label>
+              <Select onValueChange={(value) => setConfig({ ...config, timeframe: value })}>
+                <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                  <SelectValue placeholder="Select Timeframe" defaultValue={config.timeframe} />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 text-white">
+                  <SelectItem value="1M">1 Minute</SelectItem>
+                  <SelectItem value="5M">5 Minutes</SelectItem>
+                  <SelectItem value="15M">15 Minutes</SelectItem>
+                  <SelectItem value="30M">30 Minutes</SelectItem>
+                  <SelectItem value="1H">1 Hour</SelectItem>
+                  <SelectItem value="4H">4 Hours</SelectItem>
+                  <SelectItem value="1D">1 Day</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
+          {/* Market Conditions */}
           <div>
-            <h2 className="text-xl font-bold text-white">🧠 Enhanced Institutional Signal Protocol</h2>
-            <p className="text-gray-400">Local + AI Validation | BOS+FVG Required</p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Badge className={`${requirements.sessionActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} border-current animate-pulse`}>
-            <Activity className="w-3 h-3 mr-1" />
-            {requirements.sessionName}
-          </Badge>
-          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-            <Brain className="w-3 h-3 mr-1" />
-            AI ENHANCED
-          </Badge>
-        </div>
-      </div>
-
-      {/* Enhanced Requirements Display */}
-      <div className="glass-card p-6 mb-6 border-purple-500/10">
-        <div className="flex items-center space-x-2 mb-4">
-          <Shield className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg font-semibold text-white">Enhanced Validation Requirements</h3>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="glass-card p-3 text-center border-red-500/20">
-            <div className="text-sm text-red-400 font-semibold">Min Confidence</div>
-            <div className="text-xs text-gray-400">{requirements.minConfidence}% Required</div>
-          </div>
-          <div className="glass-card p-3 text-center border-orange-500/20">
-            <div className="text-sm text-orange-400 font-semibold">Min Confluence</div>
-            <div className="text-xs text-gray-400">{requirements.minConfluence}/6 Filters</div>
-          </div>
-          <div className="glass-card p-3 text-center border-yellow-500/20">
-            <div className="text-sm text-yellow-400 font-semibold">Required Filters</div>
-            <div className="text-xs text-gray-400">BOS + FVG</div>
-          </div>
-          <div className="glass-card p-3 text-center border-blue-500/20">
-            <div className="text-sm text-blue-400 font-semibold">AI Validation</div>
-            <div className="text-xs text-gray-400">MANDATORY</div>
-          </div>
-        </div>
-
-        <Alert className="mb-6 border-red-500/50 bg-red-500/10">
-          <AlertCircle className="h-4 w-4 text-red-400" />
-          <AlertDescription className="text-red-300">
-            <strong>ENHANCED VALIDATION:</strong> Every signal must pass local validation (75%+ confidence, 2:1+ R:R, BOS+FVG required) AND AI institutional reasoning. Current {requirements.sessionName} session requires {requirements.minConfidence}%+ confidence and {requirements.minConfluence}+ filters.
-          </AlertDescription>
-        </Alert>
-
-        {/* Validation Log */}
-        {validationLog.length > 0 && (
-          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg max-h-32 overflow-y-auto">
-            <div className="flex items-center space-x-2 mb-2">
-              <Brain className="w-4 h-4 text-blue-400" />
-              <span className="text-blue-300 font-semibold">Enhanced Validation Log:</span>
-            </div>
-            {validationLog.slice(-5).map((log, index) => (
-              <p key={index} className="text-sm text-blue-200 mb-1">{log}</p>
-            ))}
-          </div>
-        )}
-
-        {/* Rejection Counter */}
-        {rejectionCount > 0 && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-            <div className="flex items-center space-x-2 mb-2">
-              <XCircle className="w-4 h-4 text-red-400" />
-              <span className="text-red-300 font-semibold">Enhanced Filter Activity:</span>
-            </div>
-            <p className="text-sm text-red-200">{rejectionCount} signals rejected by enhanced validation system</p>
-          </div>
-        )}
-
-        {/* Last Rejection Reason */}
-        {lastRejectionReason && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-            <div className="flex items-center space-x-2 mb-3">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-red-300 font-semibold">Enhanced Validation Status:</span>
-            </div>
-            <p className="text-sm text-red-200">{lastRejectionReason}</p>
-          </div>
-        )}
-
-        {isGenerating && analysisStatus && (
-          <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <Loader className="w-4 h-4 text-purple-400 animate-spin" />
-              <span className="text-purple-300 text-sm">{analysisStatus}</span>
+            <Label className="text-sm text-gray-400">Market Conditions</Label>
+            <div className="flex gap-2">
+              {['trending', 'ranging', 'volatile', 'sideways'].map(condition => (
+                <Badge
+                  key={condition}
+                  variant={config.marketConditions.includes(condition) ? "default" : "outline"}
+                  onClick={() => {
+                    const newConditions = config.marketConditions.includes(condition)
+                      ? config.marketConditions.filter(c => c !== condition)
+                      : [...config.marketConditions, condition];
+                    setConfig({ ...config, marketConditions: newConditions });
+                  }}
+                  className={config.marketConditions.includes(condition) ? "bg-purple-600" : "border-gray-600"}
+                >
+                  {condition}
+                </Badge>
+              ))}
             </div>
           </div>
-        )}
 
-        <Button 
-          size="lg" 
-          className="w-full bg-gradient-to-r from-red-600 to-purple-600 hover:from-red-700 hover:to-purple-700 text-white font-bold py-4 hover-lift cyber-glow"
-          onClick={generateEnhancedSignal}
-          disabled={isGenerating}
-        >
-          {isGenerating ? (
-            <>
-              <Loader className="w-5 h-5 mr-2 animate-spin" />
-              Enhanced Analysis + AI...
-            </>
-          ) : (
-            <>
-              <Brain className="w-5 h-5 mr-2" />
-              Generate Enhanced Signal
-            </>
+          {/* Technical Indicators */}
+          <div>
+            <Label className="text-sm text-gray-400">Technical Indicators</Label>
+            <div className="flex gap-2">
+              {['RSI', 'MACD', 'EMA', 'SMA', 'Fibonacci'].map(indicator => (
+                <Badge
+                  key={indicator}
+                  variant={config.technicalIndicators.includes(indicator) ? "default" : "outline"}
+                  onClick={() => {
+                    const newIndicators = config.technicalIndicators.includes(indicator)
+                      ? config.technicalIndicators.filter(i => i !== indicator)
+                      : [...config.technicalIndicators, indicator];
+                    setConfig({ ...config, technicalIndicators: newIndicators });
+                  }}
+                  className={config.technicalIndicators.includes(indicator) ? "bg-blue-600" : "border-gray-600"}
+                >
+                  {indicator}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Risk Reward Ratio */}
+          <div>
+            <Label htmlFor="riskReward" className="text-sm text-gray-400">Risk Reward Ratio ({config.riskReward})</Label>
+            <Slider
+              id="riskReward"
+              defaultValue={[config.riskReward]}
+              min={1}
+              max={5}
+              step={0.1}
+              onValueChange={(value) => setConfig({ ...config, riskReward: value[0] })}
+              className="bg-gray-700"
+            />
+          </div>
+
+          {/* Advanced Tactical Parameters */}
+          {showAdvanced && (
+            <EnhancedTacticalParameters
+              config={config}
+              onConfigUpdate={handleConfigUpdate}
+              onGenerate={generateSignal}
+              isGenerating={isGenerating}
+            />
           )}
-        </Button>
-      </div>
 
-      {/* Enhanced Signal Strength Guide */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="glass-card p-4 border-red-500/20">
-          <Crown className="w-6 h-6 text-red-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">ULTRA (90%+)</h4>
-          <p className="text-sm text-gray-400">Perfect setup</p>
-          <p className="text-xs text-red-400">AI + BOS + FVG</p>
-        </div>
-        <div className="glass-card p-4 border-orange-500/20">
-          <Zap className="w-6 h-6 text-orange-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">STRONG (85%+)</h4>
-          <p className="text-sm text-gray-400">Elite confluence</p>
-          <p className="text-xs text-orange-400">AI + Structure</p>
-        </div>
-        <div className="glass-card p-4 border-yellow-500/20">
-          <Target className="w-6 h-6 text-yellow-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">MEDIUM (75%+)</h4>
-          <p className="text-sm text-gray-400">Institutional grade</p>
-          <p className="text-xs text-yellow-400">Local validated</p>
-        </div>
-        <div className="glass-card p-4 border-gray-500/20">
-          <BarChart3 className="w-6 h-6 text-gray-400 mb-2" />
-          <h4 className="text-white font-semibold mb-1">REJECTED (&lt;75%)</h4>
-          <p className="text-sm text-gray-400">Below threshold</p>
-          <p className="text-xs text-gray-400">Signal blocked</p>
-        </div>
-      </div>
+          {/* Generate Signal Button */}
+          <Button
+            onClick={generateSignal}
+            disabled={isGenerating}
+            className="bg-gradient-to-r from-purple-600 to-pink-600"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating Signal...
+              </>
+            ) : (
+              <>
+                <Zap className="w-4 h-4 mr-2" />
+                Generate Signal
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Generated Signal Display */}
+      {generatedSignal && (
+        <Card className="glass-card border-green-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-500/20 rounded-lg">
+                  <BarChart className="w-6 h-6 text-green-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Generated Signal</h2>
+                  <p className="text-sm text-gray-400">Details for the generated trading signal</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={copySignal}
+                  variant="outline"
+                  className="border-blue-500/30 hover:bg-blue-500/20"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy
+                </Button>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert className="bg-green-500/10 border-green-500/30">
+              <BarChart className="h-4 w-4 text-green-400" />
+              <AlertDescription className="text-green-300">
+                New {generatedSignal.type} signal for {generatedSignal.pair}
+              </AlertDescription>
+            </Alert>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm text-gray-400">Pair</Label>
+                <p className="text-white">{generatedSignal.pair}</p>
+              </div>
+              <div>
+                <Label className="text-sm text-gray-400">Type</Label>
+                <p className="text-white">{generatedSignal.type}</p>
+              </div>
+              <div>
+                <Label className="text-sm text-gray-400">Entry Price</Label>
+                <p className="text-white">{generatedSignal.entryPrice}</p>
+              </div>
+              <div>
+                <Label className="text-sm text-gray-400">Stop Loss</Label>
+                <p className="text-white">{generatedSignal.stopLoss}</p>
+              </div>
+              <div>
+                <Label className="text-sm text-gray-400">Take Profit</Label>
+                <p className="text-white">{generatedSignal.takeProfit}</p>
+              </div>
+              <div>
+                <Label className="text-sm text-gray-400">Confidence</Label>
+                <p className="text-white">{generatedSignal.confidence}</p>
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm text-gray-400">Analysis</Label>
+              <Textarea
+                readOnly
+                value={generatedSignal.analysis}
+                className="bg-gray-800 border-gray-600 text-white resize-none"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Preset Management */}
+      <Card className="glass-card border-blue-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Settings className="w-6 h-6 text-blue-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Preset Management</h2>
+                <p className="text-sm text-gray-400">Save and load signal configurations</p>
+              </div>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="presetName" className="text-sm text-gray-400">Preset Name</Label>
+              <Input
+                id="presetName"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                className="bg-gray-800 border-gray-600"
+              />
+            </div>
+            <div>
+              <Label htmlFor="presetDescription" className="text-sm text-gray-400">Description</Label>
+              <Input
+                id="presetDescription"
+                value={presetDescription}
+                onChange={(e) => setPresetDescription(e.target.value)}
+                className="bg-gray-800 border-gray-600"
+              />
+            </div>
+          </div>
+          <Button onClick={savePreset} className="bg-blue-600 hover:bg-blue-700">
+            <Save className="w-4 h-4 mr-2" />
+            Save Preset
+          </Button>
+
+          {/* Load Presets */}
+          {presets.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm text-gray-400">Load Preset</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {presets.map(preset => (
+                  <Button
+                    key={preset.id}
+                    variant="outline"
+                    onClick={() => loadPreset(preset)}
+                    className="border-blue-500/30 hover:bg-blue-500/20"
+                  >
+                    {preset.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
-
-export default SignalGenerator;

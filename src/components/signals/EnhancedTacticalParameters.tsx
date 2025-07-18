@@ -1,431 +1,526 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from '@/hooks/use-toast';
 import { 
+  SlidersHorizontal, 
+  Dice, 
+  Save, 
+  Load, 
+  Wand2,
+  HelpCircle
+} from 'lucide-react';
+import { 
+  SignalConfig,
+  SavedPreset
+} from '@/types/signalConfig';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { 
-  Settings, 
-  Star, 
-  Eye, 
-  Save,
-  Clock,
-  Shield,
-  TrendingUp,
-  Coins,
-  BarChart3,
-  Zap
-} from 'lucide-react';
-import { SignalConfig, SavedPreset, TradeType, RiskLevel, AssetClass, StrategyType } from '@/types/signalConfig';
-import { useToast } from '@/hooks/use-toast';
-import { useIsMobile } from '@/hooks/use-mobile';
+} from "@/components/ui/select"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface EnhancedTacticalParametersProps {
   config: SignalConfig;
-  onConfigChange: (config: SignalConfig) => void;
-  onShowBreakdown: () => void;
-  onGenerateSignal: () => void;
+  onConfigUpdate: (config: SignalConfig) => void;
+  onGenerate: () => void;
   isGenerating: boolean;
 }
 
-const tradeTypeIcons = {
-  scalp: Clock,
-  intraday: Zap,
-  swing: TrendingUp,
-  position: BarChart3
-};
-
-const riskLevelColors = {
-  conservative: 'bg-green-500/20 text-green-400 border-green-500/30',
-  moderate: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  aggressive: 'bg-red-500/20 text-red-400 border-red-500/30'
-};
-
-const assetClassIcons = {
-  forex: Coins,
-  crypto: TrendingUp,
-  commodities: BarChart3,
-  indices: Shield
-};
-
 export const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProps> = ({
   config,
-  onConfigChange,
-  onShowBreakdown,
-  onGenerateSignal,
+  onConfigUpdate,
+  onGenerate,
   isGenerating
 }) => {
-  const [savedPresets, setSavedPresets] = useState<SavedPreset[]>([]);
   const [presetName, setPresetName] = useState('');
-  const [showSaveForm, setShowSaveForm] = useState(false);
-  const { toast } = useToast();
-  const isMobile = useIsMobile();
+  const [presetDescription, setPresetDescription] = useState('');
+  const [savedPresets, setSavedPresets] = useState<SavedPreset[]>([]);
 
-  const updateConfig = (updates: Partial<SignalConfig>) => {
-    onConfigChange({ ...config, ...updates });
+  const handleInputChange = (key: keyof SignalConfig, value: any) => {
+    onConfigUpdate({ ...config, [key]: value });
   };
 
-  const savePreset = () => {
+  const handleNumberChange = (key: keyof SignalConfig, value: number) => {
+    if (typeof value === 'number') {
+      onConfigUpdate({ ...config, [key]: value });
+    }
+  };
+
+  const handleToggleChange = (key: keyof SignalConfig, checked: boolean) => {
+    onConfigUpdate({ ...config, [key]: checked });
+  };
+
+  const randomizeParameters = () => {
+    const randomConfig: SignalConfig = {
+      pair: config.pair,
+      timeframe: config.timeframe,
+      marketConditions: [
+        Math.random() > 0.5 ? 'trending' : 'ranging',
+        Math.random() > 0.5 ? 'volatile' : 'stable',
+      ],
+      technicalIndicators: [
+        Math.random() > 0.5 ? 'RSI' : 'MACD',
+        Math.random() > 0.5 ? 'EMA' : 'SMA',
+      ],
+      riskReward: Math.random() * 3 + 1,
+      pairFilters: [Math.random() > 0.5 ? 'major' : 'minor'],
+      minConfidence: Math.floor(Math.random() * 50) + 50,
+      maxSignalsPerHour: Math.floor(Math.random() * 5) + 1,
+      enabled: config.enabled,
+      stopLoss: Math.floor(Math.random() * 100),
+      takeProfit: Math.floor(Math.random() * 200) + 100,
+      entryType: Math.random() > 0.5 ? 'market' : 'limit',
+      strategyType: Math.random() > 0.5 ? 'SMC' : 'ICT',
+      tradeType: Math.random() > 0.5 ? 'SWING' : 'SCALP',
+      confidenceThreshold: Math.floor(Math.random() * 40) + 60,
+      riskLevel: Math.random() > 0.5 ? 'LOW' : 'MEDIUM',
+      minFilters: Math.floor(Math.random() * 4) + 1,
+      assetClass: Math.random() > 0.5 ? 'FOREX' : 'CRYPTO',
+      pairFilter: Math.random() > 0.5 ? 'major' : 'minor',
+      timeValidity: Math.random() > 0.5 ? '12h' : '24h',
+      entryLogic: 'Random entry logic',
+      exitLogic: 'Random exit logic',
+      stopLossLogic: 'Random stop loss logic',
+      takeProfitLogic: 'Random take profit logic',
+    };
+    onConfigUpdate(randomConfig);
+
+    toast({
+      title: "Parameters Randomized",
+      description: "New tactical parameters generated",
+    });
+  };
+
+  const savePreset = async () => {
     if (!presetName.trim()) {
       toast({
-        title: "Name Required",
+        title: "Preset Name Required",
         description: "Please enter a name for your preset",
         variant: "destructive"
       });
       return;
     }
 
-    const newPreset: SavedPreset = {
-      id: Date.now().toString(),
-      name: presetName.trim(),
+    const preset: SavedPreset = {
+      id: `preset_${Date.now()}`,
+      name: presetName,
       config: { ...config },
-      createdAt: new Date()
+      description: presetDescription,
+      createdAt: new Date().toISOString(),
     };
 
-    setSavedPresets(prev => [newPreset, ...prev]);
+    setSavedPresets(prev => [...prev, preset]);
     setPresetName('');
-    setShowSaveForm(false);
-    
+    setPresetDescription('');
+
     toast({
       title: "Preset Saved",
-      description: `"${newPreset.name}" loadout saved successfully`,
+      description: `Configuration saved as "${preset.name}"`,
     });
   };
 
   const loadPreset = (preset: SavedPreset) => {
-    onConfigChange(preset.config);
+    const fullConfig: SignalConfig = {
+      pair: config.pair,
+      timeframe: config.timeframe,
+      marketConditions: config.marketConditions,
+      technicalIndicators: config.technicalIndicators,
+      riskReward: config.riskReward,
+      pairFilters: config.pairFilters,
+      minConfidence: config.minConfidence,
+      maxSignalsPerHour: config.maxSignalsPerHour,
+      enabled: config.enabled,
+      stopLoss: config.stopLoss,
+      takeProfit: config.takeProfit,
+      entryType: config.entryType,
+      ...preset.config,
+    };
+    onConfigUpdate(fullConfig);
+
     toast({
       title: "Preset Loaded",
-      description: `"${preset.name}" configuration applied`,
+      description: `Applied "${preset.name}" configuration`,
     });
   };
 
-  const getTradeTypeDescription = (type: TradeType) => {
-    const descriptions = {
-      scalp: 'Quick 5-15min trades',
-      intraday: '1-4 hour trades',
-      swing: '1-5 day holds',
-      position: 'Weekly+ positions'
-    };
-    return descriptions[type];
-  };
-
-  const getRiskDescription = (risk: RiskLevel) => {
-    const descriptions = {
-      conservative: 'Safe zones, tight stops',
-      moderate: 'Balanced setup',
-      aggressive: 'High risk/reward'
-    };
-    return descriptions[risk];
-  };
-
-  const getAssetDescription = (asset: AssetClass) => {
-    const descriptions = {
-      forex: 'Currency pairs',
-      crypto: 'Digital assets',
-      commodities: 'Gold, Oil, etc.',
-      indices: 'Stock indices'
-    };
-    return descriptions[asset];
-  };
-
   return (
-    <Card className="bg-gray-950/50 border-gray-600/30 glow-soft animate-section-load">
+    <Card className="glass-card border-purple-500/20">
       <CardHeader>
-        <CardTitle className="text-white flex items-center gap-2 font-zen-maru text-lg md:text-xl">
-          <Settings className="w-4 h-4 md:w-5 md:h-5" />
-          ENHANCED TACTICAL PARAMETERS
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="w-5 h-5 text-purple-400" />
+            Tactical Parameters
+          </div>
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    onClick={randomizeParameters}
+                    variant="outline"
+                    size="icon"
+                    className="border-purple-500/30 hover:bg-purple-500/20"
+                  >
+                    <Dice className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Randomize Parameters
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    onClick={onGenerate}
+                    disabled={isGenerating}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Wand2 className="w-4 h-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-4 h-4 mr-2" />
+                        Generate Signal
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Generate Signal
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 md:space-y-6">
-        {/* Main Configuration Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          {/* Strategy Type */}
+      <CardContent className="space-y-4">
+        {/* Pair and Timeframe */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Strategy Type</label>
-            <Select value={config.strategyType} onValueChange={(value) => updateConfig({ strategyType: value as StrategyType })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="Hybrid">⚡ Hybrid</SelectItem>
-                <SelectItem value="Institutional">⛩️ Institutional</SelectItem>
-                <SelectItem value="SMC">🥋 SMC</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="pair">Pair</Label>
+            <Input
+              type="text"
+              id="pair"
+              value={config.pair}
+              onChange={(e) => handleInputChange('pair', e.target.value)}
+              className="bg-gray-800 border-gray-600"
+            />
           </div>
-
-          {/* Trade Type */}
           <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Trade Type</label>
-            <Select value={config.tradeType} onValueChange={(value) => updateConfig({ tradeType: value as TradeType })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="scalp">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3 h-3" />
-                    Scalp
-                  </div>
-                </SelectItem>
-                <SelectItem value="intraday">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-3 h-3" />
-                    Intraday
-                  </div>
-                </SelectItem>
-                <SelectItem value="swing">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-3 h-3" />
-                    Swing
-                  </div>
-                </SelectItem>
-                <SelectItem value="position">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="w-3 h-3" />
-                    Position
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-1">{getTradeTypeDescription(config.tradeType)}</p>
-          </div>
-
-          {/* Min Confidence */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Min Confidence</label>
-            <Select value={config.confidenceThreshold.toString()} onValueChange={(value) => updateConfig({ confidenceThreshold: parseInt(value) })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="70">70%+</SelectItem>
-                <SelectItem value="80">80%+</SelectItem>
-                <SelectItem value="90">90%+</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Risk Level */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Risk Level</label>
-            <Select value={config.riskLevel} onValueChange={(value) => updateConfig({ riskLevel: value as RiskLevel })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="conservative">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-3 h-3 text-green-400" />
-                    Conservative
-                  </div>
-                </SelectItem>
-                <SelectItem value="moderate">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-3 h-3 text-yellow-400" />
-                    Moderate
-                  </div>
-                </SelectItem>
-                <SelectItem value="aggressive">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-3 h-3 text-red-400" />
-                    Aggressive
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-1">{getRiskDescription(config.riskLevel)}</p>
+            <Label htmlFor="timeframe">Timeframe</Label>
+            <Input
+              type="text"
+              id="timeframe"
+              value={config.timeframe}
+              onChange={(e) => handleInputChange('timeframe', e.target.value)}
+              className="bg-gray-800 border-gray-600"
+            />
           </div>
         </div>
 
-        {/* Secondary Configuration Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          {/* Min Confluence */}
+        {/* Market Conditions and Technical Indicators */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Min Confluence</label>
-            <Select value={config.minFilters.toString()} onValueChange={(value) => updateConfig({ minFilters: parseInt(value) })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="3">3/6 Frameworks</SelectItem>
-                <SelectItem value="4">4/6 Frameworks</SelectItem>
-                <SelectItem value="5">5/6 Frameworks</SelectItem>
-                <SelectItem value="6">6/6 Frameworks (Elite)</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="marketConditions">Market Conditions</Label>
+            <Input
+              type="text"
+              id="marketConditions"
+              value={config.marketConditions.join(', ')}
+              onChange={(e) => handleInputChange('marketConditions', e.target.value.split(', '))}
+              className="bg-gray-800 border-gray-600"
+            />
           </div>
-
-          {/* Asset Class */}
           <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Asset Class</label>
-            <Select value={config.assetClass} onValueChange={(value) => updateConfig({ assetClass: value as AssetClass })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="forex">
-                  <div className="flex items-center gap-2">
-                    <Coins className="w-3 h-3" />
-                    Forex
-                  </div>
-                </SelectItem>
-                <SelectItem value="crypto">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-3 h-3" />
-                    Crypto
-                  </div>
-                </SelectItem>
-                <SelectItem value="commodities">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="w-3 h-3" />
-                    Commodities
-                  </div>
-                </SelectItem>
-                <SelectItem value="indices">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-3 h-3" />
-                    Indices
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-1">{getAssetDescription(config.assetClass)}</p>
-          </div>
-
-          {/* Pair Filter */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Pair Filter</label>
-            <Select value={config.pairFilter} onValueChange={(value) => updateConfig({ pairFilter: value as any })}>
-              <SelectTrigger className="w-full bg-gray-800 border border-gray-600 text-white text-xs md:text-sm font-noto glow-soft">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-600">
-                <SelectItem value="majors">Major Pairs</SelectItem>
-                <SelectItem value="eurusd">EUR/USD Only</SelectItem>
-                <SelectItem value="all">All Pairs</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Save Preset */}
-          <div>
-            <label className="text-xs md:text-sm text-gray-400 mb-1 block font-zen-maru">Save Loadout</label>
-            {!showSaveForm ? (
-              <Button
-                onClick={() => setShowSaveForm(true)}
-                variant="outline"
-                size="sm"
-                className="w-full border-purple-500/30 hover:bg-purple-500/20 text-purple-400 font-zen-maru glow-soft"
-              >
-                <Star className="w-3 h-3 mr-2" />
-                Save Preset
-              </Button>
-            ) : (
-              <div className="flex gap-1">
-                <input
-                  type="text"
-                  value={presetName}
-                  onChange={(e) => setPresetName(e.target.value)}
-                  placeholder="Preset name..."
-                  className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                  onKeyPress={(e) => e.key === 'Enter' && savePreset()}
-                />
-                <Button onClick={savePreset} size="sm" className="px-2">
-                  <Save className="w-3 h-3" />
-                </Button>
-              </div>
-            )}
+            <Label htmlFor="technicalIndicators">Technical Indicators</Label>
+            <Input
+              type="text"
+              id="technicalIndicators"
+              value={config.technicalIndicators.join(', ')}
+              onChange={(e) => handleInputChange('technicalIndicators', e.target.value.split(', '))}
+              className="bg-gray-800 border-gray-600"
+            />
           </div>
         </div>
 
-        {/* Current Configuration Display */}
-        <div className="bg-gray-800/30 rounded-lg p-3 md:p-4">
-          <h4 className="text-sm font-semibold text-white mb-2 font-zen-maru">Current Configuration:</h4>
-          <div className="flex flex-wrap gap-2">
-            <Badge className={riskLevelColors[config.riskLevel]}>
-              {config.riskLevel.toUpperCase()}
-            </Badge>
-            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-              {config.tradeType.toUpperCase()}
-            </Badge>
-            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-              {config.assetClass.toUpperCase()}
-            </Badge>
-            <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-              {config.confidenceThreshold}%+ CONFIDENCE
-            </Badge>
-            <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
-              {config.minFilters}/6 FILTERS
-            </Badge>
+        {/* Risk Reward Ratio */}
+        <div>
+          <Label htmlFor="riskReward">Risk Reward Ratio</Label>
+          <Slider
+            id="riskReward"
+            defaultValue={[config.riskReward]}
+            min={1}
+            max={5}
+            step={0.1}
+            onValueChange={(value) => handleNumberChange('riskReward', value[0])}
+            className="bg-gray-700"
+          />
+          <div className="text-sm text-gray-400 mt-1">{config.riskReward.toFixed(1)}</div>
+        </div>
+
+        {/* Pair Filters */}
+        <div>
+          <Label htmlFor="pairFilters">Pair Filters</Label>
+          <Input
+            type="text"
+            id="pairFilters"
+            value={config.pairFilters.join(', ')}
+            onChange={(e) => handleInputChange('pairFilters', e.target.value.split(', '))}
+            className="bg-gray-800 border-gray-600"
+          />
+        </div>
+
+        {/* Confidence and Signals Per Hour */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="minConfidence">Min Confidence</Label>
+            <Input
+              type="number"
+              id="minConfidence"
+              value={config.minConfidence}
+              onChange={(e) => handleNumberChange('minConfidence', Number(e.target.value))}
+              className="bg-gray-800 border-gray-600"
+            />
           </div>
-          {config.confidenceThreshold >= 90 && config.minFilters >= 5 && (
-            <div className="mt-2 p-2 bg-gold-500/10 border border-gold-500/30 rounded">
-              <p className="text-gold-400 text-xs font-semibold">🏆 INSTITUTIONAL GRADE CONFIGURATION DETECTED</p>
+          <div>
+            <Label htmlFor="maxSignalsPerHour">Max Signals Per Hour</Label>
+            <Input
+              type="number"
+              id="maxSignalsPerHour"
+              value={config.maxSignalsPerHour}
+              onChange={(e) => handleNumberChange('maxSignalsPerHour', Number(e.target.value))}
+              className="bg-gray-800 border-gray-600"
+            />
+          </div>
+        </div>
+
+        {/* Stop Loss and Take Profit */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="stopLoss">Stop Loss</Label>
+            <Input
+              type="number"
+              id="stopLoss"
+              value={config.stopLoss}
+              onChange={(e) => handleNumberChange('stopLoss', Number(e.target.value))}
+              className="bg-gray-800 border-gray-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="takeProfit">Take Profit</Label>
+            <Input
+              type="number"
+              id="takeProfit"
+              value={config.takeProfit}
+              onChange={(e) => handleNumberChange('takeProfit', Number(e.target.value))}
+              className="bg-gray-800 border-gray-600"
+            />
+          </div>
+        </div>
+
+        {/* Entry Type */}
+        <div>
+          <Label htmlFor="entryType">Entry Type</Label>
+          <Select onValueChange={(value) => handleInputChange('entryType', value)}>
+            <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+              <SelectValue placeholder={config.entryType} />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-700 border-gray-500 text-white">
+              <SelectItem value="market">Market</SelectItem>
+              <SelectItem value="limit">Limit</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Strategy, Trade Type, and Risk Level */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="strategyType">Strategy Type</Label>
+            <Select onValueChange={(value) => handleInputChange('strategyType', value)}>
+              <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                <SelectValue placeholder={config.strategyType} />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-700 border-gray-500 text-white">
+                <SelectItem value="SMC">SMC</SelectItem>
+                <SelectItem value="ICT">ICT</SelectItem>
+                <SelectItem value="BREAK_RETEST">Break & Retest</SelectItem>
+                <SelectItem value="LIQUIDITY_SWEEP">Liquidity Sweep</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="tradeType">Trade Type</Label>
+            <Select onValueChange={(value) => handleInputChange('tradeType', value)}>
+              <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                <SelectValue placeholder={config.tradeType} />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-700 border-gray-500 text-white">
+                <SelectItem value="SWING">Swing</SelectItem>
+                <SelectItem value="SCALP">Scalp</SelectItem>
+                <SelectItem value="POSITION">Position</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="riskLevel">Risk Level</Label>
+            <Select onValueChange={(value) => handleInputChange('riskLevel', value)}>
+              <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                <SelectValue placeholder={config.riskLevel} />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-700 border-gray-500 text-white">
+                <SelectItem value="LOW">Low</SelectItem>
+                <SelectItem value="MEDIUM">Medium</SelectItem>
+                <SelectItem value="HIGH">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Confidence Threshold and Min Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="confidenceThreshold">Confidence Threshold</Label>
+            <Input
+              type="number"
+              id="confidenceThreshold"
+              value={config.confidenceThreshold}
+              onChange={(e) => handleNumberChange('confidenceThreshold', Number(e.target.value))}
+              className="bg-gray-800 border-gray-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="minFilters">Min Filters</Label>
+            <Input
+              type="number"
+              id="minFilters"
+              value={config.minFilters}
+              onChange={(e) => handleNumberChange('minFilters', Number(e.target.value))}
+              className="bg-gray-800 border-gray-600"
+            />
+          </div>
+        </div>
+
+        {/* Asset Class and Pair Filter */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="assetClass">Asset Class</Label>
+            <Select onValueChange={(value) => handleInputChange('assetClass', value)}>
+              <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                <SelectValue placeholder={config.assetClass} />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-700 border-gray-500 text-white">
+                <SelectItem value="FOREX">Forex</SelectItem>
+                <SelectItem value="CRYPTO">Crypto</SelectItem>
+                <SelectItem value="STOCKS">Stocks</SelectItem>
+                <SelectItem value="COMMODITIES">Commodities</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="pairFilter">Pair Filter</Label>
+            <Input
+              type="text"
+              id="pairFilter"
+              value={config.pairFilter}
+              onChange={(e) => handleInputChange('pairFilter', e.target.value)}
+              className="bg-gray-800 border-gray-600"
+            />
+          </div>
+        </div>
+
+        {/* Time Validity */}
+        <div>
+          <Label htmlFor="timeValidity">Time Validity</Label>
+          <Input
+            type="text"
+            id="timeValidity"
+            value={config.timeValidity}
+            onChange={(e) => handleInputChange('timeValidity', e.target.value)}
+            className="bg-gray-800 border-gray-600"
+          />
+        </div>
+
+        {/* Toggle Switch */}
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="enabled"
+            checked={config.enabled}
+            onCheckedChange={(checked) => handleToggleChange('enabled', checked)}
+          />
+          <Label htmlFor="enabled">Enable Signal Generation</Label>
+        </div>
+
+        {/* Preset Management */}
+        <div className="border-t border-gray-700 pt-4 mt-4">
+          <h4 className="text-sm font-semibold text-gray-300 mb-2">Preset Management</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="presetName">Preset Name</Label>
+              <Input
+                type="text"
+                id="presetName"
+                placeholder="Enter preset name"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                className="bg-gray-800 border-gray-600"
+              />
             </div>
-          )}
+            <div>
+              <Label htmlFor="presetDescription">Preset Description</Label>
+              <Input
+                type="text"
+                id="presetDescription"
+                placeholder="Describe this preset"
+                value={presetDescription}
+                onChange={(e) => setPresetDescription(e.target.value)}
+                className="bg-gray-800 border-gray-600"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <Button onClick={savePreset} className="bg-blue-600 hover:bg-blue-700">
+              <Save className="w-4 h-4 mr-2" />
+              Save Preset
+            </Button>
+          </div>
         </div>
 
-        {/* Saved Presets */}
+        {/* Load Presets */}
         {savedPresets.length > 0 && (
-          <div>
-            <h4 className="text-sm font-semibold text-white mb-2 font-zen-maru">Saved Presets:</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="border-t border-gray-700 pt-4 mt-4">
+            <h4 className="text-sm font-semibold text-gray-300 mb-2">Load Preset</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {savedPresets.map((preset) => (
-                <Button
-                  key={preset.id}
-                  onClick={() => loadPreset(preset)}
-                  variant="outline"
-                  size="sm"
-                  className="justify-start border-gray-600 hover:bg-gray-700/50 text-left"
-                >
-                  <Star className="w-3 h-3 mr-2 text-yellow-400" />
-                  <span className="truncate">{preset.name}</span>
-                </Button>
+                <Card key={preset.id} className="glass-card hover-glow cursor-pointer" onClick={() => loadPreset(preset)}>
+                  <CardContent className="p-3">
+                    <h5 className="text-sm font-semibold text-white">{preset.name}</h5>
+                    <p className="text-xs text-gray-400">{preset.description}</p>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
         )}
-
-        {/* Action Buttons */}
-        <div className="flex flex-col md:flex-row gap-3 md:gap-4">
-          <Button
-            onClick={onShowBreakdown}
-            variant="outline"
-            className="flex-1 border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-zen-maru glow-soft"
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            Show Strategy Breakdown
-          </Button>
-          
-          <Button
-            onClick={onGenerateSignal}
-            disabled={isGenerating}
-            className="flex-1 bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/50 hover:bg-pink-500/30 font-zen-maru font-bold glow-intense"
-          >
-            {isGenerating ? (
-              <>
-                <Settings className="w-4 h-4 mr-2 animate-spin" />
-                AI COUNCIL VOTING...
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4 mr-2" />
-                GENERATE SIGNAL ⚔️
-              </>
-            )}
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
 };
-
-export default EnhancedTacticalParameters;

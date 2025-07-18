@@ -83,12 +83,12 @@ const LiveMemeCoinDashboard: React.FC = () => {
     
     // Age filter
     filtered = filtered.filter(coin => 
-      coin.pairAge >= minAge && coin.pairAge <= maxAge
+      (coin.pairAge || 0) >= minAge && (coin.pairAge || 0) <= maxAge
     );
     
     // Market cap filter
     filtered = filtered.filter(coin => 
-      coin.marketCap >= minMcap && coin.marketCap <= maxMcap
+      coin.market_cap >= minMcap && coin.market_cap <= maxMcap
     );
     
     // Rug risk filter
@@ -101,10 +101,10 @@ const LiveMemeCoinDashboard: React.FC = () => {
 
   // Auto-update prices and check alerts
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       if (coins.length > 0) {
-        const updatedCoins = liveMemeCoinService.getCoins();
-        setCoins([...updatedCoins]);
+        const updatedCoins = await liveMemeCoinService.getCoins();
+        setCoins(updatedCoins);
         
         // Check for new alerts
         const newAlerts = liveMemeCoinService.getAlerts();
@@ -356,9 +356,9 @@ const LiveMemeCoinDashboard: React.FC = () => {
                         <div className="flex items-center gap-3 text-xs text-gray-400">
                           <span>{coin.listedAgo}</span>
                           <span>•</span>
-                          <span>{coin.txCount1h} txns/1h</span>
+                          <span>{coin.txCount1h || 0} txns/1h</span>
                           <span>•</span>
-                          <HealthScoreBar score={coin.healthScore} riskScore={coin.riskScore} />
+                          <HealthScoreBar score={coin.healthScore || 0} riskScore={coin.riskScore || 'Unknown'} />
                         </div>
                       </div>
                     </div>
@@ -366,25 +366,25 @@ const LiveMemeCoinDashboard: React.FC = () => {
                     {/* Price & Changes */}
                     <div className="text-right">
                       <div className="text-xl font-bold text-white">
-                        ${coin.price.toFixed(coin.price < 0.01 ? 8 : 6)}
+                        ${coin.current_price.toFixed(coin.current_price < 0.01 ? 8 : 6)}
                       </div>
                       <div className="flex items-center justify-end gap-2 text-xs">
                         <div className={`flex items-center gap-1 ${
-                          coin.priceChange5m >= 0 ? 'text-green-400' : 'text-red-400'
+                          (coin.priceChange5m || 0) >= 0 ? 'text-green-400' : 'text-red-400'
                         }`}>
-                          5m: {coin.priceChange5m >= 0 ? '+' : ''}{coin.priceChange5m.toFixed(1)}%
+                          5m: {(coin.priceChange5m || 0) >= 0 ? '+' : ''}{(coin.priceChange5m || 0).toFixed(1)}%
                         </div>
                         <div className={`flex items-center gap-1 ${
-                          coin.priceChange1h >= 0 ? 'text-green-400' : 'text-red-400'
+                          (coin.priceChange1h || 0) >= 0 ? 'text-green-400' : 'text-red-400'
                         }`}>
-                          1h: {coin.priceChange1h >= 0 ? '+' : ''}{coin.priceChange1h.toFixed(1)}%
+                          1h: {(coin.priceChange1h || 0) >= 0 ? '+' : ''}{(coin.priceChange1h || 0).toFixed(1)}%
                         </div>
                       </div>
                     </div>
 
                     {/* Mini Chart */}
                     <div className="w-24">
-                      <MiniChart data={coin.miniChart} volumeSpike={coin.volumeSpike} />
+                      <MiniChart data={coin.miniChart || []} volumeSpike={coin.volumeSpike || false} />
                     </div>
 
                     {/* Key Metrics */}
@@ -392,19 +392,19 @@ const LiveMemeCoinDashboard: React.FC = () => {
                       <div>
                         <div className="text-gray-400">Volume 24h</div>
                         <div className="text-white font-medium">
-                          ${coin.volume24h.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          ${coin.volume_24h.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </div>
                       </div>
                       <div>
                         <div className="text-gray-400">Liquidity</div>
                         <div className="text-white font-medium">
-                          ${coin.liquidity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          ${(coin.liquidity || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </div>
                       </div>
                       <div>
                         <div className="text-gray-400">LP Locked</div>
                         <div className="text-white font-medium">
-                          {coin.liquidityLocked.toFixed(0)}%
+                          {(coin.liquidityLocked || 0).toFixed(0)}%
                         </div>
                       </div>
                     </div>
@@ -418,7 +418,7 @@ const LiveMemeCoinDashboard: React.FC = () => {
                           'bg-red-500/20 text-red-400'
                         } border-0`}>
                           <Shield className="w-3 h-3 mr-1" />
-                          {coin.riskScore}
+                          {coin.riskScore || 'Unknown'}
                         </Badge>
                         {coin.lpLocked && (
                           <Badge className="bg-blue-500/20 text-blue-400 border-0">
@@ -427,7 +427,7 @@ const LiveMemeCoinDashboard: React.FC = () => {
                         )}
                       </div>
                       <div className="text-xs text-gray-400">
-                        Updated: {coin.lastUpdated}
+                        Updated: {coin.lastUpdated || coin.last_updated}
                       </div>
                       <div className="flex gap-2">
                         <Button 
@@ -442,7 +442,7 @@ const LiveMemeCoinDashboard: React.FC = () => {
                         <Button 
                           size="sm" 
                           className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
-                          onClick={() => window.open(coin.exchangeUrl, '_blank')}
+                          onClick={() => window.open(coin.exchangeUrl || '#', '_blank')}
                         >
                           <ExternalLink className="w-3 h-3 mr-1" />
                           Trade
@@ -479,19 +479,19 @@ const LiveMemeCoinDashboard: React.FC = () => {
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <span className="text-gray-400">Health Score:</span>
-                  <span className="ml-2 font-bold">{selectedCoin.healthScore}/100</span>
+                  <span className="ml-2 font-bold">{selectedCoin.healthScore || 0}/100</span>
                 </div>
                 <div>
                   <span className="text-gray-400">LP Locked:</span>
-                  <span className="ml-2 font-bold">{selectedCoin.liquidityLocked.toFixed(0)}%</span>
+                  <span className="ml-2 font-bold">{(selectedCoin.liquidityLocked || 0).toFixed(0)}%</span>
                 </div>
                 <div>
                   <span className="text-gray-400">TX Count (1h):</span>
-                  <span className="ml-2 font-bold">{selectedCoin.txCount1h}</span>
+                  <span className="ml-2 font-bold">{selectedCoin.txCount1h || 0}</span>
                 </div>
                 <div>
                   <span className="text-gray-400">Pair Age:</span>
-                  <span className="ml-2 font-bold">{selectedCoin.pairAge.toFixed(1)}h</span>
+                  <span className="ml-2 font-bold">{(selectedCoin.pairAge || 0).toFixed(1)}h</span>
                 </div>
               </div>
             </div>
