@@ -11,21 +11,29 @@ import {
   Gamepad2,
   MessageSquare,
   GraduationCap,
-  BookOpen
+  BookOpen,
+  Trophy
 } from 'lucide-react';
 import EnhancedTradingJournal from '@/components/education/EnhancedTradingJournal';
 import BacktestLab from '@/components/education/BacktestLab';
 import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
 import CombatMode from '@/components/education/CombatMode';
 import SimpleFoundations from '@/components/education/SimpleFoundations';
+import ComprehensiveLearningPath from '@/components/education/ComprehensiveLearningPath';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Education = () => {
-  const [activeTab, setActiveTab] = useState('mentor');
+  const [activeTab, setActiveTab] = useState('path');
   const isMobile = useIsMobile();
 
   const features = [
+    {
+      icon: <Trophy className="w-6 h-6 md:w-8 md:h-8 text-gold-400" />,
+      title: "6-Month Path",
+      description: "Complete professional trading mastery program",
+      tab: "path"
+    },
     {
       icon: <Brain className="w-6 h-6 md:w-8 md:h-8 text-purple-400" />,
       title: "AI Mentor",
@@ -34,8 +42,8 @@ const Education = () => {
     },
     {
       icon: <GraduationCap className="w-6 h-6 md:w-8 md:h-8 text-green-400" />,
-      title: "Learning Path",
-      description: "Structured journey from beginner to pro",
+      title: "Quick Start",
+      description: "Essential basics for immediate learning",
       tab: "foundations"
     },
     {
@@ -58,6 +66,11 @@ const Education = () => {
     }
   ];
 
+  const handleAskMentor = (prompt: string) => {
+    setActiveTab('mentor');
+    // In a real implementation, you'd pass this prompt to the mentor component
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative">
       <CherryBlossomBackground />
@@ -67,16 +80,16 @@ const Education = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8 md:mb-12">
             <h1 className="text-2xl md:text-4xl font-bold gradient-text mb-4">
-              Learn Trading with AI
+              Professional Trading Education
             </h1>
             <p className="text-gray-300 text-sm md:text-lg max-w-3xl mx-auto px-4">
-              Skip the boring courses. Chat with your AI mentor and learn trading through personalized conversations.
+              Complete 6-month journey from absolute beginner to professional trader. Master the fundamentals, psychology, and advanced strategies.
             </p>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 md:space-y-8">
             <div className={`grid gap-3 md:gap-4 mb-6 md:mb-8 ${
-              isMobile ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-5'
+              isMobile ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-6'
             }`}>
               {features.map((feature, index) => (
                 <Card 
@@ -104,6 +117,10 @@ const Education = () => {
                 </Card>
               ))}
             </div>
+
+            <TabsContent value="path">
+              <ComprehensiveLearningPath onAskMentor={handleAskMentor} />
+            </TabsContent>
 
             <TabsContent value="mentor">
               <Card className="glass-card h-[600px]">
