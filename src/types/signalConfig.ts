@@ -2,48 +2,55 @@
 export interface SignalConfig {
   pair: string;
   timeframe: string;
-  strategyType: 'Conservative' | 'Balanced' | 'Aggressive' | 'Hybrid';
-  tradeType: 'scalp' | 'intraday' | 'swing' | 'position';
-  confidenceThreshold: number;
-  riskLevel: 'conservative' | 'moderate' | 'aggressive';
-  minFilters: number;
-  assetClass: 'forex' | 'crypto' | 'stocks' | 'commodities';
-  pairFilter: string;
-  timeValidity: string;
   marketConditions: string[];
   technicalIndicators: string[];
-  riskManagement: {
-    maxRiskPerTrade: number;
-    stopLossMethod: string;
-    takeProfitRatio: number;
-  };
-  sessionFilters: string[];
-  volumeFilter: boolean;
-  newsFilter: boolean;
-}
-
-export interface StrategyBreakdown {
-  title: string;
-  description: string;
-  keyPoints: string[];
-  riskLevel: 'Low' | 'Medium' | 'High';
-  timeframe: string;
-  winRate: number;
-  riskReward: string;
+  riskReward: number;
+  pairFilters: string[];
+  minConfidence: number;
+  maxSignalsPerHour: number;
+  enabled: boolean;
+  stopLoss: number;
+  takeProfit: number;
+  entryType: 'market' | 'limit';
+  // New properties for enhanced functionality
+  strategyType?: 'SMC' | 'ICT' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP';
+  tradeType?: 'SWING' | 'SCALP' | 'POSITION';
+  confidenceThreshold?: number;
+  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+  minFilters?: number;
+  assetClass?: 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES';
+  pairFilter?: string;
 }
 
 export interface Signal {
   id: string;
   pair: string;
-  direction: 'BUY' | 'SELL';
-  entry: number;
+  type: 'BUY' | 'SELL';
+  entryPrice: number;
   stopLoss: number;
   takeProfit: number;
   confidence: number;
+  analysis: string;
+  timestamp: string;
   timeframe: string;
-  reason: string;
-  timestamp: Date;
-  riskReward?: string;
-  signalStrength?: number;
-  sessionContext?: string;
+  riskReward: number;
+  strategy: string;
+  marketCondition: string;
+  technicalSetup: string;
+  entryReason: string;
+  riskManagement: string;
+  filtersPassed?: string[];
 }
+
+export type SavedPreset = {
+  id: string;
+  name: string;
+  config: Partial<SignalConfig>;
+  description: string;
+  createdAt: string;
+};
+
+export type TradeType = 'SWING' | 'SCALP' | 'POSITION';
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export type AssetClass = 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES';
+export type StrategyType = 'SMC' | 'ICT' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP';

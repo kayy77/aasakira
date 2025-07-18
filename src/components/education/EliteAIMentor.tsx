@@ -97,25 +97,6 @@ User context: ${mentorData.interactions.length} previous interactions, current l
   const generateEliteResponse = async (userMessage: string) => {
     try {
       const systemPrompt = getEliteSystemPrompt();
-      
-      // Get user progress for context
-      let userContext = "New trader";
-      if (user?.id) {
-        try {
-          const { data: userProgress } = await supabase
-            .from('user_progress')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-          
-          if (userProgress) {
-            userContext = `Messages: ${userProgress.messages_sent}, Charts: ${userProgress.charts_analyzed}, Streak: ${userProgress.current_streak}, Win Rate: ${userProgress.win_rate}%`;
-          }
-        } catch (error) {
-          console.log('No user progress found');
-        }
-      }
-
       const contextualPrompt = `
 Previous interactions context: ${mentorData.interactions.slice(-3).map(i => `User: ${i.content} | Response: ${i.response}`).join(' | ')}
 
@@ -124,8 +105,6 @@ Current assessment:
 - Framework adherence: ${assessment.framework}%
 - Risk management: ${assessment.risk}%
 - Execution quality: ${assessment.execution}%
-
-User Context: ${userContext}
 
 User message: "${userMessage}"
 
