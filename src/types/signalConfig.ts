@@ -20,11 +20,6 @@ export interface SignalConfig {
   minFilters?: number;
   assetClass?: 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES';
   pairFilter?: string;
-  entryLogic?: string;
-  exitLogic?: string;
-  stopLossLogic?: string;
-  takeProfitLogic?: string;
-  timeValidity?: string;
 }
 
 export interface Signal {
@@ -45,14 +40,6 @@ export interface Signal {
   entryReason: string;
   riskManagement: string;
   filtersPassed?: string[];
-  // Additional required fields
-  sessionContext?: string;
-  signalStrength?: number;
-}
-
-export interface StrategyBreakdown {
-  label: string;
-  explanation: string;
 }
 
 export type SavedPreset = {

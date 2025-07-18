@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +23,9 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { liveMemeCoinService, LiveMemeCoin } from '@/services/liveMemeCoinService';
+import { whaleTrackingService, WhaleTransaction } from '@/services/whaleTrackingService';
+import { tokenHealthService, HealthScore } from '@/services/tokenHealthService';
+import { alphaAlertsService, AlphaAlert } from '@/services/alphaAlertsService';
 
 const ImprovedMemeCoinScanner = () => {
   const [coins, setCoins] = useState<LiveMemeCoin[]>([]);
@@ -32,6 +34,9 @@ const ImprovedMemeCoinScanner = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [activeAlerts, setActiveAlerts] = useState<AlphaAlert[]>([]);
+  const [whaleActivity, setWhaleActivity] = useState<{ [key: string]: WhaleTransaction[] }>({});
+  const [healthScores, setHealthScores] = useState<{ [key: string]: HealthScore }>({});
   const { toast } = useToast();
 
   // Auto-refresh every 30 seconds when enabled
@@ -66,11 +71,21 @@ const ImprovedMemeCoinScanner = () => {
       
       setCoins(freshCoins);
       setLastRefresh(new Date());
+
+      // Scan for alerts
+      const alerts = await alphaAlertsService.scanForAlerts(freshCoins);
+      setActiveAlerts(alerts);
+
+      // Send critical alerts
+      alerts.filter(alert => alert.priority === 'critical').forEach(alert => {
+        alphaAlertsService.sendAlert(alert);
+      });
       
       if (showToast) {
+        const criticalAlerts = alerts.filter(a => a.priority === 'critical').length;
         toast({
-          title: "🎯 Fresh Alpha Detected!",
-          description: `Found ${freshCoins.length} opportunities`,
+          title: criticalAlerts > 0 ? "🚨 Critical Alpha Detected!" : "🎯 Fresh Alpha Detected!",
+          description: `Found ${freshCoins.length} opportunities${criticalAlerts > 0 ? ` with ${criticalAlerts} critical alerts` : ''}`,
         });
       }
     } catch (error) {
@@ -83,12 +98,10 @@ const ImprovedMemeCoinScanner = () => {
       }
       
       // Get existing coins if scan fails
-      try {
-        const existingCoins = await liveMemeCoinService.getCoins();
+      const existingCoins = liveMemeCoinService.getCoins();
+      if (existingCoins.length > 0) {
         setCoins(existingCoins);
         setLastRefresh(new Date());
-      } catch (e) {
-        console.error('Failed to get cached coins:', e);
       }
     } finally {
       if (showToast) setIsLoading(false);
@@ -116,7 +129,7 @@ const ImprovedMemeCoinScanner = () => {
     }
   };
 
-  const handleTrackCoin = (coin: LiveMemeCoin) => {
+  const handleTrackCoin = (coin: any) => {
     toast({
       title: `${coin.symbol} Added to Watchlist`,
       description: `Now tracking ${coin.name} for price alerts and updates`,
@@ -136,6 +149,25 @@ const ImprovedMemeCoinScanner = () => {
 
   return (
     <div className="space-y-6">
+      {/* Critical Alerts Banner */}
+      {activeAlerts.filter(alert => alert.priority === 'critical').length > 0 && (
+        <Card className="glass-card border-red-500/50 bg-red-500/10">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-red-400">
+              <Bell className="w-5 h-5 animate-pulse" />
+              <span className="font-semibold">Critical Alpha Alerts</span>
+            </div>
+            <div className="mt-2 space-y-1">
+              {activeAlerts.filter(alert => alert.priority === 'critical').slice(0, 3).map(alert => (
+                <div key={alert.id} className="text-sm text-red-300">
+                  {alert.title} - {alert.message}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header Controls */}
       <Card className="glass-card border-purple-500/20">
         <CardHeader>
@@ -146,6 +178,11 @@ const ImprovedMemeCoinScanner = () => {
               <Badge className="bg-gradient-to-r from-green-500 to-blue-500 animate-pulse">
                 LIVE + AI
               </Badge>
+              {activeAlerts.length > 0 && (
+                <Badge className="bg-red-500/20 text-red-400 animate-pulse">
+                  {activeAlerts.length} Alerts
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <Clock className="w-4 h-4" />
@@ -210,7 +247,7 @@ const ImprovedMemeCoinScanner = () => {
             </div>
             <div className="bg-gray-800/30 p-3 rounded-lg text-center">
               <div className="text-red-400 font-bold text-lg">
-                {filteredCoins.filter(c => (c.whaleActivity || 0) > 0).length}
+                {filteredCoins.filter(c => c.whaleActivity > 0).length}
               </div>
               <div className="text-gray-400">Whale Activity</div>
             </div>
@@ -236,7 +273,7 @@ const ImprovedMemeCoinScanner = () => {
           <Card key={coin.id} className={`glass-card border-purple-500/20 hover:border-purple-400/40 transition-all ${
             coin.stealthLaunch ? 'ring-2 ring-purple-400/50' : 
             coin.volumeSpike ? 'ring-2 ring-yellow-400/50' : 
-            (coin.whaleActivity || 0) > 0 ? 'ring-2 ring-blue-400/50' : ''
+            coin.whaleActivity > 0 ? 'ring-2 ring-blue-400/50' : ''
           }`}>
             <CardContent className="p-6">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -250,14 +287,14 @@ const ImprovedMemeCoinScanner = () => {
                     {coin.volumeSpike && (
                       <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
                     )}
-                    {(coin.whaleActivity || 0) > 0 && (
+                    {coin.whaleActivity > 0 && (
                       <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
                     )}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-semibold text-white">{coin.name}</h3>
-                      {(coin.healthScore || 0) >= 80 && <Star className="w-4 h-4 text-yellow-400" />}
+                      {coin.healthScore >= 80 && <Star className="w-4 h-4 text-yellow-400" />}
                       {coin.stealthLaunch && <Eye className="w-4 h-4 text-purple-400" />}
                     </div>
                     <p className="text-gray-400">${coin.symbol}</p>
@@ -274,20 +311,20 @@ const ImprovedMemeCoinScanner = () => {
 
                 {/* Price & Change */}
                 <div className="text-right">
-                  <div className="text-xl font-bold text-white">${formatPrice(coin.current_price)}</div>
+                  <div className="text-xl font-bold text-white">${formatPrice(coin.price)}</div>
                   <div className={`flex items-center justify-end gap-1 ${
-                    coin.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'
+                    coin.priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
                   }`}>
-                    {coin.price_change_percentage_24h >= 0 ? (
+                    {coin.priceChange24h >= 0 ? (
                       <TrendingUp className="w-4 h-4" />
                     ) : (
                       <TrendingDown className="w-4 h-4" />
                     )}
-                    {coin.price_change_percentage_24h >= 0 ? '+' : ''}{coin.price_change_percentage_24h.toFixed(1)}%
+                    {coin.priceChange24h >= 0 ? '+' : ''}{coin.priceChange24h.toFixed(1)}%
                   </div>
-                  {Math.abs(coin.priceChange5m || 0) > 5 && (
-                    <div className={`text-sm ${(coin.priceChange5m || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                      5m: {(coin.priceChange5m || 0) >= 0 ? '+' : ''}{(coin.priceChange5m || 0).toFixed(1)}%
+                  {Math.abs(coin.priceChange5m) > 5 && (
+                    <div className={`text-sm ${coin.priceChange5m >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                      5m: {coin.priceChange5m >= 0 ? '+' : ''}{coin.priceChange5m.toFixed(1)}%
                     </div>
                   )}
                 </div>
@@ -296,23 +333,23 @@ const ImprovedMemeCoinScanner = () => {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                   <div>
                     <div className="text-gray-400">Volume 24h</div>
-                    <div className="text-white font-medium">${coin.volume_24h.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    <div className="text-white font-medium">${coin.volume24h.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                   </div>
                   <div>
                     <div className="text-gray-400">Market Cap</div>
-                    <div className="text-white font-medium">{formatMarketCap(coin.market_cap)}</div>
+                    <div className="text-white font-medium">{formatMarketCap(coin.marketCap)}</div>
                   </div>
                   <div>
                     <div className="text-gray-400">Health Score</div>
-                    <div className={`font-medium ${getHealthScoreColor(coin.healthScore || 0)}`}>
+                    <div className={`font-medium ${getHealthScoreColor(coin.healthScore)}`}>
                       <Shield className="w-3 h-3 inline mr-1" />
-                      {coin.healthScore || 0}/100
+                      {coin.healthScore}/100
                     </div>
                   </div>
                   <div>
                     <div className="text-gray-400">Whale Activity</div>
                     <div className="text-white font-medium">
-                      {(coin.whaleActivity || 0) > 0 ? `${coin.whaleActivity} 🐋` : 'None'}
+                      {coin.whaleActivity > 0 ? `${coin.whaleActivity} 🐋` : 'None'}
                     </div>
                   </div>
                 </div>
@@ -320,12 +357,12 @@ const ImprovedMemeCoinScanner = () => {
                 {/* Risk & Actions */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={getRiskBadgeColor(coin.healthLabel || 'Unknown')}>
-                      {coin.healthLabel || 'Unknown'}
+                    <Badge className={getRiskBadgeColor(coin.healthLabel)}>
+                      {coin.healthLabel}
                     </Badge>
                     {coin.lpLocked && <Badge className="bg-blue-500/20 text-blue-400">LP Locked</Badge>}
                     {coin.stealthLaunch && <Badge className="bg-purple-500/20 text-purple-400">🔕 Stealth</Badge>}
-                    {(coin.whaleActivity || 0) > 0 && <Badge className="bg-blue-500/20 text-blue-400">🐋 Whale</Badge>}
+                    {coin.whaleActivity > 0 && <Badge className="bg-blue-500/20 text-blue-400">🐋 Whale</Badge>}
                   </div>
                   <div className="flex gap-2">
                     <Button 
@@ -339,7 +376,7 @@ const ImprovedMemeCoinScanner = () => {
                     <Button 
                       size="sm" 
                       variant="outline"
-                      onClick={() => window.open(coin.exchangeUrl || '#', '_blank')}
+                      onClick={() => window.open(coin.exchangeUrl, '_blank')}
                       className="border-purple-500/30"
                     >
                       <ExternalLink className="w-4 h-4 mr-1" />
@@ -351,7 +388,7 @@ const ImprovedMemeCoinScanner = () => {
 
               {/* Enhanced Analysis */}
               <div className="mt-4 p-3 bg-gray-800/30 rounded-lg">
-                <p className="text-sm text-gray-300">{coin.whyChosen || 'Strong fundamentals and community support'}</p>
+                <p className="text-sm text-gray-300">{coin.whyChosen}</p>
                 {coin.whaleTransactions && coin.whaleTransactions.length > 0 && (
                   <div className="mt-2 text-xs text-blue-300">
                     🐋 Recent whale activity: {coin.whaleTransactions.length} large transactions detected

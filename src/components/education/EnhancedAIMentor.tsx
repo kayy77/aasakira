@@ -86,26 +86,24 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
         .eq('user_id', user.id)
         .single();
       
-      // Load learning sessions to calculate performance
-      const { data: sessions } = await supabase
-        .from('learning_sessions')
+      // Load journal entries
+      const { data: trades } = await supabase
+        .from('trade_journal')
         .select('*')
         .eq('user_id', user.id);
       
-      if (progress && sessions) {
-        const performanceSessions = sessions.filter(s => s.performance_score !== null);
-        const avgPerformance = performanceSessions.length > 0 
-          ? performanceSessions.reduce((sum, s) => sum + (s.performance_score || 0), 0) / performanceSessions.length
-          : 0;
+      if (progress && trades) {
+        const winningTrades = trades.filter(t => t.pnl && t.pnl > 0);
+        const avgWinRate = trades.length > 0 ? (winningTrades.length / trades.length) * 100 : 0;
         
         setUserContext({
-          currentStage: Math.floor((progress.charts_analyzed + progress.signals_viewed) / 10) + 1,
-          completedMissions: progress.skills_mastered || [],
+          currentStage: progress.current_stage || 1,
+          completedMissions: progress.completed_missions || [],
           weaknesses: progress.weaknesses || [],
-          strengths: progress.skills_mastered || [],
-          journalEntries: sessions.length,
-          avgWinRate: avgPerformance,
-          totalTrades: sessions.length
+          strengths: progress.strengths || [],
+          journalEntries: trades.length,
+          avgWinRate,
+          totalTrades: trades.length
         });
       }
     } catch (error) {
@@ -185,12 +183,12 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
     if (context) {
       prompt += `**Student Context:**\n`;
       prompt += `• Learning Stage: ${context.currentStage}/10\n`;
-      prompt += `• Completed Skills: ${context.completedMissions.length}\n`;
-      prompt += `• Learning Sessions: ${context.journalEntries}\n`;
-      prompt += `• Performance Score: ${context.avgWinRate.toFixed(1)}/100\n`;
+      prompt += `• Completed Missions: ${context.completedMissions.length}\n`;
+      prompt += `• Trading Journal Entries: ${context.journalEntries}\n`;
+      prompt += `• Win Rate: ${context.avgWinRate.toFixed(1)}%\n`;
       
       if (context.weaknesses.length > 0) {
-        prompt += `• Areas to Improve: ${context.weaknesses.join(', ')}\n`;
+        prompt += `• Known Weaknesses: ${context.weaknesses.join(', ')}\n`;
       }
       
       if (context.strengths.length > 0) {
@@ -237,10 +235,10 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
               Stage {userContext.currentStage}/10
             </Badge>
             <Badge variant="outline" className="border-green-500/30 text-green-300">
-              {userContext.avgWinRate.toFixed(0)}% Performance
+              {userContext.avgWinRate.toFixed(0)}% Win Rate
             </Badge>
             <Badge variant="outline" className="border-blue-500/30 text-blue-300">
-              {userContext.journalEntries} Sessions
+              {userContext.journalEntries} Trades
             </Badge>
           </div>
         )}
@@ -370,7 +368,7 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
             My Weaknesses
           </Button>
           <Button
-            onClick={() => setInput("How can I improve my performance?")}
+            onClick={() => setInput("How can I improve my win rate?")}
             variant="outline"
             size="sm"
             className="border-green-500/30 text-green-400 hover:bg-green-500/20 text-xs"
@@ -379,13 +377,13 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
             Improve Performance
           </Button>
           <Button
-            onClick={() => setInput("Review my recent learning progress")}
+            onClick={() => setInput("Review my recent trading journal entries")}
             variant="outline"
             size="sm"
             className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20 text-xs"
           >
             <Target className="w-3 h-3 mr-1" />
-            Review Progress
+            Review Trades
           </Button>
         </div>
       </div>
