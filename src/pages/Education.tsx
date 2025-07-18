@@ -13,7 +13,7 @@ import {
   GraduationCap,
   BookOpen
 } from 'lucide-react';
-import TradingJournal from '@/components/education/TradingJournal';
+import EnhancedTradingJournal from '@/components/education/EnhancedTradingJournal';
 import BacktestLab from '@/components/education/BacktestLab';
 import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
 import CombatMode from '@/components/education/CombatMode';
@@ -124,7 +124,7 @@ const Education = () => {
             </TabsContent>
 
             <TabsContent value="journal">
-              <TradingJournal />
+              <EnhancedTradingJournal />
             </TabsContent>
 
             <TabsContent value="backtest">
