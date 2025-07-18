@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,11 +19,13 @@ import {
   Shield,
   Zap,
   Users,
-  Award
+  Award,
+  GraduationCap
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { InteractiveQuizGenerator } from './InteractiveQuizGenerator';
 import VisualLessonCard from './VisualLessonCard';
+import LessonContent from './LessonContent';
 
 interface LearningMission {
   id: string;
@@ -36,6 +39,7 @@ interface LearningMission {
   stage: number;
   prerequisites: string[];
   completed: boolean;
+  lessonCompleted: boolean;
   mentorPrompt: string;
   content: string;
   practicalExercises: string[];
@@ -57,10 +61,11 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
   const [selectedMission, setSelectedMission] = useState<LearningMission | null>(null);
   const [userProgress, setUserProgress] = useState({ completedMissions: 0, currentStage: 1 });
   const [showQuiz, setShowQuiz] = useState(false);
+  const [showLesson, setShowLesson] = useState(false);
   const { user } = useAuth();
 
   // Sample mission data with all required properties
-  const learningMissions: LearningMission[] = [
+  const [learningMissions, setLearningMissions] = useState<LearningMission[]>([
     {
       id: 'mission-1',
       title: 'Trading Fundamentals',
@@ -73,7 +78,8 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
       stage: 1,
       prerequisites: [],
       completed: false,
-      mentorPrompt: 'Explain the basics of trading and market structure',
+      lessonCompleted: false,
+      mentorPrompt = 'Explain the basics of trading and market structure',
       content: 'Learn about financial markets, how they work, and basic trading concepts.',
       practicalExercises: [
         'Identify support and resistance levels on a chart',
@@ -103,6 +109,7 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
       stage: 1,
       prerequisites: [],
       completed: false,
+      lessonCompleted: false,
       mentorPrompt: 'Teach me about chart analysis and pattern recognition',
       content: 'Master the art of reading price charts and identifying profitable patterns.',
       practicalExercises: [
@@ -133,6 +140,7 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
       stage: 2,
       prerequisites: ['mission-1'],
       completed: false,
+      lessonCompleted: false,
       mentorPrompt: 'Teach me about risk management in trading',
       content: 'Master the crucial skill of managing risk to protect your capital.',
       practicalExercises: [
@@ -151,16 +159,37 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
         ]
       }
     }
-  ];
+  ]);
 
   const handleMissionSelect = (mission: LearningMission) => {
     setSelectedMission(mission);
     setShowQuiz(false);
+    setShowLesson(false);
+  };
+
+  const handleStartLearning = () => {
+    if (selectedMission) {
+      setShowLesson(true);
+      setShowQuiz(false);
+    }
+  };
+
+  const handleLessonComplete = () => {
+    if (selectedMission) {
+      const updatedMissions = learningMissions.map(mission =>
+        mission.id === selectedMission.id
+          ? { ...mission, lessonCompleted: true }
+          : mission
+      );
+      setLearningMissions(updatedMissions);
+      setSelectedMission({ ...selectedMission, lessonCompleted: true });
+    }
   };
 
   const handleStartQuiz = () => {
-    if (selectedMission) {
+    if (selectedMission && selectedMission.lessonCompleted) {
       setShowQuiz(true);
+      setShowLesson(false);
     }
   };
 
@@ -234,6 +263,8 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
                   <div className="flex items-center gap-3">
                     {mission.completed ? (
                       <CheckCircle className="w-5 h-5 text-green-400" />
+                    ) : mission.lessonCompleted ? (
+                      <GraduationCap className="w-5 h-5 text-blue-400" />
                     ) : index <= userProgress.completedMissions ? (
                       <PlayCircle className="w-5 h-5 text-blue-400" />
                     ) : (
@@ -242,6 +273,11 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
                     <div>
                       <h4 className="font-semibold text-white">{mission.title}</h4>
                       <p className="text-sm text-gray-400">{mission.description}</p>
+                      {mission.lessonCompleted && !mission.completed && (
+                        <Badge className="mt-1 bg-blue-500/20 text-blue-400 text-xs">
+                          Ready for Quiz
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <Badge variant={mission.difficulty === 'Beginner' ? 'default' : 'secondary'}>
@@ -257,79 +293,15 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
         <div className="space-y-4">
           {selectedMission ? (
             <>
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>{selectedMission.title}</span>
-                    <Badge className="bg-blue-500/20 text-blue-400">
-                      <Clock className="w-3 h-3 mr-1" />
-                      {selectedMission.estimatedTime}
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-gray-300">{selectedMission.content}</p>
-                  
-                  <div>
-                    <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-                      <Target className="w-4 h-4" />
-                      Learning Objectives
-                    </h4>
-                    <ul className="space-y-1">
-                      {selectedMission.learningObjectives.map((objective, index) => (
-                        <li key={index} className="text-sm text-gray-400 flex items-center gap-2">
-                          <ChevronRight className="w-3 h-3" />
-                          {objective}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-                      <Star className="w-4 h-4" />
-                      Key Points
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedMission.keyPoints.map((point, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {point}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-4">
-                    <Button 
-                      onClick={handleAskMentorClick}
-                      className="flex-1 bg-purple-600 hover:bg-purple-700"
-                    >
-                      <Brain className="w-4 h-4 mr-2" />
-                      Ask AI Mentor
-                    </Button>
-                    <Button 
-                      onClick={handleStartQuiz}
-                      variant="outline" 
-                      className="flex-1"
-                    >
-                      <Zap className="w-4 h-4 mr-2" />
-                      Take Quiz
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Visual Learning Component */}
-              <VisualLessonCard
-                title="Visual Learning: Chart Patterns"
-                description="Interactive visualization of trading concepts"
-                keyPoints={selectedMission.keyPoints}
-                visualType="chart"
-                difficulty={selectedMission.difficulty}
-              />
-
-              {/* Quiz Component */}
-              {showQuiz && (
+              {showLesson ? (
+                <LessonContent
+                  missionId={selectedMission.id}
+                  missionTitle={selectedMission.title}
+                  difficulty={selectedMission.difficulty}
+                  onLessonComplete={handleLessonComplete}
+                  onStartQuiz={handleStartQuiz}
+                />
+              ) : showQuiz ? (
                 <InteractiveQuizGenerator
                   missionTitle={selectedMission.title}
                   keyPoints={selectedMission.keyPoints}
@@ -339,6 +311,100 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
                     setShowQuiz(false);
                   }}
                   onAskMentor={handleAskMentorClick}
+                />
+              ) : (
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>{selectedMission.title}</span>
+                      <Badge className="bg-blue-500/20 text-blue-400">
+                        <Clock className="w-3 h-3 mr-1" />
+                        {selectedMission.estimatedTime}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-gray-300">{selectedMission.content}</p>
+                    
+                    <div>
+                      <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
+                        <Target className="w-4 h-4" />
+                        Learning Objectives
+                      </h4>
+                      <ul className="space-y-1">
+                        {selectedMission.learningObjectives.map((objective, index) => (
+                          <li key={index} className="text-sm text-gray-400 flex items-center gap-2">
+                            <ChevronRight className="w-3 h-3" />
+                            {objective}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
+                        <Star className="w-4 h-4" />
+                        Key Points
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedMission.keyPoints.map((point, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {point}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <BookOpen className="w-4 h-4 text-yellow-400" />
+                        <span className="font-medium text-yellow-400">Learning Path</span>
+                      </div>
+                      <p className="text-sm text-gray-300">
+                        Complete the lesson first to understand the concepts, then take the quiz to test your knowledge.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2 pt-4">
+                      {!selectedMission.lessonCompleted ? (
+                        <Button 
+                          onClick={handleStartLearning}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                        >
+                          <BookOpen className="w-4 h-4 mr-2" />
+                          Start Learning
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={handleStartQuiz}
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                        >
+                          <Zap className="w-4 h-4 mr-2" />
+                          Take Quiz
+                        </Button>
+                      )}
+                      
+                      <Button 
+                        onClick={handleAskMentorClick}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        <Brain className="w-4 h-4 mr-2" />
+                        Ask AI Mentor
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Visual Learning Component - only show when not in lesson or quiz mode */}
+              {!showLesson && !showQuiz && (
+                <VisualLessonCard
+                  title="Visual Learning: Chart Patterns"
+                  description="Interactive visualization of trading concepts"
+                  keyPoints={selectedMission.keyPoints}
+                  visualType="chart"
+                  difficulty={selectedMission.difficulty}
                 />
               )}
             </>
