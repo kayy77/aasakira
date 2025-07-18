@@ -1,3 +1,4 @@
+
 import { groqService } from '@/services/groqService';
 
 export interface LiveMemeCoin {
@@ -33,6 +34,20 @@ export interface LiveMemeCoin {
   community_score?: number;
   liquidity_score?: number;
   public_interest_score?: number;
+  // Enhanced scanner fields
+  volumeSpike?: number;
+  healthLabel?: string;
+  stealthLaunch?: boolean;
+  whaleActivity?: number;
+  healthScore?: number;
+  listedAgo?: string;
+  riskQuadrant?: string;
+  price?: number;
+  priceChange5m?: number;
+  lpLocked?: boolean;
+  exchangeUrl?: string;
+  whyChosen?: string;
+  whaleTransactions?: number;
 }
 
 class LiveMemeCoinService {

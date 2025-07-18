@@ -1,59 +1,86 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Clock, BookOpen } from 'lucide-react';
+import { CheckCircle, Brain, Target } from 'lucide-react';
 
-interface LessonContentProps {
+export interface LessonContentProps {
   lesson: {
-    id: string;
     title: string;
     content: string;
     keyPoints: string[];
-    examples?: string[];
-    duration: number;
+    learningObjectives: string[];
   };
   onComplete: () => void;
+  onAskMentor: () => void;
 }
 
-const LessonContent: React.FC<LessonContentProps> = ({ lesson, onComplete }) => {
+const LessonContent: React.FC<LessonContentProps> = ({ lesson, onComplete, onAskMentor }) => {
   return (
-    <Card className="glass-card">
+    <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-purple-500/30">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-white flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-blue-400" />
-            {lesson.title}
-          </CardTitle>
-          <Badge className="bg-blue-500/20 text-blue-400 flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {lesson.duration} min
-          </Badge>
-        </div>
+        <CardTitle className="text-2xl font-bold text-white flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+            <Brain className="w-5 h-5 text-white" />
+          </div>
+          {lesson.title}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-gray-300 leading-relaxed">
-          {lesson.content}
+      <CardContent className="space-y-6">
+        {/* Learning Objectives */}
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+          <h4 className="text-blue-400 font-semibold mb-3 flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            Learning Objectives
+          </h4>
+          <ul className="space-y-2">
+            {lesson.learningObjectives.map((objective, index) => (
+              <li key={index} className="text-gray-300 flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                {objective}
+              </li>
+            ))}
+          </ul>
         </div>
-        
-        {lesson.keyPoints.length > 0 && (
+
+        {/* Main Content */}
+        <div className="prose prose-invert max-w-none">
+          <div className="text-gray-300 leading-relaxed whitespace-pre-line">
+            {lesson.content}
+          </div>
+        </div>
+
+        {/* Key Points */}
+        <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+          <h4 className="text-purple-400 font-semibold mb-3">Key Points to Remember</h4>
           <div className="space-y-2">
-            <h4 className="text-white font-semibold">Key Points:</h4>
             {lesson.keyPoints.map((point, index) => (
-              <div key={index} className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
-                <span className="text-gray-300 text-sm">{point}</span>
-              </div>
+              <Badge key={index} variant="outline" className="bg-purple-500/20 text-purple-300 border-purple-500/30 mr-2 mb-2">
+                {point}
+              </Badge>
             ))}
           </div>
-        )}
-        
-        <button
-          onClick={onComplete}
-          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300"
-        >
-          Complete Lesson
-        </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-4">
+          <Button
+            onClick={onComplete}
+            className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold"
+          >
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Mark as Complete
+          </Button>
+          <Button
+            onClick={onAskMentor}
+            variant="outline"
+            className="border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
+          >
+            <Brain className="w-4 h-4 mr-2" />
+            Ask AI Mentor
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
