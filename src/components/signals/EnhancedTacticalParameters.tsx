@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,9 +11,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from '@/hooks/use-toast';
 import { 
   SlidersHorizontal, 
-  Dice, 
+  Dice1, 
   Save, 
-  Load, 
+  Download, 
   Wand2,
   HelpCircle
 } from 'lucide-react';
@@ -176,7 +177,7 @@ export const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProp
                     size="icon"
                     className="border-purple-500/30 hover:bg-purple-500/20"
                   >
-                    <Dice className="w-4 h-4" />
+                    <Dice1 className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,10 @@ const MobileOptimizedSignalsDashboard = () => {
     assetClass: 'forex' as any,
     pairFilter: 'major',
     timeValidity: '24h',
+    entryLogic: 'Price action confirmation',
+    exitLogic: 'Trailing stop loss',
+    stopLossLogic: 'ATR multiple',
+    takeProfitLogic: 'Fixed R:R ratio',
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [presets, setPresets] = useState<SavedPreset[]>([]);
@@ -65,31 +70,20 @@ const MobileOptimizedSignalsDashboard = () => {
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const { toast } = useToast();
 
-  const defaultConfig: SignalConfig = {
-    pair: 'EURUSD',
-    timeframe: '1H',
-    marketConditions: ['trending', 'volatile'],
-    technicalIndicators: ['RSI', 'MACD', 'EMA'],
-    riskReward: 2.0,
-    pairFilters: ['major'],
-    minConfidence: 75,
-    maxSignalsPerHour: 3,
-    enabled: true,
-    stopLoss: 50,
-    takeProfit: 100,
-    entryType: 'market' as const,
-    strategyType: 'Hybrid' as any,
-    tradeType: 'intraday' as any,
-    confidenceThreshold: 80,
-    riskLevel: 'moderate' as any,
-    minFilters: 3,
-    assetClass: 'forex' as any,
-    pairFilter: 'major',
-    timeValidity: '24h',
-  };
-
   const handleConfigUpdate = (newConfig: SignalConfig) => {
     setConfig(newConfig);
+  };
+
+  const handleGenerate = () => {
+    setIsGenerating(true);
+    // Simulate signal generation
+    setTimeout(() => {
+      setIsGenerating(false);
+      toast({
+        title: "Signal Generated",
+        description: "New trading signal created successfully",
+      });
+    }, 2000);
   };
 
   return (
@@ -118,7 +112,7 @@ const MobileOptimizedSignalsDashboard = () => {
       </Card>
 
       {/* Signal Generator */}
-      <EnhancedSignalGenerator config={config} onGenerate={() => {}} isGenerating={isGenerating} />
+      <EnhancedSignalGenerator onSignalGenerated={() => {}} />
 
       {/* Tactical Parameters */}
       <Card className="glass-card border-blue-500/20">
@@ -131,7 +125,12 @@ const MobileOptimizedSignalsDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <EnhancedTacticalParameters config={config} onConfigUpdate={handleConfigUpdate} onGenerate={() => {}} isGenerating={isGenerating} />
+          <EnhancedTacticalParameters 
+            config={config} 
+            onConfigUpdate={handleConfigUpdate} 
+            onGenerate={handleGenerate} 
+            isGenerating={isGenerating} 
+          />
         </CardContent>
       </Card>
     </div>

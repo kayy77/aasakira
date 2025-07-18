@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,28 +6,22 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SignalConfig, Signal } from '@/types/signalConfig';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Zap, 
   Settings, 
-  SlidersHorizontal, 
-  BarChart, 
-  Loader2, 
+  Save, 
+  Upload, 
+  Download, 
+  RotateCw, 
   AlertTriangle,
-  Copy,
-  Save,
-  Download,
-  Upload,
-  HelpCircle,
-  Lightbulb,
-  Brain
-} from "lucide-react";
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { SignalConfig, Signal, SavedPreset } from '@/types/signalConfig';
-import { EnhancedTacticalParameters } from './EnhancedTacticalParameters';
+  BarChart3,
+  TrendingUp,
+  TrendingDown
+} from 'lucide-react';
 
 interface SignalGeneratorProps {
   onSignalGenerated?: (signal: Signal) => void;
@@ -46,7 +40,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenera
     enabled: true,
     stopLoss: 50,
     takeProfit: 100,
-    entryType: 'market' as const,
+    entryType: 'market',
     strategyType: 'SMC',
     tradeType: 'SWING',
     confidenceThreshold: 80,
@@ -55,31 +49,14 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenera
     assetClass: 'FOREX',
     pairFilter: 'major',
     entryLogic: 'Price action confirmation',
-    exitLogic: 'Target profit or stop loss hit',
+    exitLogic: 'Trailing stop loss',
     stopLossLogic: 'ATR multiple',
     takeProfitLogic: 'Fixed R:R ratio',
     timeValidity: '24h',
   });
-  const [generatedSignal, setGeneratedSignal] = useState<Signal | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [presets, setPresets] = useState<SavedPreset[]>([]);
-  const [presetName, setPresetName] = useState('');
-  const [presetDescription, setPresetDescription] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-
-  useEffect(() => {
-    loadPresets();
-  }, []);
-
-  const loadPresets = () => {
-    // Mock loading presets from local storage
-    const storedPresets = localStorage.getItem('signalPresets');
-    if (storedPresets) {
-      setPresets(JSON.parse(storedPresets));
-    }
-  };
 
   const handleConfigUpdate = (newConfig: SignalConfig) => {
     setConfig(newConfig);
@@ -123,18 +100,16 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenera
         filtersPassed: config.technicalIndicators
       };
 
-      setGeneratedSignal(newSignal);
-      onSignalGenerated?.(newSignal);
-
       toast({
-        title: "Signal Generated",
+        title: "✨ Signal Generated",
         description: `New ${newSignal.type} signal for ${newSignal.pair} created`,
       });
+
+      onSignalGenerated?.(newSignal);
     } catch (error) {
-      console.error('Error generating signal:', error);
       toast({
-        title: "Generation Failed",
-        description: "Failed to generate signal. Please try again.",
+        title: "Signal Generation Failed",
+        description: "An error occurred while generating the signal. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -142,356 +117,246 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenera
     }
   };
 
-  const copySignal = () => {
-    if (generatedSignal) {
-      const signalText = JSON.stringify(generatedSignal, null, 2);
-      navigator.clipboard.writeText(signalText)
-        .then(() => {
-          toast({
-            title: "Signal Copied",
-            description: "Signal details copied to clipboard",
-          });
-        })
-        .catch(err => {
-          console.error("Failed to copy signal: ", err);
-          toast({
-            title: "Copy Failed",
-            description: "Could not copy signal to clipboard",
-            variant: "destructive"
-          });
-        });
-    }
-  };
-
-  const savePreset = async () => {
-    if (!presetName.trim()) {
-      toast({
-        title: "Preset Name Required",
-        description: "Please enter a name for your preset",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const preset: SavedPreset = {
-      id: `preset_${Date.now()}`,
-      name: presetName,
-      config: { ...config },
-      description: presetDescription,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updatedPresets = [...presets, preset];
-    setPresets(updatedPresets);
-    localStorage.setItem('signalPresets', JSON.stringify(updatedPresets));
-
-    toast({
-      title: "Preset Saved",
-      description: `Configuration saved as "${presetName}"`,
-    });
-  };
-
-  const loadPreset = (preset: SavedPreset) => {
-    const fullConfig: SignalConfig = {
-      pair: config.pair,
-      timeframe: config.timeframe,
-      marketConditions: config.marketConditions,
-      technicalIndicators: config.technicalIndicators,
-      riskReward: config.riskReward,
-      pairFilters: config.pairFilters,
-      minConfidence: config.minConfidence,
-      maxSignalsPerHour: config.maxSignalsPerHour,
-      enabled: config.enabled,
-      stopLoss: config.stopLoss,
-      takeProfit: config.takeProfit,
-      entryType: config.entryType,
-      ...preset.config,
-    };
-    onConfigUpdate(fullConfig);
-
-    toast({
-      title: "Preset Loaded",
-      description: `Applied "${preset.name}" configuration`,
-    });
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <Card className="glass-card border-purple-500/20">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-500/20 rounded-lg">
-                <Zap className="w-6 h-6 text-yellow-400" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">AI Signal Generator</h2>
-                <p className="text-sm text-gray-400">Configure parameters to generate trading signals</p>
-              </div>
-            </div>
+    <Card className="glass-card border-purple-500/20">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-yellow-400" />
+            Signal Configuration
+          </div>
+          <div className="flex items-center gap-2">
             <Button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              variant="outline"
-              className="border-purple-500/30 hover:bg-purple-500/20"
+              onClick={generateSignal}
+              disabled={isGenerating}
+              className="bg-gradient-to-r from-purple-600 to-pink-600"
             >
-              <SlidersHorizontal className="w-4 h-4 mr-2" />
-              Advanced
+              {isGenerating ? (
+                <>
+                  <RotateCw className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 mr-2" />
+                  Generate Signal
+                </>
+              )}
             </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Basic Configuration */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="pair" className="text-sm text-gray-400">Currency Pair</Label>
-              <Input
-                id="pair"
-                value={config.pair}
-                onChange={(e) => setConfig({ ...config, pair: e.target.value })}
-                className="bg-gray-800 border-gray-600"
-              />
-            </div>
-            <div>
-              <Label htmlFor="timeframe" className="text-sm text-gray-400">Timeframe</Label>
-              <Select onValueChange={(value) => setConfig({ ...config, timeframe: value })}>
-                <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
-                  <SelectValue placeholder="Select Timeframe" defaultValue={config.timeframe} />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-700 text-white">
-                  <SelectItem value="1M">1 Minute</SelectItem>
-                  <SelectItem value="5M">5 Minutes</SelectItem>
-                  <SelectItem value="15M">15 Minutes</SelectItem>
-                  <SelectItem value="30M">30 Minutes</SelectItem>
-                  <SelectItem value="1H">1 Hour</SelectItem>
-                  <SelectItem value="4H">4 Hours</SelectItem>
-                  <SelectItem value="1D">1 Day</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-
-          {/* Market Conditions */}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Pair and Timeframe */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-sm text-gray-400">Market Conditions</Label>
-            <div className="flex gap-2">
-              {['trending', 'ranging', 'volatile', 'sideways'].map(condition => (
-                <Badge
-                  key={condition}
-                  variant={config.marketConditions.includes(condition) ? "default" : "outline"}
-                  onClick={() => {
-                    const newConditions = config.marketConditions.includes(condition)
-                      ? config.marketConditions.filter(c => c !== condition)
-                      : [...config.marketConditions, condition];
-                    setConfig({ ...config, marketConditions: newConditions });
-                  }}
-                  className={config.marketConditions.includes(condition) ? "bg-purple-600" : "border-gray-600"}
-                >
-                  {condition}
-                </Badge>
-              ))}
-            </div>
+            <Label htmlFor="pair">Pair</Label>
+            <Input
+              id="pair"
+              value={config.pair}
+              onChange={(e) => setConfig({ ...config, pair: e.target.value })}
+              className="bg-gray-800 border-gray-600"
+            />
           </div>
-
-          {/* Technical Indicators */}
           <div>
-            <Label className="text-sm text-gray-400">Technical Indicators</Label>
-            <div className="flex gap-2">
-              {['RSI', 'MACD', 'EMA', 'SMA', 'Fibonacci'].map(indicator => (
-                <Badge
-                  key={indicator}
-                  variant={config.technicalIndicators.includes(indicator) ? "default" : "outline"}
-                  onClick={() => {
-                    const newIndicators = config.technicalIndicators.includes(indicator)
-                      ? config.technicalIndicators.filter(i => i !== indicator)
-                      : [...config.technicalIndicators, indicator];
-                    setConfig({ ...config, technicalIndicators: newIndicators });
-                  }}
-                  className={config.technicalIndicators.includes(indicator) ? "bg-blue-600" : "border-gray-600"}
-                >
-                  {indicator}
-                </Badge>
-              ))}
-            </div>
+            <Label htmlFor="timeframe">Timeframe</Label>
+            <Select value={config.timeframe} onValueChange={(value) => setConfig({ ...config, timeframe: value })}>
+              <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-700 text-white">
+                <SelectItem value="1M">1M</SelectItem>
+                <SelectItem value="1W">1W</SelectItem>
+                <SelectItem value="1D">1D</SelectItem>
+                <SelectItem value="4H">4H</SelectItem>
+                <SelectItem value="1H">1H</SelectItem>
+                <SelectItem value="15M">15M</SelectItem>
+                <SelectItem value="5M">5M</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+        </div>
 
-          {/* Risk Reward Ratio */}
+        {/* Market Conditions */}
+        <div>
+          <Label>Market Conditions</Label>
+          <div className="flex gap-2">
+            <Badge
+              className={`cursor-pointer ${config.marketConditions.includes('trending') ? 'bg-purple-500' : 'bg-gray-700'}`}
+              onClick={() =>
+                setConfig({
+                  ...config,
+                  marketConditions: config.marketConditions.includes('trending')
+                    ? config.marketConditions.filter((item) => item !== 'trending')
+                    : [...config.marketConditions, 'trending'],
+                })
+              }
+            >
+              Trending
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${config.marketConditions.includes('volatile') ? 'bg-purple-500' : 'bg-gray-700'}`}
+              onClick={() =>
+                setConfig({
+                  ...config,
+                  marketConditions: config.marketConditions.includes('volatile')
+                    ? config.marketConditions.filter((item) => item !== 'volatile')
+                    : [...config.marketConditions, 'volatile'],
+                })
+              }
+            >
+              Volatile
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${config.marketConditions.includes('ranging') ? 'bg-purple-500' : 'bg-gray-700'}`}
+              onClick={() =>
+                setConfig({
+                  ...config,
+                  marketConditions: config.marketConditions.includes('ranging')
+                    ? config.marketConditions.filter((item) => item !== 'ranging')
+                    : [...config.marketConditions, 'ranging'],
+                })
+              }
+            >
+              Ranging
+            </Badge>
+          </div>
+        </div>
+
+        {/* Technical Indicators */}
+        <div>
+          <Label>Technical Indicators</Label>
+          <div className="flex gap-2">
+            <Badge
+              className={`cursor-pointer ${config.technicalIndicators.includes('RSI') ? 'bg-purple-500' : 'bg-gray-700'}`}
+              onClick={() =>
+                setConfig({
+                  ...config,
+                  technicalIndicators: config.technicalIndicators.includes('RSI')
+                    ? config.technicalIndicators.filter((item) => item !== 'RSI')
+                    : [...config.technicalIndicators, 'RSI'],
+                })
+              }
+            >
+              RSI
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${config.technicalIndicators.includes('MACD') ? 'bg-purple-500' : 'bg-gray-700'}`}
+              onClick={() =>
+                setConfig({
+                  ...config,
+                  technicalIndicators: config.technicalIndicators.includes('MACD')
+                    ? config.technicalIndicators.filter((item) => item !== 'MACD')
+                    : [...config.technicalIndicators, 'MACD'],
+                })
+              }
+            >
+              MACD
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${config.technicalIndicators.includes('EMA') ? 'bg-purple-500' : 'bg-gray-700'}`}
+              onClick={() =>
+                setConfig({
+                  ...config,
+                  technicalIndicators: config.technicalIndicators.includes('EMA')
+                    ? config.technicalIndicators.filter((item) => item !== 'EMA')
+                    : [...config.technicalIndicators, 'EMA'],
+                })
+              }
+            >
+              EMA
+            </Badge>
+          </div>
+        </div>
+
+        {/* Risk Reward Ratio */}
+        <div>
+          <Label htmlFor="riskReward">Risk Reward Ratio ({config.riskReward})</Label>
+          <Slider
+            id="riskReward"
+            defaultValue={[config.riskReward]}
+            max={5}
+            step={0.1}
+            onValueChange={(value) => setConfig({ ...config, riskReward: value[0] })}
+          />
+        </div>
+
+        {/* Pair Filters */}
+        <div>
+          <Label>Pair Filters</Label>
+          <div className="flex gap-2">
+            <Badge
+              className={`cursor-pointer ${config.pairFilters.includes('major') ? 'bg-purple-500' : 'bg-gray-700'}`}
+              onClick={() =>
+                setConfig({
+                  ...config,
+                  pairFilters: config.pairFilters.includes('major')
+                    ? config.pairFilters.filter((item) => item !== 'major')
+                    : [...config.pairFilters, 'major'],
+                })
+              }
+            >
+              Major
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${config.pairFilters.includes('minor') ? 'bg-purple-500' : 'bg-gray-700'}`}
+              onClick={() =>
+                setConfig({
+                  ...config,
+                  pairFilters: config.pairFilters.includes('minor')
+                    ? config.pairFilters.filter((item) => item !== 'minor')
+                    : [...config.pairFilters, 'minor'],
+                })
+              }
+            >
+              Minor
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${config.pairFilters.includes('exotic') ? 'bg-purple-500' : 'bg-gray-700'}`}
+              onClick={() =>
+                setConfig({
+                  ...config,
+                  pairFilters: config.pairFilters.includes('exotic')
+                    ? config.pairFilters.filter((item) => item !== 'exotic')
+                    : [...config.pairFilters, 'exotic'],
+                })
+              }
+            >
+              Exotic
+            </Badge>
+          </div>
+        </div>
+
+        {/* Confidence and Max Signals */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="riskReward" className="text-sm text-gray-400">Risk Reward Ratio ({config.riskReward})</Label>
+            <Label htmlFor="minConfidence">Min Confidence ({config.minConfidence}%)</Label>
             <Slider
-              id="riskReward"
-              defaultValue={[config.riskReward]}
-              min={1}
-              max={5}
-              step={0.1}
-              onValueChange={(value) => setConfig({ ...config, riskReward: value[0] })}
-              className="bg-gray-700"
+              id="minConfidence"
+              defaultValue={[config.minConfidence]}
+              max={100}
+              step={1}
+              onValueChange={(value) => setConfig({ ...config, minConfidence: value[0] })}
             />
           </div>
-
-          {/* Advanced Tactical Parameters */}
-          {showAdvanced && (
-            <EnhancedTacticalParameters
-              config={config}
-              onConfigUpdate={handleConfigUpdate}
-              onGenerate={generateSignal}
-              isGenerating={isGenerating}
+          <div>
+            <Label htmlFor="maxSignalsPerHour">Max Signals/Hour ({config.maxSignalsPerHour})</Label>
+            <Input
+              type="number"
+              id="maxSignalsPerHour"
+              value={config.maxSignalsPerHour.toString()}
+              onChange={(e) => setConfig({ ...config, maxSignalsPerHour: parseInt(e.target.value) })}
+              className="bg-gray-800 border-gray-600"
             />
-          )}
-
-          {/* Generate Signal Button */}
-          <Button
-            onClick={generateSignal}
-            disabled={isGenerating}
-            className="bg-gradient-to-r from-purple-600 to-pink-600"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating Signal...
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4 mr-2" />
-                Generate Signal
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Generated Signal Display */}
-      {generatedSignal && (
-        <Card className="glass-card border-green-500/30">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-500/20 rounded-lg">
-                  <BarChart className="w-6 h-6 text-green-400" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Generated Signal</h2>
-                  <p className="text-sm text-gray-400">Details for the generated trading signal</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={copySignal}
-                  variant="outline"
-                  className="border-blue-500/30 hover:bg-blue-500/20"
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy
-                </Button>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert className="bg-green-500/10 border-green-500/30">
-              <BarChart className="h-4 w-4 text-green-400" />
-              <AlertDescription className="text-green-300">
-                New {generatedSignal.type} signal for {generatedSignal.pair}
-              </AlertDescription>
-            </Alert>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm text-gray-400">Pair</Label>
-                <p className="text-white">{generatedSignal.pair}</p>
-              </div>
-              <div>
-                <Label className="text-sm text-gray-400">Type</Label>
-                <p className="text-white">{generatedSignal.type}</p>
-              </div>
-              <div>
-                <Label className="text-sm text-gray-400">Entry Price</Label>
-                <p className="text-white">{generatedSignal.entryPrice}</p>
-              </div>
-              <div>
-                <Label className="text-sm text-gray-400">Stop Loss</Label>
-                <p className="text-white">{generatedSignal.stopLoss}</p>
-              </div>
-              <div>
-                <Label className="text-sm text-gray-400">Take Profit</Label>
-                <p className="text-white">{generatedSignal.takeProfit}</p>
-              </div>
-              <div>
-                <Label className="text-sm text-gray-400">Confidence</Label>
-                <p className="text-white">{generatedSignal.confidence}</p>
-              </div>
-            </div>
-            <div>
-              <Label className="text-sm text-gray-400">Analysis</Label>
-              <Textarea
-                readOnly
-                value={generatedSignal.analysis}
-                className="bg-gray-800 border-gray-600 text-white resize-none"
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Preset Management */}
-      <Card className="glass-card border-blue-500/20">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/20 rounded-lg">
-                <Settings className="w-6 h-6 text-blue-400" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Preset Management</h2>
-                <p className="text-sm text-gray-400">Save and load signal configurations</p>
-              </div>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="presetName" className="text-sm text-gray-400">Preset Name</Label>
-              <Input
-                id="presetName"
-                value={presetName}
-                onChange={(e) => setPresetName(e.target.value)}
-                className="bg-gray-800 border-gray-600"
-              />
-            </div>
-            <div>
-              <Label htmlFor="presetDescription" className="text-sm text-gray-400">Description</Label>
-              <Input
-                id="presetDescription"
-                value={presetDescription}
-                onChange={(e) => setPresetDescription(e.target.value)}
-                className="bg-gray-800 border-gray-600"
-              />
-            </div>
           </div>
-          <Button onClick={savePreset} className="bg-blue-600 hover:bg-blue-700">
-            <Save className="w-4 h-4 mr-2" />
-            Save Preset
-          </Button>
+        </div>
 
-          {/* Load Presets */}
-          {presets.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-sm text-gray-400">Load Preset</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {presets.map(preset => (
-                  <Button
-                    key={preset.id}
-                    variant="outline"
-                    onClick={() => loadPreset(preset)}
-                    className="border-blue-500/30 hover:bg-blue-500/20"
-                  >
-                    {preset.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+        {/* Enable/Disable */}
+        <div className="flex items-center space-x-2">
+          <Switch id="enabled" checked={config.enabled} onCheckedChange={(checked) => setConfig({ ...config, enabled: checked })} />
+          <Label htmlFor="enabled">Enable Signals</Label>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
