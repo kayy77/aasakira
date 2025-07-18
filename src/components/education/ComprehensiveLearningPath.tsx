@@ -79,7 +79,7 @@ const ComprehensiveLearningPath: React.FC<ComprehensiveLearningPathProps> = ({ o
       prerequisites: [],
       completed: false,
       lessonCompleted: false,
-      mentorPrompt = 'Explain the basics of trading and market structure',
+      mentorPrompt: 'Explain the basics of trading and market structure',
       content: 'Learn about financial markets, how they work, and basic trading concepts.',
       practicalExercises: [
         'Identify support and resistance levels on a chart',
