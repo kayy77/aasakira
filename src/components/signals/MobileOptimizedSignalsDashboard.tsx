@@ -1,9 +1,9 @@
 
 import React from 'react';
-import MobileOptimizedSignalsDashboard from './MobileOptimizedSignalsDashboard';
+import EnhancedSignals from '@/components/enhanced/EnhancedSignals';
 
-const LiveSignalsDashboard: React.FC = () => {
-  return <MobileOptimizedSignalsDashboard />;
+const MobileOptimizedSignalsDashboard: React.FC = () => {
+  return <EnhancedSignals />;
 };
 
-export default LiveSignalsDashboard;
+export default MobileOptimizedSignalsDashboard;

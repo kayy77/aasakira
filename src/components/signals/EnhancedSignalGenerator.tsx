@@ -123,7 +123,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           // Final enhanced signal
           const enhancedSignal: Signal = {
             ...baseSignal,
-            id: baseSignal.id || crypto.randomUUID(),
+            id: baseSignal.id || crypto.randomUUID().toString(),
             sessionContext: getCurrentSession(),
             sessionActive: requirements.sessionActive,
             enhancedValidation: true,

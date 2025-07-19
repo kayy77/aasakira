@@ -116,7 +116,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
           // SUCCESS - Signal approved by enhanced validation
           const enhancedSignal: Signal = {
             ...baseSignal,
-            id: baseSignal.id || crypto.randomUUID(),
+            id: baseSignal.id || crypto.randomUUID().toString(),
             sessionContext: requirements.sessionName,
             sessionActive: requirements.sessionActive,
             enhancedValidation: true,
