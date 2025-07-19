@@ -94,7 +94,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             stopLoss: typeof baseSignal.stopLoss === 'string' ? parseFloat(baseSignal.stopLoss) : baseSignal.stopLoss,
             takeProfit: typeof baseSignal.takeProfit === 'string' ? parseFloat(baseSignal.takeProfit) : baseSignal.takeProfit,
             confidence: baseSignal.confidence,
-            rrr: (baseSignal.riskReward || 2.0) as number,
+            rrr: baseSignal.riskReward || 2.0,
             confluenceScore: baseSignal.confluenceScore || 0,
             filtersPassed: baseSignal.filtersPassed || [],
             session: requirements.sessionName,
@@ -116,6 +116,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
           // SUCCESS - Signal approved by enhanced validation
           const enhancedSignal: Signal = {
             ...baseSignal,
+            id: baseSignal.id || crypto.randomUUID(),
             sessionContext: requirements.sessionName,
             sessionActive: requirements.sessionActive,
             enhancedValidation: true,
@@ -123,7 +124,7 @@ export const SignalGenerator: React.FC<SignalGeneratorProps> = ({
             qualityScore: Math.min(96, baseSignal.confidence + 5),
             signalStrength: baseSignal.confidence >= 90 ? 'ULTRA' : 
                            baseSignal.confidence >= 85 ? 'STRONG' : 'MEDIUM',
-            riskReward: (baseSignal.riskReward || 2.0) as number
+            riskReward: baseSignal.riskReward || 2.0
           };
 
           setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${validationResult.reason}`]);
