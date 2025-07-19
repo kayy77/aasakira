@@ -1,3 +1,4 @@
+
 export interface Signal {
   id: string;
   pair: string;
@@ -7,7 +8,7 @@ export interface Signal {
   takeProfit: number | string;
   confidence: number;
   timestamp: Date;
-  riskReward?: number;
+  riskReward: number;
   filtersPassed?: string[];
   confluenceScore?: number;
   sessionContext?: string;
