@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import ProgressQuiz from './ProgressQuiz';
-import { useSupabaseAuth } from '@/integrations/supabase/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface LearningModule {
@@ -61,7 +60,7 @@ const ComprehensiveLearningPath = () => {
   const [activeLesson, setActiveLesson] = useState<string | null>(null);
   const [showQuiz, setShowQuiz] = useState(false);
   const [userProgress, setUserProgress] = useState<any>(null);
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     initializeModules();

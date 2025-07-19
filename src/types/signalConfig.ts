@@ -1,23 +1,21 @@
-
 export interface Signal {
   id: string;
   pair: string;
-  direction: 'BUY' | 'SELL';
-  entry: number;
-  stop: number;
-  target: number;
-  frameworks: string[];
-  session: string;
-  rsi?: number;
-  volume?: string;
-  context?: string;
-  confluence: number;
+  type: 'BUY' | 'SELL';
+  entry: number | string;
+  stopLoss: number | string;
+  takeProfit: number | string;
   confidence: number;
-  riskReward: number;
-  signalStrength: number;
+  timestamp: Date;
+  riskReward?: number;
+  filtersPassed?: string[];
+  confluenceScore?: number;
   sessionContext?: string;
-  timestamp?: string;
-  status?: 'active' | 'closed' | 'pending';
+  sessionActive?: boolean;
+  enhancedValidation?: boolean;
+  validationReason?: string;
+  qualityScore?: number;
+  signalStrength?: 'ULTRA' | 'STRONG' | 'MEDIUM';
 }
 
 export interface StrategyBreakdown {
