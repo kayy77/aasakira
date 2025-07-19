@@ -104,7 +104,7 @@ const Education = () => {
             </div>
 
             <TabsContent value="path">
-              <ComprehensiveLearningPath />
+              <ComprehensiveLearningPath onAskMentor={handleAskMentor} />
             </TabsContent>
 
             <TabsContent value="mentor">

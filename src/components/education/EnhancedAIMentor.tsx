@@ -86,15 +86,24 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
         .eq('user_id', user.id)
         .single();
       
-      if (progress) {
+      // Load journal entries
+      const { data: trades } = await supabase
+        .from('trade_journal')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (progress && trades) {
+        const winningTrades = trades.filter(t => t.pnl && t.pnl > 0);
+        const avgWinRate = trades.length > 0 ? (winningTrades.length / trades.length) * 100 : 0;
+        
         setUserContext({
-          currentStage: progress.current_streak || 1, // Using current_streak as stage proxy
-          completedMissions: progress.skills_mastered || [],
+          currentStage: progress.current_stage || 1,
+          completedMissions: progress.completed_missions || [],
           weaknesses: progress.weaknesses || [],
-          strengths: progress.skills_mastered || [],
-          journalEntries: progress.charts_analyzed || 0,
-          avgWinRate: progress.win_rate || 0,
-          totalTrades: progress.charts_analyzed || 0
+          strengths: progress.strengths || [],
+          journalEntries: trades.length,
+          avgWinRate,
+          totalTrades: trades.length
         });
       }
     } catch (error) {
@@ -175,7 +184,7 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
       prompt += `**Student Context:**\n`;
       prompt += `• Learning Stage: ${context.currentStage}/10\n`;
       prompt += `• Completed Missions: ${context.completedMissions.length}\n`;
-      prompt += `• Trading Analysis Count: ${context.journalEntries}\n`;
+      prompt += `• Trading Journal Entries: ${context.journalEntries}\n`;
       prompt += `• Win Rate: ${context.avgWinRate.toFixed(1)}%\n`;
       
       if (context.weaknesses.length > 0) {
@@ -229,7 +238,7 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
               {userContext.avgWinRate.toFixed(0)}% Win Rate
             </Badge>
             <Badge variant="outline" className="border-blue-500/30 text-blue-300">
-              {userContext.journalEntries} Analysis
+              {userContext.journalEntries} Trades
             </Badge>
           </div>
         )}
@@ -368,13 +377,13 @@ const EnhancedAIMentor: React.FC<EnhancedAIMentorProps> = ({ onFeatureUse }) => 
             Improve Performance
           </Button>
           <Button
-            onClick={() => setInput("Review my recent trading progress")}
+            onClick={() => setInput("Review my recent trading journal entries")}
             variant="outline"
             size="sm"
             className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20 text-xs"
           >
             <Target className="w-3 h-3 mr-1" />
-            Review Progress
+            Review Trades
           </Button>
         </div>
       </div>

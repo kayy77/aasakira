@@ -1,7 +1,7 @@
 
 import React from 'react';
 import Navigation from '@/components/Navigation';
-import EnhancedMemeCoinScanner from '@/components/memecoins/EnhancedMemeCoinScanner';
+import LiveMemeCoinDashboard from '@/components/memecoins/LiveMemeCoinDashboard';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -19,15 +19,15 @@ const MemeCoins = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8 md:mb-12">
             <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold gradient-text mb-3 md:mb-4">
-              AI-Powered Meme Coin Scanner
+              Live Meme Coin Scanner
             </h1>
             <p className="text-gray-300 text-sm md:text-base lg:text-lg max-w-2xl mx-auto px-4">
-              Real opportunities analyzed by Groq AI with live market scanning and deep technical analysis
+              Discover high-potential meme coins with real-time analysis and live market scanning
             </p>
           </div>
 
-          <FeatureGate feature="memeScans" featureName="AI Meme Coin Analysis">
-            <EnhancedMemeCoinScanner />
+          <FeatureGate feature="memeScans" featureName="Meme Coin Scans">
+            <LiveMemeCoinDashboard />
           </FeatureGate>
         </div>
       </div>
