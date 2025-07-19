@@ -35,7 +35,7 @@ export interface LiveMemeCoin {
   liquidity_score?: number;
   public_interest_score?: number;
   // Enhanced scanner fields
-  volumeSpike?: boolean;
+  volumeSpike?: number;
   healthLabel?: string;
   stealthLaunch?: boolean;
   whaleActivity?: number;
@@ -44,21 +44,10 @@ export interface LiveMemeCoin {
   riskQuadrant?: string;
   price?: number;
   priceChange5m?: number;
-  priceChange1h?: number;
   lpLocked?: boolean;
   exchangeUrl?: string;
   whyChosen?: string;
-  whaleTransactions?: any[];
-  alerts?: string[];
-  // Dashboard specific fields
-  riskScore?: string;
-  pairAge?: number;
-  rugRisk?: boolean;
-  txCount1h?: number;
-  liquidity?: number;
-  liquidityLocked?: number;
-  miniChart?: number[];
-  lastUpdated?: string;
+  whaleTransactions?: number;
 }
 
 class LiveMemeCoinService {
@@ -93,36 +82,8 @@ class LiveMemeCoinService {
       }
 
       const data = await response.json();
-      
-      // Enhance data with additional fields
-      const enhancedData = data.map((coin: any) => ({
-        ...coin,
-        price: coin.current_price,
-        healthScore: Math.floor(Math.random() * 100) + 1,
-        riskScore: Math.random() > 0.5 ? 'Safe' : Math.random() > 0.5 ? 'Medium' : 'High Risk',
-        pairAge: Math.random() * 24,
-        txCount1h: Math.floor(Math.random() * 1000),
-        liquidity: Math.floor(Math.random() * 1000000),
-        liquidityLocked: Math.random() * 100,
-        miniChart: Array.from({length: 10}, () => Math.random() * 100),
-        lastUpdated: new Date().toLocaleTimeString(),
-        listedAgo: `${Math.floor(Math.random() * 24)}h ago`,
-        volumeSpike: Math.random() > 0.8,
-        stealthLaunch: Math.random() > 0.9,
-        whaleActivity: Math.floor(Math.random() * 5),
-        healthLabel: Math.random() > 0.5 ? 'Safe' : 'Caution',
-        lpLocked: Math.random() > 0.5,
-        exchangeUrl: `https://dexscreener.com/ethereum/${coin.id}`,
-        whyChosen: `Strong fundamentals with ${Math.floor(Math.random() * 50) + 50}% community growth`,
-        priceChange5m: (Math.random() - 0.5) * 10,
-        priceChange1h: (Math.random() - 0.5) * 20,
-        rugRisk: Math.random() > 0.85,
-        whaleTransactions: [],
-        alerts: []
-      }));
-      
-      this.setCachedData(cacheKey, enhancedData);
-      return enhancedData;
+      this.setCachedData(cacheKey, data);
+      return data;
     } catch (error) {
       console.error('Error scanning live meme coins:', error);
       return [];
@@ -151,10 +112,6 @@ class LiveMemeCoinService {
       .filter(coin => coin.price_change_percentage_24h < 0)
       .sort((a, b) => a.price_change_percentage_24h - b.price_change_percentage_24h)
       .slice(0, 20);
-  }
-
-  getAlerts(): string[] {
-    return []; // Placeholder for alerts functionality
   }
 }
 

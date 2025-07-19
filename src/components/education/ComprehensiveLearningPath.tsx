@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, MessageSquare, GraduationCap, BookOpen, Brain } from 'lucide-react';
@@ -200,7 +199,7 @@ const ComprehensiveLearningPath = () => {
           {/* Sidebar Navigation */}
           <aside className="md:col-span-1">
             <Card className="bg-gradient-to-br from-gray-900 to-gray-800 border-purple-500/30">
-              <CardContent className="space-y-4 p-6">
+              <CardContent className="space-y-4">
                 <h2 className="text-xl font-semibold mb-2">Modules</h2>
                 {months.map((month, index) => (
                   <div key={index}>
