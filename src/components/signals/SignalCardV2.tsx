@@ -98,17 +98,17 @@ const SignalCardV2: React.FC<SignalCardV2Props> = ({
       className="relative"
     >
       <Card className="glass-card border-purple-500/20 hover:border-purple-500/40 transition-all duration-300">
-        {/* Close Button - Fixed position and moved away from tactical message */}
+        {/* Close Button - Fixed position */}
         <Button
           onClick={() => onRemove(signalDNA.symbol)}
           size="sm"
           variant="ghost"
-          className="absolute top-2 right-2 z-10 h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-full"
+          className="absolute top-3 right-3 z-10 h-8 w-8 p-0 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-full"
         >
-          <Trash2 className="w-3 h-3" />
+          <Trash2 className="w-4 h-4" />
         </Button>
 
-        <CardHeader className="pb-3 pt-6 pr-10">
+        <CardHeader className="pb-3 pt-6 pr-12">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-full bg-purple-500/20`}>

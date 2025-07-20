@@ -15,9 +15,22 @@ interface UsageData {
   lastReset: string;
 }
 
+interface Subscription {
+  tier: 'free' | 'premium';
+  status: string;
+}
+
+interface UsageStats {
+  mentor_messages: number;
+  signals: number;
+  meme_scans: number;
+}
+
 interface SubscriptionContextType {
   isPremium: boolean;
-  isSubscribed: boolean; // Added this missing property
+  isSubscribed: boolean;
+  subscription?: Subscription;
+  usageStats?: UsageStats;
   dailyLimits: DailyLimits;
   usageToday: UsageData;
   incrementUsage: (type: keyof Omit<UsageData, 'lastReset'>) => void;
@@ -25,21 +38,33 @@ interface SubscriptionContextType {
   getRemainingUsage: (type: keyof Omit<UsageData, 'lastReset'>) => number;
   getUsagePercentage: (type: keyof Omit<UsageData, 'lastReset'>) => number;
   getTimeUntilReset: () => string;
+  checkUsageLimit: (type: keyof Omit<UsageData, 'lastReset'>) => boolean;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 const FREE_LIMITS: DailyLimits = {
-  signals: 2,
-  memeCoins: 3,
-  aiMentorMessages: 5,
+  signals: 1,
+  memeCoins: 2,
+  aiMentorMessages: 3,
 };
 
 export const SubscriptionProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, incrementUsage, canUseFeature, getRemainingUsage } = useAuth();
 
   const isPremium = user?.role === 'premium' || false;
-  const isSubscribed = isPremium; // Added this
+  const isSubscribed = isPremium;
+
+  const subscription: Subscription = {
+    tier: isPremium ? 'premium' : 'free',
+    status: isPremium ? 'active' : 'inactive'
+  };
+
+  const usageStats: UsageStats = {
+    mentor_messages: user?.mentorMessagesUsedToday || 0,
+    signals: user?.aiSignalsUsedToday || 0,
+    meme_scans: user?.memeScansUsedToday || 0,
+  };
 
   const usageToday: UsageData = {
     signals: user?.aiSignalsUsedToday || 0,
@@ -68,10 +93,17 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     return `${hours}h ${minutes}m`;
   };
 
+  const checkUsageLimit = (type: keyof Omit<UsageData, 'lastReset'>): boolean => {
+    if (isPremium) return true;
+    return usageToday[type] < FREE_LIMITS[type];
+  };
+
   return (
     <SubscriptionContext.Provider value={{
       isPremium,
-      isSubscribed, // Added this
+      isSubscribed,
+      subscription,
+      usageStats,
       dailyLimits: FREE_LIMITS,
       usageToday,
       incrementUsage: (type) => {
@@ -100,6 +132,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       },
       getUsagePercentage,
       getTimeUntilReset,
+      checkUsageLimit,
     }}>
       {children}
     </SubscriptionContext.Provider>

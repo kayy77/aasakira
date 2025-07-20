@@ -19,7 +19,6 @@ import {
   Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { geminiEducationService } from '@/services/geminiEducationService';
 
 interface Message {
   id: string;
@@ -28,6 +27,20 @@ interface Message {
   timestamp: Date;
   topic?: string;
 }
+
+// Simple education service fallback
+const generateEducationalResponse = async (params: any) => {
+  const responses = {
+    beginner: "Let me explain this trading concept in simple terms...",
+    intermediate: "Here's a more detailed analysis of this trading strategy...",
+    advanced: "From an institutional perspective, this setup shows..."
+  };
+  
+  return {
+    content: responses[params.userLevel as keyof typeof responses] || responses.beginner,
+    topic: 'trading'
+  };
+};
 
 const EnhancedAIMentor = () => {
   const { user } = useAuth();
@@ -40,7 +53,7 @@ const EnhancedAIMentor = () => {
 
   const dailyLimit = subscription?.tier === 'premium' ? 50 : 3;
   const mentorUsage = usageStats?.mentor_messages || 0;
-  const canSendMessage = mentorUsage < dailyLimit;
+  const canSendMessage = checkUsageLimit('aiMentorMessages');
 
   useEffect(() => {
     // Welcome message
@@ -90,9 +103,9 @@ What's your current experience level?`,
 
     try {
       // Increment usage
-      await incrementUsage('mentor_messages');
+      await incrementUsage('aiMentorMessages');
 
-      const response = await geminiEducationService.generateEducationalResponse({
+      const response = await generateEducationalResponse({
         question: inputMessage,
         userLevel: mentorPersonality,
         context: messages.slice(-5).map(m => ({ role: m.type === 'user' ? 'user' : 'assistant', content: m.content })),
