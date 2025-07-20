@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -130,7 +129,12 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             qualityScore: Math.min(95, baseSignal.confidence + 5),
             signalStrength: baseSignal.confidence >= 90 ? 'ULTRA' : 
                            baseSignal.confidence >= 85 ? 'STRONG' : 'MEDIUM',
-            riskReward: baseSignal.riskReward || 2.0
+            riskReward: baseSignal.riskReward || 2.0,
+            entryPrice: baseSignal.entryPrice || 0,
+            marketCondition: baseSignal.marketCondition || 'neutral',
+            technicalSetup: baseSignal.technicalSetup || 'multi-confluence',
+            entryReason: baseSignal.entryReason || 'AI validation passed',
+            riskManagement: baseSignal.riskManagement || 'Standard 2% risk'
           };
 
           setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${validationResult.reason}`]);

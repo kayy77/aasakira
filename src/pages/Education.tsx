@@ -1,131 +1,118 @@
-
 import React, { useState } from 'react';
-import Navigation from '@/components/Navigation';
-import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
-  Brain, 
+  BookOpen, 
+  Trophy, 
   Target, 
-  BarChart3,
-  MessageSquare,
+  Zap, 
   GraduationCap,
-  BookOpen,
-  Trophy
+  Brain,
+  Swords,
+  ArrowRight
 } from 'lucide-react';
-import EnhancedTradingJournal from '@/components/education/EnhancedTradingJournal';
-import BacktestLab from '@/components/education/BacktestLab';
-import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
+import { motion } from 'framer-motion';
+import ComprehensiveLearningPath from '@/components/education/ComprehensiveLearningPath';
 import SimpleLearningPath from '@/components/education/SimpleLearningPath';
-import MobileNavigation from '@/components/mobile/MobileNavigation';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 const Education = () => {
-  const [activeTab, setActiveTab] = useState('path');
-  const isMobile = useIsMobile();
+  const [selectedPath, setSelectedPath] = useState<'comprehensive' | 'simple' | null>(null);
 
-  const features = [
+  const learningPaths = [
     {
-      icon: <Trophy className="w-6 h-6 md:w-8 md:h-8 text-gold-400" />,
-      title: "Learning Path",
-      description: "Structured step-by-step trading education",
-      tab: "path"
+      id: 'comprehensive',
+      title: 'Comprehensive Path',
+      description: 'A structured learning experience with levels and progress tracking',
+      icon: GraduationCap,
     },
     {
-      icon: <Brain className="w-6 h-6 md:w-8 md:h-8 text-purple-400" />,
-      title: "AI Mentor",
-      description: "Your personal trading mentor with chart analysis",
-      tab: "mentor"
+      id: 'simple',
+      title: 'Simple Path',
+      description: 'A quick and easy way to learn the basics of trading',
+      icon: BookOpen,
     },
     {
-      icon: <BookOpen className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />,
-      title: "Trading Journal",
-      description: "Track progress and analyze your trades with AI",
-      tab: "journal"
+      id: 'strategy',
+      title: 'Strategy Lab',
+      description: 'Explore advanced trading strategies and techniques',
+      icon: Swords,
+      comingSoon: true,
     },
-    {
-      icon: <BarChart3 className="w-6 h-6 md:w-8 md:h-8 text-yellow-400" />,
-      title: "Backtest Lab",
-      description: "Test strategies with historical data",
-      tab: "backtest"
-    }
   ];
 
+  if (selectedPath === 'comprehensive') {
+    return <ComprehensiveLearningPath />;
+  }
+
+  if (selectedPath === 'simple') {
+    return <SimpleLearningPath onBack={() => setSelectedPath(null)} />;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative">
-      <CherryBlossomBackground />
-      {isMobile ? <MobileNavigation /> : <Navigation />}
-      
-      <div className="relative z-10 pt-20 md:pt-24 pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 md:mb-12">
-            <h1 className="text-2xl md:text-4xl font-bold gradient-text mb-4">
-              Professional Trading Education
-            </h1>
-            <p className="text-gray-300 text-sm md:text-lg max-w-3xl mx-auto px-4">
-              Master trading with our structured learning path, AI mentor, and comprehensive tools designed to take you from beginner to professional trader.
-            </p>
-          </div>
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      {/* Header */}
+      <Card className="glass-card border-purple-500/20">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-white flex items-center gap-2">
+            <Brain className="w-6 h-6 text-purple-400" />
+            Trading Education
+          </CardTitle>
+          <p className="text-gray-400">Unlock your trading potential with our structured learning paths</p>
+        </CardHeader>
+      </Card>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 md:space-y-8">
-            <div className={`grid gap-3 md:gap-4 mb-6 md:mb-8 ${
-              isMobile ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-4'
-            }`}>
-              {features.map((feature, index) => (
-                <Card 
-                  key={index}
-                  className={`glass-card hover-glow cursor-pointer transition-all duration-300 ${
-                    activeTab === feature.tab ? 'border-purple-500/50 bg-purple-500/10 shadow-lg shadow-purple-500/20' : 'border-gray-700/50'
-                  }`}
-                  onClick={() => setActiveTab(feature.tab)}
-                >
-                  <CardContent className={`p-4 md:p-6 text-center ${isMobile ? 'space-y-2' : ''}`}>
-                    <div className="flex justify-center mb-2 md:mb-4">
-                      {feature.icon}
-                    </div>
-                    <h3 className={`font-semibold text-white mb-1 md:mb-2 ${
-                      isMobile ? 'text-xs' : 'text-lg'
-                    }`}>
-                      {feature.title}
-                    </h3>
-                    <p className={`text-gray-400 ${
-                      isMobile ? 'text-xs hidden' : 'text-sm'
-                    }`}>
-                      {feature.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <TabsContent value="path">
-              <SimpleLearningPath />
-            </TabsContent>
-
-            <TabsContent value="mentor">
-              <Card className="glass-card h-[600px]">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-purple-400">
-                    <Brain className="w-6 h-6 mr-2" />
-                    AI Trading Mentor
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="h-full p-0">
-                  <EnhancedAIMentor />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="journal">
-              <EnhancedTradingJournal />
-            </TabsContent>
-
-            <TabsContent value="backtest">
-              <BacktestLab />
-            </TabsContent>
-          </Tabs>
-        </div>
+      {/* Learning Paths */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {learningPaths.map((path) => (
+          <motion.div
+            key={path.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <Card 
+              className={`glass-card transition-all duration-300 hover:border-purple-500/50 ${path.comingSoon ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              onClick={() => !path.comingSoon && setSelectedPath(path.id as any)}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="p-3 rounded-xl bg-purple-500/20 border border-purple-500/30">
+                    <path.icon className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{path.title}</h3>
+                    <p className="text-gray-400">{path.description}</p>
+                  </div>
+                </div>
+                {path.comingSoon && (
+                  <Badge className="bg-yellow-500/20 text-yellow-400">
+                    Coming Soon
+                  </Badge>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
+
+      {/* Additional Features */}
+      <Card className="glass-card border-green-500/20">
+        <CardContent className="p-6 text-center">
+          <Zap className="w-12 h-12 text-green-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Ready to Start?</h3>
+          <p className="text-gray-400 mb-4">
+            Begin your trading education journey with our structured learning path
+          </p>
+          <Button
+            onClick={() => setSelectedPath('comprehensive')}
+            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+          >
+            <ArrowRight className="w-4 h-4 mr-2" />
+            Start Learning Now
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };
