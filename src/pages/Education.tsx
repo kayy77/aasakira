@@ -16,7 +16,7 @@ import {
 import EnhancedTradingJournal from '@/components/education/EnhancedTradingJournal';
 import BacktestLab from '@/components/education/BacktestLab';
 import EnhancedAIMentor from '@/components/education/EnhancedAIMentor';
-import ComprehensiveLearningPath from '@/components/education/ComprehensiveLearningPath';
+import SimpleLearningPath from '@/components/education/SimpleLearningPath';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -27,8 +27,8 @@ const Education = () => {
   const features = [
     {
       icon: <Trophy className="w-6 h-6 md:w-8 md:h-8 text-gold-400" />,
-      title: "6-Month Path",
-      description: "Complete professional trading mastery program",
+      title: "Learning Path",
+      description: "Structured step-by-step trading education",
       tab: "path"
     },
     {
@@ -51,11 +51,6 @@ const Education = () => {
     }
   ];
 
-  const handleAskMentor = (prompt: string) => {
-    setActiveTab('mentor');
-    // In a real implementation, you'd pass this prompt to the mentor component
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative">
       <CherryBlossomBackground />
@@ -68,7 +63,7 @@ const Education = () => {
               Professional Trading Education
             </h1>
             <p className="text-gray-300 text-sm md:text-lg max-w-3xl mx-auto px-4">
-              Complete 6-month journey from absolute beginner to professional trader. Master the fundamentals, psychology, and advanced strategies with personalized AI mentorship.
+              Master trading with our structured learning path, AI mentor, and comprehensive tools designed to take you from beginner to professional trader.
             </p>
           </div>
 
@@ -104,7 +99,7 @@ const Education = () => {
             </div>
 
             <TabsContent value="path">
-              <ComprehensiveLearningPath onAskMentor={handleAskMentor} />
+              <SimpleLearningPath />
             </TabsContent>
 
             <TabsContent value="mentor">

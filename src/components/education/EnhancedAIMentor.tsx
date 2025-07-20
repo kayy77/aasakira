@@ -1,277 +1,282 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Brain, 
-  Send, 
-  Sparkles, 
-  Target, 
-  TrendingUp,
-  User,
-  Bot,
-  Loader2
-} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Send, Upload, Brain, User, Lightbulb, TrendingUp } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   id: string;
-  text: string;
+  content: string;
   isUser: boolean;
   timestamp: Date;
-}
-
-interface UserProgressData {
-  total_study_time_minutes: number;
-  win_rate: number;
-  current_streak: number;
-  skills_mastered: string[];
+  imageUrl?: string;
 }
 
 const EnhancedAIMentor = () => {
-  const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      content: "Hello! I'm your AI Trading Mentor. I can help you learn trading concepts, analyze charts, and answer any trading questions you have. Feel free to upload chart images for analysis or ask me anything about trading!",
+      isUser: false,
+      timestamp: new Date(),
+    }
+  ]);
+  const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [userProgress, setUserProgress] = useState<any>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const { user } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      loadUserProgress();
-      loadChatHistory();
-    }
-  }, [user]);
-
-  const loadUserProgress = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading user progress:', error);
-        return;
-      }
-
-      setUserProgress(data || {
-        total_study_time_minutes: 0,
-        win_rate: 0,
-        current_streak: 0,
-        skills_mastered: []
-      });
-    } catch (error) {
-      console.error('Error loading user progress:', error);
-    }
-  };
-
-  const loadChatHistory = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('ai_memory')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('memory_type', 'chat_message')
-        .order('created_at', { ascending: true })
-        .limit(50);
-
-      if (error) {
-        console.error('Error loading chat history:', error);
-        return;
-      }
-
-      if (data) {
-        const chatMessages = data.map(item => ({
-          id: item.id,
-          text: item.content,
-          isUser: item.context?.isUser || false,
-          timestamp: new Date(item.created_at)
-        }));
-        setMessages(chatMessages);
-      }
-    } catch (error) {
-      console.error('Error loading chat history:', error);
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   };
 
   useEffect(() => {
-    // Scroll to bottom when messages change
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom();
   }, [messages]);
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* User Progress Summary */}
-      {userProgress && (
-        <Card className="glass-card border-purple-500/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <Target className="w-5 h-5 text-purple-400" />
-              Your Trading Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-400">
-                  {Math.floor(userProgress.total_study_time_minutes / 60)}h
-                </div>
-                <div className="text-sm text-gray-400">Study Time</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-400">
-                  {userProgress.win_rate?.toFixed(1) || 0}%
-                </div>
-                <div className="text-sm text-gray-400">Win Rate</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-400">
-                  {userProgress.current_streak || 0}
-                </div>
-                <div className="text-sm text-gray-400">Current Streak</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-400">
-                  {userProgress.skills_mastered?.length || 0}
-                </div>
-                <div className="text-sm text-gray-400">Skills Mastered</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+  const generateAIResponse = async (userMessage: string, imageUrl?: string) => {
+    // Simulate AI responses for demo
+    const responses = [
+      "Great question! Let me explain that concept in detail...",
+      "Looking at your chart, I can see several key technical indicators...",
+      "This is a fundamental trading principle. Here's what you need to know...",
+      "Based on your question, I recommend focusing on these key areas...",
+      "That's an excellent observation! Let me build on that..."
+    ];
+    
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
 
-      {/* Chat Interface */}
-      <Card className="glass-card border-purple-500/20 h-[600px] flex flex-col">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
-            <Brain className="w-5 h-5 text-purple-400" />
-            AI Trading Mentor
-            <Badge className="bg-purple-500/20 text-purple-400">Enhanced</Badge>
-          </CardTitle>
-        </CardHeader>
-        
-        <CardContent className="flex-1 flex flex-col">
-          <ScrollArea className="flex-1 mb-4">
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] p-3 rounded-lg ${
-                      message.isUser
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-800 text-gray-100'
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      {message.isUser ? (
-                        <User className="w-4 h-4 mt-1" />
-                      ) : (
-                        <Bot className="w-4 h-4 mt-1 text-purple-400" />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm">{message.text}</p>
-                        <p className="text-xs opacity-60 mt-1">
-                          {message.timestamp.toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() && !fileInputRef.current?.files?.[0]) return;
 
-          <div className="flex gap-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask me anything about trading..."
-              className="flex-1 min-h-[60px] bg-gray-800/50 border-gray-600"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={isLoading || !input.trim()}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  async function handleSendMessage() {
-    if (!input.trim() || isLoading || !user) return;
-
-    const userMessage = {
+    const userMessage: Message = {
       id: Date.now().toString(),
-      text: input.trim(),
+      content: inputValue,
       isUser: true,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
+    // Handle image upload
+    let imageUrl = '';
+    if (fileInputRef.current?.files?.[0]) {
+      const file = fileInputRef.current.files[0];
+      // For demo, we'll just create a URL for the image
+      imageUrl = URL.createObjectURL(file);
+      userMessage.imageUrl = imageUrl;
+    }
+
     setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    setInputValue('');
     setIsLoading(true);
 
-    try {
-      // Save user message to database
-      await supabase.from('ai_memory').insert({
-        user_id: user.id,
-        memory_type: 'chat_message',
-        content: userMessage.text,
-        context: { isUser: true }
-      });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
 
-      // Generate AI response (simplified for now)
-      const aiResponse = {
+    try {
+      // Save user activity
+      if (user) {
+        await supabase.from('user_activities').insert({
+          user_id: user.id,
+          activity_type: 'ai_mentor_message',
+          data: { message: inputValue, has_image: !!imageUrl }
+        });
+      }
+
+      const aiResponse = await generateAIResponse(inputValue, imageUrl);
+      
+      const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: `I understand you're asking about: "${userMessage.text}". As your AI mentor, I'm here to help you learn trading. Let me provide some guidance...`,
+        content: aiResponse,
         isUser: false,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, aiResponse]);
-
-      // Save AI response to database
-      await supabase.from('ai_memory').insert({
-        user_id: user.id,
-        memory_type: 'chat_message',
-        content: aiResponse.text,
-        context: { isUser: false }
-      });
-
+      setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
-  }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const quickPrompts = [
+    "How do I read candlestick patterns?",
+    "What is risk management?",
+    "Explain support and resistance",
+    "How to use moving averages?"
+  ];
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Chat Header */}
+      <div className="p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
+              <Brain className="w-5 h-5 text-purple-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white">AI Trading Mentor</h3>
+              <p className="text-sm text-gray-400">Your personal trading assistant</p>
+            </div>
+          </div>
+          <Badge className="bg-green-500/20 text-green-400">Online</Badge>
+        </div>
+      </div>
+
+      {/* Quick Prompts */}
+      <div className="p-4 border-b border-gray-700">
+        <div className="flex flex-wrap gap-2">
+          {quickPrompts.map((prompt, index) => (
+            <Button
+              key={index}
+              variant="outline"
+              size="sm"
+              onClick={() => setInputValue(prompt)}
+              className="text-xs border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+            >
+              {prompt}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Messages */}
+      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+        <div className="space-y-4">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex gap-3 ${message.isUser ? 'justify-end' : 'justify-start'}`}
+            >
+              {!message.isUser && (
+                <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Brain className="w-4 h-4 text-purple-400" />
+                </div>
+              )}
+              
+              <div className={`max-w-[80%] ${message.isUser ? 'order-2' : ''}`}>
+                <Card className={`${
+                  message.isUser 
+                    ? 'bg-purple-600 border-purple-500' 
+                    : 'bg-gray-800 border-gray-700'
+                }`}>
+                  <CardContent className="p-3">
+                    {message.imageUrl && (
+                      <img 
+                        src={message.imageUrl} 
+                        alt="Uploaded chart" 
+                        className="max-w-full h-auto rounded mb-2"
+                      />
+                    )}
+                    <p className="text-sm text-white">{message.content}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {message.timestamp.toLocaleTimeString()}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {message.isUser && (
+                <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-4 h-4 text-blue-400" />
+                </div>
+              )}
+            </div>
+          ))}
+          
+          {isLoading && (
+            <div className="flex gap-3 justify-start">
+              <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center">
+                <Brain className="w-4 h-4 text-purple-400" />
+              </div>
+              <Card className="bg-gray-800 border-gray-700">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                    <span className="text-sm text-gray-400 ml-2">AI is thinking...</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* Input Area */}
+      <div className="p-4 border-t border-gray-700">
+        <div className="flex gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            className="hidden"
+            onChange={() => {
+              if (fileInputRef.current?.files?.[0]) {
+                toast({
+                  title: "Image selected",
+                  description: "Image ready to send with your message"
+                });
+              }
+            }}
+          />
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="px-3"
+          >
+            <Upload className="w-4 h-4" />
+          </Button>
+          
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Ask your trading mentor anything..."
+            className="flex-1 bg-gray-800 border-gray-600 text-white"
+            disabled={isLoading}
+          />
+          
+          <Button
+            onClick={handleSendMessage}
+            disabled={(!inputValue.trim() && !fileInputRef.current?.files?.[0]) || isLoading}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default EnhancedAIMentor;

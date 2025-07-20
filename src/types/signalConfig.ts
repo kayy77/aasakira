@@ -40,6 +40,15 @@ export interface Signal {
   entryReason: string;
   riskManagement: string;
   filtersPassed?: string[];
+  // Additional signal properties
+  sessionContext?: string;
+  sessionActive?: boolean;
+  enhancedValidation?: boolean;
+  validationReason?: string;
+  qualityScore?: number;
+  signalStrength?: 'ULTRA' | 'STRONG' | 'MEDIUM';
+  confluenceScore?: number;
+  entry?: number | string;
 }
 
 export type SavedPreset = {
@@ -54,3 +63,12 @@ export type TradeType = 'SWING' | 'SCALP' | 'POSITION';
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 export type AssetClass = 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES';
 export type StrategyType = 'SMC' | 'ICT' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP';
+
+export interface StrategyBreakdown {
+  strategy: string;
+  confidence: number;
+  reasoning: string;
+  keyLevels: string[];
+  timeframes: string[];
+  riskFactors: string[];
+}
