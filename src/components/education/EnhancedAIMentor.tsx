@@ -1,115 +1,129 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Send, Upload, Brain, User, Lightbulb, TrendingUp } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { 
+  Brain, 
+  Send, 
+  Sparkles, 
+  Target, 
+  TrendingUp, 
+  BookOpen,
+  MessageSquare,
+  Crown,
+  Lock
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { geminiEducationService } from '@/services/geminiEducationService';
 
 interface Message {
   id: string;
+  type: 'user' | 'ai';
   content: string;
-  isUser: boolean;
   timestamp: Date;
-  imageUrl?: string;
+  topic?: string;
 }
 
 const EnhancedAIMentor = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: "Hello! I'm your AI Trading Mentor. I can help you learn trading concepts, analyze charts, and answer any trading questions you have. Feel free to upload chart images for analysis or ask me anything about trading!",
-      isUser: false,
-      timestamp: new Date(),
-    }
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
   const { user } = useAuth();
+  const { subscription, usageStats, checkUsageLimit, incrementUsage } = useSubscription();
+  const { toast } = useToast();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [mentorPersonality, setMentorPersonality] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
 
-  const scrollToBottom = () => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
-  };
+  const dailyLimit = subscription?.tier === 'premium' ? 50 : 3;
+  const mentorUsage = usageStats?.mentor_messages || 0;
+  const canSendMessage = mentorUsage < dailyLimit;
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Welcome message
+    setMessages([
+      {
+        id: '1',
+        type: 'ai',
+        content: `Hi! I'm your AI Trading Mentor. I'm here to help you master forex trading with personalized guidance. What would you like to learn today?
 
-  const generateAIResponse = async (userMessage: string, imageUrl?: string) => {
-    // Simulate AI responses for demo
-    const responses = [
-      "Great question! Let me explain that concept in detail...",
-      "Looking at your chart, I can see several key technical indicators...",
-      "This is a fundamental trading principle. Here's what you need to know...",
-      "Based on your question, I recommend focusing on these key areas...",
-      "That's an excellent observation! Let me build on that..."
-    ];
-    
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
+Some topics I can help with:
+• Market analysis and chart reading
+• Risk management strategies
+• Trading psychology and discipline
+• Technical indicators and patterns
+• Smart Money Concepts (SMC)
+• Trade planning and execution
+
+What's your current experience level?`,
+        timestamp: new Date(),
+        topic: 'welcome'
+      }
+    ]);
+  }, []);
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() && !fileInputRef.current?.files?.[0]) return;
+    if (!inputMessage.trim() || !user) return;
+
+    if (!canSendMessage) {
+      toast({
+        title: "Daily Limit Reached",
+        description: `You've used ${mentorUsage}/${dailyLimit} AI mentor messages today. Upgrade to Premium for unlimited access.`,
+        variant: "destructive"
+      });
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue,
-      isUser: true,
-      timestamp: new Date(),
+      type: 'user',
+      content: inputMessage,
+      timestamp: new Date()
     };
 
-    // Handle image upload
-    let imageUrl = '';
-    if (fileInputRef.current?.files?.[0]) {
-      const file = fileInputRef.current.files[0];
-      // For demo, we'll just create a URL for the image
-      imageUrl = URL.createObjectURL(file);
-      userMessage.imageUrl = imageUrl;
-    }
-
     setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
+    setInputMessage('');
     setIsLoading(true);
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-
     try {
-      // Save user activity
-      if (user) {
-        await supabase.from('user_activities').insert({
-          user_id: user.id,
-          activity_type: 'ai_mentor_message',
-          data: { message: inputValue, has_image: !!imageUrl }
-        });
-      }
+      // Increment usage
+      await incrementUsage('mentor_messages');
 
-      const aiResponse = await generateAIResponse(inputValue, imageUrl);
-      
+      const response = await geminiEducationService.generateEducationalResponse({
+        question: inputMessage,
+        userLevel: mentorPersonality,
+        context: messages.slice(-5).map(m => ({ role: m.type === 'user' ? 'user' : 'assistant', content: m.content })),
+        focusArea: 'trading'
+      });
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: aiResponse,
-        isUser: false,
+        type: 'ai',
+        content: response.content,
         timestamp: new Date(),
+        topic: response.topic
       };
 
       setMessages(prev => [...prev, aiMessage]);
+
+      // Show upgrade prompt for free users after 2 messages
+      if (subscription?.tier !== 'premium' && mentorUsage >= 2) {
+        setTimeout(() => {
+          toast({
+            title: "🔥 Unlock Unlimited AI Mentoring",
+            description: "Get unlimited AI mentor messages, advanced strategies, and personalized learning paths with Premium!",
+          });
+        }, 2000);
+      }
+
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error getting AI response:', error);
       toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
+        title: "AI Mentor Unavailable",
+        description: "Please try again in a moment",
         variant: "destructive"
       });
     } finally {
@@ -117,164 +131,174 @@ const EnhancedAIMentor = () => {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const quickPrompts = [
+  const quickQuestions = [
     "How do I read candlestick patterns?",
-    "What is risk management?",
-    "Explain support and resistance",
-    "How to use moving averages?"
+    "What's the best risk management strategy?",
+    "Explain Smart Money Concepts",
+    "How to identify market structure?",
+    "What are the best trading sessions?",
+    "How to manage trading psychology?"
   ];
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Chat Header */}
-      <div className="p-4 border-b border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
-              <Brain className="w-5 h-5 text-purple-400" />
+    <div className="space-y-6">
+      {/* Header */}
+      <Card className="glass-card border-purple-500/20">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-purple-500/20">
+                <Brain className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <CardTitle className="text-white">AI Trading Mentor</CardTitle>
+                <p className="text-gray-400 text-sm">Your personal trading coach</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-white">AI Trading Mentor</h3>
-              <p className="text-sm text-gray-400">Your personal trading assistant</p>
+            
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="bg-blue-500/20 text-blue-300">
+                {mentorUsage}/{dailyLimit} messages used
+              </Badge>
+              {subscription?.tier !== 'premium' && (
+                <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+                  <Crown className="w-3 h-3 mr-1" />
+                  Upgrade for Unlimited
+                </Badge>
+              )}
             </div>
           </div>
-          <Badge className="bg-green-500/20 text-green-400">Online</Badge>
-        </div>
-      </div>
+        </CardHeader>
+      </Card>
 
-      {/* Quick Prompts */}
-      <div className="p-4 border-b border-gray-700">
-        <div className="flex flex-wrap gap-2">
-          {quickPrompts.map((prompt, index) => (
-            <Button
-              key={index}
-              variant="outline"
-              size="sm"
-              onClick={() => setInputValue(prompt)}
-              className="text-xs border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-            >
-              {prompt}
-            </Button>
-          ))}
-        </div>
-      </div>
+      {/* Mentor Personality Selector */}
+      <Card className="glass-card border-gray-500/20">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-400">Mentor Level:</span>
+            <div className="flex gap-2">
+              {(['beginner', 'intermediate', 'advanced'] as const).map((level) => (
+                <Button
+                  key={level}
+                  onClick={() => setMentorPersonality(level)}
+                  variant={mentorPersonality === level ? 'default' : 'outline'}
+                  size="sm"
+                  className={mentorPersonality === level ? 'bg-purple-600' : ''}
+                >
+                  {level.charAt(0).toUpperCase() + level.slice(1)}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${message.isUser ? 'justify-end' : 'justify-start'}`}
-            >
-              {!message.isUser && (
-                <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Brain className="w-4 h-4 text-purple-400" />
-                </div>
-              )}
-              
-              <div className={`max-w-[80%] ${message.isUser ? 'order-2' : ''}`}>
-                <Card className={`${
-                  message.isUser 
-                    ? 'bg-purple-600 border-purple-500' 
-                    : 'bg-gray-800 border-gray-700'
-                }`}>
-                  <CardContent className="p-3">
-                    {message.imageUrl && (
-                      <img 
-                        src={message.imageUrl} 
-                        alt="Uploaded chart" 
-                        className="max-w-full h-auto rounded mb-2"
-                      />
-                    )}
-                    <p className="text-sm text-white">{message.content}</p>
-                    <p className="text-xs text-gray-400 mt-1">
+      {/* Chat Interface */}
+      <Card className="glass-card border-purple-500/20">
+        <CardContent className="p-0">
+          <ScrollArea className="h-96 p-4">
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${
+                    message.type === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
+                >
+                  <div
+                    className={`max-w-[80%] p-3 rounded-lg ${
+                      message.type === 'user'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-800 text-gray-100 border border-gray-700'
+                    }`}
+                  >
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {message.content}
+                    </div>
+                    <div className="text-xs opacity-70 mt-1">
                       {message.timestamp.toLocaleTimeString()}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
               
-              {message.isUser && (
-                <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4 text-blue-400" />
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-800 border border-gray-700 p-3 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400"></div>
+                      <span className="text-gray-400 text-sm">AI is thinking...</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-          ))}
+          </ScrollArea>
           
-          {isLoading && (
-            <div className="flex gap-3 justify-start">
-              <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center">
-                <Brain className="w-4 h-4 text-purple-400" />
-              </div>
-              <Card className="bg-gray-800 border-gray-700">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
-                    <span className="text-sm text-gray-400 ml-2">AI is thinking...</span>
-                  </div>
-                </CardContent>
-              </Card>
+          {/* Input Area */}
+          <div className="border-t border-gray-700 p-4">
+            <div className="flex gap-2 mb-3">
+              <Input
+                placeholder={canSendMessage ? "Ask your trading question..." : "Daily limit reached - upgrade for unlimited access"}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                disabled={!canSendMessage || isLoading}
+                className="flex-1 bg-gray-800 border-gray-600 text-white"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!canSendMessage || !inputMessage.trim() || isLoading}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {!canSendMessage ? <Lock className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+              </Button>
             </div>
-          )}
-        </div>
-      </ScrollArea>
+            
+            {/* Quick Questions */}
+            <div className="flex flex-wrap gap-2">
+              {quickQuestions.slice(0, 3).map((question, index) => (
+                <Button
+                  key={index}
+                  onClick={() => {
+                    setInputMessage(question);
+                    handleSendMessage();
+                  }}
+                  variant="outline"
+                  size="sm"
+                  disabled={!canSendMessage || isLoading}
+                  className="text-xs border-gray-600 hover:border-purple-500"
+                >
+                  {question}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex gap-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept="image/*"
-            className="hidden"
-            onChange={() => {
-              if (fileInputRef.current?.files?.[0]) {
-                toast({
-                  title: "Image selected",
-                  description: "Image ready to send with your message"
-                });
-              }
-            }}
-          />
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3"
-          >
-            <Upload className="w-4 h-4" />
-          </Button>
-          
-          <Input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask your trading mentor anything..."
-            className="flex-1 bg-gray-800 border-gray-600 text-white"
-            disabled={isLoading}
-          />
-          
-          <Button
-            onClick={handleSendMessage}
-            disabled={(!inputValue.trim() && !fileInputRef.current?.files?.[0]) || isLoading}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+      {/* Usage Stats for Free Users */}
+      {subscription?.tier !== 'premium' && (
+        <Card className="glass-card border-yellow-500/20 bg-yellow-500/5">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-yellow-400" />
+                <span className="text-yellow-300">
+                  {mentorUsage}/{dailyLimit} daily AI mentor messages used
+                </span>
+              </div>
+              <Button
+                size="sm"
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+              >
+                <Crown className="w-4 h-4 mr-1" />
+                Upgrade for Unlimited
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

@@ -42,11 +42,13 @@ const ImprovedMemeCoinScanner = () => {
         });
       }, 200);
 
-      // Use correct method name
+      console.log('🔍 Starting meme coin scan...');
       const scannedCoins = await liveMemeCoinService.scanLiveCoins();
       
       clearInterval(progressInterval);
       setScanProgress(100);
+      
+      console.log('📊 Scan results:', scannedCoins);
       
       if (scannedCoins && scannedCoins.length > 0) {
         setCoins(scannedCoins);
@@ -55,7 +57,8 @@ const ImprovedMemeCoinScanner = () => {
           description: `Found ${scannedCoins.length} promising meme coins`,
         });
       } else {
-        // Generate some sample coins if API returns empty
+        console.log('⚠️ No coins returned from scan, using fallback');
+        // Use sample data if API fails
         const sampleCoins: LiveMemeCoin[] = [
           {
             id: '1',
@@ -66,8 +69,7 @@ const ImprovedMemeCoinScanner = () => {
             market_cap: 1250000,
             volume_24h: 850000,
             last_updated: new Date().toISOString(),
-            priceChange5m: 2.3,
-            priceChange1h: 5.8
+            priceChange5m: 2.3
           },
           {
             id: '2', 
@@ -78,18 +80,17 @@ const ImprovedMemeCoinScanner = () => {
             market_cap: 5600000,
             volume_24h: 2300000,
             last_updated: new Date().toISOString(),
-            priceChange5m: -0.8,
-            priceChange1h: 1.2
+            priceChange5m: -0.8
           }
         ];
         setCoins(sampleCoins);
         toast({
-          title: "Demo Coins Loaded",
-          description: "Showing sample meme coins for demonstration",
+          title: "Sample Data Loaded",
+          description: "API connection issue - showing sample data",
         });
       }
     } catch (error) {
-      console.error('Scan error:', error);
+      console.error('❌ Scan error:', error);
       // Show sample coins on error
       const sampleCoins: LiveMemeCoin[] = [
         {
@@ -101,14 +102,14 @@ const ImprovedMemeCoinScanner = () => {
           market_cap: 12400000,
           volume_24h: 4200000,
           last_updated: new Date().toISOString(),
-          priceChange5m: 1.2,
-          priceChange1h: 3.6
+          priceChange5m: 1.2
         }
       ];
       setCoins(sampleCoins);
       toast({
-        title: "Sample Data Loaded",
-        description: "Showing demo coins while fixing live data connection",
+        title: "Connection Error",
+        description: "Showing demo data while fixing live connection",
+        variant: "destructive"
       });
     } finally {
       setIsScanning(false);
@@ -249,9 +250,9 @@ const ImprovedMemeCoinScanner = () => {
                     <div>
                       <div className="text-sm text-gray-400">5m Change</div>
                       <div className={`font-semibold ${
-                        coin.priceChange5m >= 0 ? 'text-green-400' : 'text-red-400'
+                        (coin.priceChange5m || 0) >= 0 ? 'text-green-400' : 'text-red-400'
                       }`}>
-                        {coin.priceChange5m?.toFixed(2)}%
+                        {(coin.priceChange5m || 0).toFixed(2)}%
                       </div>
                     </div>
                   </div>

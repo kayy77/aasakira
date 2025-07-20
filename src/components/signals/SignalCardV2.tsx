@@ -45,15 +45,15 @@ const SignalCardV2: React.FC<SignalCardV2Props> = ({
   // Entry price should match live price exactly
   const entryPrice = currentPrice;
   
-  // Fix stop loss and take profit calculation
+  // Fix stop loss and take profit calculation based on signal type
   const calculateCorrectLevels = () => {
-    const isBuy = signalDNA.type === 'BUY';
+    const isBuySignal = signalDNA.type === 'BUY';
     const pipValue = signalDNA.symbol.includes('JPY') ? 0.01 : 0.0001;
     
     let stopLoss: number;
     let takeProfit: number;
     
-    if (isBuy) {
+    if (isBuySignal) {
       // For BUY signals: SL below entry, TP above entry
       stopLoss = entryPrice - (20 * pipValue); // 20 pips below
       takeProfit = entryPrice + (40 * pipValue); // 40 pips above (2:1 RR)
@@ -98,17 +98,17 @@ const SignalCardV2: React.FC<SignalCardV2Props> = ({
       className="relative"
     >
       <Card className="glass-card border-purple-500/20 hover:border-purple-500/40 transition-all duration-300">
-        {/* Close Button - Moved to top-left and smaller */}
+        {/* Close Button - Fixed position and moved away from tactical message */}
         <Button
           onClick={() => onRemove(signalDNA.symbol)}
           size="sm"
           variant="ghost"
-          className="absolute top-1 left-1 z-10 h-5 w-5 p-0 text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+          className="absolute top-2 right-2 z-10 h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-full"
         >
           <Trash2 className="w-3 h-3" />
         </Button>
 
-        <CardHeader className="pb-3 pt-6">
+        <CardHeader className="pb-3 pt-6 pr-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-full bg-purple-500/20`}>
