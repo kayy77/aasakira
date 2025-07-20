@@ -42,6 +42,10 @@ const Dashboard = () => {
     }
   };
 
+  const handleJoinFreeCommunity = () => {
+    window.open('https://t.me/aasakirafree', '_blank');
+  };
+
   const handleBackToHome = () => {
     console.log('Navigating back to home...');
     navigate('/');
@@ -79,7 +83,6 @@ const Dashboard = () => {
         {/* Header with Logo and Navigation */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
-            {/* New Aasakira Logo */}
             <img 
               src="/lovable-uploads/b8d9ec60-b2f7-4ad0-9d21-dbc7e5d67c6e.png" 
               alt="Aasakira Logo" 
@@ -107,7 +110,6 @@ const Dashboard = () => {
             Your AI-powered trading companion dashboard
           </p>
           
-          {/* Navigation */}
           <div className="flex justify-center mb-8">
             <Button
               onClick={handleBackToHome}
@@ -122,7 +124,6 @@ const Dashboard = () => {
 
         {/* Usage Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {/* AI Signals Usage */}
           <Card className="glass-card hover-glow border-purple-500/20">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-300">
@@ -145,12 +146,11 @@ const Dashboard = () => {
                 />
               )}
               <p className="text-xs text-gray-400">
-                {isPremium ? 'Premium access active' : 'Daily limit'}
+                {isPremium ? 'Premium access active' : 'Daily limit (1 for free users)'}
               </p>
             </CardContent>
           </Card>
 
-          {/* Meme Coin Scanner Usage */}
           <Card className="glass-card hover-glow border-purple-500/20">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-300">
@@ -178,7 +178,6 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* AI Mentor Usage */}
           <Card className="glass-card hover-glow border-purple-500/20">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-300">
@@ -207,19 +206,60 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Feature Cards */}
+        {/* Community Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Premium Community */}
-          <Card className="glass-card hover-glow border-purple-500/20">
+          {/* Free Community Card */}
+          <Card className="glass-card hover-glow border-blue-500/20">
             <CardHeader>
               <CardTitle className="text-xl font-bold text-white flex items-center">
-                <Users className="w-6 h-6 mr-2 text-purple-400" />
-                Elite Trading Community
+                <Users className="w-6 h-6 mr-2 text-blue-400" />
+                Free Trading Community
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-gray-300">
-                Join our exclusive Telegram community with elite traders:
+                Join our free Telegram community to connect with other traders:
+              </p>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li className="flex items-center">
+                  <MessageCircle className="w-4 h-4 mr-2 text-blue-400" />
+                  General trading discussions
+                </li>
+                <li className="flex items-center">
+                  <TrendingUp className="w-4 h-4 mr-2 text-blue-400" />
+                  Market updates and news
+                </li>
+                <li className="flex items-center">
+                  <Users className="w-4 h-4 mr-2 text-blue-400" />
+                  Connect with fellow traders
+                </li>
+                <li className="flex items-center">
+                  <Sparkles className="w-4 h-4 mr-2 text-blue-400" />
+                  Basic trading tips
+                </li>
+              </ul>
+              
+              <Button 
+                onClick={handleJoinFreeCommunity}
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-3 hover-lift"
+              >
+                <ExternalLink className="w-5 h-5 mr-2" />
+                Join Free Community
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Premium Community Card */}
+          <Card className="glass-card hover-glow border-purple-500/20">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-white flex items-center">
+                <Crown className="w-6 h-6 mr-2 text-purple-400" />
+                Elite Premium Community
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-300">
+                Upgrade to access our exclusive premium community:
               </p>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li className="flex items-center">
@@ -269,63 +309,74 @@ const Dashboard = () => {
               )}
             </CardContent>
           </Card>
+        </div>
 
-          {/* Premium Features */}
-          <Card className="glass-card hover-glow border-purple-500/20">
+        {/* Premium Comparison */}
+        {!isPremium && (
+          <Card className="glass-card hover-glow border-yellow-500/20 mb-8">
             <CardHeader>
               <CardTitle className="text-xl font-bold text-white flex items-center">
-                <Crown className="w-6 h-6 mr-2 text-purple-400" />
-                Premium Benefits
+                <Crown className="w-6 h-6 mr-2 text-yellow-400" />
+                Free vs Premium Comparison
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-300">Unlimited AI Signals</span>
-                  {isPremium ? (
-                    <Badge className="bg-green-500/20 text-green-400">Active</Badge>
-                  ) : (
-                    <Badge variant="outline" className="border-gray-600 text-gray-400">2/day</Badge>
-                  )}
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-gray-300 mb-3">Free Plan</h4>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-center text-gray-400">
+                      <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+                      1 AI Signal per day
+                    </li>
+                    <li className="flex items-center text-gray-400">
+                      <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+                      Limited AI Mentor messages
+                    </li>
+                    <li className="flex items-center text-gray-400">
+                      <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+                      Basic community access
+                    </li>
+                    <li className="flex items-center text-gray-400">
+                      <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+                      Limited meme coin scans
+                    </li>
+                  </ul>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-300">Unlimited AI Mentor</span>
-                  {isPremium ? (
-                    <Badge className="bg-green-500/20 text-green-400">Active</Badge>
-                  ) : (
-                    <Badge variant="outline" className="border-gray-600 text-gray-400">5/day</Badge>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-300">Premium Community</span>
-                  {isPremium ? (
-                    <Badge className="bg-green-500/20 text-green-400">Active</Badge>
-                  ) : (
-                    <Badge variant="outline" className="border-gray-600 text-gray-400">Locked</Badge>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-300">Priority Support</span>
-                  {isPremium ? (
-                    <Badge className="bg-green-500/20 text-green-400">Active</Badge>
-                  ) : (
-                    <Badge variant="outline" className="border-gray-600 text-gray-400">Locked</Badge>
-                  )}
+                
+                <div>
+                  <h4 className="font-semibold text-green-400 mb-3">Premium Plan</h4>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-center text-green-400">
+                      <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                      Unlimited AI Signals
+                    </li>
+                    <li className="flex items-center text-green-400">
+                      <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                      Unlimited AI Mentor
+                    </li>
+                    <li className="flex items-center text-green-400">
+                      <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                      Elite premium community
+                    </li>
+                    <li className="flex items-center text-green-400">
+                      <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                      Unlimited everything
+                    </li>
+                  </ul>
                 </div>
               </div>
               
-              {!isPremium && (
-                <Button 
-                  onClick={() => setShowUpgrade(true)}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 hover-lift cyber-glow mt-6"
-                >
-                  <Crown className="w-5 h-5 mr-2" />
-                  Upgrade to Premium
-                </Button>
-              )}
+              <Button 
+                onClick={() => setShowUpgrade(true)}
+                className="w-full mt-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 hover-lift cyber-glow"
+              >
+                <Crown className="w-5 h-5 mr-2" />
+                Upgrade to Premium Now
+              </Button>
             </CardContent>
           </Card>
-        </div>
+        )}
 
         {/* Profile Settings Card */}
         <Card className="glass-card hover-glow border-purple-500/20 mb-12">

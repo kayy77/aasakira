@@ -1,289 +1,361 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, MessageSquare, GraduationCap, BookOpen, Brain } from 'lucide-react';
-import LessonContent from './LessonContent';
-import { useToast } from "@/hooks/use-toast"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Brain, 
+  Target, 
+  Trophy, 
+  Clock, 
+  CheckCircle, 
+  BookOpen,
+  Zap,
+  TrendingUp,
+  Award,
+  Star
+} from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Lesson {
+  id: string;
   title: string;
+  description: string;
   content: string;
-  keyPoints: string[];
-  learningObjectives: string[];
+  duration: number;
+  stage: number;
 }
 
-const learningPath: { [month: string]: Lesson[] } = {
-  "Month 1: Foundations of Trading": [
-    {
-      title: "Introduction to Financial Markets",
-      content: `Welcome to the world of trading! In this lesson, we'll cover:
-      - What are financial markets and their importance.
-      - Key players: brokers, traders, and institutions.
-      - Basic terminology: assets, securities, and derivatives.
-      - Understanding market hours and trading sessions.`,
-      keyPoints: ["Financial markets facilitate buying and selling of assets.", "Brokers connect buyers and sellers.", "Assets include stocks, bonds, and commodities."],
-      learningObjectives: ["Define financial markets and their role.", "Identify key market participants.", "Understand basic trading terminology."]
-    },
-    {
-      title: "Understanding Charts and Timeframes",
-      content: `Charts are essential tools for traders. This lesson includes:
-      - Types of charts: line, bar, and candlestick.
-      - Reading candlestick patterns.
-      - Importance of different timeframes (daily, hourly, etc.).
-      - How to select the right timeframe for your trading style.`,
-      keyPoints: ["Candlestick charts show open, close, high, and low prices.", "Timeframes affect the level of detail in your analysis.", "Choose timeframes that match your trading strategy."],
-      learningObjectives: ["Interpret different types of charts.", "Recognize common candlestick patterns.", "Select appropriate timeframes for analysis."]
-    },
-    {
-      title: "Basic Technical Analysis",
-      content: `Technical analysis involves studying historical price and volume data to identify patterns and trends. We'll cover:
-      - Support and resistance levels.
-      - Trendlines and channels.
-      - Basic chart patterns: head and shoulders, double tops/bottoms.
-      - Using volume to confirm price movements.`,
-      keyPoints: ["Support and resistance levels indicate potential price reversals.", "Trendlines help identify the direction of price movement.", "Chart patterns provide clues about future price action."],
-      learningObjectives: ["Identify support and resistance levels.", "Draw and interpret trendlines.", "Recognize basic chart patterns."]
-    }
-  ],
-  "Month 2: Advanced Trading Strategies": [
-    {
-      title: "Advanced Technical Indicators",
-      content: `Building on basic technical analysis, this lesson covers:
-      - Moving averages: simple and exponential.
-      - RSI (Relative Strength Index) and its applications.
-      - MACD (Moving Average Convergence Divergence).
-      - Fibonacci retracements and extensions.`,
-      keyPoints: ["Moving averages smooth out price data.", "RSI measures the speed and change of price movements.", "MACD identifies changes in the strength, direction, momentum, and duration of a trend."],
-      learningObjectives: ["Apply moving averages to identify trends.", "Use RSI to identify overbought and oversold conditions.", "Interpret MACD signals."]
-    },
-    {
-      title: "Risk Management Techniques",
-      content: `Protecting your capital is crucial. This lesson includes:
-      - Setting stop-loss orders.
-      - Calculating position size.
-      - Understanding risk-reward ratios.
-      - Managing emotions and avoiding common mistakes.`,
-      keyPoints: ["Stop-loss orders limit potential losses.", "Position size should be based on your risk tolerance.", "Risk-reward ratio helps evaluate potential trades."],
-      learningObjectives: ["Set effective stop-loss orders.", "Calculate appropriate position sizes.", "Apply risk-reward ratios to trading decisions."]
-    },
-    {
-      title: "Trading Psychology",
-      content: `The mental side of trading is often overlooked. This lesson covers:
-      - Overcoming fear and greed.
-      - Developing discipline and patience.
-      - Maintaining a trading journal.
-      - Staying focused and avoiding distractions.`,
-      keyPoints: ["Emotions can lead to poor trading decisions.", "Discipline and patience are essential for success.", "A trading journal helps track and analyze your trades."],
-      learningObjectives: ["Recognize and manage emotional biases.", "Develop a disciplined trading approach.", "Use a trading journal to improve performance."]
-    }
-  ],
-  "Month 3: Mastering Market Dynamics": [
-    {
-      title: "Understanding Market Sentiment",
-      content: `Market sentiment reflects the overall attitude of investors. This lesson includes:
-      - Identifying bullish and bearish sentiment.
-      - Using sentiment indicators.
-      - Analyzing news and economic events.
-      - Understanding the impact of social media.`,
-      keyPoints: ["Market sentiment can drive price movements.", "News and economic events influence sentiment.", "Social media can amplify sentiment."],
-      learningObjectives: ["Identify bullish and bearish sentiment.", "Use sentiment indicators to gauge market mood.", "Analyze the impact of news and social media on trading."]
-    },
-    {
-      title: "Economic Indicators and News Events",
-      content: `Economic data releases can significantly impact markets. This lesson covers:
-      - Key economic indicators: GDP, inflation, unemployment.
-      - Understanding central bank policies.
-      - Trading around news events.
-      - Using an economic calendar.`,
-      keyPoints: ["Economic indicators provide insights into the health of the economy.", "Central bank policies affect interest rates and money supply.", "News events can create volatility."],
-      learningObjectives: ["Interpret key economic indicators.", "Understand the impact of central bank policies.", "Develop strategies for trading around news events."]
-    },
-    {
-      title: "Developing a Trading Plan",
-      content: `A well-defined trading plan is essential for consistent results. This lesson includes:
-      - Setting clear goals and objectives.
-      - Defining your trading style and strategy.
-      - Establishing risk management rules.
-      - Regularly reviewing and adjusting your plan.`,
-      keyPoints: ["A trading plan provides structure and direction.", "Your plan should align with your goals and risk tolerance.", "Regular review helps adapt to changing market conditions."],
-      learningObjectives: ["Set clear trading goals.", "Define your trading style and strategy.", "Create a comprehensive trading plan."]
-    }
-  ]
-};
+interface Stage {
+  id: string;
+  title: string;
+  description: string;
+  lessons: Lesson[];
+}
+
+const stages: Stage[] = [
+  {
+    id: '1',
+    title: 'Foundations of Trading',
+    description: 'Learn the basic concepts and terminology of financial markets.',
+    lessons: [
+      {
+        id: '101',
+        title: 'Introduction to Financial Markets',
+        description: 'Overview of stocks, forex, commodities, and indices.',
+        content: 'Detailed content about financial markets...',
+        duration: 30,
+        stage: 1,
+      },
+      {
+        id: '102',
+        title: 'Key Trading Terminology',
+        description: 'Understanding essential terms like leverage, margin, and pips.',
+        content: 'Explanation of key trading terms...',
+        duration: 45,
+        stage: 1,
+      },
+    ],
+  },
+  {
+    id: '2',
+    title: 'Technical Analysis',
+    description: 'Master the art of reading charts and identifying trading opportunities.',
+    lessons: [
+      {
+        id: '201',
+        title: 'Chart Patterns',
+        description: 'Identifying and interpreting common chart patterns.',
+        content: 'In-depth analysis of chart patterns...',
+        duration: 60,
+        stage: 2,
+      },
+      {
+        id: '202',
+        title: 'Technical Indicators',
+        description: 'Using indicators like RSI, MACD, and moving averages.',
+        content: 'How to use technical indicators...',
+        duration: 75,
+        stage: 2,
+      },
+    ],
+  },
+  {
+    id: '3',
+    title: 'Risk Management',
+    description: 'Learn how to protect your capital and manage risk effectively.',
+    lessons: [
+      {
+        id: '301',
+        title: 'Position Sizing',
+        description: 'Determining the appropriate position size for each trade.',
+        content: 'Strategies for position sizing...',
+        duration: 45,
+        stage: 3,
+      },
+      {
+        id: '302',
+        title: 'Stop-Loss Orders',
+        description: 'Using stop-loss orders to limit potential losses.',
+        content: 'How to set effective stop-loss orders...',
+        duration: 60,
+        stage: 3,
+      },
+    ],
+  },
+];
 
 const ComprehensiveLearningPath = () => {
-  const [currentMonth, setCurrentMonth] = useState<string>("Month 1: Foundations of Trading");
-  const [currentLessonIndex, setCurrentLessonIndex] = useState<number>(0);
-  const [completedLessons, setCompletedLessons] = useState<{[month: string]: boolean[][]}>({
-    "Month 1: Foundations of Trading": [[false, false, false]],
-    "Month 2: Advanced Trading Strategies": [[false, false, false]],
-    "Month 3: Mastering Market Dynamics": [[false, false, false]],
-  });
-  const [showMentor, setShowMentor] = useState(false);
-  const { toast } = useToast()
+  const { user } = useAuth();
+  const [currentStage, setCurrentStage] = useState(1);
+  const [userProgress, setUserProgress] = useState(null);
+  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  const [testScores, setTestScores] = useState<{[key: string]: number}>({});
 
   useEffect(() => {
-    // Load saved progress from localStorage
-    const savedProgress = localStorage.getItem('learningProgress');
-    if (savedProgress) {
-      setCompletedLessons(JSON.parse(savedProgress));
+    if (user) {
+      loadUserProgress();
     }
-  }, []);
+  }, [user]);
 
-  useEffect(() => {
-    // Save progress to localStorage whenever completedLessons changes
-    localStorage.setItem('learningProgress', JSON.stringify(completedLessons));
-  }, [completedLessons]);
+  const loadUserProgress = async () => {
+    if (!user) return;
 
-  const months = Object.keys(learningPath);
-  const lessons = learningPath[currentMonth];
+    try {
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
 
-  const completeLesson = (month: string, lessonIndex: number) => {
-    const updatedCompletedLessons = {
-      ...completedLessons,
-      [month]: completedLessons[month].map((lessons, index) => {
-        if (index === 0) {
-          return lessons.map((lesson, idx) => idx === lessonIndex ? true : lesson);
-        }
-        return lessons;
-      })
-    };
-    setCompletedLessons(updatedCompletedLessons);
-    toast({
-      title: "Lesson Completed",
-      description: "You've successfully completed this lesson!",
-    })
-  };
-
-  const moveToNextLesson = () => {
-    if (currentLessonIndex < lessons.length - 1) {
-      setCurrentLessonIndex(currentLessonIndex + 1);
-    } else {
-      const currentMonthIndex = months.indexOf(currentMonth);
-      if (currentMonthIndex < months.length - 1) {
-        setCurrentMonth(months[currentMonthIndex + 1]);
-        setCurrentLessonIndex(0);
-      } else {
-        alert("Congratulations! You've completed all lessons.");
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading user progress:', error);
+        return;
       }
+
+      setUserProgress(data || {
+        current_stage: 1,
+        completed_lessons: [],
+      });
+
+      if (data) {
+        setCurrentStage(data.current_stage || 1);
+        setCompletedLessons(data.completed_lessons || []);
+      }
+    } catch (error) {
+      console.error('Error loading user progress:', error);
     }
   };
 
-  const renderLessonContent = (lesson: any) => {
+  const updateProgress = async (stage: number, lessonId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_progress')
+        .upsert(
+          {
+            user_id: user.id,
+            current_stage: stage,
+            completed_lessons: [...completedLessons, lessonId],
+          },
+          { onConflict: 'user_id' }
+        );
+
+      if (error) {
+        console.error('Error updating user progress:', error);
+      } else {
+        console.log('User progress updated successfully');
+        loadUserProgress();
+      }
+    } catch (error) {
+      console.error('Error updating user progress:', error);
+    }
+  };
+
+  const calculateTotalLessons = () => {
+    let total = 0;
+    stages.forEach((stage) => {
+      total += stage.lessons.length;
+    });
+    return total;
+  };
+
+  const calculateCompletedPercentage = () => {
+    const totalLessons = calculateTotalLessons();
+    const completed = completedLessons.length;
+    return (completed / totalLessons) * 100;
+  };
+
+  const currentStageData = stages.find((stage) => stage.id === currentStage.toString());
+
+  const renderStageContent = (stage: any) => {
     return (
-      <LessonContent
-        lesson={lesson}
-        onComplete={() => completeLesson(currentMonth, currentLessonIndex)}
-        onAskMentor={() => setShowMentor(true)}
-      />
+      <Card className="glass-card border-purple-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white">
+            <Brain className="w-5 h-5 text-purple-400" />
+            {stage.title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {stage.lessons.map((lesson: any, index: number) => (
+              <div key={index} className="p-4 bg-gray-800/50 rounded-lg">
+                <h4 className="font-semibold text-white mb-2">{lesson.title}</h4>
+                <p className="text-gray-300 text-sm mb-3">{lesson.description}</p>
+                
+                {/* Add interactive test component */}
+                <div className="flex justify-between items-center">
+                  <Button 
+                    size="sm" 
+                    onClick={() => startLesson(lesson.id)}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    Start Lesson
+                  </Button>
+                  
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => takeTest(lesson.id)}
+                    className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+                  >
+                    Take Test
+                  </Button>
+                </div>
+                
+                {/* Show test score if available */}
+                {testScores[lesson.id] && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <Badge variant={testScores[lesson.id] >= 80 ? "default" : "destructive"}>
+                      Test Score: {testScores[lesson.id]}%
+                    </Badge>
+                    {testScores[lesson.id] < 80 && (
+                      <Button size="sm" variant="ghost" onClick={() => retakeTest(lesson.id)}>
+                        Retake Test
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     );
   };
 
+  const startLesson = (lessonId: string) => {
+    // Track lesson start
+    console.log(`Starting lesson: ${lessonId}`);
+  };
+
+  const takeTest = (lessonId: string) => {
+    // Generate random test score for demo
+    const score = Math.floor(Math.random() * 40) + 60; // 60-100
+    setTestScores(prev => ({
+      ...prev,
+      [lessonId]: score
+    }));
+  };
+
+  const retakeTest = (lessonId: string) => {
+    // Allow retaking test
+    takeTest(lessonId);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white py-12">
-      <div className="container mx-auto px-4">
-        <header className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2 gradient-text">Comprehensive Trading Education</h1>
-          <p className="text-gray-400">Unlock your trading potential with our structured learning path.</p>
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Sidebar Navigation */}
-          <aside className="md:col-span-1">
-            <Card className="bg-gradient-to-br from-gray-900 to-gray-800 border-purple-500/30">
-              <CardContent className="space-y-4">
-                <h2 className="text-xl font-semibold mb-2">Modules</h2>
-                {months.map((month, index) => (
-                  <div key={index}>
-                    <h3 className="font-semibold text-lg mb-1">{month}</h3>
-                    <ul className="space-y-2">
-                      {learningPath[month].map((lesson, lessonIndex) => (
-                        <li key={lessonIndex} className="flex items-center justify-between">
-                          <Button
-                            variant="ghost"
-                            className={`w-full justify-start ${currentMonth === month && currentLessonIndex === lessonIndex ? 'text-blue-400' : 'text-gray-300 hover:text-blue-400'}`}
-                            onClick={() => {
-                              setCurrentMonth(month);
-                              setCurrentLessonIndex(lessonIndex);
-                            }}
-                          >
-                            <BookOpen className="w-4 h-4 mr-2" />
-                            {lesson.title}
-                          </Button>
-                          {completedLessons[month][0][lessonIndex] && (
-                            <CheckCircle className="w-5 h-5 text-green-500" />
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </aside>
-
-          {/* Main Content */}
-          <main className="md:col-span-3">
-            {lessons && renderLessonContent(lessons[currentLessonIndex])}
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-8">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const currentMonthIndex = months.indexOf(currentMonth);
-                  if (currentMonthIndex > 0) {
-                    setCurrentMonth(months[currentMonthIndex - 1]);
-                    setCurrentLessonIndex(0);
-                  }
-                }}
-                disabled={months.indexOf(currentMonth) === 0}
-                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
-              >
-                Previous Module
-              </Button>
-              <Button
-                onClick={moveToNextLesson}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold"
-              >
-                Next Lesson
-              </Button>
-            </div>
-          </main>
-        </div>
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="text-center">
+        <h2 className="text-3xl font-bold gradient-text mb-4">
+          Comprehensive Trading Education
+        </h2>
+        <p className="text-gray-400 text-lg">
+          Unlock your trading potential with our structured learning path
+        </p>
       </div>
 
-      {/* AI Mentor Dialog */}
-      <Dialog open={showMentor} onOpenChange={setShowMentor}>
-        <DialogContent className="max-w-2xl bg-gradient-to-br from-slate-900 to-slate-800 border-purple-500/30">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-white flex items-center gap-3">
-              <Brain className="w-6 h-6 text-purple-400" />
-              AI Trading Mentor
-            </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Get personalized guidance and insights from our AI mentor.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-gray-300">
-              Ask your questions about the lesson or trading in general. Our AI mentor is here to help you understand complex concepts and improve your trading skills.
-            </p>
-            {/* Add an interactive chat component here */}
+      {/* Progress Section */}
+      <Card className="glass-card border-purple-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white">
+            <TrendingUp className="w-5 h-5 text-purple-400" />
+            Your Learning Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-gray-300">Total Progress:</span>
+            <span className="text-white">{calculateCompletedPercentage().toFixed(0)}%</span>
           </div>
-          <Button onClick={() => setShowMentor(false)} variant="outline" className="border-purple-500/30 text-purple-400 hover:bg-purple-500/20">
-            Close Mentor
-          </Button>
-        </DialogContent>
-      </Dialog>
+          <Progress value={calculateCompletedPercentage()} className="w-full" />
+        </CardContent>
+      </Card>
+      
+      <Tabs defaultValue="current" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="current">Current Stage</TabsTrigger>
+          <TabsTrigger value="overview">Full Path</TabsTrigger>
+          <TabsTrigger value="tests">Test Results</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="current" className="space-y-4">
+          {currentStageData ? (
+            renderStageContent(currentStageData)
+          ) : (
+            <p className="text-gray-400">No current stage data available.</p>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="overview" className="space-y-4">
+          {stages.map((stage) => (
+            <Card key={stage.id} className="glass-card border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <BookOpen className="w-5 h-5 text-purple-400" />
+                  {stage.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="list-disc list-inside space-y-2">
+                  {stage.lessons.map((lesson) => (
+                    <li key={lesson.id} className="text-gray-300">
+                      {lesson.title}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+        
+        <TabsContent value="tests" className="space-y-4">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="text-white">Test Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {Object.entries(testScores).map(([lessonId, score]) => (
+                  <div key={lessonId} className="flex justify-between items-center p-3 bg-gray-800/50 rounded">
+                    <span className="text-gray-300">Lesson {lessonId}</span>
+                    <Badge variant={score >= 80 ? "default" : "destructive"}>
+                      {score}%
+                    </Badge>
+                  </div>
+                ))}
+                {Object.keys(testScores).length === 0 && (
+                  <p className="text-gray-400 text-center">No tests taken yet</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

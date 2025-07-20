@@ -38,9 +38,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const DAILY_LIMITS = {
-  signals: 2,
-  memeScans: 3,
-  mentorMessages: 5,
+  signals: 1,
+  memeScans: 2,
+  mentorMessages: 3,
 };
 
 // Admin email - set your account as premium
@@ -202,7 +202,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const usageKey = feature === 'signals' ? 'aiSignalsUsedToday' : 
                     feature === 'memeScans' ? 'memeScansUsedToday' : 'mentorMessagesUsedToday';
     
-    return (user[usageKey] || 0) < DAILY_LIMITS[feature];
+    const currentUsage = user[usageKey] || 0;
+    const hasReachedLimit = currentUsage >= DAILY_LIMITS[feature];
+    
+    // Show more aggressive prompts for free users
+    if (hasReachedLimit) {
+      toast({
+        title: "Daily Limit Reached!",
+        description: `You've used all ${DAILY_LIMITS[feature]} ${feature} for today. Upgrade to Premium for unlimited access!`,
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+    
+    return !hasReachedLimit;
   };
 
   const incrementUsage = (feature: 'signals' | 'memeScans' | 'mentorMessages') => {
