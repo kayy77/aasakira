@@ -19,24 +19,32 @@ interface PriceOptions {
 
 class EnhancedPriceService {
   private cache = new Map<string, { data: PriceData; timestamp: number }>();
-  private readonly CACHE_DURATION = 100; // 0.1 second cache - ultra fresh
+  private readonly CACHE_DURATION = 500; // 0.5 second cache - ultra fresh for signals
 
   async getLivePrice(symbol: string, options: PriceOptions = { 
-    allowFallback: true, 
-    forTrading: false,
-    maxDataAge: 3000 
+    allowFallback: false, // NO fallback for signals by default
+    forTrading: true,
+    maxDataAge: 1500 // Max 1.5 seconds old
   }): Promise<PriceData> {
     console.log(`🎯 ULTRA-PRECISION live price fetch for ${symbol}...`);
     
-    // Check ultra-short cache first
-    const cached = this.cache.get(symbol);
-    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
-      if (cached.data.price <= 0) {
-        console.warn(`❌ Invalid cached price for ${symbol}: ${cached.data.price}`);
-        this.cache.delete(symbol);
-      } else {
-        console.log(`⚡ Ultra-fresh cached price for ${symbol}: ${cached.data.price} (${cached.data.source})`);
-        return cached.data;
+    // For trading signals, always fetch fresh data - no cache
+    if (options.forTrading) {
+      this.cache.delete(symbol);
+      console.log(`🔄 TRADING MODE: Bypassing cache for ${symbol}`);
+    }
+    
+    // Check ultra-short cache only for non-trading requests
+    if (!options.forTrading) {
+      const cached = this.cache.get(symbol);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+        if (cached.data.price <= 0) {
+          console.warn(`❌ Invalid cached price for ${symbol}: ${cached.data.price}`);
+          this.cache.delete(symbol);
+        } else {
+          console.log(`⚡ Ultra-fresh cached price for ${symbol}: ${cached.data.price} (${cached.data.source})`);
+          return cached.data;
+        }
       }
     }
 
@@ -44,14 +52,14 @@ class EnhancedPriceService {
       // PRIORITY 1: Get from real-time WebSocket engine
       const realTimeData = await realTimePriceEngine.getRealTimePrice(symbol);
       
-      // Validate the data
+      // STRICT VALIDATION for trading signals
       if (!realTimeData || realTimeData.price <= 0 || isNaN(realTimeData.price)) {
         throw new Error(`Invalid real-time price data: ${realTimeData?.price}`);
       }
 
       // Check data freshness for trading signals
       const dataAge = realTimeData.dataAge || 0;
-      const maxAge = options.maxDataAge || 3000;
+      const maxAge = options.maxDataAge || 1500;
       
       if (options.forTrading) {
         // CRITICAL: For trading, reject stale or fallback data
@@ -73,8 +81,10 @@ class EnhancedPriceService {
         quality: realTimeData.quality
       };
 
-      // Cache the result
-      this.cache.set(symbol, { data: priceData, timestamp: Date.now() });
+      // Only cache non-trading requests
+      if (!options.forTrading) {
+        this.cache.set(symbol, { data: priceData, timestamp: Date.now() });
+      }
       
       const ageDisplay = dataAge > 0 ? `${Math.floor(dataAge/1000)}s ago` : 'live';
       console.log(`✅ ULTRA-PRECISION price for ${symbol}: ${priceData.price} from ${priceData.source} (${ageDisplay}, ${realTimeData.quality})`);
@@ -107,7 +117,7 @@ class EnhancedPriceService {
     return await this.getLivePrice(symbol, { 
       allowFallback: false, 
       forTrading: true,
-      maxDataAge: 2000 // Max 2 seconds old for trading
+      maxDataAge: 1500 // Max 1.5 seconds old for trading
     });
   }
 
@@ -140,7 +150,7 @@ class EnhancedPriceService {
   }
 
   startPriceMonitoring(symbols: string[], intervalMs: number = 500): void {
-    console.log(`👁️ Starting ULTRA-PRECISION price monitoring for ${symbols.length} symbols...`);
+    console.log(`👁️ Starting ULTRA-PRECISION price monitoring for ${symbols.length} symbols every ${intervalMs}ms...`);
     realTimePriceEngine.startPriceFeeds(symbols, intervalMs);
   }
 

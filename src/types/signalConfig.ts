@@ -49,6 +49,15 @@ export interface Signal {
   signalStrength?: 'ULTRA' | 'STRONG' | 'MEDIUM';
   confluenceScore?: number;
   entry?: number | string;
+  // Origin tracking
+  origin?: {
+    institutional: boolean;
+    smc: boolean;
+    quant: boolean;
+    volatility: boolean;
+    visual: boolean;
+    mentor: boolean;
+  };
 }
 
 export interface SignalDNA {
