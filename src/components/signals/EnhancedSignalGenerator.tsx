@@ -96,7 +96,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           // Prepare validation input with proper type conversion
           const validationInput: SignalValidationInput = {
             pair: baseSignal.pair,
-            entry: typeof baseSignal.entry === 'string' ? parseFloat(baseSignal.entry) : baseSignal.entry,
+            entry: typeof baseSignal.entry === 'string' ? parseFloat(baseSignal.entry) : (baseSignal.entry || baseSignal.entryPrice),
             stopLoss: typeof baseSignal.stopLoss === 'string' ? parseFloat(baseSignal.stopLoss) : baseSignal.stopLoss,
             takeProfit: typeof baseSignal.takeProfit === 'string' ? parseFloat(baseSignal.takeProfit) : baseSignal.takeProfit,
             confidence: baseSignal.confidence,
@@ -119,9 +119,25 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             continue;
           }
 
-          // Final enhanced signal
+          // Final enhanced signal - ensure all required properties are present
           const enhancedSignal: Signal = {
-            ...baseSignal,
+            id: Date.now().toString(),
+            pair: baseSignal.pair,
+            type: baseSignal.type,
+            entryPrice: baseSignal.entryPrice,
+            stopLoss: baseSignal.stopLoss,
+            takeProfit: baseSignal.takeProfit,
+            confidence: baseSignal.confidence,
+            analysis: baseSignal.analysis,
+            timestamp: baseSignal.timestamp,
+            timeframe: baseSignal.timeframe,
+            riskReward: baseSignal.riskReward || 2.0,
+            strategy: baseSignal.strategy,
+            marketCondition: baseSignal.marketCondition || 'neutral',
+            technicalSetup: baseSignal.technicalSetup || 'multi-confluence',
+            entryReason: baseSignal.entryReason || 'AI validation passed',
+            riskManagement: baseSignal.riskManagement || 'Standard 2% risk',
+            filtersPassed: baseSignal.filtersPassed || [],
             sessionContext: getCurrentSession(),
             sessionActive: requirements.sessionActive,
             enhancedValidation: true,
@@ -129,12 +145,8 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             qualityScore: Math.min(95, baseSignal.confidence + 5),
             signalStrength: baseSignal.confidence >= 90 ? 'ULTRA' : 
                            baseSignal.confidence >= 85 ? 'STRONG' : 'MEDIUM',
-            riskReward: baseSignal.riskReward || 2.0,
-            entryPrice: baseSignal.entryPrice || 0,
-            marketCondition: baseSignal.marketCondition || 'neutral',
-            technicalSetup: baseSignal.technicalSetup || 'multi-confluence',
-            entryReason: baseSignal.entryReason || 'AI validation passed',
-            riskManagement: baseSignal.riskManagement || 'Standard 2% risk'
+            confluenceScore: baseSignal.confluenceScore || 0,
+            entry: baseSignal.entry || baseSignal.entryPrice
           };
 
           setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${validationResult.reason}`]);
