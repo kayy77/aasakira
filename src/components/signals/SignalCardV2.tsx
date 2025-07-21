@@ -17,7 +17,21 @@ import {
   Activity,
   AlertTriangle
 } from 'lucide-react';
-import { SignalDNA } from '@/services/multiIntelligenceCore';
+
+interface SignalDNA {
+  symbol: string;
+  type: 'BUY' | 'SELL';
+  confidence: number;
+  aiThought: string;
+  origin: {
+    institutional: boolean;
+    smc: boolean;
+    quant: boolean;
+    volatility: boolean;
+    visual: boolean;
+    mentor: boolean;
+  };
+}
 
 interface SignalCardV2Props {
   signalDNA: SignalDNA;

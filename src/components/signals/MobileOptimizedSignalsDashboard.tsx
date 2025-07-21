@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,8 +21,22 @@ import {
   Activity,
   AlertTriangle
 } from 'lucide-react';
-import { SignalDNA } from '@/services/multiIntelligenceCore';
 import { SignalConfig } from '@/types/signalConfig';
+
+interface SignalDNA {
+  symbol: string;
+  type: 'BUY' | 'SELL';
+  confidence: number;
+  aiThought: string;
+  origin: {
+    institutional: boolean;
+    smc: boolean;
+    quant: boolean;
+    volatility: boolean;
+    visual: boolean;
+    mentor: boolean;
+  };
+}
 
 interface MobileOptimizedSignalsDashboardProps {
   // Define props here
@@ -37,9 +52,11 @@ const MobileOptimizedSignalsDashboard: React.FC<MobileOptimizedSignalsDashboardP
     aiThought: "Strong bullish momentum detected.",
     origin: {
       smc: true,
-      ichimoku: false,
-      fibonacci: true,
-      elliottWave: false
+      institutional: false,
+      quant: true,
+      volatility: false,
+      visual: true,
+      mentor: false
     }
   });
   const [livePrice, setLivePrice] = useState(1.0850);
@@ -73,10 +90,10 @@ const MobileOptimizedSignalsDashboard: React.FC<MobileOptimizedSignalsDashboardP
 
   const generateSignalConfig = (): SignalConfig => {
     return {
-      strategyType: "Hybrid",
+      strategyType: "SMC",
       tradeType: "SCALP",
       confidenceThreshold: 85,
-      riskLevel: "MODERATE",
+      riskLevel: "MEDIUM",
       minFilters: 4,
       assetClass: "FOREX",
       pairFilter: "EURUSD",

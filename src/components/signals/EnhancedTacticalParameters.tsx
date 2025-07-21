@@ -12,10 +12,10 @@ interface EnhancedTacticalParametersProps {
 }
 
 const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProps> = ({ onPresetSaved }) => {
-  const [selectedStrategy, setSelectedStrategy] = useState<string>('SMC');
+  const [selectedStrategy, setSelectedStrategy] = useState<'SMC' | 'ICT' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP'>('SMC');
   const [selectedTradeType, setSelectedTradeType] = useState<string>('swing');
   const [confidenceThreshold, setConfidenceThreshold] = useState<number>(75);
-  const [selectedRiskLevel, setSelectedRiskLevel] = useState<string>('medium');
+  const [selectedRiskLevel, setSelectedRiskLevel] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
   const [minFilters, setMinFilters] = useState<number>(3);
   const [selectedAssetClass, setSelectedAssetClass] = useState<string>('forex');
   const [selectedPair, setSelectedPair] = useState<string>('EURUSD');
@@ -32,7 +32,7 @@ const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProps> = ({
         strategyType: selectedStrategy,
         tradeType: selectedTradeType === 'intraday' ? 'SCALP' : 'SWING',
         confidenceThreshold: confidenceThreshold,
-        riskLevel: selectedRiskLevel.toUpperCase() as 'LOW' | 'MEDIUM' | 'HIGH',
+        riskLevel: selectedRiskLevel,
         minFilters: minFilters,
         assetClass: selectedAssetClass.toUpperCase() as 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES',
         pairFilter: selectedPair,
@@ -77,7 +77,7 @@ const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProps> = ({
         {/* Strategy Type */}
         <div>
           <label className="block text-sm font-medium text-white mb-2">Strategy Type</label>
-          <Select onValueChange={setSelectedStrategy}>
+          <Select onValueChange={(value) => setSelectedStrategy(value as 'SMC' | 'ICT' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP')}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select strategy" />
             </SelectTrigger>
@@ -120,14 +120,14 @@ const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProps> = ({
         {/* Risk Level */}
         <div>
           <label className="block text-sm font-medium text-white mb-2">Risk Level</label>
-          <Select onValueChange={setSelectedRiskLevel}>
+          <Select onValueChange={(value) => setSelectedRiskLevel(value as 'LOW' | 'MEDIUM' | 'HIGH')}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select risk level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="LOW">Low</SelectItem>
+              <SelectItem value="MEDIUM">Medium</SelectItem>
+              <SelectItem value="HIGH">High</SelectItem>
             </SelectContent>
           </Select>
         </div>

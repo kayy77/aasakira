@@ -51,6 +51,21 @@ export interface Signal {
   entry?: number | string;
 }
 
+export interface SignalDNA {
+  symbol: string;
+  type: 'BUY' | 'SELL';
+  confidence: number;
+  aiThought: string;
+  origin: {
+    institutional: boolean;
+    smc: boolean;
+    quant: boolean;
+    volatility: boolean;
+    visual: boolean;
+    mentor: boolean;
+  };
+}
+
 export type SavedPreset = {
   id: string;
   name: string;
