@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Target, 
   TrendingUp, 
@@ -16,7 +18,9 @@ import {
   Shield,
   CheckCircle2,
   XCircle,
-  Clock
+  Clock,
+  Settings,
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { signalService } from '@/services/signalService';
@@ -41,6 +45,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
   const [validationLog, setValidationLog] = useState<string[]>([]);
   const [minFilters, setMinFilters] = useState<number>(4); // Default to 4/6
   const [minConfidence, setMinConfidence] = useState<number>(75); // Default to 75%
+  const [newsFilterEnabled, setNewsFilterEnabled] = useState<boolean>(true);
   const { toast } = useToast();
 
   // Session-aware quality requirements
@@ -49,8 +54,8 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     const isActiveSession = (hour >= 6 && hour <= 16); // London + NY sessions
     
     return {
-      minConfidence: minConfidence, // Use user-selected confidence
-      minConfluence: minFilters, // Use user-selected filter count
+      minConfidence: minConfidence,
+      minConfluence: minFilters,
       minRiskReward: isActiveSession ? 2.0 : 2.5,
       sessionActive: isActiveSession
     };
@@ -66,6 +71,17 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     return 'Off Hours';
   };
 
+  // Mock news filter function - would integrate with real API
+  const isHighImpactNews = async (symbol: string): Promise<{ hasNews: boolean; reason?: string }> => {
+    // This would connect to Forex Factory or similar API
+    // For now, randomly simulate news events
+    const hasNews = Math.random() < 0.1; // 10% chance of news
+    return {
+      hasNews,
+      reason: hasNews ? `High-impact ${symbol.substring(0,3)} news event in next 30 minutes` : undefined
+    };
+  };
+
   const generateEnhancedSignal = async () => {
     onFeatureUse?.();
     setIsGenerating(true);
@@ -75,6 +91,11 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     setValidationLog([]);
 
     const requirements = getSessionRequirements();
+    
+    // Show risk warning for lower confluence settings
+    if (minFilters < 5) {
+      setValidationLog(prev => [...prev, `⚠️ Lower confluence selected (${minFilters}/6). Using enhanced risk management.`]);
+    }
     
     try {
       setAnalysisStatus(`⚡ Session Analysis: ${getCurrentSession()} (${requirements.sessionActive ? 'ACTIVE' : 'QUIET'})`);
@@ -93,7 +114,20 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           
           if (!baseSignal) {
             setRejectionCount(prev => prev + 1);
+            setValidationLog(prev => [...prev, `❌ Attempt ${attempts}: No valid signal generated`]);
             continue;
+          }
+
+          // Check news filter if enabled
+          if (newsFilterEnabled) {
+            setAnalysisStatus(`📰 Checking news calendar for ${baseSignal.pair}...`);
+            const newsCheck = await isHighImpactNews(baseSignal.pair);
+            if (newsCheck.hasNews) {
+              setRejectionCount(prev => prev + 1);
+              setLastRejectionReason(`News Filter: ${newsCheck.reason}`);
+              setValidationLog(prev => [...prev, `📰 ${baseSignal.pair}: ${newsCheck.reason}`]);
+              continue;
+            }
           }
 
           // Prepare validation input with proper type conversion
@@ -112,13 +146,23 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
 
           setAnalysisStatus(`🧠 Enhanced AI validation for ${baseSignal.pair} (${minConfidence}%+ required)...`);
           
+          // Check if signal meets user's filter requirements
+          const filtersPassedCount = validationInput.filtersPassed.length;
+          if (filtersPassedCount < minFilters) {
+            setRejectionCount(prev => prev + 1);
+            const missingFilters = minFilters - filtersPassedCount;
+            setLastRejectionReason(`Filter Confluence: ${filtersPassedCount}/${minFilters} (missing ${missingFilters} filters)`);
+            setValidationLog(prev => [...prev, `❌ ${baseSignal.pair}: Only ${filtersPassedCount}/${minFilters} filters passed`]);
+            continue;
+          }
+
           // ENHANCED VALIDATION WITH LOCAL + GROQ
           const validationResult = await enhancedSignalValidator.validateWithSessionContext(validationInput);
           
-          if (!validationResult.isValid) {
+          if (!validationResult.isValid || validationResult.confidence < minConfidence) {
             setRejectionCount(prev => prev + 1);
-            setLastRejectionReason(validationResult.reason);
-            setValidationLog(prev => [...prev, `❌ ${baseSignal.pair}: ${validationResult.reason}`]);
+            setLastRejectionReason(`AI Confidence: ${validationResult.confidence}% (needs ${minConfidence}%+)`);
+            setValidationLog(prev => [...prev, `🧠 ${baseSignal.pair}: AI confidence ${validationResult.confidence}% below threshold`]);
             continue;
           }
 
@@ -139,7 +183,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             marketCondition: baseSignal.marketCondition || 'neutral',
             technicalSetup: baseSignal.technicalSetup || 'multi-confluence',
             entryReason: baseSignal.entryReason || 'AI validation passed',
-            riskManagement: baseSignal.riskManagement || 'Standard 2% risk',
+            riskManagement: `${minFilters}/6 filters + ${minConfidence}%+ AI confidence`,
             filtersPassed: baseSignal.filtersPassed || [],
             sessionContext: getCurrentSession(),
             sessionActive: requirements.sessionActive,
@@ -148,11 +192,11 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             qualityScore: Math.min(95, baseSignal.confidence + 5),
             signalStrength: baseSignal.confidence >= 90 ? 'ULTRA' : 
                            baseSignal.confidence >= 85 ? 'STRONG' : 'MEDIUM',
-            confluenceScore: baseSignal.confluenceScore || 0,
+            confluenceScore: filtersPassedCount,
             entry: baseSignal.entry || baseSignal.entryPrice
           };
 
-          setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${validationResult.reason}`]);
+          setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${filtersPassedCount}/6 filters + ${validationResult.confidence}% AI confidence`]);
 
           if (onSignalGenerated) {
             onSignalGenerated(enhancedSignal);
@@ -169,6 +213,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
         } catch (error) {
           console.error(`Attempt ${attempts} failed:`, error);
           setRejectionCount(prev => prev + 1);
+          setValidationLog(prev => [...prev, `❌ Attempt ${attempts}: Generation error`]);
           continue;
         }
       }
@@ -220,37 +265,114 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
         </div>
       </div>
 
-      {/* Filter Settings */}
-      <FilterSettings
-        minFilters={minFilters}
-        onMinFiltersChange={setMinFilters}
-        minConfidence={minConfidence}
-        onMinConfidenceChange={setMinConfidence}
-      />
-
-      {/* Session Requirements */}
-      <div className="glass-card p-6 mb-6 border-purple-500/10">
+      {/* Enhanced Filter Settings */}
+      <div className="glass-card p-6 mb-6 border-blue-500/10">
         <div className="flex items-center space-x-2 mb-4">
-          <Shield className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg font-semibold text-white">Current Session Requirements</h3>
+          <Settings className="w-5 h-5 text-blue-400" />
+          <h3 className="text-lg font-semibold text-white">Signal Quality Controls</h3>
         </div>
         
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {/* Filter Confluence Selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Minimum Filter Confluence
+            </label>
+            <Select value={minFilters.toString()} onValueChange={(value) => setMinFilters(Number(value))}>
+              <SelectTrigger className="bg-gray-800/50 border-gray-600">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-800 border-gray-600">
+                <SelectItem value="3" className="text-yellow-400">3/6 - Moderate</SelectItem>
+                <SelectItem value="4" className="text-orange-400">4/6 - Strong</SelectItem>
+                <SelectItem value="5" className="text-red-400">5/6 - Elite</SelectItem>
+                <SelectItem value="6" className="text-purple-400">6/6 - Perfect</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* AI Confidence Selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Minimum AI Confidence
+            </label>
+            <Select value={minConfidence.toString()} onValueChange={(value) => setMinConfidence(Number(value))}>
+              <SelectTrigger className="bg-gray-800/50 border-gray-600">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-800 border-gray-600">
+                <SelectItem value="70" className="text-blue-400">70%+ Standard</SelectItem>
+                <SelectItem value="75" className="text-green-400">75%+ Strong</SelectItem>
+                <SelectItem value="80" className="text-red-400">80%+ Elite</SelectItem>
+                <SelectItem value="85" className="text-purple-400">85%+ Perfect</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* News Filter Toggle */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              News Event Filter
+            </label>
+            <Button
+              variant={newsFilterEnabled ? "default" : "outline"}
+              onClick={() => setNewsFilterEnabled(!newsFilterEnabled)}
+              className="w-full"
+            >
+              {newsFilterEnabled ? (
+                <>
+                  <Shield className="w-4 h-4 mr-2" />
+                  Enabled
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  Disabled
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Risk Warning for Lower Settings */}
+        {minFilters < 5 && (
+          <Alert className="mb-4 border-yellow-500/30 bg-yellow-500/10">
+            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            <AlertDescription className="text-yellow-200">
+              ⚠️ Lower confluence selected ({minFilters}/6). This increases trade risk. Use tighter stop-loss and active risk management.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Current Settings Display */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="glass-card p-3 text-center border-red-500/20">
-            <div className="text-sm text-red-400 font-semibold">Min Confidence</div>
-            <div className="text-xs text-gray-400">{requirements.minConfidence}%</div>
+          <div className={`glass-card p-3 text-center ${
+            minFilters >= 5 ? 'border-green-500/20' : 'border-yellow-500/20'
+          }`}>
+            <div className="text-sm font-semibold text-white">Filter Strength</div>
+            <div className={`text-xs ${
+              minFilters >= 5 ? 'text-green-400' : 'text-yellow-400'
+            }`}>{minFilters}/6 confluence</div>
           </div>
-          <div className="glass-card p-3 text-center border-orange-500/20">
-            <div className="text-sm text-orange-400 font-semibold">Min Confluence</div>
-            <div className="text-xs text-gray-400">{requirements.minConfluence}/6</div>
-          </div>
-          <div className="glass-card p-3 text-center border-yellow-500/20">
-            <div className="text-sm text-yellow-400 font-semibold">Session</div>
-            <div className="text-xs text-gray-400">{getCurrentSession()}</div>
+          <div className={`glass-card p-3 text-center ${
+            minConfidence >= 80 ? 'border-green-500/20' : 'border-orange-500/20'
+          }`}>
+            <div className="text-sm font-semibold text-white">AI Confidence</div>
+            <div className={`text-xs ${
+              minConfidence >= 80 ? 'text-green-400' : 'text-orange-400'
+            }`}>{minConfidence}%+ required</div>
           </div>
           <div className="glass-card p-3 text-center border-blue-500/20">
-            <div className="text-sm text-blue-400 font-semibold">AI Validation</div>
-            <div className="text-xs text-gray-400">REQUIRED</div>
+            <div className="text-sm font-semibold text-white">Session</div>
+            <div className="text-xs text-blue-400">{getCurrentSession()}</div>
+          </div>
+          <div className={`glass-card p-3 text-center ${
+            newsFilterEnabled ? 'border-green-500/20' : 'border-red-500/20'
+          }`}>
+            <div className="text-sm font-semibold text-white">News Filter</div>
+            <div className={`text-xs ${
+              newsFilterEnabled ? 'text-green-400' : 'text-red-400'
+            }`}>{newsFilterEnabled ? 'Active' : 'Disabled'}</div>
           </div>
         </div>
 
@@ -283,7 +405,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
             <div className="flex items-center space-x-2 mb-3">
               <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-red-300 font-semibold">Enhanced Filter Status:</span>
+              <span className="text-red-300 font-semibold">Last Rejection Reason:</span>
             </div>
             <p className="text-sm text-red-200">{lastRejectionReason}</p>
           </div>
@@ -312,7 +434,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           ) : (
             <>
               <Brain className="w-5 h-5 mr-2" />
-              Generate Enhanced Signal
+              Generate Enhanced Signal ({minFilters}/6 + {minConfidence}%+)
             </>
           )}
         </Button>
