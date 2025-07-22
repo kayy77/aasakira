@@ -11,6 +11,28 @@ export interface SignalConfig {
   strategyType: 'SMC' | 'ICT' | 'Hybrid' | 'Institutional';
 }
 
+export interface SavedPreset {
+  id: string;
+  name: string;
+  config: SignalConfig;
+  createdAt: string;
+}
+
+export interface StrategyBreakdown {
+  id: string;
+  name: string;
+  description: string;
+  filters: string[];
+  riskLevel: string;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  confidence: number;
+  reason: string;
+  adjustments?: string;
+}
+
 export interface Signal {
   id: string;
   pair: string;
@@ -47,4 +69,28 @@ export interface Signal {
   };
   newsRisk?: boolean;
   warning?: string;
+}
+
+export interface FilterResult {
+  smc: boolean;
+  liquiditySweep: boolean;
+  fvg: boolean;
+  volumeSpike: boolean;
+  sessionTiming: boolean;
+  rsiDivergence: boolean;
+}
+
+export interface SignalInput {
+  filters: FilterResult;
+  aiConfidence: number;
+  livePrice: number;
+  confluenceRequired: number;
+  minConfidence: number;
+  newsBlocked: boolean;
+}
+
+export interface FilterValidationResult {
+  valid: boolean;
+  reason: string;
+  passedFilters?: string[];
 }
