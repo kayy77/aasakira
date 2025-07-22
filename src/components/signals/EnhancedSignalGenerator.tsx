@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signalService } from '@/services/signalService';
 import { enhancedSignalValidator, SignalValidationInput } from '@/services/enhancedSignalValidator';
 import { Signal } from '@/types/signalConfig';
+import FilterSettings from './FilterSettings';
 
 interface EnhancedSignalGeneratorProps {
   onSignalGenerated?: (signal: Signal) => void;
@@ -38,6 +39,8 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
   const [lastRejectionReason, setLastRejectionReason] = useState<string>('');
   const [rejectionCount, setRejectionCount] = useState<number>(0);
   const [validationLog, setValidationLog] = useState<string[]>([]);
+  const [minFilters, setMinFilters] = useState<number>(4); // Default to 4/6
+  const [minConfidence, setMinConfidence] = useState<number>(75); // Default to 75%
   const { toast } = useToast();
 
   // Session-aware quality requirements
@@ -46,8 +49,8 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     const isActiveSession = (hour >= 6 && hour <= 16); // London + NY sessions
     
     return {
-      minConfidence: isActiveSession ? 75 : 80,
-      minConfluence: isActiveSession ? 5 : 6,
+      minConfidence: minConfidence, // Use user-selected confidence
+      minConfluence: minFilters, // Use user-selected filter count
       minRiskReward: isActiveSession ? 2.0 : 2.5,
       sessionActive: isActiveSession
     };
@@ -82,7 +85,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
       
       while (attempts < maxAttempts) {
         attempts++;
-        setAnalysisStatus(`🎯 Attempt ${attempts}: Enhanced Multi-Filter Analysis...`);
+        setAnalysisStatus(`🎯 Attempt ${attempts}: Scanning ${minFilters}/6 filter confluence...`);
         
         try {
           // Generate base signal with enhanced requirements
@@ -107,7 +110,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             timeframe: '15m'
           };
 
-          setAnalysisStatus(`🧠 Enhanced AI validation for ${baseSignal.pair}...`);
+          setAnalysisStatus(`🧠 Enhanced AI validation for ${baseSignal.pair} (${minConfidence}%+ required)...`);
           
           // ENHANCED VALIDATION WITH LOCAL + GROQ
           const validationResult = await enhancedSignalValidator.validateWithSessionContext(validationInput);
@@ -157,7 +160,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             
             toast({
               title: `🚨 ENHANCED ${enhancedSignal.signalStrength} SIGNAL APPROVED!`,
-              description: `${enhancedSignal.pair} ${enhancedSignal.type} | Enhanced Validated | Session: ${getCurrentSession()}`,
+              description: `${enhancedSignal.pair} ${enhancedSignal.type} | ${minFilters}/6 Filters | ${minConfidence}%+ Confidence`,
             });
           }
           
@@ -171,10 +174,10 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
       }
       
       // All attempts failed
-      setLastRejectionReason(`ENHANCED FILTERING: All ${maxAttempts} attempts rejected. Current ${getCurrentSession()} session requires ${requirements.minConfidence}%+ confidence, ${requirements.minConfluence}/6+ confluence, BOS+FVG filters, and AI approval.`);
+      setLastRejectionReason(`ENHANCED FILTERING: All ${maxAttempts} attempts rejected. Current settings require ${minFilters}/6 confluence + ${minConfidence}%+ AI confidence in ${getCurrentSession()} session.`);
       toast({
         title: "🏛️ Enhanced Filter Gate - All Signals Rejected",
-        description: `${rejectionCount} signals blocked by enhanced institutional filtering + AI validation`,
+        description: `${rejectionCount} signals blocked by ${minFilters}/6 filter + ${minConfidence}%+ AI validation`,
         variant: "destructive"
       });
       
@@ -202,7 +205,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">🧠 Enhanced AI Signal Protocol</h2>
-            <p className="text-gray-400">Session-Aware + Enhanced Validation</p>
+            <p className="text-gray-400">Session-Aware + Custom Filter Settings</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -216,6 +219,14 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           </Badge>
         </div>
       </div>
+
+      {/* Filter Settings */}
+      <FilterSettings
+        minFilters={minFilters}
+        onMinFiltersChange={setMinFilters}
+        minConfidence={minConfidence}
+        onMinConfidenceChange={setMinConfidence}
+      />
 
       {/* Session Requirements */}
       <div className="glass-card p-6 mb-6 border-purple-500/10">
@@ -234,12 +245,12 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             <div className="text-xs text-gray-400">{requirements.minConfluence}/6</div>
           </div>
           <div className="glass-card p-3 text-center border-yellow-500/20">
-            <div className="text-sm text-yellow-400 font-semibold">Required</div>
-            <div className="text-xs text-gray-400">BOS + FVG</div>
+            <div className="text-sm text-yellow-400 font-semibold">Session</div>
+            <div className="text-xs text-gray-400">{getCurrentSession()}</div>
           </div>
           <div className="glass-card p-3 text-center border-blue-500/20">
-            <div className="text-sm text-blue-400 font-semibold">AI Valid</div>
-            <div className="text-xs text-gray-400">MANDATORY</div>
+            <div className="text-sm text-blue-400 font-semibold">AI Validation</div>
+            <div className="text-xs text-gray-400">REQUIRED</div>
           </div>
         </div>
 
@@ -263,7 +274,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
               <XCircle className="w-4 h-4 text-red-400" />
               <span className="text-red-300 font-semibold">Enhanced Filter Activity:</span>
             </div>
-            <p className="text-sm text-red-200">{rejectionCount} signals rejected by enhanced filtering system</p>
+            <p className="text-sm text-red-200">{rejectionCount} signals rejected by {minFilters}/6 filter + {minConfidence}%+ AI validation</p>
           </div>
         )}
 
