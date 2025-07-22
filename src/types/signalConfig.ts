@@ -1,3 +1,4 @@
+
 export interface SignalConfig {
   pair: string;
   timeframe: string;
