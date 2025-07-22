@@ -8,7 +8,7 @@ export interface SignalConfig {
     maxRisk: number;
     riskRewardRatio: number;
   };
-  strategyType: 'SMC' | 'ICT' | 'Hybrid' | 'Institutional';
+  strategyType: 'SMC' | 'ICT' | 'Hybrid' | 'Institutional' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP';
 }
 
 export interface SavedPreset {
@@ -69,6 +69,9 @@ export interface Signal {
   };
   newsRisk?: boolean;
   warning?: string;
+  validated?: boolean;
+  risk?: 'Low' | 'Moderate' | 'High' | 'Critical';
+  message?: string;
 }
 
 export interface FilterResult {

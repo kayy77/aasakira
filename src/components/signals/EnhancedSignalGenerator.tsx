@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +24,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { signalService } from '@/services/signalService';
 import { filterAndValidateSignal, generateMockFilters } from '@/services/signalFilterValidator';
+import { getMinAIConfidence, getRiskLevel, getRiskMessage } from '@/utils/signalValidator';
 import { Signal } from '@/types/signalConfig';
 
 interface EnhancedSignalGeneratorProps {
@@ -43,8 +43,9 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
   const [rejectionCount, setRejectionCount] = useState<number>(0);
   const [validationLog, setValidationLog] = useState<string[]>([]);
   const [minFilters, setMinFilters] = useState<number>(3); // Changed default to 3/6
-  const [minConfidence, setMinConfidence] = useState<number>(70); // Changed default to 70%
+  const [minConfidence, setMinConfidence] = useState<number>(65); // Dynamic based on confluence
   const [newsFilterEnabled, setNewsFilterEnabled] = useState<boolean>(true);
+  const [forceTradeMode, setForceTradeMode] = useState<boolean>(false);
   const { toast } = useToast();
 
   // Session-aware quality requirements
@@ -88,7 +89,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     setRejectionCount(0);
     setValidationLog([]);
 
-    const requirements = getSessionRequirements();
+    const dynamicMinConfidence = getMinAIConfidence(minFilters);
     
     // Show risk warning for lower confluence settings
     if (minFilters < 5) {
@@ -96,7 +97,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     }
     
     try {
-      setAnalysisStatus(`⚡ Session Analysis: ${getCurrentSession()} (${requirements.sessionActive ? 'ACTIVE' : 'QUIET'})`);
+      setAnalysisStatus(`⚡ Session Analysis: ${getCurrentSession()} (Dynamic AI: ${dynamicMinConfidence}%+)`);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       let attempts = 0;
@@ -130,9 +131,9 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
 
           // Generate filter results
           const filterResults = generateMockFilters();
-          const aiConfidence = 70 + Math.random() * 25; // 70-95% range
+          const aiConfidence = 60 + Math.random() * 35; // 60-95% range to allow more signals
           
-          setAnalysisStatus(`🧠 Enhanced AI validation for ${baseSignal.pair} (${minConfidence}%+ required)...`);
+          setAnalysisStatus(`🧠 Enhanced AI validation for ${baseSignal.pair} (${dynamicMinConfidence}%+ required)...`);
           
           // Use the new filter validation system
           const validationResult = filterAndValidateSignal({
@@ -140,7 +141,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             aiConfidence: Math.round(aiConfidence),
             livePrice: baseSignal.entryPrice,
             confluenceRequired: minFilters,
-            minConfidence: minConfidence,
+            minConfidence: dynamicMinConfidence,
             newsBlocked: false
           });
 
@@ -150,6 +151,11 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             setValidationLog(prev => [...prev, `❌ ${baseSignal.pair}: ${validationResult.reason}`]);
             continue;
           }
+
+          // Determine risk level
+          const confluenceScore = validationResult.passedFilters?.length || 0;
+          const riskLevel = getRiskLevel(confluenceScore);
+          const riskMessage = getRiskMessage(confluenceScore);
 
           // Create enhanced signal with all required properties
           const enhancedSignal: Signal = {
@@ -168,17 +174,20 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             marketCondition: baseSignal.marketCondition || 'Active',
             technicalSetup: validationResult.passedFilters?.join(' + ') || 'Multi-confluence',
             entryReason: validationResult.reason,
-            riskManagement: `${minFilters}/6 filters + ${minConfidence}%+ AI confidence`,
+            riskManagement: `${minFilters}/6 filters + ${dynamicMinConfidence}%+ AI confidence`,
             filtersPassed: validationResult.passedFilters || [],
             sessionContext: getCurrentSession(),
-            sessionActive: requirements.sessionActive,
+            sessionActive: true,
             enhancedValidation: true,
             validationReason: validationResult.reason,
             qualityScore: Math.min(95, Math.round(aiConfidence) + 5),
             signalStrength: aiConfidence >= 90 ? 'ULTRA' : 
                            aiConfidence >= 85 ? 'STRONG' : 'MEDIUM',
             confluenceScore: validationResult.passedFilters?.length || 0,
-            entry: baseSignal.entryPrice
+            entry: baseSignal.entryPrice,
+            validated: true,
+            risk: riskLevel,
+            message: riskMessage
           };
 
           setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${validationResult.passedFilters?.length}/6 filters + ${Math.round(aiConfidence)}% AI confidence`]);
@@ -189,7 +198,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             
             toast({
               title: `🚨 ENHANCED ${enhancedSignal.signalStrength} SIGNAL APPROVED!`,
-              description: `${enhancedSignal.pair} ${enhancedSignal.type} | ${minFilters}/6 Filters | ${minConfidence}%+ Confidence`,
+              description: `${enhancedSignal.pair} ${enhancedSignal.type} | ${minFilters}/6 Filters | ${dynamicMinConfidence}%+ Confidence`,
             });
           }
           
@@ -203,11 +212,36 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
         }
       }
       
+      // All attempts failed - try emergency signal if enabled
+      if (forceTradeMode) {
+        setAnalysisStatus('🚨 Emergency Signal Mode Activated...');
+        const emergencySignal = await signalService.generateLiveSignal();
+        if (emergencySignal) {
+          const enhancedEmergencySignal: Signal = {
+            ...emergencySignal,
+            validated: true,
+            risk: 'Critical',
+            message: '🚨 Emergency Signal: Confluence too low, use extreme caution.',
+            warning: 'CRITICAL RISK - Monitor closely'
+          };
+          
+          if (onSignalGenerated) {
+            onSignalGenerated(enhancedEmergencySignal);
+            toast({
+              title: "🚨 EMERGENCY SIGNAL GENERATED",
+              description: "Critical risk - use extreme caution",
+              variant: "destructive"
+            });
+          }
+          return;
+        }
+      }
+      
       // All attempts failed
-      setLastRejectionReason(`ENHANCED FILTERING: All ${maxAttempts} attempts rejected. Current settings require ${minFilters}/6 confluence + ${minConfidence}%+ AI confidence in ${getCurrentSession()} session.`);
+      setLastRejectionReason(`ENHANCED FILTERING: All ${maxAttempts} attempts rejected. Current settings require ${minFilters}/6 confluence + ${dynamicMinConfidence}%+ AI confidence in ${getCurrentSession()} session.`);
       toast({
         title: "🏛️ Enhanced Filter Gate - All Signals Rejected",
-        description: `${rejectionCount} signals blocked by ${minFilters}/6 filter + ${minConfidence}%+ AI validation`,
+        description: `${rejectionCount} signals blocked by ${minFilters}/6 filter + ${dynamicMinConfidence}%+ AI validation`,
         variant: "destructive"
       });
       
@@ -224,7 +258,8 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     }
   };
 
-  const requirements = getSessionRequirements();
+  const dynamicMinConfidence = getMinAIConfidence(minFilters);
+  const riskLevel = minFilters < 4 ? "High Risk" : minFilters < 6 ? "Moderate" : "Institutional";
 
   return (
     <div className="glass-card p-8 mb-8 hover-glow border-purple-500/20">
@@ -257,7 +292,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           <h3 className="text-lg font-semibold text-white">Signal Quality Controls</h3>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           {/* Filter Confluence Selector */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -276,22 +311,14 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             </Select>
           </div>
 
-          {/* AI Confidence Selector */}
+          {/* Dynamic AI Confidence Display */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Minimum AI Confidence
+              Dynamic AI Confidence
             </label>
-            <Select value={minConfidence.toString()} onValueChange={(value) => setMinConfidence(Number(value))}>
-              <SelectTrigger className="bg-gray-800/50 border-gray-600">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-600">
-                <SelectItem value="70" className="text-green-400">70%+ Balanced</SelectItem>
-                <SelectItem value="75" className="text-orange-400">75%+ Strong</SelectItem>
-                <SelectItem value="80" className="text-red-400">80%+ Elite</SelectItem>
-                <SelectItem value="85" className="text-purple-400">85%+ Perfect</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="bg-gray-800/50 border border-gray-600 rounded-md px-3 py-2">
+              <span className="text-white">{dynamicMinConfidence}%+ Auto</span>
+            </div>
           </div>
 
           {/* News Filter Toggle */}
@@ -317,19 +344,40 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
               )}
             </Button>
           </div>
+
+          {/* Emergency Mode Toggle */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Emergency Override
+            </label>
+            <Button
+              variant={forceTradeMode ? "destructive" : "outline"}
+              onClick={() => setForceTradeMode(!forceTradeMode)}
+              className="w-full"
+            >
+              {forceTradeMode ? (
+                <>
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  ACTIVE
+                </>
+              ) : (
+                <>
+                  <Shield className="w-4 h-4 mr-2" />
+                  OFF
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
-        {/* Risk Warning for Lower Settings */}
-        {minFilters < 4 && (
-          <Alert className="mb-4 border-yellow-500/30 bg-yellow-500/10">
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            <AlertDescription className="text-yellow-200">
-              ⚠️ Lower confluence selected ({minFilters}/6). This increases trade risk. Use tighter stop-loss and active risk management.
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Dynamic Risk Warning */}
+        <Alert className={`mb-4 ${minFilters < 4 ? 'border-red-500/30 bg-red-500/10' : 'border-yellow-500/30 bg-yellow-500/10'}`}>
+          <AlertTriangle className={`h-4 w-4 ${minFilters < 4 ? 'text-red-500' : 'text-yellow-500'}`} />
+          <AlertDescription className={`${minFilters < 4 ? 'text-red-200' : 'text-yellow-200'}`}>
+            {getRiskMessage(minFilters)} Risk Level: <strong>{riskLevel}</strong> | AI Confidence: <strong>{dynamicMinConfidence}%+</strong>
+          </AlertDescription>
+        </Alert>
 
-        {/* Validation Log */}
         {validationLog.length > 0 && (
           <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg max-h-32 overflow-y-auto">
             <div className="flex items-center space-x-2 mb-2">
@@ -342,18 +390,16 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           </div>
         )}
 
-        {/* Rejection Counter */}
         {rejectionCount > 0 && (
           <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
             <div className="flex items-center space-x-2 mb-2">
               <XCircle className="w-4 h-4 text-red-400" />
               <span className="text-red-300 font-semibold">Enhanced Filter Activity:</span>
             </div>
-            <p className="text-sm text-red-200">{rejectionCount} signals rejected by {minFilters}/6 filter + {minConfidence}%+ AI validation</p>
+            <p className="text-sm text-red-200">{rejectionCount} signals rejected by enhanced filtering system</p>
           </div>
         )}
 
-        {/* Last Rejection Reason */}
         {lastRejectionReason && (
           <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
             <div className="flex items-center space-x-2 mb-3">
@@ -387,7 +433,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           ) : (
             <>
               <Brain className="w-5 h-5 mr-2" />
-              Generate Enhanced Signal ({minFilters}/6 + {minConfidence}%+)
+              Generate Enhanced Signal ({minFilters}/6 + {dynamicMinConfidence}%+)
             </>
           )}
         </Button>

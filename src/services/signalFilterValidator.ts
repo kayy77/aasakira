@@ -1,5 +1,6 @@
 
 import { FilterResult, SignalInput, FilterValidationResult } from '@/types/signalConfig';
+import { getMinAIConfidence } from '@/utils/signalValidator';
 
 export function filterAndValidateSignal(input: SignalInput): FilterValidationResult {
   const {
@@ -38,16 +39,31 @@ export function filterAndValidateSignal(input: SignalInput): FilterValidationRes
     };
   }
 
-  // ⛔ 3. Confidence Check
-  if (aiConfidence < minConfidence) {
+  // ⛔ 3. Dynamic Confidence Check
+  const dynamicMinConfidence = Math.min(minConfidence, getMinAIConfidence(confluenceScore));
+  if (aiConfidence < dynamicMinConfidence) {
     return {
       valid: false,
-      reason: `AI confidence ${aiConfidence}% below minimum ${minConfidence}%`,
+      reason: `AI confidence ${aiConfidence}% below minimum ${dynamicMinConfidence}% for ${confluenceScore}/6 confluence`,
     };
   }
 
-  // ⛔ 4. Confluence Check
+  // ⛔ 4. Confluence Check with Fallback
   if (confluenceScore < confluenceRequired) {
+    // Allow 3/6 signals as last resort with proper warnings
+    if (confluenceScore >= 3 && aiConfidence >= getMinAIConfidence(3)) {
+      const filterNames = ['SMC', 'Liquidity Sweep', 'FVG', 'Volume Spike', 'Session Timing', 'RSI Divergence'];
+      const passedFilterNames = filterArray
+        .map((passed, index) => passed ? filterNames[index] : null)
+        .filter(Boolean);
+      
+      return {
+        valid: true,
+        reason: `⚠️ Last resort signal: ${confluenceScore}/6 filters (${passedFilterNames.join(', ')}) + ${aiConfidence}% AI confidence`,
+        passedFilters: passedFilterNames,
+      };
+    }
+    
     const filterNames = ['SMC', 'Liquidity Sweep', 'FVG', 'Volume Spike', 'Session Timing', 'RSI Divergence'];
     const passedFilterNames = filterArray
       .map((passed, index) => passed ? filterNames[index] : null)
