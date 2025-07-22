@@ -1,4 +1,3 @@
-
 export interface SignalConfig {
   pair: string;
   timeframe: string;
@@ -29,16 +28,16 @@ export interface Signal {
   entryPrice: number;
   stopLoss: number;
   takeProfit: number;
-  confidence: number;
-  analysis: string;
-  timestamp: string;
-  timeframe: string;
   riskReward: number;
-  strategy: string;
   marketCondition: string;
   technicalSetup: string;
   entryReason: string;
   riskManagement: string;
+  confidence: number;
+  analysis: string;
+  timestamp: string;
+  timeframe: string;
+  strategy: string;
   filtersPassed?: string[];
   // Additional signal properties
   sessionContext?: string;
