@@ -52,8 +52,8 @@ export interface Signal {
   id: string;
   pair: string;
   type: 'BUY' | 'SELL';
-  entryPrice: number;
   entry: number;
+  entryPrice: number;
   stopLoss: number;
   takeProfit: number;
   confidence: number;

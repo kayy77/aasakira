@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -97,7 +98,8 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             id: Date.now().toString(),
             pair: baseSignal.pair,
             type: baseSignal.type,
-            entryPrice: baseSignal.entryPrice,
+            entry: baseSignal.entry || baseSignal.entryPrice,
+            entryPrice: baseSignal.entryPrice || baseSignal.entry,
             stopLoss: baseSignal.stopLoss,
             takeProfit: baseSignal.takeProfit,
             confidence: baseSignal.confidence,
@@ -118,8 +120,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             qualityScore: Math.min(95, baseSignal.confidence + 5),
             signalStrength: baseSignal.confidence >= 90 ? 'ULTRA' : 
                            baseSignal.confidence >= 85 ? 'STRONG' : 'MEDIUM',
-            confluenceScore: baseSignal.confluenceScore || 0,
-            entry: baseSignal.entry || baseSignal.entryPrice
+            confluenceScore: baseSignal.confluenceScore || 0
           };
 
           if (onSignalGenerated) {
