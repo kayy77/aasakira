@@ -30,7 +30,6 @@ const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProps> = ({
       createdAt: new Date().toISOString(),
       config: {
         strategyType: selectedStrategy,
-        tradeType: selectedTradeType === 'intraday' ? 'SCALP' : 'SWING',
         confidenceThreshold: confidenceThreshold,
         riskLevel: selectedRiskLevel,
         minFilters: minFilters,
@@ -41,6 +40,10 @@ const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProps> = ({
         timeframe: '15m',
         marketConditions: [],
         technicalIndicators: [],
+        riskParameters: {
+          maxRisk: 0.02,
+          riskRewardRatio: 2.0
+        },
         riskReward: 2.0,
         pairFilters: [],
         minConfidence: confidenceThreshold,
@@ -48,7 +51,8 @@ const EnhancedTacticalParameters: React.FC<EnhancedTacticalParametersProps> = ({
         enabled: true,
         stopLoss: 0.001,
         takeProfit: 0.002,
-        entryType: 'market' as const
+        entryType: 'market' as const,
+        tradeType: selectedTradeType === 'intraday' ? 'SCALP' : 'SWING'
       }
     };
 

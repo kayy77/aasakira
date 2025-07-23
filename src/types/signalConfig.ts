@@ -9,6 +9,20 @@ export interface SignalConfig {
     riskRewardRatio: number;
   };
   strategyType: 'SMC' | 'ICT' | 'Hybrid' | 'Institutional' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP';
+  tradeType?: 'SCALP' | 'SWING';
+  confidenceThreshold?: number;
+  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+  minFilters?: number;
+  assetClass?: 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES';
+  pairFilter?: string;
+  riskReward?: number;
+  pairFilters?: string[];
+  minConfidence?: number;
+  maxSignalsPerHour?: number;
+  enabled?: boolean;
+  stopLoss?: number;
+  takeProfit?: number;
+  entryType?: 'market' | 'limit';
 }
 
 export interface SavedPreset {
@@ -16,6 +30,7 @@ export interface SavedPreset {
   name: string;
   config: SignalConfig;
   createdAt: string;
+  description?: string;
 }
 
 export interface StrategyBreakdown {
@@ -38,6 +53,7 @@ export interface Signal {
   pair: string;
   type: 'BUY' | 'SELL';
   entryPrice: number;
+  entry: number;
   stopLoss: number;
   takeProfit: number;
   confidence: number;
@@ -58,7 +74,6 @@ export interface Signal {
   qualityScore?: number;
   signalStrength?: 'ULTRA' | 'STRONG' | 'MEDIUM';
   confluenceScore?: number;
-  entry?: number;
   origin?: {
     institutional: boolean;
     smc: boolean;
