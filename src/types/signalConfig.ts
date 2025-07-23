@@ -1,4 +1,5 @@
 
+
 export interface SignalConfig {
   pair: string;
   timeframe: string;
@@ -112,3 +113,4 @@ export interface FilterValidationResult {
   reason: string;
   passedFilters?: string[];
 }
+
