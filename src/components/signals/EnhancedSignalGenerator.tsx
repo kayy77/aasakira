@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,8 +43,8 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
   const [lastRejectionReason, setLastRejectionReason] = useState<string>('');
   const [rejectionCount, setRejectionCount] = useState<number>(0);
   const [validationLog, setValidationLog] = useState<string[]>([]);
-  const [minFilters, setMinFilters] = useState<number>(3); // Changed default to 3/6
-  const [minConfidence, setMinConfidence] = useState<number>(65); // Dynamic based on confluence
+  const [minFilters, setMinFilters] = useState<number>(3);
+  const [minConfidence, setMinConfidence] = useState<number>(65);
   const [newsFilterEnabled, setNewsFilterEnabled] = useState<boolean>(true);
   const [forceTradeMode, setForceTradeMode] = useState<boolean>(false);
   const { toast } = useToast();
@@ -51,7 +52,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
   // Session-aware quality requirements
   const getSessionRequirements = () => {
     const hour = new Date().getUTCHours();
-    const isActiveSession = (hour >= 6 && hour <= 16); // London + NY sessions
+    const isActiveSession = (hour >= 6 && hour <= 16);
     
     return {
       minConfidence: minConfidence,
@@ -131,7 +132,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
 
           // Generate filter results
           const filterResults = generateMockFilters();
-          const aiConfidence = 60 + Math.random() * 35; // 60-95% range to allow more signals
+          const aiConfidence = 60 + Math.random() * 35;
           
           setAnalysisStatus(`🧠 Enhanced AI validation for ${baseSignal.pair} (${dynamicMinConfidence}%+ required)...`);
           
@@ -218,7 +219,22 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
         const emergencySignal = await signalService.generateLiveSignal();
         if (emergencySignal) {
           const enhancedEmergencySignal: Signal = {
-            ...emergencySignal,
+            id: Date.now().toString(),
+            pair: emergencySignal.pair,
+            type: emergencySignal.type,
+            entryPrice: emergencySignal.entryPrice,
+            stopLoss: emergencySignal.stopLoss,
+            takeProfit: emergencySignal.takeProfit,
+            confidence: 60,
+            analysis: `🚨 EMERGENCY SIGNAL: Generated due to low confluence. Use extreme caution.`,
+            timestamp: new Date().toISOString(),
+            timeframe: emergencySignal.timeframe || '15m',
+            riskReward: emergencySignal.riskReward || 2.0,
+            strategy: emergencySignal.strategy,
+            marketCondition: emergencySignal.marketCondition || 'Active',
+            technicalSetup: 'Emergency Override',
+            entryReason: 'Emergency signal generation',
+            riskManagement: 'CRITICAL RISK - Monitor closely',
             validated: true,
             risk: 'Critical',
             message: '🚨 Emergency Signal: Confluence too low, use extreme caution.',
@@ -260,6 +276,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
 
   const dynamicMinConfidence = getMinAIConfidence(minFilters);
   const riskLevel = minFilters < 4 ? "High Risk" : minFilters < 6 ? "Moderate" : "Institutional";
+  const sessionRequirements = getSessionRequirements();
 
   return (
     <div className="glass-card p-8 mb-8 hover-glow border-purple-500/20">
@@ -274,7 +291,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge className={`${requirements.sessionActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} border-current animate-pulse`}>
+          <Badge className={`${sessionRequirements.sessionActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} border-current animate-pulse`}>
             <Clock className="w-3 h-3 mr-1" />
             {getCurrentSession()}
           </Badge>
