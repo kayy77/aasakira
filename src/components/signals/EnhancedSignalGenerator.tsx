@@ -164,6 +164,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             pair: baseSignal.pair,
             type: baseSignal.type,
             entryPrice: baseSignal.entry,
+            entry: baseSignal.entry,
             stopLoss: baseSignal.stopLoss,
             takeProfit: baseSignal.takeProfit,
             confidence: Math.round(aiConfidence),
@@ -185,7 +186,6 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             signalStrength: aiConfidence >= 90 ? 'ULTRA' : 
                            aiConfidence >= 85 ? 'STRONG' : 'MEDIUM',
             confluenceScore: validationResult.passedFilters?.length || 0,
-            entry: baseSignal.entry,
             validated: true,
             risk: riskLevel,
             message: riskMessage
@@ -223,6 +223,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             pair: emergencySignal.pair,
             type: emergencySignal.type,
             entryPrice: emergencySignal.entry,
+            entry: emergencySignal.entry,
             stopLoss: emergencySignal.stopLoss,
             takeProfit: emergencySignal.takeProfit,
             confidence: 60,
