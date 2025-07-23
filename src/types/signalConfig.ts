@@ -112,3 +112,19 @@ export interface FilterValidationResult {
   reason: string;
   passedFilters?: string[];
 }
+
+export interface UserSignalSettings {
+  minConfidence: number;
+  requiredFilters: number;
+  selectedFilters: {
+    structureBreak: boolean;
+    liquiditySweep: boolean;
+    fairValueGap: boolean;
+    volumeSpike: boolean;
+    rsiDivergence: boolean;
+    sessionFilter: boolean;
+  };
+  fallbackMode: boolean;
+  sessionAdaptive: boolean;
+  emergencyOverride: boolean;
+}

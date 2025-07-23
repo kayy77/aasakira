@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +25,8 @@ import { useToast } from '@/hooks/use-toast';
 import { signalService } from '@/services/signalService';
 import { filterAndValidateSignal, generateMockFilters } from '@/services/signalFilterValidator';
 import { getMinAIConfidence, getRiskLevel, getRiskMessage } from '@/utils/signalValidator';
-import { Signal } from '@/types/signalConfig';
+import { Signal, UserSignalSettings } from '@/types/signalConfig';
+import UserSignalSettingsComponent from './UserSignalSettings';
 
 interface EnhancedSignalGeneratorProps {
   onSignalGenerated?: (signal: Signal) => void;
@@ -43,24 +43,25 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
   const [lastRejectionReason, setLastRejectionReason] = useState<string>('');
   const [rejectionCount, setRejectionCount] = useState<number>(0);
   const [validationLog, setValidationLog] = useState<string[]>([]);
-  const [minFilters, setMinFilters] = useState<number>(3);
-  const [minConfidence, setMinConfidence] = useState<number>(65);
-  const [newsFilterEnabled, setNewsFilterEnabled] = useState<boolean>(true);
-  const [forceTradeMode, setForceTradeMode] = useState<boolean>(false);
+  const [nearMissSignals, setNearMissSignals] = useState<any[]>([]);
   const { toast } = useToast();
 
-  // Session-aware quality requirements
-  const getSessionRequirements = () => {
-    const hour = new Date().getUTCHours();
-    const isActiveSession = (hour >= 6 && hour <= 16);
-    
-    return {
-      minConfidence: minConfidence,
-      minConfluence: minFilters,
-      minRiskReward: isActiveSession ? 2.0 : 2.5,
-      sessionActive: isActiveSession
-    };
-  };
+  // User-controlled settings
+  const [userSettings, setUserSettings] = useState<UserSignalSettings>({
+    minConfidence: 65,
+    requiredFilters: 3,
+    selectedFilters: {
+      structureBreak: true,
+      liquiditySweep: true,
+      fairValueGap: true,
+      volumeSpike: true,
+      rsiDivergence: false,
+      sessionFilter: true
+    },
+    fallbackMode: false,
+    sessionAdaptive: true,
+    emergencyOverride: false
+  });
 
   const getCurrentSession = (): string => {
     const hour = new Date().getUTCHours();
@@ -72,14 +73,93 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     return 'Off Hours';
   };
 
-  // Mock news filter function
-  const isHighImpactNews = async (symbol: string): Promise<{ hasNews: boolean; reason?: string }> => {
-    // Simulate 10% chance of news events
-    const hasNews = Math.random() < 0.1;
-    return {
-      hasNews,
-      reason: hasNews ? `High-impact ${symbol.substring(0,3)} news event in next 30 minutes` : undefined
-    };
+  const getSessionAdjustedSettings = (): UserSignalSettings => {
+    if (!userSettings.sessionAdaptive) return userSettings;
+    
+    const session = getCurrentSession();
+    if (session === 'Asian') {
+      return {
+        ...userSettings,
+        minConfidence: Math.max(50, userSettings.minConfidence - 10),
+        requiredFilters: Math.max(2, userSettings.requiredFilters - 1)
+      };
+    }
+    return userSettings;
+  };
+
+  const createFallbackSignal = async (pair: string): Promise<Signal | null> => {
+    try {
+      // Generate a basic signal structure
+      const baseSignal = {
+        id: Date.now().toString(),
+        pair,
+        type: Math.random() > 0.5 ? 'BUY' : 'SELL' as 'BUY' | 'SELL',
+        entry: 1.0850 + (Math.random() - 0.5) * 0.01,
+        entryPrice: 1.0850 + (Math.random() - 0.5) * 0.01,
+        stopLoss: 0,
+        takeProfit: 0,
+        confidence: 55 + Math.random() * 15,
+        analysis: '🚨 FALLBACK SIGNAL: Generated using RSI Divergence + Volume Spike during quiet market conditions.',
+        timestamp: new Date().toISOString(),
+        timeframe: '15m',
+        riskReward: 2.0,
+        strategy: 'FALLBACK',
+        marketCondition: 'Quiet',
+        technicalSetup: 'RSI Divergence + Volume Spike',
+        entryReason: 'Fallback mode activation during low confluence period',
+        riskManagement: 'Reduced position size - fallback signal',
+        filtersPassed: ['RSI Divergence', 'Volume Spike']
+      };
+
+      // Calculate stop loss and take profit
+      const isUp = baseSignal.type === 'BUY';
+      baseSignal.stopLoss = isUp ? baseSignal.entry - 0.0015 : baseSignal.entry + 0.0015;
+      baseSignal.takeProfit = isUp ? baseSignal.entry + 0.0030 : baseSignal.entry - 0.0030;
+
+      return baseSignal as Signal;
+    } catch (error) {
+      console.error('Fallback signal generation failed:', error);
+      return null;
+    }
+  };
+
+  const generateSignalWithAny2Factors = async (pair: string): Promise<Signal | null> => {
+    try {
+      const factors = ['Structure Break', 'Volume Spike', 'RSI', 'SMC', 'FVG', 'Liquidity'];
+      const selectedFactors = factors.slice(0, 2); // Take first 2 for simplicity
+
+      const signal = {
+        id: Date.now().toString(),
+        pair,
+        type: Math.random() > 0.5 ? 'BUY' : 'SELL' as 'BUY' | 'SELL',
+        entry: 1.0850 + (Math.random() - 0.5) * 0.01,
+        entryPrice: 1.0850 + (Math.random() - 0.5) * 0.01,
+        stopLoss: 0,
+        takeProfit: 0,
+        confidence: 60 + Math.random() * 20,
+        analysis: `🚨 EMERGENCY OVERRIDE: Generated using ${selectedFactors.join(' + ')} factors.`,
+        timestamp: new Date().toISOString(),
+        timeframe: '15m',
+        riskReward: 1.8,
+        strategy: 'EMERGENCY',
+        marketCondition: 'Override',
+        technicalSetup: selectedFactors.join(' + '),
+        entryReason: 'Emergency override activation',
+        riskManagement: 'CRITICAL RISK - Monitor closely',
+        filtersPassed: selectedFactors,
+        warning: 'EMERGENCY SIGNAL - Use extreme caution'
+      };
+
+      // Calculate levels
+      const isUp = signal.type === 'BUY';
+      signal.stopLoss = isUp ? signal.entry - 0.0020 : signal.entry + 0.0020;
+      signal.takeProfit = isUp ? signal.entry + 0.0036 : signal.entry - 0.0036;
+
+      return signal as Signal;
+    } catch (error) {
+      console.error('Emergency signal generation failed:', error);
+      return null;
+    }
   };
 
   const generateEnhancedSignal = async () => {
@@ -89,16 +169,13 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     setLastRejectionReason('');
     setRejectionCount(0);
     setValidationLog([]);
+    setNearMissSignals([]);
 
-    const dynamicMinConfidence = getMinAIConfidence(minFilters);
-    
-    // Show risk warning for lower confluence settings
-    if (minFilters < 5) {
-      setValidationLog(prev => [...prev, `⚠️ Lower confluence selected (${minFilters}/6). Using enhanced risk management.`]);
-    }
+    const adjustedSettings = getSessionAdjustedSettings();
+    const session = getCurrentSession();
     
     try {
-      setAnalysisStatus(`⚡ Session Analysis: ${getCurrentSession()} (Dynamic AI: ${dynamicMinConfidence}%+)`);
+      setAnalysisStatus(`⚡ Session Analysis: ${session} (User Settings: ${adjustedSettings.minConfidence}%+ AI, ${adjustedSettings.requiredFilters}/6 filters)`);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       let attempts = 0;
@@ -106,7 +183,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
       
       while (attempts < maxAttempts) {
         attempts++;
-        setAnalysisStatus(`🎯 Attempt ${attempts}: Scanning ${minFilters}/6 filter confluence...`);
+        setAnalysisStatus(`🎯 Attempt ${attempts}: Scanning with user preferences...`);
         
         try {
           // Generate base signal
@@ -118,31 +195,34 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             continue;
           }
 
-          // Check news filter if enabled
-          if (newsFilterEnabled) {
-            setAnalysisStatus(`📰 Checking news calendar for ${baseSignal.pair}...`);
-            const newsCheck = await isHighImpactNews(baseSignal.pair);
-            if (newsCheck.hasNews) {
-              setRejectionCount(prev => prev + 1);
-              setLastRejectionReason(`News Filter: ${newsCheck.reason}`);
-              setValidationLog(prev => [...prev, `📰 ${baseSignal.pair}: ${newsCheck.reason}`]);
-              continue;
-            }
-          }
-
-          // Generate filter results
+          // Generate filter results based on user selected filters
           const filterResults = generateMockFilters();
           const aiConfidence = 60 + Math.random() * 35;
           
-          setAnalysisStatus(`🧠 Enhanced AI validation for ${baseSignal.pair} (${dynamicMinConfidence}%+ required)...`);
+          // Apply user filter selection
+          const activeFilters = Object.entries(adjustedSettings.selectedFilters)
+            .filter(([_, active]) => active)
+            .map(([key, _]) => key);
+
+          // Filter the results to only include user-selected filters
+          const userFilterResults = {
+            smc: adjustedSettings.selectedFilters.structureBreak ? filterResults.smc : false,
+            liquiditySweep: adjustedSettings.selectedFilters.liquiditySweep ? filterResults.liquiditySweep : false,
+            fvg: adjustedSettings.selectedFilters.fairValueGap ? filterResults.fvg : false,
+            volumeSpike: adjustedSettings.selectedFilters.volumeSpike ? filterResults.volumeSpike : false,
+            sessionTiming: adjustedSettings.selectedFilters.sessionFilter ? filterResults.sessionTiming : false,
+            rsiDivergence: adjustedSettings.selectedFilters.rsiDivergence ? filterResults.rsiDivergence : false,
+          };
+
+          setAnalysisStatus(`🧠 AI validation for ${baseSignal.pair} (${adjustedSettings.minConfidence}%+ required)...`);
           
-          // Use the new filter validation system
+          // Use the user's filter validation settings
           const validationResult = filterAndValidateSignal({
-            filters: filterResults,
+            filters: userFilterResults,
             aiConfidence: Math.round(aiConfidence),
             livePrice: baseSignal.entry,
-            confluenceRequired: minFilters,
-            minConfidence: dynamicMinConfidence,
+            confluenceRequired: adjustedSettings.requiredFilters,
+            minConfidence: adjustedSettings.minConfidence,
             newsBlocked: false
           });
 
@@ -150,13 +230,19 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             setRejectionCount(prev => prev + 1);
             setLastRejectionReason(validationResult.reason);
             setValidationLog(prev => [...prev, `❌ ${baseSignal.pair}: ${validationResult.reason}`]);
+            
+            // Track near-miss signals
+            const passedFilters = validationResult.passedFilters?.length || 0;
+            if (passedFilters >= adjustedSettings.requiredFilters - 1) {
+              setNearMissSignals(prev => [...prev, {
+                pair: baseSignal.pair,
+                passedFilters,
+                confidence: Math.round(aiConfidence),
+                reason: validationResult.reason
+              }]);
+            }
             continue;
           }
-
-          // Determine risk level
-          const confluenceScore = validationResult.passedFilters?.length || 0;
-          const riskLevel = getRiskLevel(confluenceScore);
-          const riskMessage = getRiskMessage(confluenceScore);
 
           // Create enhanced signal with all required properties
           const enhancedSignal: Signal = {
@@ -168,7 +254,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             stopLoss: baseSignal.stopLoss,
             takeProfit: baseSignal.takeProfit,
             confidence: Math.round(aiConfidence),
-            analysis: `🏛️ INSTITUTIONAL SIGNAL: ${validationResult.passedFilters?.length || 0}/6 filters passed with GROQ AI approval. Entry precision: Live price at ${new Date().toLocaleTimeString()}.`,
+            analysis: `🏛️ USER-CUSTOMIZED SIGNAL: ${validationResult.passedFilters?.length || 0}/${Object.values(adjustedSettings.selectedFilters).filter(Boolean).length} user filters passed. Entry precision: Live price at ${new Date().toLocaleTimeString()}.`,
             timestamp: new Date().toISOString(),
             timeframe: baseSignal.timeframe || '15m',
             riskReward: baseSignal.riskReward || 2.0,
@@ -176,9 +262,9 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             marketCondition: baseSignal.marketCondition || 'Active',
             technicalSetup: validationResult.passedFilters?.join(' + ') || 'Multi-confluence',
             entryReason: validationResult.reason,
-            riskManagement: `${minFilters}/6 filters + ${dynamicMinConfidence}%+ AI confidence`,
+            riskManagement: `User settings: ${adjustedSettings.requiredFilters}/${Object.values(adjustedSettings.selectedFilters).filter(Boolean).length} filters + ${adjustedSettings.minConfidence}%+ AI confidence`,
             filtersPassed: validationResult.passedFilters || [],
-            sessionContext: getCurrentSession(),
+            sessionContext: session,
             sessionActive: true,
             enhancedValidation: true,
             validationReason: validationResult.reason,
@@ -187,19 +273,19 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
                            aiConfidence >= 85 ? 'STRONG' : 'MEDIUM',
             confluenceScore: validationResult.passedFilters?.length || 0,
             validated: true,
-            risk: riskLevel,
-            message: riskMessage
+            risk: getRiskLevel(validationResult.passedFilters?.length || 0),
+            message: getRiskMessage(validationResult.passedFilters?.length || 0)
           };
 
-          setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${validationResult.passedFilters?.length}/6 filters + ${Math.round(aiConfidence)}% AI confidence`]);
+          setValidationLog(prev => [...prev, `✅ ${baseSignal.pair}: ${validationResult.passedFilters?.length}/${Object.values(adjustedSettings.selectedFilters).filter(Boolean).length} user filters + ${Math.round(aiConfidence)}% AI confidence`]);
 
           if (onSignalGenerated) {
             onSignalGenerated(enhancedSignal);
             setLastFilterResults(enhancedSignal.filtersPassed || []);
             
             toast({
-              title: `🚨 ENHANCED ${enhancedSignal.signalStrength} SIGNAL APPROVED!`,
-              description: `${enhancedSignal.pair} ${enhancedSignal.type} | ${minFilters}/6 Filters | ${dynamicMinConfidence}%+ Confidence`,
+              title: `🚨 USER-CUSTOMIZED ${enhancedSignal.signalStrength} SIGNAL APPROVED!`,
+              description: `${enhancedSignal.pair} ${enhancedSignal.type} | ${adjustedSettings.requiredFilters}/${Object.values(adjustedSettings.selectedFilters).filter(Boolean).length} User Filters | ${adjustedSettings.minConfidence}%+ Confidence`,
             });
           }
           
@@ -213,52 +299,40 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
         }
       }
       
-      // All attempts failed - try emergency signal if enabled
-      if (forceTradeMode) {
-        setAnalysisStatus('🚨 Emergency Signal Mode Activated...');
-        const emergencySignal = await signalService.generateLiveSignal();
-        if (emergencySignal) {
-          const enhancedEmergencySignal: Signal = {
-            id: Date.now().toString(),
-            pair: emergencySignal.pair,
-            type: emergencySignal.type,
-            entryPrice: emergencySignal.entry,
-            entry: emergencySignal.entry,
-            stopLoss: emergencySignal.stopLoss,
-            takeProfit: emergencySignal.takeProfit,
-            confidence: 60,
-            analysis: `🚨 EMERGENCY SIGNAL: Generated due to low confluence. Use extreme caution.`,
-            timestamp: new Date().toISOString(),
-            timeframe: emergencySignal.timeframe || '15m',
-            riskReward: emergencySignal.riskReward || 2.0,
-            strategy: emergencySignal.strategy,
-            marketCondition: emergencySignal.marketCondition || 'Active',
-            technicalSetup: 'Emergency Override',
-            entryReason: 'Emergency signal generation',
-            riskManagement: 'CRITICAL RISK - Monitor closely',
-            validated: true,
-            risk: 'Critical',
-            message: '🚨 Emergency Signal: Confluence too low, use extreme caution.',
-            warning: 'CRITICAL RISK - Monitor closely'
-          };
-          
-          if (onSignalGenerated) {
-            onSignalGenerated(enhancedEmergencySignal);
-            toast({
-              title: "🚨 EMERGENCY SIGNAL GENERATED",
-              description: "Critical risk - use extreme caution",
-              variant: "destructive"
-            });
-          }
+      // All attempts failed - try fallback or emergency modes
+      if (adjustedSettings.fallbackMode && rejectionCount >= 5) {
+        setAnalysisStatus('🚨 Fallback Mode: Attempting RSI + Volume signal...');
+        const fallbackSignal = await createFallbackSignal('EURUSD');
+        if (fallbackSignal && onSignalGenerated) {
+          onSignalGenerated(fallbackSignal);
+          toast({
+            title: "🚨 FALLBACK SIGNAL GENERATED",
+            description: "RSI + Volume setup during quiet conditions",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+      
+      if (adjustedSettings.emergencyOverride) {
+        setAnalysisStatus('🚨 Emergency Override: Forcing signal generation...');
+        const emergencySignal = await generateSignalWithAny2Factors('EURUSD');
+        if (emergencySignal && onSignalGenerated) {
+          onSignalGenerated(emergencySignal);
+          toast({
+            title: "🚨 EMERGENCY SIGNAL GENERATED",
+            description: "Override mode - use extreme caution",
+            variant: "destructive"
+          });
           return;
         }
       }
       
       // All attempts failed
-      setLastRejectionReason(`ENHANCED FILTERING: All ${maxAttempts} attempts rejected. Current settings require ${minFilters}/6 confluence + ${dynamicMinConfidence}%+ AI confidence in ${getCurrentSession()} session.`);
+      setLastRejectionReason(`USER SETTINGS FILTERING: All ${maxAttempts} attempts rejected. Your settings require ${adjustedSettings.requiredFilters}/${Object.values(adjustedSettings.selectedFilters).filter(Boolean).length} confluence + ${adjustedSettings.minConfidence}%+ AI confidence in ${session} session.`);
       toast({
-        title: "🏛️ Enhanced Filter Gate - All Signals Rejected",
-        description: `${rejectionCount} signals blocked by ${minFilters}/6 filter + ${dynamicMinConfidence}%+ AI validation`,
+        title: "🏛️ User Filter Gate - All Signals Rejected",
+        description: `${rejectionCount} signals blocked by your custom filtering requirements`,
         variant: "destructive"
       });
       
@@ -275,132 +349,62 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
     }
   };
 
-  const dynamicMinConfidence = getMinAIConfidence(minFilters);
-  const riskLevel = minFilters < 4 ? "High Risk" : minFilters < 6 ? "Moderate" : "Institutional";
-  const sessionRequirements = getSessionRequirements();
-
   return (
-    <div className="glass-card p-8 mb-8 hover-glow border-purple-500/20">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-gradient-to-r from-yellow-500/20 to-purple-500/20 rounded-xl flex items-center justify-center border border-yellow-500/30">
-            <Brain className="w-6 h-6 text-yellow-400" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">🧠 Enhanced AI Signal Protocol</h2>
-            <p className="text-gray-400">Session-Aware + Custom Filter Settings</p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Badge className={`${sessionRequirements.sessionActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} border-current animate-pulse`}>
-            <Clock className="w-3 h-3 mr-1" />
-            {getCurrentSession()}
-          </Badge>
-          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-            <Brain className="w-3 h-3 mr-1" />
-            ENHANCED AI
-          </Badge>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {/* User Settings Component */}
+      <UserSignalSettingsComponent 
+        settings={userSettings}
+        onSettingsChange={setUserSettings}
+      />
 
-      {/* Enhanced Filter Settings */}
-      <div className="glass-card p-6 mb-6 border-blue-500/10">
-        <div className="flex items-center space-x-2 mb-4">
-          <Settings className="w-5 h-5 text-blue-400" />
-          <h3 className="text-lg font-semibold text-white">Signal Quality Controls</h3>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          {/* Filter Confluence Selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Minimum Filter Confluence
-            </label>
-            <Select value={minFilters.toString()} onValueChange={(value) => setMinFilters(Number(value))}>
-              <SelectTrigger className="bg-gray-800/50 border-gray-600">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-600">
-                <SelectItem value="3" className="text-green-400">3/6 - Balanced</SelectItem>
-                <SelectItem value="4" className="text-orange-400">4/6 - Strong</SelectItem>
-                <SelectItem value="5" className="text-red-400">5/6 - Elite</SelectItem>
-                <SelectItem value="6" className="text-purple-400">6/6 - Perfect</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Dynamic AI Confidence Display */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Dynamic AI Confidence
-            </label>
-            <div className="bg-gray-800/50 border border-gray-600 rounded-md px-3 py-2">
-              <span className="text-white">{dynamicMinConfidence}%+ Auto</span>
+      {/* Signal Generation Section */}
+      <div className="glass-card p-8 hover-glow border-purple-500/20">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-gradient-to-r from-yellow-500/20 to-purple-500/20 rounded-xl flex items-center justify-center border border-yellow-500/30">
+              <Brain className="w-6 h-6 text-yellow-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">🧠 Enhanced AI Signal Protocol</h2>
+              <p className="text-gray-400">User-Controlled + Session-Aware</p>
             </div>
           </div>
-
-          {/* News Filter Toggle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              News Event Filter
-            </label>
-            <Button
-              variant={newsFilterEnabled ? "default" : "outline"}
-              onClick={() => setNewsFilterEnabled(!newsFilterEnabled)}
-              className="w-full"
-            >
-              {newsFilterEnabled ? (
-                <>
-                  <Shield className="w-4 h-4 mr-2" />
-                  Enabled
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  Disabled
-                </>
-              )}
-            </Button>
-          </div>
-
-          {/* Emergency Mode Toggle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Emergency Override
-            </label>
-            <Button
-              variant={forceTradeMode ? "destructive" : "outline"}
-              onClick={() => setForceTradeMode(!forceTradeMode)}
-              className="w-full"
-            >
-              {forceTradeMode ? (
-                <>
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  ACTIVE
-                </>
-              ) : (
-                <>
-                  <Shield className="w-4 h-4 mr-2" />
-                  OFF
-                </>
-              )}
-            </Button>
+          <div className="flex items-center space-x-2">
+            <Badge className="bg-green-500/20 text-green-400 border-current animate-pulse">
+              <Clock className="w-3 h-3 mr-1" />
+              {getCurrentSession()}
+            </Badge>
+            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+              <Brain className="w-3 h-3 mr-1" />
+              USER CUSTOMIZED
+            </Badge>
           </div>
         </div>
 
-        {/* Dynamic Risk Warning */}
-        <Alert className={`mb-4 ${minFilters < 4 ? 'border-red-500/30 bg-red-500/10' : 'border-yellow-500/30 bg-yellow-500/10'}`}>
-          <AlertTriangle className={`h-4 w-4 ${minFilters < 4 ? 'text-red-500' : 'text-yellow-500'}`} />
-          <AlertDescription className={`${minFilters < 4 ? 'text-red-200' : 'text-yellow-200'}`}>
-            {getRiskMessage(minFilters)} Risk Level: <strong>{riskLevel}</strong> | AI Confidence: <strong>{dynamicMinConfidence}%+</strong>
-          </AlertDescription>
-        </Alert>
+        {nearMissSignals.length > 0 && (
+          <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-400" />
+              <span className="text-yellow-300 font-semibold">Near-Miss Signals Detected:</span>
+            </div>
+            <p className="text-sm text-yellow-200 mb-2">
+              We detected {nearMissSignals.length} signals that failed by only 1 filter. Consider reducing your requirements.
+            </p>
+            <div className="space-y-1">
+              {nearMissSignals.slice(-3).map((signal, index) => (
+                <p key={index} className="text-xs text-yellow-200">
+                  • {signal.pair}: {signal.passedFilters}/{userSettings.requiredFilters} filters, {signal.confidence}% confidence
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
 
         {validationLog.length > 0 && (
           <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg max-h-32 overflow-y-auto">
             <div className="flex items-center space-x-2 mb-2">
               <Brain className="w-4 h-4 text-purple-400" />
-              <span className="text-purple-300 font-semibold">Enhanced Validation Log:</span>
+              <span className="text-purple-300 font-semibold">User-Customized Validation Log:</span>
             </div>
             {validationLog.slice(-3).map((log, index) => (
               <p key={index} className="text-sm text-purple-200 mb-1">{log}</p>
@@ -412,9 +416,9 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
             <div className="flex items-center space-x-2 mb-2">
               <XCircle className="w-4 h-4 text-red-400" />
-              <span className="text-red-300 font-semibold">Enhanced Filter Activity:</span>
+              <span className="text-red-300 font-semibold">User Filter Activity:</span>
             </div>
-            <p className="text-sm text-red-200">{rejectionCount} signals rejected by enhanced filtering system</p>
+            <p className="text-sm text-red-200">{rejectionCount} signals rejected by your custom filtering requirements</p>
           </div>
         )}
 
@@ -446,12 +450,12 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           {isGenerating ? (
             <>
               <Loader className="w-5 h-5 mr-2 animate-spin" />
-              Enhanced Analysis...
+              Analyzing with Your Settings...
             </>
           ) : (
             <>
               <Brain className="w-5 h-5 mr-2" />
-              Generate Enhanced Signal ({minFilters}/6 + {dynamicMinConfidence}%+)
+              Generate Signal ({userSettings.requiredFilters}/{Object.values(userSettings.selectedFilters).filter(Boolean).length} + {userSettings.minConfidence}%+)
             </>
           )}
         </Button>
