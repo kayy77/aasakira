@@ -140,7 +140,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
           const validationResult = filterAndValidateSignal({
             filters: filterResults,
             aiConfidence: Math.round(aiConfidence),
-            livePrice: baseSignal.entryPrice,
+            livePrice: baseSignal.entry,
             confluenceRequired: minFilters,
             minConfidence: dynamicMinConfidence,
             newsBlocked: false
@@ -163,7 +163,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             id: Date.now().toString(),
             pair: baseSignal.pair,
             type: baseSignal.type,
-            entryPrice: baseSignal.entryPrice,
+            entryPrice: baseSignal.entry,
             stopLoss: baseSignal.stopLoss,
             takeProfit: baseSignal.takeProfit,
             confidence: Math.round(aiConfidence),
@@ -185,7 +185,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             signalStrength: aiConfidence >= 90 ? 'ULTRA' : 
                            aiConfidence >= 85 ? 'STRONG' : 'MEDIUM',
             confluenceScore: validationResult.passedFilters?.length || 0,
-            entry: baseSignal.entryPrice,
+            entry: baseSignal.entry,
             validated: true,
             risk: riskLevel,
             message: riskMessage
@@ -222,7 +222,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
             id: Date.now().toString(),
             pair: emergencySignal.pair,
             type: emergencySignal.type,
-            entryPrice: emergencySignal.entryPrice,
+            entryPrice: emergencySignal.entry,
             stopLoss: emergencySignal.stopLoss,
             takeProfit: emergencySignal.takeProfit,
             confidence: 60,
