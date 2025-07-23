@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -90,19 +91,24 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
   const createFallbackSignal = async (pair: string): Promise<Signal | null> => {
     try {
       // Generate a basic signal structure
-      const baseSignal = {
+      const entry = 1.0850 + (Math.random() - 0.5) * 0.01;
+      const isUp = Math.random() > 0.5;
+      const stopLoss = isUp ? entry - 0.0015 : entry + 0.0015;
+      const takeProfit = isUp ? entry + 0.0030 : entry - 0.0030;
+      
+      const baseSignal: Signal = {
         id: Date.now().toString(),
         pair,
-        type: Math.random() > 0.5 ? 'BUY' : 'SELL' as 'BUY' | 'SELL',
-        entry: 1.0850 + (Math.random() - 0.5) * 0.01,
-        entryPrice: 1.0850 + (Math.random() - 0.5) * 0.01,
-        stopLoss: 0,
-        takeProfit: 0,
+        type: isUp ? 'BUY' : 'SELL',
+        entry,
+        entryPrice: entry,
+        stopLoss,
+        takeProfit,
         confidence: 55 + Math.random() * 15,
         analysis: '🚨 FALLBACK SIGNAL: Generated using RSI Divergence + Volume Spike during quiet market conditions.',
         timestamp: new Date().toISOString(),
         timeframe: '15m',
-        riskReward: 2.0,
+        riskReward: Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss),
         strategy: 'FALLBACK',
         marketCondition: 'Quiet',
         technicalSetup: 'RSI Divergence + Volume Spike',
@@ -111,12 +117,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
         filtersPassed: ['RSI Divergence', 'Volume Spike']
       };
 
-      // Calculate stop loss and take profit
-      const isUp = baseSignal.type === 'BUY';
-      baseSignal.stopLoss = isUp ? baseSignal.entry - 0.0015 : baseSignal.entry + 0.0015;
-      baseSignal.takeProfit = isUp ? baseSignal.entry + 0.0030 : baseSignal.entry - 0.0030;
-
-      return baseSignal as Signal;
+      return baseSignal;
     } catch (error) {
       console.error('Fallback signal generation failed:', error);
       return null;
@@ -128,19 +129,24 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
       const factors = ['Structure Break', 'Volume Spike', 'RSI', 'SMC', 'FVG', 'Liquidity'];
       const selectedFactors = factors.slice(0, 2); // Take first 2 for simplicity
 
-      const signal = {
+      const entry = 1.0850 + (Math.random() - 0.5) * 0.01;
+      const isUp = Math.random() > 0.5;
+      const stopLoss = isUp ? entry - 0.0020 : entry + 0.0020;
+      const takeProfit = isUp ? entry + 0.0036 : entry - 0.0036;
+
+      const signal: Signal = {
         id: Date.now().toString(),
         pair,
-        type: Math.random() > 0.5 ? 'BUY' : 'SELL' as 'BUY' | 'SELL',
-        entry: 1.0850 + (Math.random() - 0.5) * 0.01,
-        entryPrice: 1.0850 + (Math.random() - 0.5) * 0.01,
-        stopLoss: 0,
-        takeProfit: 0,
+        type: isUp ? 'BUY' : 'SELL',
+        entry,
+        entryPrice: entry,
+        stopLoss,
+        takeProfit,
         confidence: 60 + Math.random() * 20,
         analysis: `🚨 EMERGENCY OVERRIDE: Generated using ${selectedFactors.join(' + ')} factors.`,
         timestamp: new Date().toISOString(),
         timeframe: '15m',
-        riskReward: 1.8,
+        riskReward: Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss),
         strategy: 'EMERGENCY',
         marketCondition: 'Override',
         technicalSetup: selectedFactors.join(' + '),
@@ -150,12 +156,7 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
         warning: 'EMERGENCY SIGNAL - Use extreme caution'
       };
 
-      // Calculate levels
-      const isUp = signal.type === 'BUY';
-      signal.stopLoss = isUp ? signal.entry - 0.0020 : signal.entry + 0.0020;
-      signal.takeProfit = isUp ? signal.entry + 0.0036 : signal.entry - 0.0036;
-
-      return signal as Signal;
+      return signal;
     } catch (error) {
       console.error('Emergency signal generation failed:', error);
       return null;
