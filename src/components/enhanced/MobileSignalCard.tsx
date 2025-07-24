@@ -13,7 +13,7 @@ import {
   TrendingUp,
   TrendingDown
 } from 'lucide-react';
-import { Signal } from '@/services/signalService';
+import { Signal } from '@/types/signalConfig';
 
 interface MobileSignalCardProps {
   signal: Signal;
@@ -84,7 +84,7 @@ const MobileSignalCard: React.FC<MobileSignalCardProps> = ({
           <div className="flex items-center gap-2">
             <Activity className="w-3 h-3 text-green-400" />
             <span className="text-gray-400">Live:</span>
-            <span className="text-white font-mono text-xs">{signal.livePrice}</span>
+            <span className="text-white font-mono text-xs">{signal.livePrice || 'N/A'}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-3 h-3 text-blue-400" />
@@ -93,7 +93,7 @@ const MobileSignalCard: React.FC<MobileSignalCardProps> = ({
         </div>
 
         {/* Spread Warning */}
-        {signal.spreadToMarket > 1 && (
+        {signal.spreadToMarket && signal.spreadToMarket > 1 && (
           <div className="text-xs text-yellow-300 bg-yellow-500/10 rounded p-2 mt-2">
             ⚠️ Spread to market: {signal.spreadToMarket}%
           </div>

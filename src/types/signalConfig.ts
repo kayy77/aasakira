@@ -1,4 +1,3 @@
-
 export interface SignalConfig {
   pair: string;
   timeframe: string;
@@ -74,6 +73,8 @@ export interface Signal {
   qualityScore?: number;
   signalStrength?: 'ULTRA' | 'STRONG' | 'MEDIUM';
   confluenceScore?: number;
+  livePrice?: number;
+  spreadToMarket?: number;
   origin?: {
     institutional: boolean;
     smc: boolean;

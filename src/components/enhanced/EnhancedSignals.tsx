@@ -20,7 +20,8 @@ import {
   TrendingUp,
   TrendingDown
 } from 'lucide-react';
-import { signalService, Signal } from '@/services/signalService';
+import { signalService } from '@/services/signalService';
+import { Signal } from '@/types/signalConfig';
 import UsageLimits from '@/components/features/UsageLimits';
 import EnhancedPremiumUpgrade from '@/components/enhanced/EnhancedPremiumUpgrade';
 import MobileSignalCard from '@/components/enhanced/MobileSignalCard';
@@ -93,10 +94,10 @@ const SignalCard: React.FC<SignalCardProps> = ({ signal, isPremium, onExplain, o
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-green-400" />
             <span className="text-gray-400">Live Price:</span>
-            <span className="text-white font-mono font-bold">{signal.livePrice}</span>
+            <span className="text-white font-mono font-bold">{signal.livePrice || 'N/A'}</span>
             <span className="text-blue-300">({timeAgo} UTC)</span>
           </div>
-          {signal.spreadToMarket > 1 && (
+          {signal.spreadToMarket && signal.spreadToMarket > 1 && (
             <Badge className="bg-yellow-500/20 text-yellow-400 text-xs">
               Spread: {signal.spreadToMarket}%
             </Badge>
@@ -222,7 +223,7 @@ const EnhancedSignals = () => {
         
         toast({
           title: "🎯 Live Market Signal Generated",
-          description: `${newSignal.pair} ${newSignal.type} - ${newSignal.confidence}% confidence (Live Price: ${newSignal.livePrice})`,
+          description: `${newSignal.pair} ${newSignal.type} - ${newSignal.confidence}% confidence (Live Price: ${newSignal.livePrice || 'N/A'})`,
         });
       } else {
         toast({
