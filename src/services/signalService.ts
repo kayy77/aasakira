@@ -12,19 +12,19 @@ class SignalService {
     selectedFilters: string[] = ['SMC', 'Volume', 'Session']
   ): Promise<Signal | null> {
     try {
-      console.log('🎯 SignalService: Generating live signal with FRESH prices...');
+      console.log('🎯 SignalService: Generating live signal with ULTRA-FRESH prices...');
       
-      // CRITICAL: Clear all cached prices before generating signal
+      // CRITICAL: Clear ALL cached prices before generating signal
       enhancedPriceService.clearAllCache();
       
-      // Get fresh prices for major pairs BEFORE generating signal
+      // Pre-fetch fresh prices for major pairs to warm up the system
       const majorPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
-      console.log('🔄 Pre-fetching fresh prices for signal generation...');
+      console.log('🔄 Pre-fetching ultra-fresh prices for signal generation...');
       
       const freshPrices = await enhancedPriceService.getFreshPricesForSignals(majorPairs);
-      console.log(`✅ Got fresh prices for ${Object.keys(freshPrices).length} pairs`);
+      console.log(`✅ Pre-fetched fresh prices for ${Object.keys(freshPrices).length} pairs`);
       
-      // Generate signal with fresh market data
+      // Generate signal with the freshest possible market data
       const eliteSignal = await EliteSignalEngine.generateEliteSignal(
         userMinConfidence,
         requiredFilters,
@@ -36,16 +36,27 @@ class SignalService {
         return null;
       }
       
-      // Get the freshest possible price for the signal pair
+      // Get the ULTRA-FRESHEST possible price for the signal pair
       let finalLivePrice = parseFloat(eliteSignal.livePrice);
       
       try {
         console.log(`🔄 Getting ULTRA-FRESH price for signal pair: ${eliteSignal.pair}`);
+        
+        // Force completely fresh fetch - no cache, no fallback
         const ultraFreshPrice = await enhancedPriceService.getFreshPriceForSignal(eliteSignal.pair);
         finalLivePrice = ultraFreshPrice.price;
-        console.log(`✅ Ultra-fresh price for ${eliteSignal.pair}: ${finalLivePrice}`);
+        
+        console.log(`✅ Ultra-fresh price for ${eliteSignal.pair}: ${finalLivePrice} (${ultraFreshPrice.source})`);
+        
+        // Validate the price is actually fresh
+        const dataAge = ultraFreshPrice.dataAge || 0;
+        if (dataAge > 2000) {
+          console.warn(`⚠️ Price might be stale: ${Math.floor(dataAge/1000)}s old`);
+        }
+        
       } catch (error) {
-        console.warn(`⚠️ Using signal engine price for ${eliteSignal.pair}: ${finalLivePrice}`);
+        console.error(`❌ Failed to get ultra-fresh price for ${eliteSignal.pair}:`, error);
+        return null; // Don't generate signal with stale price
       }
       
       // Convert to Signal format with LIVE price
@@ -72,7 +83,7 @@ class SignalService {
         sessionActive: true,
         signalStrength: eliteSignal.signalStrength === 'STANDARD' ? 'MEDIUM' : eliteSignal.signalStrength as 'MEDIUM' | 'ULTRA' | 'STRONG',
         confluenceScore: eliteSignal.filtersScore,
-        livePrice: finalLivePrice, // LIVE PRICE - not cached
+        livePrice: finalLivePrice, // ULTRA-FRESH LIVE PRICE
         spreadToMarket: this.calculateSpreadToMarket(parseFloat(eliteSignal.entry), finalLivePrice),
         risk: eliteSignal.filterBreakdown.riskLevel as 'Low' | 'Medium' | 'High' | 'Critical',
         origin: {
@@ -93,7 +104,7 @@ class SignalService {
         this.signals = this.signals.slice(0, 10);
       }
       
-      console.log(`✅ LIVE SIGNAL generated: ${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice}`);
+      console.log(`✅ ULTRA-FRESH SIGNAL generated: ${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice}`);
       return signal;
       
     } catch (error) {

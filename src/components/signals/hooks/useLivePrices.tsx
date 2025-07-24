@@ -6,10 +6,10 @@ import { useToast } from '@/hooks/use-toast';
 interface UseLivePricesProps {
   allowedPairs: string[];
   updateInterval?: number;
-  forceRefresh?: boolean; // NEW: Force fresh prices
+  forceRefresh?: boolean;
 }
 
-export const useLivePrices = ({ allowedPairs, updateInterval = 3000, forceRefresh = false }: UseLivePricesProps) => {
+export const useLivePrices = ({ allowedPairs, updateInterval = 2000, forceRefresh = false }: UseLivePricesProps) => {
   const [livePrices, setLivePrices] = useState<{ [key: string]: number }>({});
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
@@ -37,7 +37,7 @@ export const useLivePrices = ({ allowedPairs, updateInterval = 3000, forceRefres
 
   const fetchPricesForPairs = async (pairs: string[], force: boolean = false) => {
     try {
-      console.log(`💰 Fetching ${force ? 'FRESH' : 'live'} prices for pairs:`, pairs);
+      console.log(`💰 Fetching ${force ? 'ULTRA-FRESH' : 'live'} prices for pairs:`, pairs);
       
       // Clear cache if force refresh
       if (force) {
@@ -51,11 +51,12 @@ export const useLivePrices = ({ allowedPairs, updateInterval = 3000, forceRefres
           const priceData = await enhancedPriceService.getLivePrice(pair, {
             forceRefresh: force,
             allowFallback: true,
-            maxDataAge: 2000
+            maxDataAge: 3000,
+            forTrading: false
           });
           
           updatedPrices[pair] = priceData.price;
-          console.log(`✅ Got ${force ? 'FRESH' : 'live'} price for ${pair}: ${priceData.price} (${priceData.source})`);
+          console.log(`✅ Got ${force ? 'ULTRA-FRESH' : 'live'} price for ${pair}: ${priceData.price} (${priceData.source})`);
         } catch (error) {
           console.error(`❌ Failed to get price for ${pair}:`, error);
           // Keep the last known price if available
@@ -108,17 +109,17 @@ export const useLivePrices = ({ allowedPairs, updateInterval = 3000, forceRefres
     }, updateInterval);
   };
 
-  // Initial fetch with force refresh option
+  // Initial fetch with ultra-fresh option
   useEffect(() => {
     const fetchInitialPrices = async () => {
       setIsConnected(false);
       try {
-        console.log('🚀 Fetching initial live prices...');
-        const initialPrices = await fetchPricesForPairs(allowedPairs, forceRefresh);
+        console.log('🚀 Fetching initial ultra-fresh prices...');
+        const initialPrices = await fetchPricesForPairs(allowedPairs, true); // Force ultra-fresh
         setLivePrices(initialPrices);
         setIsConnected(true);
         setLastUpdateTime(new Date());
-        console.log('✅ Initial live prices fetched:', initialPrices);
+        console.log('✅ Initial ultra-fresh prices fetched:', initialPrices);
       } catch (error) {
         console.error('Failed to fetch initial prices:', error);
         toast({
@@ -132,7 +133,7 @@ export const useLivePrices = ({ allowedPairs, updateInterval = 3000, forceRefres
     if (allowedPairs.length > 0) {
       fetchInitialPrices();
     }
-  }, [allowedPairs.join(','), forceRefresh]);
+  }, [allowedPairs.join(',')]);
 
   // Start price updates
   useEffect(() => {
@@ -145,16 +146,17 @@ export const useLivePrices = ({ allowedPairs, updateInterval = 3000, forceRefres
         clearInterval(intervalRef.current);
       }
     };
-  }, [allowedPairs.join(','), updateInterval, forceRefresh]);
+  }, [allowedPairs.join(','), updateInterval]);
 
-  // NEW: Manual refresh function
+  // Manual refresh function - ultra-fresh
   const refreshPrices = async () => {
-    console.log('🔄 Manual price refresh triggered');
+    console.log('🔄 Manual ultra-fresh price refresh triggered');
     try {
-      const freshPrices = await fetchPricesForPairs(allowedPairs, true);
+      const freshPrices = await fetchPricesForPairs(allowedPairs, true); // Force ultra-fresh
       setLivePrices(freshPrices);
       setLastUpdateTime(new Date());
       setIsConnected(true);
+      console.log('✅ Manual ultra-fresh refresh completed');
     } catch (error) {
       console.error('Manual refresh failed:', error);
     }
