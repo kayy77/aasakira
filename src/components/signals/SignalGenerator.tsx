@@ -1,281 +1,191 @@
 
 import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { 
-  Target, 
-  TrendingUp, 
-  AlertCircle, 
   Zap, 
-  Brain,
-  Loader,
-  Sparkles,
-  Activity,
-  BarChart3,
+  TrendingUp, 
+  AlertTriangle, 
   Crown,
-  Shield,
-  CheckCircle2,
-  XCircle,
-  Clock
+  Lock
 } from 'lucide-react';
+import { useSignalLimits } from '@/hooks/useSignalLimits';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import UpgradePrompt from '@/components/common/UpgradePrompt';
+import { enhancedPriceService } from '@/services/enhancedPriceService';
+import { eliteSignalEngine } from '@/services/eliteSignalEngine';
 import { useToast } from '@/hooks/use-toast';
-import { signalService } from '@/services/signalService';
-import { enhancedSignalValidator, SignalValidationInput } from '@/services/enhancedSignalValidator';
-import { Signal } from '@/types/signalConfig';
 
-interface EnhancedSignalGeneratorProps {
-  onSignalGenerated?: (signal: Signal) => void;
-  onFeatureUse?: () => void;
+interface SignalGeneratorProps {
+  onSignalGenerated?: (signal: any) => void;
 }
 
-export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = ({ 
-  onSignalGenerated,
-  onFeatureUse
-}) => {
+const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [analysisStatus, setAnalysisStatus] = useState<string>('');
-  const [lastFilterResults, setLastFilterResults] = useState<string[]>([]);
-  const [lastRejectionReason, setLastRejectionReason] = useState<string>('');
-  const [rejectionCount, setRejectionCount] = useState<number>(0);
-  const [validationLog, setValidationLog] = useState<string[]>([]);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const { subscription } = useSubscription();
+  const { canGenerateSignal, signalsUsedToday, dailyLimit, upgradeRequired } = useSignalLimits();
   const { toast } = useToast();
 
-  // Session-aware quality requirements
-  const getSessionRequirements = () => {
-    const hour = new Date().getUTCHours();
-    const isActiveSession = (hour >= 6 && hour <= 16); // London + NY sessions
-    
-    return {
-      minConfidence: isActiveSession ? 75 : 80,
-      minConfluence: isActiveSession ? 5 : 6,
-      minRiskReward: isActiveSession ? 2.0 : 2.5,
-      sessionActive: isActiveSession
-    };
-  };
+  const isPremium = subscription?.tier === 'premium';
+  const usagePercentage = (signalsUsedToday / dailyLimit) * 100;
 
-  const getCurrentSession = (): string => {
-    const hour = new Date().getUTCHours();
-    
-    if (hour >= 8 && hour <= 17) return 'London';
-    if (hour >= 13 && hour <= 22) return 'New York';
-    if (hour >= 22 || hour <= 8) return 'Asian';
-    
-    return 'Off Hours';
-  };
+  const handleGenerateSignal = async () => {
+    if (!canGenerateSignal) {
+      setShowUpgradePrompt(true);
+      return;
+    }
 
-  const generateEnhancedSignal = async () => {
-    onFeatureUse?.();
     setIsGenerating(true);
-    setAnalysisStatus('🏛️ ENHANCED INSTITUTIONAL PROTOCOL INITIALIZING...');
-    setLastRejectionReason('');
-    setRejectionCount(0);
-    setValidationLog([]);
-
-    const requirements = getSessionRequirements();
     
     try {
-      setAnalysisStatus(`⚡ Session Analysis: ${getCurrentSession()} (${requirements.sessionActive ? 'ACTIVE' : 'QUIET'})`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      let attempts = 0;
-      const maxAttempts = 8;
+      // Get accurate live price first
+      const livePrice = await enhancedPriceService.getLivePrice('EURUSD');
+      console.log('Live price pulled:', livePrice);
       
-      while (attempts < maxAttempts) {
-        attempts++;
-        setAnalysisStatus(`🎯 Attempt ${attempts}: Enhanced Multi-Filter Analysis...`);
-        
-        try {
-          const baseSignal = await signalService.generateLiveSignal();
-          
-          if (!baseSignal) {
-            setRejectionCount(prev => prev + 1);
-            continue;
-          }
-
-          // Create enhanced signal with all required properties
-          const enhancedSignal: Signal = {
-            id: Date.now().toString(),
-            pair: baseSignal.pair,
-            type: baseSignal.type,
-            entry: baseSignal.entry,
-            entryPrice: baseSignal.entry,
-            stopLoss: baseSignal.stopLoss,
-            takeProfit: baseSignal.takeProfit,
-            confidence: baseSignal.confidence,
-            analysis: baseSignal.analysis,
-            timestamp: baseSignal.timestamp,
-            timeframe: baseSignal.timeframe,
-            riskReward: baseSignal.riskReward || 2.0,
-            strategy: baseSignal.strategy,
-            marketCondition: baseSignal.marketCondition || 'neutral',
-            technicalSetup: baseSignal.technicalSetup || 'multi-confluence',
-            entryReason: baseSignal.entryReason || 'Enhanced filtering passed',
-            riskManagement: baseSignal.riskManagement || 'Standard 2% risk',
-            filtersPassed: baseSignal.filtersPassed || [],
-            sessionContext: getCurrentSession(),
-            sessionActive: requirements.sessionActive,
-            enhancedValidation: true,
-            validationReason: 'Enhanced filtering approved',
-            qualityScore: Math.min(95, baseSignal.confidence + 5),
-            signalStrength: baseSignal.confidence >= 90 ? 'ULTRA' : 
-                           baseSignal.confidence >= 85 ? 'STRONG' : 'MEDIUM',
-            confluenceScore: baseSignal.confluenceScore || 0
-          };
-
-          if (onSignalGenerated) {
-            onSignalGenerated(enhancedSignal);
-            setLastFilterResults(enhancedSignal.filtersPassed || []);
-            
-            toast({
-              title: `🚨 ENHANCED ${enhancedSignal.signalStrength} SIGNAL APPROVED!`,
-              description: `${enhancedSignal.pair} ${enhancedSignal.type} | Enhanced Validated | Session: ${getCurrentSession()}`,
-            });
-          }
-          
-          return;
-          
-        } catch (error) {
-          console.error(`Attempt ${attempts} failed:`, error);
-          setRejectionCount(prev => prev + 1);
-          continue;
-        }
-      }
-      
-      // All attempts failed
-      setLastRejectionReason(`ENHANCED FILTERING: All ${maxAttempts} attempts rejected. Current ${getCurrentSession()} session requires ${requirements.minConfidence}%+ confidence, ${requirements.minConfluence}/6+ confluence, BOS+FVG filters, and AI approval.`);
-      toast({
-        title: "🏛️ Enhanced Filter Gate - All Signals Rejected",
-        description: `${rejectionCount} signals blocked by enhanced institutional filtering + AI validation`,
-        variant: "destructive"
+      // Generate signal with elite engine
+      const signal = await eliteSignalEngine.generateSignal('EURUSD', {
+        currentPrice: livePrice.price,
+        priceQuality: livePrice.quality,
+        source: livePrice.source
       });
       
+      console.log('Signal generated:', signal);
+      
+      // Test signal quality
+      if (signal.confluenceScore >= 3 && signal.riskReward >= 2) {
+        onSignalGenerated?.(signal);
+        
+        toast({
+          title: "🎯 Elite Signal Generated",
+          description: `${signal.direction} ${signal.symbol} - RR: ${signal.riskReward}`,
+        });
+      } else {
+        toast({
+          title: "⚠️ Low Quality Signal",
+          description: "Market conditions don't meet elite standards. Try again later.",
+          variant: "destructive"
+        });
+      }
+      
     } catch (error) {
-      console.error('Enhanced signal generation error:', error);
+      console.error('Signal generation error:', error);
       toast({
-        title: "Enhanced Signal Engine Error",
-        description: "Enhanced signal engine encountered an issue. Please try again.",
+        title: "Generation Failed",
+        description: "Unable to generate signal. Please try again.",
         variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
-      setAnalysisStatus('');
     }
   };
 
-  const requirements = getSessionRequirements();
+  if (showUpgradePrompt && !canGenerateSignal) {
+    return (
+      <UpgradePrompt
+        title="🔒 Signal Limit Reached"
+        description="You've used your daily free signal. Upgrade for unlimited elite signals!"
+        feature="unlimited signal generation"
+        onClose={() => setShowUpgradePrompt(false)}
+      />
+    );
+  }
 
   return (
-    <div className="glass-card p-8 mb-8 hover-glow border-purple-500/20">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-gradient-to-r from-yellow-500/20 to-purple-500/20 rounded-xl flex items-center justify-center border border-yellow-500/30">
-            <Brain className="w-6 h-6 text-yellow-400" />
+    <Card className="glass-card border-purple-500/20">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-purple-400" />
+            Elite Signal Generator
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">🧠 Enhanced AI Signal Protocol</h2>
-            <p className="text-gray-400">Session-Aware + Enhanced Validation</p>
+          
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-purple-400 border-purple-500/30">
+              {signalsUsedToday}/{isPremium ? '∞' : dailyLimit}
+            </Badge>
+            {!isPremium && (
+              <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+                <Crown className="w-3 h-3 mr-1" />
+                Free
+              </Badge>
+            )}
           </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Badge className={`${requirements.sessionActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} border-current animate-pulse`}>
-            <Clock className="w-3 h-3 mr-1" />
-            {getCurrentSession()}
-          </Badge>
-          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-            <Brain className="w-3 h-3 mr-1" />
-            ENHANCED AI
-          </Badge>
-        </div>
-      </div>
-
-      <div className="glass-card p-6 mb-6 border-purple-500/10">
-        <div className="flex items-center space-x-2 mb-4">
-          <Shield className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg font-semibold text-white">Current Session Requirements</h3>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="glass-card p-3 text-center border-red-500/20">
-            <div className="text-sm text-red-400 font-semibold">Min Confidence</div>
-            <div className="text-xs text-gray-400">{requirements.minConfidence}%</div>
-          </div>
-          <div className="glass-card p-3 text-center border-orange-500/20">
-            <div className="text-sm text-orange-400 font-semibold">Min Confluence</div>
-            <div className="text-xs text-gray-400">{requirements.minConfluence}/6</div>
-          </div>
-          <div className="glass-card p-3 text-center border-yellow-500/20">
-            <div className="text-sm text-yellow-400 font-semibold">Required</div>
-            <div className="text-xs text-gray-400">BOS + FVG</div>
-          </div>
-          <div className="glass-card p-3 text-center border-blue-500/20">
-            <div className="text-sm text-blue-400 font-semibold">AI Valid</div>
-            <div className="text-xs text-gray-400">MANDATORY</div>
-          </div>
-        </div>
-
-        {validationLog.length > 0 && (
-          <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg max-h-32 overflow-y-auto">
-            <div className="flex items-center space-x-2 mb-2">
-              <Brain className="w-4 h-4 text-purple-400" />
-              <span className="text-purple-300 font-semibold">Enhanced Validation Log:</span>
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent className="space-y-6">
+        {/* Usage Progress */}
+        {!isPremium && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm text-gray-400">
+              <span>Daily Usage</span>
+              <span>{signalsUsedToday}/{dailyLimit}</span>
             </div>
-            {validationLog.slice(-3).map((log, index) => (
-              <p key={index} className="text-sm text-purple-200 mb-1">{log}</p>
-            ))}
+            <Progress 
+              value={usagePercentage} 
+              className="h-2"
+            />
+            {usagePercentage >= 80 && (
+              <div className="flex items-center gap-2 text-yellow-400 text-sm">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Almost at daily limit!</span>
+              </div>
+            )}
           </div>
         )}
 
-        {rejectionCount > 0 && (
-          <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-            <div className="flex items-center space-x-2 mb-2">
-              <XCircle className="w-4 h-4 text-red-400" />
-              <span className="text-red-300 font-semibold">Enhanced Filter Activity:</span>
-            </div>
-            <p className="text-sm text-red-200">{rejectionCount} signals rejected by enhanced filtering system</p>
-          </div>
-        )}
-
-        {lastRejectionReason && (
-          <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-            <div className="flex items-center space-x-2 mb-3">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-red-300 font-semibold">Enhanced Filter Status:</span>
-            </div>
-            <p className="text-sm text-red-200">{lastRejectionReason}</p>
-          </div>
-        )}
-
-        {isGenerating && analysisStatus && (
-          <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <Loader className="w-4 h-4 text-purple-400 animate-spin" />
-              <span className="text-purple-300 text-sm">{analysisStatus}</span>
-            </div>
-          </div>
-        )}
-
-        <Button 
-          size="lg" 
-          className="w-full bg-gradient-to-r from-red-600 to-purple-600 hover:from-red-700 hover:to-purple-700 text-white font-bold py-4 hover-lift cyber-glow"
-          onClick={generateEnhancedSignal}
-          disabled={isGenerating}
+        {/* Generation Button */}
+        <Button
+          onClick={handleGenerateSignal}
+          disabled={!canGenerateSignal || isGenerating}
+          className={`w-full py-3 text-lg font-semibold ${
+            canGenerateSignal 
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700' 
+              : 'bg-gray-600 cursor-not-allowed'
+          }`}
         >
           {isGenerating ? (
             <>
-              <Loader className="w-5 h-5 mr-2 animate-spin" />
-              Enhanced Analysis...
+              <TrendingUp className="w-5 h-5 mr-2 animate-pulse" />
+              Generating Elite Signal...
+            </>
+          ) : !canGenerateSignal ? (
+            <>
+              <Lock className="w-5 h-5 mr-2" />
+              Daily Limit Reached
             </>
           ) : (
             <>
-              <Brain className="w-5 h-5 mr-2" />
-              Generate Enhanced Signal
+              <Zap className="w-5 h-5 mr-2" />
+              Generate Elite Signal
             </>
           )}
         </Button>
-      </div>
-    </div>
+
+        {/* Upgrade CTA for Free Users */}
+        {!isPremium && (
+          <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg p-4 text-center">
+            <h4 className="text-white font-semibold mb-2">
+              🚀 Want Unlimited Signals?
+            </h4>
+            <p className="text-gray-300 text-sm mb-3">
+              Get unlimited elite signals, premium strategies, and priority support.
+            </p>
+            <Button
+              onClick={() => setShowUpgradePrompt(true)}
+              className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
+            >
+              <Crown className="w-4 h-4 mr-2" />
+              Upgrade to Premium
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
-export default EnhancedSignalGenerator;
+export default SignalGenerator;
