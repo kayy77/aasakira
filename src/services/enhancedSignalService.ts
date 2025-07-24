@@ -74,7 +74,7 @@ class EnhancedSignalService {
       // STEP 3: Get ultra-fresh trading-grade price (NO CACHE, NO FALLBACK)
       let liveData: PriceData;
       try {
-        liveData = await enhancedPriceService.getFreshLivePrice(randomPair);
+        liveData = await enhancedPriceService.getFreshPriceForSignal(randomPair);
         console.log(`🎯 LOCKED LIVE PRICE: ${randomPair} = ${liveData.price} (${liveData.source}, ${liveData.quality})`);
       } catch (error) {
         console.error(`❌ CANNOT GENERATE SIGNAL for ${randomPair}: ${error}`);
