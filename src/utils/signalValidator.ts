@@ -9,9 +9,9 @@ export function getMinAIConfidence(confluenceLevel: number): number {
   }
 }
 
-export function getRiskLevel(confluenceScore: number): 'Low' | 'Moderate' | 'High' | 'Critical' {
+export function getRiskLevel(confluenceScore: number): 'Low' | 'Medium' | 'High' | 'Critical' {
   if (confluenceScore >= 6) return 'Low';
-  if (confluenceScore >= 5) return 'Moderate';
+  if (confluenceScore >= 5) return 'Medium';
   if (confluenceScore >= 4) return 'High';
   return 'Critical';
 }
