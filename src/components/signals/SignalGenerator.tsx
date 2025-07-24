@@ -15,7 +15,7 @@ import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import UpgradePrompt from '@/components/common/UpgradePrompt';
 import { enhancedPriceService } from '@/services/enhancedPriceService';
-import { eliteSignalEngine } from '@/services/eliteSignalEngine';
+import { EliteSignalEngine } from '@/services/eliteSignalEngine';
 import { useToast } from '@/hooks/use-toast';
 
 interface SignalGeneratorProps {
@@ -26,7 +26,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
   const [isGenerating, setIsGenerating] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const { subscription } = useSubscription();
-  const { canGenerateSignal, signalsUsedToday, dailyLimit, upgradeRequired } = useSignalLimits();
+  const { canGenerateSignal, signalsUsedToday, dailyLimit, upgradeRequired, checkAndIncrementSignal } = useSignalLimits();
   const { toast } = useToast();
 
   const isPremium = subscription?.tier === 'premium';
@@ -38,6 +38,12 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
       return;
     }
 
+    // Check and increment usage first
+    const canProceed = await checkAndIncrementSignal();
+    if (!canProceed) {
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
@@ -46,21 +52,17 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
       console.log('Live price pulled:', livePrice);
       
       // Generate signal with elite engine
-      const signal = await eliteSignalEngine.generateSignal('EURUSD', {
-        currentPrice: livePrice.price,
-        priceQuality: livePrice.quality,
-        source: livePrice.source
-      });
+      const signal = await EliteSignalEngine.generateEliteSignal(75, 2, ['SMC', 'Volume', 'Session']);
       
       console.log('Signal generated:', signal);
       
       // Test signal quality
-      if (signal.confluenceScore >= 3 && signal.riskReward >= 2) {
+      if (signal && signal.confidence >= 60 && signal.riskReward >= 1.5) {
         onSignalGenerated?.(signal);
         
         toast({
           title: "🎯 Elite Signal Generated",
-          description: `${signal.direction} ${signal.symbol} - RR: ${signal.riskReward}`,
+          description: `${signal.type} ${signal.pair} - RR: ${signal.riskReward}`,
         });
       } else {
         toast({

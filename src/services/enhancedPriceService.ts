@@ -1,17 +1,18 @@
-
 import { livePriceAPI } from './livePriceAPI';
+
+export interface PriceData {
+  price: number;
+  timestamp: number;
+  source: string;
+  quality: 'real' | 'delayed' | 'stale';
+  dataAge?: number;
+  changePercent?: string;
+}
 
 interface PriceSource {
   name: string;
   fetch: (symbol: string) => Promise<PriceData>;
   priority: number;
-}
-
-interface PriceData {
-  price: number;
-  timestamp: number;
-  source: string;
-  quality: 'real' | 'delayed' | 'stale';
 }
 
 class EnhancedPriceService {
@@ -45,14 +46,16 @@ class EnhancedPriceService {
     }
   ];
 
-  async getLivePrice(symbol: string): Promise<PriceData> {
+  async getLivePrice(symbol: string, options?: { forceRefresh?: boolean; allowFallback?: boolean; maxDataAge?: number; forTrading?: boolean }): Promise<PriceData> {
     console.log(`🔄 Fetching live price for ${symbol}...`);
     
-    // Check cache first
-    const cached = this.priceCache.get(symbol);
-    if (cached && this.isRecent(cached.timestamp)) {
-      console.log(`📋 Using cached price for ${symbol}: ${cached.price}`);
-      return cached;
+    // Check cache first unless force refresh is requested
+    if (!options?.forceRefresh) {
+      const cached = this.priceCache.get(symbol);
+      if (cached && this.isRecent(cached.timestamp)) {
+        console.log(`📋 Using cached price for ${symbol}: ${cached.price}`);
+        return cached;
+      }
     }
 
     // Try WebSocket first (if available)
@@ -79,6 +82,49 @@ class EnhancedPriceService {
     }
 
     throw new Error(`All price sources failed for ${symbol}`);
+  }
+
+  async getFreshPriceForSignal(symbol: string): Promise<PriceData> {
+    console.log(`🔄 Getting ultra-fresh price for signal: ${symbol}`);
+    
+    // Clear cache for this symbol to ensure freshness
+    this.priceCache.delete(symbol);
+    
+    // Use the most reliable source for signal generation
+    try {
+      const priceData = await this.fetchFromLiveAPI(symbol);
+      if (priceData && this.isValidPrice(priceData)) {
+        this.priceCache.set(symbol, priceData);
+        return priceData;
+      }
+    } catch (error) {
+      console.warn(`⚠️ LiveAPI failed for ${symbol}:`, error);
+    }
+
+    // Fallback to other sources
+    return this.getLivePrice(symbol, { forceRefresh: true });
+  }
+
+  async getFreshPricesForSignals(symbols: string[]): Promise<{ [key: string]: PriceData }> {
+    console.log(`🔄 Getting fresh prices for ${symbols.length} symbols`);
+    
+    const prices: { [key: string]: PriceData } = {};
+    
+    for (const symbol of symbols) {
+      try {
+        const priceData = await this.getFreshPriceForSignal(symbol);
+        prices[symbol] = priceData;
+      } catch (error) {
+        console.error(`❌ Failed to get fresh price for ${symbol}:`, error);
+      }
+    }
+    
+    return prices;
+  }
+
+  clearAllCache(): void {
+    this.priceCache.clear();
+    console.log('🧹 All price cache cleared');
   }
 
   private async tryWebSocketPrice(symbol: string): Promise<PriceData | null> {

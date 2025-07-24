@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { enhancedPriceService } from '@/services/enhancedPriceService';
 import { useToast } from '@/hooks/use-toast';
@@ -41,19 +40,14 @@ export const useLivePrices = ({ allowedPairs, updateInterval = 2000, forceRefres
       
       // Clear cache if force refresh
       if (force) {
-        enhancedPriceService.clearAllCache();
+        enhancedPriceService.clearCache(); // Fixed method name
       }
       
       const updatedPrices: { [key: string]: number } = {};
       
       for (const pair of pairs) {
         try {
-          const priceData = await enhancedPriceService.getLivePrice(pair, {
-            forceRefresh: force,
-            allowFallback: true,
-            maxDataAge: 3000,
-            forTrading: false
-          });
+          const priceData = await enhancedPriceService.getLivePrice(pair); // Fixed method signature
           
           updatedPrices[pair] = priceData.price;
           console.log(`✅ Got ${force ? 'ULTRA-FRESH' : 'live'} price for ${pair}: ${priceData.price} (${priceData.source})`);

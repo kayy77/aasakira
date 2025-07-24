@@ -1,4 +1,3 @@
-
 import { Signal } from '@/types/signalConfig';
 import { EliteSignalEngine } from './eliteSignalEngine';
 import { enhancedPriceService } from './enhancedPriceService';
@@ -15,7 +14,7 @@ class SignalService {
       console.log('🎯 SignalService: Generating live signal with ULTRA-FRESH prices...');
       
       // CRITICAL: Clear ALL cached prices before generating signal
-      enhancedPriceService.clearAllCache();
+      enhancedPriceService.clearCache(); // Fixed method name
       
       // Pre-fetch fresh prices for major pairs to warm up the system
       const majorPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];

@@ -11,7 +11,7 @@ interface SignalLimits {
   upgradeRequired: boolean;
 }
 
-export const useSignalLimits = (): SignalLimits => {
+export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () => Promise<boolean> } => {
   const { user } = useAuth();
   const { subscription, usageStats, checkUsageLimit, incrementUsage } = useSubscription();
   const { toast } = useToast();
@@ -19,7 +19,7 @@ export const useSignalLimits = (): SignalLimits => {
 
   const isPremium = subscription?.tier === 'premium';
   const dailyLimit = isPremium ? 999 : 1; // Unlimited for premium, 1 for free
-  const signalsUsed = usageStats?.signals_generated || 0;
+  const signalsUsed = usageStats?.signals || 0; // Use 'signals' instead of 'signals_generated'
   const canGenerateSignal = isPremium || signalsUsed < dailyLimit;
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export const useSignalLimits = (): SignalLimits => {
     }
 
     try {
-      await incrementUsage('signals_generated');
+      await incrementUsage('signals'); // Use 'signals' instead of 'signals_generated'
       setSignalsUsedToday(prev => prev + 1);
       return true;
     } catch (error) {
@@ -50,6 +50,7 @@ export const useSignalLimits = (): SignalLimits => {
     canGenerateSignal,
     signalsUsedToday,
     dailyLimit,
-    upgradeRequired: !canGenerateSignal
+    upgradeRequired: !canGenerateSignal,
+    checkAndIncrementSignal
   };
 };
