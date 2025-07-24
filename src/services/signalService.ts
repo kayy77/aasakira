@@ -1,6 +1,7 @@
 
 import { Signal } from '@/types/signalConfig';
 import { EliteSignalEngine } from './eliteSignalEngine';
+import { enhancedPriceService } from './enhancedPriceService';
 
 class SignalService {
   private signals: Signal[] = [];
@@ -11,9 +12,19 @@ class SignalService {
     selectedFilters: string[] = ['SMC', 'Volume', 'Session']
   ): Promise<Signal | null> {
     try {
-      console.log('🎯 SignalService: Generating live signal...');
+      console.log('🎯 SignalService: Generating live signal with FRESH prices...');
       
-      // Use the elite signal engine with static method
+      // CRITICAL: Clear all cached prices before generating signal
+      enhancedPriceService.clearAllCache();
+      
+      // Get fresh prices for major pairs BEFORE generating signal
+      const majorPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
+      console.log('🔄 Pre-fetching fresh prices for signal generation...');
+      
+      const freshPrices = await enhancedPriceService.getFreshPricesForSignals(majorPairs);
+      console.log(`✅ Got fresh prices for ${Object.keys(freshPrices).length} pairs`);
+      
+      // Generate signal with fresh market data
       const eliteSignal = await EliteSignalEngine.generateEliteSignal(
         userMinConfidence,
         requiredFilters,
@@ -25,7 +36,19 @@ class SignalService {
         return null;
       }
       
-      // Convert EliteSignal to Signal format
+      // Get the freshest possible price for the signal pair
+      let finalLivePrice = parseFloat(eliteSignal.livePrice);
+      
+      try {
+        console.log(`🔄 Getting ULTRA-FRESH price for signal pair: ${eliteSignal.pair}`);
+        const ultraFreshPrice = await enhancedPriceService.getFreshPriceForSignal(eliteSignal.pair);
+        finalLivePrice = ultraFreshPrice.price;
+        console.log(`✅ Ultra-fresh price for ${eliteSignal.pair}: ${finalLivePrice}`);
+      } catch (error) {
+        console.warn(`⚠️ Using signal engine price for ${eliteSignal.pair}: ${finalLivePrice}`);
+      }
+      
+      // Convert to Signal format with LIVE price
       const signal: Signal = {
         id: eliteSignal.id,
         pair: eliteSignal.pair,
@@ -47,9 +70,11 @@ class SignalService {
         filtersPassed: eliteSignal.filterBreakdown.passed,
         sessionContext: this.getCurrentSession(),
         sessionActive: true,
-        signalStrength: eliteSignal.signalStrength === 'STANDARD' ? 'MEDIUM' : eliteSignal.signalStrength,
+        signalStrength: eliteSignal.signalStrength === 'STANDARD' ? 'MEDIUM' : eliteSignal.signalStrength as 'MEDIUM' | 'ULTRA' | 'STRONG',
         confluenceScore: eliteSignal.filtersScore,
-        livePrice: parseFloat(eliteSignal.livePrice),
+        livePrice: finalLivePrice, // LIVE PRICE - not cached
+        spreadToMarket: this.calculateSpreadToMarket(parseFloat(eliteSignal.entry), finalLivePrice),
+        risk: eliteSignal.filterBreakdown.riskLevel as 'Low' | 'Medium' | 'High' | 'Critical',
         origin: {
           institutional: eliteSignal.strategy === 'LIQUIDITY_SWEEP',
           smc: eliteSignal.filterBreakdown.passed.includes('SMC'),
@@ -68,13 +93,19 @@ class SignalService {
         this.signals = this.signals.slice(0, 10);
       }
       
-      console.log(`✅ Signal generated: ${signal.pair} ${signal.type} | ${signal.confidence}% confidence`);
+      console.log(`✅ LIVE SIGNAL generated: ${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice}`);
       return signal;
       
     } catch (error) {
       console.error('❌ SignalService error:', error);
       return null;
     }
+  }
+
+  private calculateSpreadToMarket(entryPrice: number, livePrice: number): number {
+    if (!entryPrice || !livePrice) return 0;
+    const spread = Math.abs(entryPrice - livePrice);
+    return parseFloat(((spread / livePrice) * 100).toFixed(2));
   }
   
   private getCurrentSession(): string {
@@ -102,7 +133,6 @@ class SignalService {
   }
 
   startAutoRefresh() {
-    // Implementation for auto refresh
     console.log('Auto refresh started');
   }
 

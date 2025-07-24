@@ -29,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLivePrices } from '@/components/signals/hooks/useLivePrices';
 
 interface SignalCardProps {
   signal: Signal;
@@ -202,6 +203,13 @@ const EnhancedSignals = () => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
+  const majorPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
+  const { livePrices, isConnected, lastUpdateTime, refreshPrices } = useLivePrices({ 
+    allowedPairs: majorPairs, 
+    updateInterval: 2000,
+    forceRefresh: true
+  });
+
   const generateSignal = async () => {
     if (!canUseFeature('signals') && !isPremium) {
       setShowUpgrade(true);
@@ -211,19 +219,29 @@ const EnhancedSignals = () => {
     setIsGenerating(true);
     
     try {
+      console.log('🎯 Generating signal with live prices...');
+      
+      await refreshPrices();
+      
       const newSignal = await signalService.generateLiveSignal();
       if (newSignal) {
+        if (livePrices[newSignal.pair]) {
+          newSignal.livePrice = livePrices[newSignal.pair];
+          newSignal.spreadToMarket = parseFloat(
+            ((Math.abs(newSignal.entry - newSignal.livePrice) / newSignal.livePrice) * 100).toFixed(2)
+          );
+        }
+        
         setSignals(prev => [newSignal, ...prev.slice(0, 4)]);
         incrementUsage('signals');
         
-        // Track signal view properly
         if (user?.id) {
           await UserTrackingService.trackSignalView(user.id, newSignal);
         }
         
         toast({
-          title: "🎯 Live Market Signal Generated",
-          description: `${newSignal.pair} ${newSignal.type} - ${newSignal.confidence}% confidence (Live Price: ${newSignal.livePrice || 'N/A'})`,
+          title: "🎯 LIVE Signal Generated",
+          description: `${newSignal.pair} ${newSignal.type} - ${newSignal.confidence}% confidence (Live: ${newSignal.livePrice})`,
         });
       } else {
         toast({
@@ -233,6 +251,7 @@ const EnhancedSignals = () => {
         });
       }
     } catch (error) {
+      console.error('Signal generation failed:', error);
       toast({
         title: "Signal Generation Failed",
         description: "Failed to generate signal. Please try again.",
@@ -273,6 +292,20 @@ const EnhancedSignals = () => {
   const performanceStats = signalService.getPerformanceStats();
 
   useEffect(() => {
+    if (signals.length > 0 && Object.keys(livePrices).length > 0) {
+      setSignals(prevSignals => 
+        prevSignals.map(signal => ({
+          ...signal,
+          livePrice: livePrices[signal.pair] || signal.livePrice,
+          spreadToMarket: livePrices[signal.pair] ? 
+            parseFloat(((Math.abs(signal.entry - livePrices[signal.pair]) / livePrices[signal.pair]) * 100).toFixed(2)) :
+            signal.spreadToMarket
+        }))
+      );
+    }
+  }, [livePrices]);
+
+  useEffect(() => {
     signalService.startAutoRefresh();
     signalService.getLatestSignals().then(setSignals);
   }, []);
@@ -287,7 +320,15 @@ const EnhancedSignals = () => {
           </div>
           <div>
             <h1 className="text-xl md:text-3xl font-bold gradient-text">LIVE AI SIGNALS</h1>
-            <p className="text-gray-400 text-sm md:text-base">Real-time market analysis with live price feeds</p>
+            <p className="text-gray-400 text-sm md:text-base">
+              Real-time market analysis with live price feeds
+            </p>
+            <div className="flex items-center justify-center gap-2 mt-1">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+              <span className="text-xs text-gray-500">
+                {isConnected ? 'Live' : 'Disconnected'} • Updated {lastUpdateTime.toLocaleTimeString()}
+              </span>
+            </div>
           </div>
         </div>
         
@@ -310,6 +351,15 @@ const EnhancedSignals = () => {
                 {isMobile ? 'Generate Signal' : 'Generate Live Signal'}
               </>
             )}
+          </Button>
+          
+          <Button
+            onClick={refreshPrices}
+            variant="outline"
+            className="border-purple-500/30 hover:bg-purple-500/20"
+            size={isMobile ? 'sm' : 'default'}
+          >
+            <RefreshCw className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
           </Button>
         </div>
       </div>
@@ -356,6 +406,9 @@ const EnhancedSignals = () => {
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
             <h2 className={`font-bold text-white ${isMobile ? 'text-lg' : 'text-xl'}`}>🔴 LIVE SIGNALS</h2>
+            <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+              {Object.keys(livePrices).length} pairs tracked
+            </Badge>
           </div>
           
           <div className="grid gap-4">

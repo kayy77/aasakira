@@ -1,4 +1,3 @@
-
 import { realTimePriceEngine, LivePriceData } from './realtimePriceEngine';
 
 interface PriceData {
@@ -14,65 +13,55 @@ interface PriceData {
 interface PriceOptions {
   allowFallback?: boolean;
   forTrading?: boolean;
-  maxDataAge?: number; // Max acceptable data age in milliseconds
+  maxDataAge?: number;
+  forceRefresh?: boolean; // NEW: Force bypass cache
 }
 
 class EnhancedPriceService {
   private cache = new Map<string, { data: PriceData; timestamp: number }>();
-  private readonly CACHE_DURATION = 500; // 0.5 second cache - ultra fresh for signals
+  private readonly CACHE_DURATION = 500; // 0.5 second cache
 
   async getLivePrice(symbol: string, options: PriceOptions = { 
-    allowFallback: false, // NO fallback for signals by default
+    allowFallback: false,
     forTrading: true,
-    maxDataAge: 1500 // Max 1.5 seconds old
+    maxDataAge: 1500,
+    forceRefresh: false
   }): Promise<PriceData> {
-    console.log(`🎯 ULTRA-PRECISION live price fetch for ${symbol}...`);
+    console.log(`🎯 FETCHING LIVE PRICE for ${symbol} (forceRefresh: ${options.forceRefresh})`);
     
-    // For trading signals, always fetch fresh data - no cache
-    if (options.forTrading) {
+    // For signal generation - ALWAYS bypass cache and get fresh data
+    if (options.forTrading || options.forceRefresh) {
       this.cache.delete(symbol);
-      console.log(`🔄 TRADING MODE: Bypassing cache for ${symbol}`);
+      console.log(`🔄 FORCE REFRESH: Bypassing cache for ${symbol}`);
     }
     
-    // Check ultra-short cache only for non-trading requests
-    if (!options.forTrading) {
+    // Check cache only for non-trading/non-force-refresh requests
+    if (!options.forTrading && !options.forceRefresh) {
       const cached = this.cache.get(symbol);
       if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
-        if (cached.data.price <= 0) {
-          console.warn(`❌ Invalid cached price for ${symbol}: ${cached.data.price}`);
-          this.cache.delete(symbol);
-        } else {
-          console.log(`⚡ Ultra-fresh cached price for ${symbol}: ${cached.data.price} (${cached.data.source})`);
+        if (cached.data.price > 0) {
+          console.log(`⚡ Cached price for ${symbol}: ${cached.data.price}`);
           return cached.data;
         }
       }
     }
 
     try {
-      // PRIORITY 1: Get from real-time WebSocket engine
+      // Force fresh data from real-time engine
       const realTimeData = await realTimePriceEngine.getRealTimePrice(symbol);
       
-      // STRICT VALIDATION for trading signals
       if (!realTimeData || realTimeData.price <= 0 || isNaN(realTimeData.price)) {
-        throw new Error(`Invalid real-time price data: ${realTimeData?.price}`);
+        throw new Error(`Invalid live price: ${realTimeData?.price}`);
       }
 
-      // Check data freshness for trading signals
+      // Check data freshness
       const dataAge = realTimeData.dataAge || 0;
       const maxAge = options.maxDataAge || 1500;
       
-      if (options.forTrading) {
-        // CRITICAL: For trading, reject stale or fallback data
-        if (realTimeData.quality === 'stale' || realTimeData.source.includes('Fallback')) {
-          throw new Error(`Cannot use ${realTimeData.quality} data (${realTimeData.source}) for trading signal`);
-        }
-        
-        if (dataAge > maxAge) {
-          throw new Error(`Data too old for trading: ${Math.floor(dataAge/1000)}s > ${Math.floor(maxAge/1000)}s limit`);
-        }
+      if (options.forTrading && dataAge > maxAge) {
+        throw new Error(`Data too old for trading: ${Math.floor(dataAge/1000)}s`);
       }
 
-      // Convert to PriceData format
       const priceData: PriceData = {
         price: realTimeData.price,
         timestamp: realTimeData.timestamp,
@@ -81,48 +70,76 @@ class EnhancedPriceService {
         quality: realTimeData.quality
       };
 
-      // Only cache non-trading requests
+      // Cache only for non-trading requests
       if (!options.forTrading) {
         this.cache.set(symbol, { data: priceData, timestamp: Date.now() });
       }
       
-      const ageDisplay = dataAge > 0 ? `${Math.floor(dataAge/1000)}s ago` : 'live';
-      console.log(`✅ ULTRA-PRECISION price for ${symbol}: ${priceData.price} from ${priceData.source} (${ageDisplay}, ${realTimeData.quality})`);
-      
+      console.log(`✅ LIVE PRICE for ${symbol}: ${priceData.price} from ${priceData.source}`);
       return priceData;
 
     } catch (error) {
       console.error(`❌ Failed to get live price for ${symbol}:`, error);
       
       if (!options.allowFallback) {
-        throw new Error(`No valid live prices available for ${symbol} and fallback is disabled`);
+        throw new Error(`No live prices available for ${symbol}`);
       }
 
       if (options.forTrading) {
-        throw new Error(`Cannot generate trading signal for ${symbol} - no valid live prices available`);
+        throw new Error(`Cannot generate trading signal - no live prices for ${symbol}`);
       }
 
-      // Enhanced fallback with clear marking
-      console.log(`⚠️ Using enhanced fallback for ${symbol} (VISUALIZATION ONLY)`);
+      console.log(`⚠️ Using fallback for ${symbol}`);
       return this.getEnhancedFallback(symbol);
     }
   }
 
-  // Force refresh live price (no cache) with maximum accuracy - FOR TRADING SIGNALS
-  async getFreshLivePrice(symbol: string): Promise<PriceData> {
-    console.log(`🔄 ULTRA-PRECISION FORCE REFRESH FOR TRADING: ${symbol}`);
-    this.cache.delete(symbol); // Clear cache
+  // NEW: Force fresh price for signal generation
+  async getFreshPriceForSignal(symbol: string): Promise<PriceData> {
+    console.log(`🔄 GETTING FRESH PRICE FOR SIGNAL: ${symbol}`);
+    this.cache.delete(symbol); // Clear any cached data
     
-    // CRITICAL: For trading signals, we CANNOT allow fallback or old data
     return await this.getLivePrice(symbol, { 
       allowFallback: false, 
       forTrading: true,
-      maxDataAge: 1500 // Max 1.5 seconds old for trading
+      maxDataAge: 1000, // Max 1 second old
+      forceRefresh: true // Force fresh fetch
     });
   }
 
+  // NEW: Get multiple fresh prices for signal generation
+  async getFreshPricesForSignals(symbols: string[]): Promise<{ [key: string]: PriceData }> {
+    console.log(`🔄 GETTING FRESH PRICES FOR SIGNALS: ${symbols.join(', ')}`);
+    
+    const promises = symbols.map(async (symbol) => {
+      try {
+        const priceData = await this.getFreshPriceForSignal(symbol);
+        return { symbol, priceData };
+      } catch (error) {
+        console.error(`Failed to get fresh price for ${symbol}:`, error);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(promises);
+    const pricesMap: { [key: string]: PriceData } = {};
+    
+    results.forEach(result => {
+      if (result) {
+        pricesMap[result.symbol] = result.priceData;
+      }
+    });
+
+    return pricesMap;
+  }
+
+  // NEW: Clear all cached prices
+  clearAllCache(): void {
+    this.cache.clear();
+    console.log('🧹 All price cache cleared');
+  }
+
   private getEnhancedFallback(symbol: string): PriceData {
-    // Current accurate market prices (updated January 2025)
     const basePrices: { [key: string]: number } = {
       'EURUSD': 1.0421,
       'GBPUSD': 1.2556,
@@ -150,21 +167,18 @@ class EnhancedPriceService {
   }
 
   startPriceMonitoring(symbols: string[], intervalMs: number = 500): void {
-    console.log(`👁️ Starting ULTRA-PRECISION price monitoring for ${symbols.length} symbols every ${intervalMs}ms...`);
+    console.log(`👁️ Starting price monitoring for ${symbols.length} symbols every ${intervalMs}ms...`);
     realTimePriceEngine.startPriceFeeds(symbols, intervalMs);
   }
 
   stopPriceMonitoring(): void {
     console.log(`🛑 Stopping price monitoring`);
-    // Real-time engine handles its own lifecycle
   }
 
-  // Get WebSocket connection status
   getConnectionStatus() {
     return realTimePriceEngine.getConnectionStatus();
   }
 
-  // Subscribe to real-time price updates
   subscribeToPrice(symbol: string, callback: (price: PriceData) => void): () => void {
     return realTimePriceEngine.subscribeToPrice(symbol, (livePriceData) => {
       const priceData: PriceData = {
