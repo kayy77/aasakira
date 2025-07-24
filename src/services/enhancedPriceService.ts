@@ -1,4 +1,3 @@
-
 import { livePriceAPI, PriceResponse } from './livePriceAPI';
 
 interface PriceData {
@@ -53,11 +52,8 @@ class EnhancedPriceService {
         throw new Error(`Invalid live price response: ${liveResponse?.price}`);
       }
 
-      // Map quality types: 'live' -> 'real', others stay the same
-      const mappedQuality = liveResponse.quality === 'live' ? 'real' : liveResponse.quality;
-
       // Check data quality for trading requests
-      if (options.forTrading && mappedQuality === 'stale') {
+      if (options.forTrading && liveResponse.quality === 'stale') {
         throw new Error(`Stale data not acceptable for trading: ${liveResponse.source}`);
       }
 
@@ -66,7 +62,7 @@ class EnhancedPriceService {
         timestamp: liveResponse.timestamp,
         source: liveResponse.source,
         dataAge: Date.now() - liveResponse.timestamp,
-        quality: mappedQuality
+        quality: liveResponse.quality
       };
 
       // Cache only for non-trading requests
