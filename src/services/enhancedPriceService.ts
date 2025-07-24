@@ -19,6 +19,8 @@ class EnhancedPriceService {
   private priceCache: Map<string, PriceData> = new Map();
   private websockets: Map<string, WebSocket> = new Map();
   private priceCallbacks: Map<string, ((price: PriceData) => void)[]> = new Map();
+  private monitoringInterval: NodeJS.Timeout | null = null;
+  private monitoredPairs: string[] = [];
 
   private readonly STALE_THRESHOLD = 10000; // 10 seconds
   private readonly SIGNIFICANT_DIFFERENCE = 0.0005; // 5 pips
@@ -120,6 +122,36 @@ class EnhancedPriceService {
     }
     
     return prices;
+  }
+
+  startPriceMonitoring(pairs: string[], intervalMs: number = 1000): void {
+    console.log(`🔄 Starting price monitoring for ${pairs.length} pairs`);
+    
+    this.monitoredPairs = pairs;
+    
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+    }
+    
+    this.monitoringInterval = setInterval(async () => {
+      for (const pair of this.monitoredPairs) {
+        try {
+          const priceData = await this.getLivePrice(pair);
+          console.log(`📊 Monitoring update ${pair}: ${priceData.price}`);
+        } catch (error) {
+          console.error(`❌ Monitoring failed for ${pair}:`, error);
+        }
+      }
+    }, intervalMs);
+  }
+
+  stopPriceMonitoring(): void {
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
+    }
+    this.monitoredPairs = [];
+    console.log('🛑 Price monitoring stopped');
   }
 
   clearAllCache(): void {
