@@ -3,7 +3,7 @@ interface PriceResponse {
   price: number;
   source: string;
   timestamp: number;
-  quality: 'live' | 'delayed' | 'stale';
+  quality: 'real' | 'delayed' | 'stale';
 }
 
 class LivePriceAPI {
@@ -66,7 +66,7 @@ class LivePriceAPI {
       price: parseFloat(price),
       source: 'Frankfurter (Live)',
       timestamp: Date.now(),
-      quality: 'live'
+      quality: 'real'
     };
   }
 
@@ -88,7 +88,7 @@ class LivePriceAPI {
       price: parseFloat(price),
       source: 'ExchangeRate (Live)',
       timestamp: Date.now(),
-      quality: 'live'
+      quality: 'real'
     };
   }
 
