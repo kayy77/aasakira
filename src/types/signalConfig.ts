@@ -1,3 +1,4 @@
+
 export interface SignalConfig {
   pair: string;
   timeframe: string;
@@ -71,7 +72,7 @@ export interface Signal {
   enhancedValidation?: boolean;
   validationReason?: string;
   qualityScore?: number;
-  signalStrength?: 'ULTRA' | 'STRONG' | 'MEDIUM';
+  signalStrength?: 'ULTRA' | 'STRONG' | 'MEDIUM' | 'STANDARD';
   confluenceScore?: number;
   livePrice?: number;
   spreadToMarket?: number;
@@ -86,7 +87,7 @@ export interface Signal {
   newsRisk?: boolean;
   warning?: string;
   validated?: boolean;
-  risk?: 'Low' | 'Moderate' | 'High' | 'Critical';
+  risk?: 'Low' | 'Medium' | 'High' | 'Critical';
   message?: string;
 }
 

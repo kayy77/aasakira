@@ -47,7 +47,7 @@ class SignalService {
         filtersPassed: eliteSignal.filterBreakdown.passed,
         sessionContext: this.getCurrentSession(),
         sessionActive: true,
-        signalStrength: eliteSignal.signalStrength,
+        signalStrength: eliteSignal.signalStrength === 'STANDARD' ? 'MEDIUM' : eliteSignal.signalStrength,
         confluenceScore: eliteSignal.filtersScore,
         livePrice: parseFloat(eliteSignal.livePrice),
         origin: {
@@ -112,4 +112,4 @@ class SignalService {
 }
 
 export const signalService = new SignalService();
-export { Signal };
+export type { Signal };
