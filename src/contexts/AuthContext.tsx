@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -138,7 +139,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       options: {
         emailRedirectTo: `${window.location.origin}/`,
         data: {
-          email_confirm: false
+          email_confirm: false // Disable email confirmation requirement
         }
       }
     });
@@ -146,7 +147,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     toast({
       title: "Account created!",
-      description: "You can now start using AASAKIRA immediately.",
+      description: "Welcome to AASAKIRA! You can start using all features immediately.",
     });
   };
 

@@ -43,9 +43,10 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
       if (isSignUp) {
         await signUp(email, password);
         toast({
-          title: "Welcome!",
-          description: "Your account has been created successfully. Please check your email for confirmation.",
+          title: "Welcome to AASAKIRA!",
+          description: "Your account has been created successfully. You can start using all features immediately.",
         });
+        onOpenChange(false);
       } else {
         await signIn(username, password);
         toast({
@@ -188,7 +189,7 @@ const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
           </div>
 
           <div className="mt-4 text-xs text-center text-gray-500">
-            Demo: Use any email/password combination to test the system
+            {isSignUp ? 'Instant access - no email confirmation required!' : 'Demo: Use any email/password combination to test the system'}
           </div>
         </div>
       </DialogContent>
