@@ -18,7 +18,7 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, signup } = useAuth();
+  const { signIn, signUp } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,13 +27,13 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
 
     try {
       if (isLogin) {
-        await login(email, password);
+        await signIn(email, password);
         toast({
           title: "Welcome back!",
           description: "Successfully signed in.",
         });
       } else {
-        await signup(email, password);
+        await signUp(email, password);
         toast({
           title: "Account created!",
           description: "Welcome to AASAKIRA! You can start using all features immediately.",
@@ -45,7 +45,6 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
     } catch (error: any) {
       console.error('Auth error:', error);
       
-      // Handle specific auth errors
       if (error.message?.includes('Invalid login credentials')) {
         toast({
           title: "Login failed",
@@ -56,13 +55,6 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
         toast({
           title: "Account exists",
           description: "This email is already registered. Please sign in instead.",
-          variant: "destructive",
-        });
-      } else if (error.message?.includes('Email not confirmed')) {
-        // This should not happen with our setup, but handle it anyway
-        toast({
-          title: "Account issue",
-          description: "There was an issue with your account. Please try signing up again.",
           variant: "destructive",
         });
       } else {
@@ -84,8 +76,8 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
         <DialogHeader>
-          <DialogTitle className="text-white">
-            {isLogin ? 'Sign In' : 'Create Account'}
+          <DialogTitle className="text-white text-center">
+            {isLogin ? 'Sign In to AASAKIRA' : 'Create Your Account'}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -97,7 +89,7 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="bg-gray-800 border-gray-600 text-white"
+              className="bg-gray-800 border-gray-600 text-white focus:border-purple-500"
               placeholder="Enter your email"
             />
           </div>
@@ -109,7 +101,7 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="bg-gray-800 border-gray-600 text-white"
+              className="bg-gray-800 border-gray-600 text-white focus:border-purple-500"
               placeholder="Enter your password"
               minLength={6}
             />
@@ -117,8 +109,8 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
           
           {!isLogin && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-              <p className="text-green-400 text-sm">
-                ✅ No email confirmation required! You can start using all features immediately after signup.
+              <p className="text-green-400 text-sm text-center">
+                ✅ No email confirmation required! Start trading immediately after signup.
               </p>
             </div>
           )}
@@ -126,7 +118,7 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 text-lg font-semibold"
           >
             {loading ? (
               <>
@@ -138,14 +130,16 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
             )}
           </Button>
           
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setIsLogin(!isLogin)}
-            className="w-full text-gray-400 hover:text-white"
-          >
-            {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-          </Button>
+          <div className="text-center">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-gray-400 hover:text-white"
+            >
+              {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

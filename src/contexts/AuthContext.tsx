@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -133,11 +134,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string) => {
     // COMPLETELY DISABLE EMAIL CONFIRMATION
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: undefined, // No redirect needed
         data: {
           email_confirm: false // Explicitly disable email confirmation
         }
@@ -146,9 +147,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     if (error) throw error;
     
+    // Store email for private email list
+    if (data.user) {
+      try {
+        await supabase.from('user_activities').insert({
+          user_id: data.user.id,
+          activity_type: 'signup',
+          data: { email, signup_date: new Date().toISOString() }
+        });
+      } catch (err) {
+        console.error('Failed to store signup activity:', err);
+      }
+    }
+    
     toast({
       title: "Account created successfully!",
-      description: "Welcome to AASAKIRA! You can start using all features immediately - no email confirmation required.",
+      description: "Welcome to AASAKIRA! You can start using all features immediately.",
     });
   };
 
@@ -163,7 +177,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/`
+    });
     if (error) throw error;
     
     toast({
@@ -190,7 +206,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const upgradeToPremium = async () => {
-    // This will be handled by the Stripe integration
     toast({
       title: "Upgrade to Premium",
       description: "Redirecting to payment...",
@@ -207,7 +222,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const currentUsage = user[usageKey] || 0;
     const hasReachedLimit = currentUsage >= DAILY_LIMITS[feature];
     
-    // Show more aggressive prompts for free users
     if (hasReachedLimit) {
       toast({
         title: "Daily Limit Reached!",
@@ -237,7 +251,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const getRemainingUsage = (feature: 'signals' | 'memeScans' | 'mentorMessages'): number => {
     if (!user) return 0;
-    if (user.role === 'premium') return 999; // Unlimited for premium
+    if (user.role === 'premium') return 999;
 
     const usageKey = feature === 'signals' ? 'aiSignalsUsedToday' : 
                     feature === 'memeScans' ? 'memeScansUsedToday' : 'mentorMessagesUsedToday';
