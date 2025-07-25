@@ -26,9 +26,9 @@ class LivePriceAPI {
   ];
 
   async fetchLivePrice(symbol: string): Promise<PriceResponse> {
-    console.log(`🔄 Fetching live price for ${symbol}...`);
+    console.log(`🔥 FETCHING LIVE PRICE for ${symbol} with cache-busting`);
     
-    // Try each API in order of priority
+    // Try each API in order of priority with cache-busting
     for (const api of this.APIs) {
       try {
         const result = await api.fetch(symbol);
@@ -53,7 +53,16 @@ class LivePriceAPI {
     if (!pairs) return null;
 
     const { base, quote } = pairs;
-    const response = await fetch(`https://api.frankfurter.app/latest?from=${base}&to=${quote}`);
+    
+    // Add cache-busting parameters
+    const cacheBuster = `?_=${Date.now()}&random=${Math.random()}`;
+    const response = await fetch(`https://api.frankfurter.app/latest?from=${base}&to=${quote}${cacheBuster}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
     
     if (!response.ok) return null;
     
@@ -75,7 +84,14 @@ class LivePriceAPI {
     if (!pairs) return null;
 
     const { base, quote } = pairs;
-    const response = await fetch(`https://api.exchangerate.host/convert?from=${base}&to=${quote}`);
+    
+    const cacheBuster = `?_=${Date.now()}`;
+    const response = await fetch(`https://api.exchangerate.host/convert?from=${base}&to=${quote}${cacheBuster}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
     
     if (!response.ok) return null;
     
@@ -109,7 +125,7 @@ class LivePriceAPI {
     };
 
     const basePrice = fallbackPrices[symbol] || 1.0000;
-    const variation = (Math.random() - 0.5) * 0.01; // ±0.5% variation
+    const variation = (Math.random() - 0.5) * 0.005; // Reduced variation for more realistic fallback
     const price = basePrice * (1 + variation);
 
     return {

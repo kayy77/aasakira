@@ -1,3 +1,4 @@
+
 import { Signal } from '@/types/signalConfig';
 import { EliteSignalEngine } from './eliteSignalEngine';
 import { enhancedPriceService } from './enhancedPriceService';
@@ -14,7 +15,7 @@ class SignalService {
       console.log('🎯 SignalService: Generating live signal with ULTRA-FRESH prices...');
       
       // CRITICAL: Clear ALL cached prices before generating signal
-      enhancedPriceService.clearCache(); // Fixed method name
+      enhancedPriceService.clearCache();
       
       // Pre-fetch fresh prices for major pairs to warm up the system
       const majorPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
@@ -39,7 +40,7 @@ class SignalService {
       let finalLivePrice = parseFloat(eliteSignal.livePrice);
       
       try {
-        console.log(`🔄 Getting ULTRA-FRESH price for signal pair: ${eliteSignal.pair}`);
+        console.log(`🔥 Getting ULTRA-FRESH price for signal pair: ${eliteSignal.pair}`);
         
         // Force completely fresh fetch - no cache, no fallback
         const ultraFreshPrice = await enhancedPriceService.getFreshPriceForSignal(eliteSignal.pair);
@@ -53,6 +54,13 @@ class SignalService {
           console.warn(`⚠️ Price might be stale: ${Math.floor(dataAge/1000)}s old`);
         }
         
+        // Log price comparison for debugging
+        const originalPrice = parseFloat(eliteSignal.livePrice);
+        const priceDiff = Math.abs(finalLivePrice - originalPrice);
+        const pips = eliteSignal.pair.includes('JPY') ? priceDiff * 100 : priceDiff * 10000;
+        
+        console.log(`📊 Price comparison: Original=${originalPrice}, Fresh=${finalLivePrice}, Diff=${pips.toFixed(1)} pips`);
+        
       } catch (error) {
         console.error(`❌ Failed to get ultra-fresh price for ${eliteSignal.pair}:`, error);
         return null; // Don't generate signal with stale price
@@ -63,8 +71,8 @@ class SignalService {
         id: eliteSignal.id,
         pair: eliteSignal.pair,
         type: eliteSignal.type,
-        entry: parseFloat(eliteSignal.entry),
-        entryPrice: parseFloat(eliteSignal.entry),
+        entry: finalLivePrice, // Use the ultra-fresh price
+        entryPrice: finalLivePrice,
         stopLoss: parseFloat(eliteSignal.stopLoss),
         takeProfit: parseFloat(eliteSignal.takeProfit),
         confidence: eliteSignal.confidence,
@@ -83,7 +91,7 @@ class SignalService {
         signalStrength: eliteSignal.signalStrength === 'STANDARD' ? 'MEDIUM' : eliteSignal.signalStrength as 'MEDIUM' | 'ULTRA' | 'STRONG',
         confluenceScore: eliteSignal.filtersScore,
         livePrice: finalLivePrice, // ULTRA-FRESH LIVE PRICE
-        spreadToMarket: this.calculateSpreadToMarket(parseFloat(eliteSignal.entry), finalLivePrice),
+        spreadToMarket: this.calculateSpreadToMarket(finalLivePrice, finalLivePrice), // No spread since using live price
         risk: eliteSignal.filterBreakdown.riskLevel as 'Low' | 'Medium' | 'High' | 'Critical',
         origin: {
           institutional: eliteSignal.strategy === 'LIQUIDITY_SWEEP',
