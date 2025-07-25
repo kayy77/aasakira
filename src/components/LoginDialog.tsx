@@ -1,197 +1,152 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, User, Lock, Eye, EyeOff, Loader } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 interface LoginDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
 }
 
-const LoginDialog = ({ open, onOpenChange }: LoginDialogProps) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const { signIn, signUp, isLoading } = useAuth();
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login, signup } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!username || !password || (isSignUp && !email)) {
-      toast({
-        title: "Missing Information",
-        description: isSignUp ? "Please fill in all fields" : "Please enter both username and password",
-        variant: "destructive"
-      });
-      return;
-    }
+    setLoading(true);
 
     try {
-      if (isSignUp) {
-        await signUp(email, password);
-        toast({
-          title: "Welcome to AASAKIRA!",
-          description: "Your account has been created successfully. You can start using all features immediately.",
-        });
-        onOpenChange(false);
-      } else {
-        await signIn(username, password);
+      if (isLogin) {
+        await login(email, password);
         toast({
           title: "Welcome back!",
-          description: "You've successfully logged in to AASAKIRA",
+          description: "Successfully signed in.",
         });
-        onOpenChange(false);
+      } else {
+        await signup(email, password);
+        toast({
+          title: "Account created!",
+          description: "Welcome to AASAKIRA! You can start using all features immediately.",
+        });
       }
+      setIsOpen(false);
+      setEmail('');
+      setPassword('');
     } catch (error: any) {
-      toast({
-        title: isSignUp ? "Signup Failed" : "Login Failed",
-        description: error.message || "An error occurred",
-        variant: "destructive"
-      });
+      console.error('Auth error:', error);
+      
+      // Handle specific auth errors
+      if (error.message?.includes('Invalid login credentials')) {
+        toast({
+          title: "Login failed",
+          description: "Invalid email or password. Please try again.",
+          variant: "destructive",
+        });
+      } else if (error.message?.includes('User already registered')) {
+        toast({
+          title: "Account exists",
+          description: "This email is already registered. Please sign in instead.",
+          variant: "destructive",
+        });
+      } else if (error.message?.includes('Email not confirmed')) {
+        // This should not happen with our setup, but handle it anyway
+        toast({
+          title: "Account issue",
+          description: "There was an issue with your account. Please try signing up again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: isLogin ? "Login failed" : "Signup failed",
+          description: error.message || "An unexpected error occurred. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const resetForm = () => {
-    setUsername('');
-    setPassword('');
-    setEmail('');
-    setShowPassword(false);
-  };
-
-  const toggleMode = () => {
-    setIsSignUp(!isSignUp);
-    resetForm();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md glass-card border-purple-500/20 p-0">
-        <div className="p-6">
-          <DialogHeader className="space-y-4">
-            <div className="text-center space-y-2">
-              <DialogTitle className="text-2xl font-bold text-white">
-                {isSignUp ? 'Join AASAKIRA' : 'Welcome to AASAKIRA'}
-              </DialogTitle>
-              <p className="text-gray-400">
-                {isSignUp ? 'Create your account to access professional trading tools' : 'Sign in to access professional trading tools'}
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
+        <DialogHeader>
+          <DialogTitle className="text-white">
+            {isLogin ? 'Sign In' : 'Create Account'}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-gray-300">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="bg-gray-800 border-gray-600 text-white"
+              placeholder="Enter your email"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-gray-300">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="bg-gray-800 border-gray-600 text-white"
+              placeholder="Enter your password"
+              minLength={6}
+            />
+          </div>
+          
+          {!isLogin && (
+            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+              <p className="text-green-400 text-sm">
+                ✅ No email confirmation required! You can start using all features immediately after signup.
               </p>
             </div>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-            {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-300">Email</Label>
-                <div className="relative">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pr-10"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
+          )}
+          
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isLogin ? 'Signing In...' : 'Creating Account...'}
+              </>
+            ) : (
+              isLogin ? 'Sign In' : 'Create Account'
             )}
-
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-gray-300">
-                {isSignUp ? 'Username' : 'Email'}
-              </Label>
-              <div className="relative">
-                <Input
-                  id="username"
-                  type={isSignUp ? "text" : "email"}
-                  placeholder={isSignUp ? "Enter your username" : "Enter your email"}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pr-10"
-                  disabled={isLoading}
-                />
-                <User className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-300">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pr-10"
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-300"
-                  disabled={isLoading}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <Button 
-              type="submit"
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 cyber-glow"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  {isSignUp ? 'Creating Account...' : 'Signing In...'}
-                </>
-              ) : (
-                isSignUp ? 'Create Account' : 'Sign In'
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-gray-400 text-sm">
-              Professional trading signals with AI-powered market analysis
-            </p>
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-gray-700">
-            <div className="text-center space-y-2">
-              <p className="text-sm text-gray-400">
-                {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-              </p>
-              <Button 
-                variant="outline" 
-                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-                disabled={isLoading}
-                onClick={toggleMode}
-              >
-                {isSignUp ? 'Sign In' : 'Sign Up'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-4 text-xs text-center text-gray-500">
-            {isSignUp ? 'Instant access - no email confirmation required!' : 'Demo: Use any email/password combination to test the system'}
-          </div>
-        </div>
+          </Button>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setIsLogin(!isLogin)}
+            className="w-full text-gray-400 hover:text-white"
+          >
+            {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+          </Button>
+        </form>
       </DialogContent>
     </Dialog>
   );

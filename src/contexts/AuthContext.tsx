@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -133,21 +132,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string) => {
+    // COMPLETELY DISABLE EMAIL CONFIRMATION
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
         data: {
-          email_confirm: false // Disable email confirmation requirement
+          email_confirm: false // Explicitly disable email confirmation
         }
       }
     });
+    
     if (error) throw error;
     
     toast({
-      title: "Account created!",
-      description: "Welcome to AASAKIRA! You can start using all features immediately.",
+      title: "Account created successfully!",
+      description: "Welcome to AASAKIRA! You can start using all features immediately - no email confirmation required.",
     });
   };
 
