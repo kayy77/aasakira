@@ -3,6 +3,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Signal } from '@/types/signalConfig';
 import { 
   Activity, 
   Target, 
@@ -17,27 +18,10 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-interface Signal {
-  id: number;
-  pair: string;
-  type: 'BUY' | 'SELL';
-  confidence: number;
-  entry: number;
-  stopLoss: number;
-  takeProfit: number;
-  status: 'active' | 'monitoring' | 'confirmed' | 'completed';
-  timestamp: string;
-  analysis: string;
-  timeframe: string;
-  risk: 'Low' | 'Medium' | 'High';
-  reason: string;
-  pips?: number;
-}
-
 interface SignalCardProps {
   signal: Signal;
   onTakeSignal?: (signal: Signal) => void;
-  onRemoveSignal?: (signalId: number) => void;
+  onRemoveSignal?: (signalId: string) => void;
   onShareSignal?: (signal: Signal) => void;
 }
 
@@ -47,14 +31,10 @@ export const SignalCard: React.FC<SignalCardProps> = ({
   onRemoveSignal,
   onShareSignal 
 }) => {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500/20 border-green-500/30 text-green-400';
-      case 'monitoring': return 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400';
-      case 'confirmed': return 'bg-blue-500/20 border-blue-500/30 text-blue-400';
-      case 'completed': return 'bg-purple-500/20 border-purple-500/30 text-purple-400';
-      default: return 'bg-red-500/20 border-red-500/30 text-red-400';
-    }
+  const getStatusColor = (sessionActive: boolean | undefined) => {
+    return sessionActive 
+      ? 'bg-green-500/20 border-green-500/30 text-green-400'
+      : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400';
   };
 
   const getRiskColor = (risk: string) => {
@@ -62,6 +42,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({
       case 'Low': return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'Medium': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
       case 'High': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'Critical': return 'bg-red-600/20 text-red-500 border-red-600/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };
@@ -75,13 +56,16 @@ export const SignalCard: React.FC<SignalCardProps> = ({
   };
 
   const calculateRR = () => {
+    if (signal.riskReward) {
+      return signal.riskReward.toFixed(1);
+    }
     const risk = Math.abs(signal.entry - signal.stopLoss);
     const reward = Math.abs(signal.takeProfit - signal.entry);
     return (reward / risk).toFixed(1);
   };
 
   const getRiskWarning = () => {
-    if (signal.risk === 'High') {
+    if (signal.risk === 'High' || signal.risk === 'Critical') {
       return "⚠️ High Risk Signal - Consider reducing position size";
     }
     if (signal.risk === 'Medium') {
@@ -122,12 +106,17 @@ export const SignalCard: React.FC<SignalCardProps> = ({
               <Badge className={signal.type === 'BUY' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}>
                 {signal.type}
               </Badge>
-              <Badge className={getStatusColor(signal.status)}>
-                {signal.status.toUpperCase()}
+              <Badge className={getStatusColor(signal.sessionActive)}>
+                {signal.sessionActive ? 'ACTIVE' : 'MONITORING'}
               </Badge>
               <Badge className="bg-gray-500/20 text-gray-300 text-xs">
                 {signal.timeframe}
               </Badge>
+              {signal.signalStrength && (
+                <Badge className="bg-purple-500/20 text-purple-400 text-xs">
+                  {signal.signalStrength}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -159,21 +148,21 @@ export const SignalCard: React.FC<SignalCardProps> = ({
             <Target className="w-4 h-4 text-blue-400" />
             <span className="text-xs font-medium text-blue-400">Entry</span>
           </div>
-          <div className="text-lg font-bold text-white font-mono">{signal.entry}</div>
+          <div className="text-lg font-bold text-white font-mono">{signal.entry.toFixed(5)}</div>
         </div>
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center">
           <div className="flex items-center justify-center space-x-1 mb-2">
             <AlertCircle className="w-4 h-4 text-red-400" />
             <span className="text-xs font-medium text-red-400">Stop</span>
           </div>
-          <div className="text-lg font-bold text-white font-mono">{signal.stopLoss}</div>
+          <div className="text-lg font-bold text-white font-mono">{signal.stopLoss.toFixed(5)}</div>
         </div>
         <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-center">
           <div className="flex items-center justify-center space-x-1 mb-2">
             <DollarSign className="w-4 h-4 text-green-400" />
             <span className="text-xs font-medium text-green-400">Target</span>
           </div>
-          <div className="text-lg font-bold text-white font-mono">{signal.takeProfit}</div>
+          <div className="text-lg font-bold text-white font-mono">{signal.takeProfit.toFixed(5)}</div>
         </div>
         <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 text-center">
           <div className="flex items-center justify-center space-x-1 mb-2">
@@ -185,12 +174,14 @@ export const SignalCard: React.FC<SignalCardProps> = ({
       </div>
 
       {/* Risk Level */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-gray-400 text-sm">Risk Level:</span>
-        <Badge className={getRiskColor(signal.risk)}>
-          {signal.risk} Risk
-        </Badge>
-      </div>
+      {signal.risk && (
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-gray-400 text-sm">Risk Level:</span>
+          <Badge className={getRiskColor(signal.risk)}>
+            {signal.risk} Risk
+          </Badge>
+        </div>
+      )}
 
       {/* AI Analysis */}
       <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-lg p-4 mb-4">
@@ -199,10 +190,26 @@ export const SignalCard: React.FC<SignalCardProps> = ({
           <span className="text-purple-400 font-semibold">AI Analysis</span>
         </div>
         <p className="text-gray-300 text-sm leading-relaxed mb-3">{signal.analysis}</p>
-        <div className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-2 rounded border border-yellow-500/20">
-          <strong>Reason:</strong> {signal.reason}
-        </div>
+        {signal.entryReason && (
+          <div className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-2 rounded border border-yellow-500/20">
+            <strong>Reason:</strong> {signal.entryReason}
+          </div>
+        )}
       </div>
+
+      {/* Filters Passed */}
+      {signal.filtersPassed && signal.filtersPassed.length > 0 && (
+        <div className="mb-4">
+          <div className="text-xs text-gray-400 mb-2">Filters Passed:</div>
+          <div className="flex flex-wrap gap-1">
+            {signal.filtersPassed.map((filter, index) => (
+              <Badge key={index} className="bg-green-500/20 text-green-400 text-xs">
+                ✓ {filter}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="grid grid-cols-2 gap-3">
