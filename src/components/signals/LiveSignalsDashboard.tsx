@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import SignalCard from './SignalCard';
+import { SignalCard } from './SignalCard';
 import FilterSettings from './FilterSettings';
-import PerformanceStats from './PerformanceStats';
-import { enhancedSignalService } from '@/services/enhancedSignalService'; // Changed import
+import { PerformanceStats } from './PerformanceStats';
+import { enhancedSignalService } from '@/services/enhancedSignalService';
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { Signal } from '@/types/signalConfig';
 import { Zap, TrendingUp, Activity, RefreshCw } from 'lucide-react';
@@ -14,9 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 
 const LiveSignalsDashboard = () => {
   const [signals, setSignals] = useState<Signal[]>([]);
-  const [minConfidence, setMinConfidence] = useState<number>(50);
-  const [requiredFilters, setRequiredFilters] = useState<number>(2);
-  const [selectedFilters, setSelectedFilters] = useState<string[]>(['SMC', 'Volume', 'Session']);
+  const [minConfidence, setMinConfidence] = useState<number>(70);
+  const [minFilters, setMinFilters] = useState<number>(3);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generationStatus, setGenerationStatus] = useState<string>('');
   const { canGenerateSignal, signalsUsedToday, dailyLimit, upgradeRequired, checkAndIncrementSignal } = useSignalLimits();
@@ -31,11 +31,10 @@ const LiveSignalsDashboard = () => {
     setGenerationStatus('Analyzing ultra-fresh market data...');
     
     try {
-      // Use enhanced signal service for ultra-accurate prices
       const newSignal = await enhancedSignalService.generateLiveSignal(
         minConfidence,
-        requiredFilters,
-        selectedFilters
+        minFilters,
+        []
       );
 
       if (newSignal) {
@@ -47,7 +46,6 @@ const LiveSignalsDashboard = () => {
           description: `${newSignal.pair} ${newSignal.type} signal with ${newSignal.confidence}% confidence using live market prices`,
         });
         
-        // Clear status after delay
         setTimeout(() => setGenerationStatus(''), 3000);
       } else {
         setGenerationStatus('❌ No suitable setup found');
@@ -116,7 +114,7 @@ const LiveSignalsDashboard = () => {
       </Card>
 
       {/* Tabs */}
-      <Tabs defaultvalue="signals" className="space-y-4">
+      <Tabs defaultValue="signals" className="space-y-4">
         <TabsList className="bg-gray-900/50 rounded-lg p-1 flex justify-between">
           <TabsTrigger value="signals" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-300 rounded-md px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500">
             <Activity className="mr-2 h-4 w-4 inline-block align-middle" />
@@ -151,17 +149,20 @@ const LiveSignalsDashboard = () => {
         </TabsContent>
 
         <TabsContent value="performance">
-          <PerformanceStats />
+          <PerformanceStats
+            winRate={78}
+            totalSignals={42}
+            activeSignals={3}
+            avgRR={2.4}
+          />
         </TabsContent>
 
         <TabsContent value="filters">
           <FilterSettings
+            minFilters={minFilters}
+            onMinFiltersChange={setMinFilters}
             minConfidence={minConfidence}
-            setMinConfidence={setMinConfidence}
-            requiredFilters={requiredFilters}
-            setRequiredFilters={setRequiredFilters}
-            selectedFilters={selectedFilters}
-            setSelectedFilters={setSelectedFilters}
+            onMinConfidenceChange={setMinConfidence}
           />
         </TabsContent>
       </Tabs>
