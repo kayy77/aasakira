@@ -133,21 +133,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string) => {
     try {
-      // Sign up with minimal options - no complex data
+      // Fix 404 error by setting proper redirect URL
+      const redirectUrl = `${window.location.origin}/dashboard`;
+      
       const { data, error } = await supabase.auth.signUp({
         email,
-        password
+        password,
+        options: {
+          emailRedirectTo: redirectUrl
+        }
       });
       
       if (error) throw error;
       
-      // Success toast immediately - don't wait for activity logging
+      // Success toast immediately
       toast({
         title: "Account created successfully!",
         description: "Welcome to AASAKIRA! You can start using all features immediately.",
       });
 
-      // Try to log activity but don't fail signup if this fails
+      // Optional activity logging (non-blocking)
       if (data.user) {
         setTimeout(async () => {
           try {

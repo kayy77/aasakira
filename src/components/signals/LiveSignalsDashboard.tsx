@@ -23,7 +23,12 @@ const LiveSignalsDashboard = () => {
   const { toast } = useToast();
 
   const generateNewSignal = async () => {
+    console.log("🔥 GENERATE BUTTON CLICKED - Starting signal generation...");
+    console.log("Current state:", { canGenerateSignal, upgradeRequired, isGenerating });
+    console.log("Settings:", { minConfidence, minFilters });
+    
     if (!checkAndIncrementSignal()) {
+      console.log("❌ checkAndIncrementSignal returned false");
       return;
     }
 
@@ -31,14 +36,31 @@ const LiveSignalsDashboard = () => {
     setGenerationStatus('Analyzing ultra-fresh market data...');
     
     try {
+      console.log("🎯 Calling enhancedSignalService.generateLiveSignal...");
+      
       const newSignal = await enhancedSignalService.generateLiveSignal(
         minConfidence,
         minFilters,
-        []
+        ['SMC', 'Volume', 'Session']
       );
 
+      console.log("📊 Signal generation result:", newSignal);
+
       if (newSignal) {
-        setSignals(prev => [newSignal, ...prev.slice(0, 9)]);
+        console.log("✅ New signal generated successfully:", {
+          pair: newSignal.pair,
+          type: newSignal.type,
+          confidence: newSignal.confidence,
+          entry: newSignal.entry,
+          livePrice: newSignal.livePrice
+        });
+        
+        setSignals(prev => {
+          const updated = [newSignal, ...prev.slice(0, 9)];
+          console.log("📈 Updated signals array length:", updated.length);
+          return updated;
+        });
+        
         setGenerationStatus('✅ Ultra-accurate signal generated!');
         
         toast({
@@ -48,22 +70,45 @@ const LiveSignalsDashboard = () => {
         
         setTimeout(() => setGenerationStatus(''), 3000);
       } else {
+        console.log("❌ No signal returned from service");
         setGenerationStatus('❌ No suitable setup found');
+        
+        toast({
+          title: "No Signal Generated",
+          description: "Market conditions don't meet the current filter criteria. Try adjusting your settings.",
+          variant: "destructive"
+        });
+        
         setTimeout(() => setGenerationStatus(''), 3000);
       }
     } catch (error) {
-      console.error('Signal generation error:', error);
+      console.error('❌ Signal generation error:', error);
       setGenerationStatus('❌ Generation failed');
+      
+      toast({
+        title: "Generation Failed",
+        description: "Unable to generate signal. Please try again.",
+        variant: "destructive"
+      });
+      
       setTimeout(() => setGenerationStatus(''), 3000);
     } finally {
       setIsGenerating(false);
+      console.log("🏁 Signal generation process completed");
     }
   };
 
   useEffect(() => {
+    console.log("🔄 Loading initial signals...");
     const initialSignals = enhancedSignalService.getSignals();
+    console.log("📊 Initial signals loaded:", initialSignals.length);
     setSignals(initialSignals);
   }, []);
+
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log("📊 Signals state updated:", signals.length, "signals");
+  }, [signals]);
 
   return (
     <div className="space-y-6">
@@ -118,7 +163,7 @@ const LiveSignalsDashboard = () => {
         <TabsList className="bg-gray-900/50 rounded-lg p-1 flex justify-between">
           <TabsTrigger value="signals" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-300 rounded-md px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500">
             <Activity className="mr-2 h-4 w-4 inline-block align-middle" />
-            Live Signals
+            Live Signals ({signals.length})
           </TabsTrigger>
           <TabsTrigger value="performance" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-300 rounded-md px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500">
             <TrendingUp className="mr-2 h-4 w-4 inline-block align-middle" />
@@ -141,8 +186,15 @@ const LiveSignalsDashboard = () => {
             </div>
           ) : (
             <Card className="glass-card">
-              <CardContent className="text-center text-gray-400">
-                No signals generated yet. Click "Generate New Signal" to get started!
+              <CardContent className="text-center text-gray-400 py-8">
+                <Zap className="mx-auto h-12 w-12 text-gray-500 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Signals Yet</h3>
+                <p className="mb-4">Click "Generate New Signal" to get started with AI-powered trading signals!</p>
+                {!canGenerateSignal && (
+                  <Badge variant="outline" className="text-yellow-400 border-yellow-500/30">
+                    Daily limit reached - Upgrade for unlimited signals
+                  </Badge>
+                )}
               </CardContent>
             </Card>
           )}
@@ -151,8 +203,8 @@ const LiveSignalsDashboard = () => {
         <TabsContent value="performance">
           <PerformanceStats
             winRate={78}
-            totalSignals={42}
-            activeSignals={3}
+            totalSignals={signals.length}
+            activeSignals={signals.filter(s => s.sessionActive).length}
             avgRR={2.4}
           />
         </TabsContent>
