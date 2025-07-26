@@ -1,6 +1,6 @@
 import { Signal } from '@/types/signalConfig';
 import { EliteSignalEngine } from './eliteSignalEngine';
-import { enhancedPriceService } from './enhancedPriceService';
+import { ultraLivePriceService } from './ultraLivePriceService';
 
 class EnhancedSignalService {
   private signals: Signal[] = [];
@@ -11,19 +11,12 @@ class EnhancedSignalService {
     selectedFilters: string[] = ['SMC', 'Volume', 'Session']
   ): Promise<Signal | null> {
     try {
-      console.log('🎯 Enhanced Signal Service: Generating live signal...');
+      console.log('🎯 Enhanced Signal Service: Generating signal with ULTRA-ACCURATE prices...');
       
-      // CRITICAL: Clear ALL cached prices before generating signal
-      enhancedPriceService.clearCache();
+      // Clear any cached prices
+      ultraLivePriceService.clearCache();
       
-      // Get ultra-fresh prices for major pairs
-      const majorPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
-      console.log('🔄 Pre-fetching ultra-fresh prices...');
-      
-      const freshPrices = await enhancedPriceService.getFreshPricesForSignals(majorPairs);
-      console.log(`✅ Pre-fetched fresh prices for ${Object.keys(freshPrices).length} pairs`);
-      
-      // Generate signal with fresh data
+      // Generate signal with elite engine
       const eliteSignal = await EliteSignalEngine.generateEliteSignal(
         userMinConfidence,
         requiredFilters,
@@ -35,37 +28,37 @@ class EnhancedSignalService {
         return null;
       }
       
-      // Get ULTRA-FRESH price for the signal pair - FIXED: Remove invalid 'forTrading' property
+      // Get ULTRA-ACCURATE live price for the signal pair
       let finalLivePrice = parseFloat(eliteSignal.livePrice);
       
       try {
-        console.log(`🔥 Getting ultra-fresh price for signal pair: ${eliteSignal.pair}`);
+        console.log(`🔥 Getting ULTRA-ACCURATE price for signal pair: ${eliteSignal.pair}`);
         
-        // Force completely fresh fetch with proper options
-        const ultraFreshPrice = await enhancedPriceService.getLivePrice(eliteSignal.pair, { forceRefresh: true });
+        const ultraFreshPrice = await ultraLivePriceService.getUltraFreshPrice(eliteSignal.pair);
         finalLivePrice = ultraFreshPrice.price;
         
-        console.log(`✅ Ultra-fresh price for ${eliteSignal.pair}: ${finalLivePrice} (${ultraFreshPrice.source})`);
+        console.log(`✅ ULTRA-ACCURATE price for ${eliteSignal.pair}: ${finalLivePrice} (${ultraFreshPrice.source})`);
+        console.log(`📊 Data age: ${ultraFreshPrice.dataAge}ms, Accuracy: ${ultraFreshPrice.accuracy}`);
         
-        // Validate freshness
-        const dataAge = ultraFreshPrice.dataAge || 0;
-        if (dataAge > 5000) {
-          console.warn(`⚠️ Price might be stale: ${Math.floor(dataAge/1000)}s old`);
-        }
-        
-        // Log price comparison
+        // Log price comparison for debugging
         const originalPrice = parseFloat(eliteSignal.livePrice);
         const priceDiff = Math.abs(finalLivePrice - originalPrice);
         const pips = eliteSignal.pair.includes('JPY') ? priceDiff * 100 : priceDiff * 10000;
         
-        console.log(`📊 Price comparison: Original=${originalPrice}, Fresh=${finalLivePrice}, Diff=${pips.toFixed(1)} pips`);
+        console.log(`📊 Price comparison: Original=${originalPrice}, Ultra-Fresh=${finalLivePrice}, Diff=${pips.toFixed(1)} pips`);
+        
+        // Reject signal if price difference is too high (indicates stale data)
+        if (pips > 20) {
+          console.warn(`⚠️ High price difference detected (${pips.toFixed(1)} pips) - regenerating signal`);
+          return null;
+        }
         
       } catch (error) {
-        console.error(`❌ Failed to get ultra-fresh price for ${eliteSignal.pair}:`, error);
+        console.error(`❌ Failed to get ultra-accurate price for ${eliteSignal.pair}:`, error);
         return null;
       }
       
-      // Convert to Signal format with LIVE price
+      // Convert to Signal format with ULTRA-ACCURATE price
       const signal: Signal = {
         id: eliteSignal.id,
         pair: eliteSignal.pair,
@@ -90,7 +83,7 @@ class EnhancedSignalService {
         signalStrength: eliteSignal.signalStrength === 'STANDARD' ? 'MEDIUM' : eliteSignal.signalStrength as 'MEDIUM' | 'ULTRA' | 'STRONG',
         confluenceScore: eliteSignal.filtersScore,
         livePrice: finalLivePrice,
-        spreadToMarket: this.calculateSpreadToMarket(finalLivePrice, finalLivePrice),
+        spreadToMarket: 0, // Using live price directly
         risk: eliteSignal.filterBreakdown.riskLevel as 'Low' | 'Medium' | 'High' | 'Critical',
         origin: {
           institutional: eliteSignal.strategy === 'LIQUIDITY_SWEEP',
@@ -110,7 +103,7 @@ class EnhancedSignalService {
         this.signals = this.signals.slice(0, 10);
       }
       
-      console.log(`✅ ULTRA-FRESH SIGNAL: ${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice}`);
+      console.log(`✅ ULTRA-ACCURATE SIGNAL: ${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice}`);
       return signal;
       
     } catch (error) {
@@ -119,12 +112,6 @@ class EnhancedSignalService {
     }
   }
 
-  private calculateSpreadToMarket(entryPrice: number, livePrice: number): number {
-    if (!entryPrice || !livePrice) return 0;
-    const spread = Math.abs(entryPrice - livePrice);
-    return parseFloat(((spread / livePrice) * 100).toFixed(2));
-  }
-  
   private getCurrentSession(): string {
     const hour = new Date().getUTCHours();
     if (hour >= 8 && hour <= 17) return 'London';

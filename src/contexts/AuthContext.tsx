@@ -133,42 +133,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string) => {
     try {
-      // Sign up with explicit options to disable email confirmation
+      // Sign up with minimal options - no complex data
       const { data, error } = await supabase.auth.signUp({
         email,
-        password,
-        options: {
-          emailRedirectTo: undefined,
-          data: {
-            email_confirm: false
-          }
-        }
+        password
       });
       
       if (error) throw error;
       
-      // Store email for private email list - only if user was created successfully
-      if (data.user) {
-        try {
-          await supabase.from('user_activities').insert({
-            user_id: data.user.id,
-            activity_type: 'signup',
-            data: { 
-              email, 
-              signup_date: new Date().toISOString(),
-              signup_method: 'email_password'
-            }
-          });
-        } catch (activityError) {
-          // Log but don't throw - signup should still succeed even if activity logging fails
-          console.error('Failed to store signup activity:', activityError);
-        }
-      }
-      
+      // Success toast immediately - don't wait for activity logging
       toast({
         title: "Account created successfully!",
         description: "Welcome to AASAKIRA! You can start using all features immediately.",
       });
+
+      // Try to log activity but don't fail signup if this fails
+      if (data.user) {
+        setTimeout(async () => {
+          try {
+            await supabase.from('user_activities').insert({
+              user_id: data.user.id,
+              activity_type: 'signup',
+              data: { 
+                email, 
+                signup_date: new Date().toISOString(),
+                signup_method: 'email_password'
+              }
+            });
+          } catch (activityError) {
+            console.warn('Activity logging failed (non-critical):', activityError);
+          }
+        }, 100);
+      }
+      
     } catch (error) {
       console.error('Signup error:', error);
       throw error;
