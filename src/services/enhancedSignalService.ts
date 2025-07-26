@@ -1,6 +1,6 @@
 import { Signal } from '@/types/signalConfig';
 import { EliteSignalEngine } from './eliteSignalEngine';
-import { ultraLivePriceService } from './ultraLivePriceService';
+import { webSocketPriceService } from './webSocketPriceService';
 import { TestSignalGenerator } from './testSignalGenerator';
 
 class EnhancedSignalService {
@@ -12,10 +12,7 @@ class EnhancedSignalService {
     selectedFilters: string[] = ['SMC', 'Volume', 'Session']
   ): Promise<Signal | null> {
     try {
-      console.log('🎯 Enhanced Signal Service: Generating signal with ULTRA-ACCURATE prices...');
-      
-      // Clear any cached prices
-      ultraLivePriceService.clearCache();
+      console.log('🎯 Enhanced Signal Service: Generating signal with LIVE WebSocket prices...');
       
       // Try elite signal generation first
       const eliteSignal = await EliteSignalEngine.generateEliteSignal(
@@ -25,71 +22,50 @@ class EnhancedSignalService {
       );
       
       if (!eliteSignal) {
-        console.log('❌ No elite signal generated, trying test generator as fallback...');
-        
-        // Use test generator as fallback to ensure signals are always generated
-        const testSignal = TestSignalGenerator.generateTestSignal();
-        console.log('🧪 Generated test signal as fallback:', testSignal);
-        
-        // Add to signals array
-        this.signals.unshift(testSignal);
-        
-        // Keep only last 10 signals
-        if (this.signals.length > 10) {
-          this.signals = this.signals.slice(0, 10);
-        }
-        
-        return testSignal;
+        console.log('❌ No elite signal generated, using test generator as fallback...');
+        return this.generateFallbackSignal();
       }
       
-      // Get ULTRA-ACCURATE live price for the signal pair
+      // Get LIVE WebSocket price for the signal pair
       let finalLivePrice = parseFloat(eliteSignal.livePrice);
       
       try {
-        console.log(`🔥 Getting ULTRA-ACCURATE price for signal pair: ${eliteSignal.pair}`);
+        console.log(`🔥 Getting LIVE WebSocket price for signal pair: ${eliteSignal.pair}`);
         
-        const ultraFreshPrice = await ultraLivePriceService.getUltraFreshPrice(eliteSignal.pair);
-        finalLivePrice = ultraFreshPrice.price;
+        const livePriceData = webSocketPriceService.getCurrentPrice(eliteSignal.pair);
         
-        console.log(`✅ ULTRA-ACCURATE price for ${eliteSignal.pair}: ${finalLivePrice} (${ultraFreshPrice.source})`);
-        console.log(`📊 Data age: ${ultraFreshPrice.dataAge}ms, Accuracy: ${ultraFreshPrice.accuracy}`);
+        if (livePriceData && livePriceData.price > 0) {
+          const ageSeconds = (Date.now() - livePriceData.timestamp) / 1000;
+          
+          if (ageSeconds < 30) { // Use WebSocket price if less than 30 seconds old
+            finalLivePrice = livePriceData.price;
+            console.log(`✅ LIVE WebSocket price for ${eliteSignal.pair}: ${finalLivePrice} (${livePriceData.source}, ${ageSeconds.toFixed(1)}s old)`);
+          } else {
+            console.log(`⚠️ WebSocket price too old (${ageSeconds.toFixed(1)}s), using elite signal price`);
+          }
+        } else {
+          console.log('⚠️ No WebSocket price available, using elite signal price');
+        }
         
-        // Log price comparison for debugging
+        // Price validation - ensure reasonable difference
         const originalPrice = parseFloat(eliteSignal.livePrice);
         const priceDiff = Math.abs(finalLivePrice - originalPrice);
         const pips = eliteSignal.pair.includes('JPY') ? priceDiff * 100 : priceDiff * 10000;
         
-        console.log(`📊 Price comparison: Original=${originalPrice}, Ultra-Fresh=${finalLivePrice}, Diff=${pips.toFixed(1)} pips`);
+        console.log(`📊 Price comparison: Elite=${originalPrice}, Live=${finalLivePrice}, Diff=${pips.toFixed(1)} pips`);
         
-        // More lenient price difference check (50 pips instead of 20)
-        if (pips > 50) {
-          console.warn(`⚠️ High price difference detected (${pips.toFixed(1)} pips) - using test signal instead`);
-          
-          const testSignal = TestSignalGenerator.generateTestSignal();
-          this.signals.unshift(testSignal);
-          
-          if (this.signals.length > 10) {
-            this.signals = this.signals.slice(0, 10);
-          }
-          
-          return testSignal;
+        // If price difference is too high (>100 pips), use fallback
+        if (pips > 100) {
+          console.warn(`⚠️ Extreme price difference detected (${pips.toFixed(1)} pips) - using fallback signal`);
+          return this.generateFallbackSignal();
         }
         
       } catch (error) {
-        console.error(`❌ Failed to get ultra-accurate price for ${eliteSignal.pair}:`, error);
-        console.log('🧪 Using test signal due to price fetch failure');
-        
-        const testSignal = TestSignalGenerator.generateTestSignal();
-        this.signals.unshift(testSignal);
-        
-        if (this.signals.length > 10) {
-          this.signals = this.signals.slice(0, 10);
-        }
-        
-        return testSignal;
+        console.error(`❌ Failed to get live WebSocket price for ${eliteSignal.pair}:`, error);
+        console.log('🧪 Using elite signal price due to WebSocket failure');
       }
       
-      // Convert to Signal format with ULTRA-ACCURATE price
+      // Convert to Signal format with LIVE WebSocket price
       const signal: Signal = {
         id: eliteSignal.id,
         pair: eliteSignal.pair,
@@ -134,23 +110,25 @@ class EnhancedSignalService {
         this.signals = this.signals.slice(0, 10);
       }
       
-      console.log(`✅ ULTRA-ACCURATE SIGNAL: ${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice}`);
+      console.log(`✅ LIVE WEBSOCKET SIGNAL: ${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice}`);
       return signal;
       
     } catch (error) {
       console.error('❌ Enhanced Signal Service error:', error);
-      
-      // Final fallback - always return a test signal to prevent "No suitable setup found"
-      console.log('🆘 Using emergency test signal fallback');
-      const emergencySignal = TestSignalGenerator.generateTestSignal();
-      
-      this.signals.unshift(emergencySignal);
-      if (this.signals.length > 10) {
-        this.signals = this.signals.slice(0, 10);
-      }
-      
-      return emergencySignal;
+      return this.generateFallbackSignal();
     }
+  }
+
+  private generateFallbackSignal(): Signal {
+    console.log('🆘 Generating emergency fallback signal');
+    const fallbackSignal = TestSignalGenerator.generateTestSignal();
+    
+    this.signals.unshift(fallbackSignal);
+    if (this.signals.length > 10) {
+      this.signals = this.signals.slice(0, 10);
+    }
+    
+    return fallbackSignal;
   }
 
   private getCurrentSession(): string {
