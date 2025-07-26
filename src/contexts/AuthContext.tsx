@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -133,37 +132,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string) => {
-    // COMPLETELY DISABLE EMAIL CONFIRMATION
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: undefined, // No redirect needed
-        data: {
-          email_confirm: false // Explicitly disable email confirmation
+    try {
+      // Sign up with explicit options to disable email confirmation
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: undefined,
+          data: {
+            email_confirm: false
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      // Store email for private email list - only if user was created successfully
+      if (data.user) {
+        try {
+          await supabase.from('user_activities').insert({
+            user_id: data.user.id,
+            activity_type: 'signup',
+            data: { 
+              email, 
+              signup_date: new Date().toISOString(),
+              signup_method: 'email_password'
+            }
+          });
+        } catch (activityError) {
+          // Log but don't throw - signup should still succeed even if activity logging fails
+          console.error('Failed to store signup activity:', activityError);
         }
       }
-    });
-    
-    if (error) throw error;
-    
-    // Store email for private email list
-    if (data.user) {
-      try {
-        await supabase.from('user_activities').insert({
-          user_id: data.user.id,
-          activity_type: 'signup',
-          data: { email, signup_date: new Date().toISOString() }
-        });
-      } catch (err) {
-        console.error('Failed to store signup activity:', err);
-      }
+      
+      toast({
+        title: "Account created successfully!",
+        description: "Welcome to AASAKIRA! You can start using all features immediately.",
+      });
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
     }
-    
-    toast({
-      title: "Account created successfully!",
-      description: "Welcome to AASAKIRA! You can start using all features immediately.",
-    });
   };
 
   const signOut = async () => {
