@@ -86,7 +86,7 @@ const LivePriceVerification: React.FC<LivePriceVerificationProps> = ({
           {/* Live Market Price */}
           <div className="bg-gray-800/40 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
-              {liveData?.source === 'Enhanced Fallback' ? (
+              {liveData?.source === 'Fallback' ? (
                 <WifiOff className="w-3 h-3 text-yellow-400" />
               ) : (
                 <Wifi className="w-3 h-3 text-green-400" />
@@ -98,13 +98,9 @@ const LivePriceVerification: React.FC<LivePriceVerificationProps> = ({
             <div className="text-lg font-mono font-bold text-white">
               {liveData ? liveData.price.toFixed(signal.pair.includes('JPY') ? 3 : 5) : '---'}
             </div>
-            {liveData?.changePercent && (
-              <div className={`text-xs ${
-                liveData.changePercent.startsWith('-') ? 'text-red-400' : 'text-green-400'
-              }`}>
-                {liveData.changePercent}
-              </div>
-            )}
+            <div className="text-xs text-gray-400">
+              {liveData ? `${liveData.age}ms ago` : 'Loading...'}
+            </div>
           </div>
 
           {/* Signal Entry */}
@@ -142,9 +138,9 @@ const LivePriceVerification: React.FC<LivePriceVerificationProps> = ({
         </div>
 
         {/* Price Movement Alert */}
-        {liveData?.changePercent && Math.abs(parseFloat(liveData.changePercent)) > 0.5 && (
+        {liveData && liveData.age > 30000 && (
           <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-300">
-            🚨 Significant price movement detected: {liveData.changePercent} change
+            🚨 Price data is {Math.floor(liveData.age / 1000)}s old - refreshing...
           </div>
         )}
       </CardContent>
