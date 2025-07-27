@@ -49,7 +49,7 @@ class SignalService {
         console.log(`✅ Ultra-fresh price for ${eliteSignal.pair}: ${finalLivePrice} (${ultraFreshPrice.source})`);
         
         // Validate the price is actually fresh
-        const dataAge = ultraFreshPrice.dataAge || 0;
+        const dataAge = ultraFreshPrice.age || 0;
         if (dataAge > 2000) {
           console.warn(`⚠️ Price might be stale: ${Math.floor(dataAge/1000)}s old`);
         }

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { enhancedPriceService } from '@/services/enhancedPriceService';
+import { enhancedPriceService, PriceData } from '@/services/enhancedPriceService';
 import { Activity, AlertTriangle, CheckCircle, RefreshCw, Zap } from 'lucide-react';
 
 interface LivePriceAccuracyIndicatorProps {

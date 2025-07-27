@@ -1,5 +1,5 @@
 
-interface PriceData {
+export interface PriceData {
   price: number;
   timestamp: number;
   source: string;
@@ -48,6 +48,38 @@ class EnhancedPriceService {
     }
   }
 
+  async getFreshPriceForSignal(pair: string): Promise<PriceData> {
+    console.log(`🔥 Getting ultra-fresh price for signal: ${pair}`);
+    return this.getLivePrice(pair, true);
+  }
+
+  async getFreshPricesForSignals(pairs: string[]): Promise<Record<string, PriceData>> {
+    console.log(`🔄 Fetching fresh prices for ${pairs.length} pairs...`);
+    const result: Record<string, PriceData> = {};
+    
+    for (const pair of pairs) {
+      try {
+        result[pair] = await this.getFreshPriceForSignal(pair);
+      } catch (error) {
+        console.error(`Failed to fetch price for ${pair}:`, error);
+        result[pair] = this.getFallbackPrice(pair);
+      }
+    }
+    
+    return result;
+  }
+
+  getConnectionStatus(): 'connected' | 'disconnected' {
+    // Check if we have recent successful price fetches
+    const now = Date.now();
+    for (const [pair, data] of this.priceCache) {
+      if (now - data.timestamp < 30000) { // 30 seconds
+        return 'connected';
+      }
+    }
+    return 'disconnected';
+  }
+
   private async fetchFromMultipleSources(pair: string): Promise<PriceData> {
     const sources = [
       () => this.fetchFromTwelveData(pair),
@@ -84,10 +116,13 @@ class EnhancedPriceService {
     if (!response.ok) throw new Error('TwelveData API error');
     
     const data = await response.json();
+    const timestamp = Date.now();
+    
     return {
       price: parseFloat(data.price),
-      timestamp: Date.now(),
-      source: 'TwelveData'
+      timestamp,
+      source: 'TwelveData',
+      age: 0
     };
   }
 
@@ -106,11 +141,13 @@ class EnhancedPriceService {
     
     const data = await response.json();
     const rate = data['Realtime Currency Exchange Rate'];
+    const timestamp = Date.now();
     
     return {
       price: parseFloat(rate['5. Exchange Rate']),
-      timestamp: Date.now(),
-      source: 'AlphaVantage'
+      timestamp,
+      source: 'AlphaVantage',
+      age: 0
     };
   }
 
@@ -128,10 +165,13 @@ class EnhancedPriceService {
     if (!response.ok) throw new Error('Polygon API error');
     
     const data = await response.json();
+    const timestamp = Date.now();
+    
     return {
       price: data.last.bid,
-      timestamp: Date.now(),
-      source: 'Polygon'
+      timestamp,
+      source: 'Polygon',
+      age: 0
     };
   }
 
@@ -144,9 +184,10 @@ class EnhancedPriceService {
       'USDCAD': 1.3580
     };
 
+    const timestamp = Date.now();
     return {
       price: fallbackPrices[pair] || 1.0000,
-      timestamp: Date.now(),
+      timestamp,
       source: 'Fallback',
       age: 0
     };
