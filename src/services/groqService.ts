@@ -1,4 +1,3 @@
-
 interface GroqOptions {
   model?: string;
   temperature?: number;
@@ -11,10 +10,80 @@ class GroqService {
   private initialized = false;
 
   constructor() {
-    // Try to get API key from environment or use fallback
     this.apiKey = import.meta.env.VITE_GROQ_API_KEY || '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';
     this.initialized = !!this.apiKey;
     console.log('🧠 GROQ SERVICE INITIALIZED with API key:', this.apiKey ? 'SET ✅' : 'MISSING ❌');
+  }
+
+  async generateMultiStrategySignal(symbol: string, livePrice: number, timeframe: string = '15m'): Promise<any> {
+    const currentDateTime = new Date().toISOString();
+    
+    const groqPrompt = `
+You are a multi-strategy institutional AI analyst generating one best possible trade signal based on current price and recent market context.
+
+Strategies to scan for:
+- Smart Money Concepts (SMC)
+- Liquidity sweep traps
+- Fair Value Gap (FVG)
+- RSI divergence
+- Volume spike anomalies
+- Trend continuation or reversal based on market sessions
+- News impact if known (guess if urgent move)
+
+Instructions:
+1. Scan all strategies.
+2. Choose the strongest signal that exists NOW.
+3. Label the signal strength: "Strong", "Medium", or "Weak"
+4. If signal is weak, still generate it — say it's the best available but weak.
+5. Include exact entry price, SL, TP1, TP2, and reason.
+6. Include strategy used in generation and why it was chosen.
+
+Market: ${symbol}
+Live Price: ${livePrice}
+Time: ${currentDateTime}
+Timeframe: ${timeframe}
+
+Output Format (JSON only):
+{
+  "symbol": "${symbol}",
+  "strength": "Strong | Medium | Weak",
+  "entry": ${livePrice},
+  "sl": ${livePrice * 0.995},
+  "tp1": ${livePrice * 1.01},
+  "tp2": ${livePrice * 1.02},
+  "strategy": "SMC + RSI Divergence",
+  "reason": "Liquidity sweep + divergence at key zone"
+}`;
+
+    try {
+      const response = await this.generateResponse(groqPrompt, {
+        model: 'llama3-8b-8192',
+        temperature: 0.3,
+        max_tokens: 800
+      });
+
+      // Parse JSON response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+
+      throw new Error('No valid JSON found in response');
+    } catch (error) {
+      console.error('❌ Multi-strategy signal generation failed:', error);
+      
+      // Fallback signal
+      return {
+        symbol,
+        strength: "Weak",
+        entry: livePrice,
+        sl: livePrice * 0.995,
+        tp1: livePrice * 1.01,
+        tp2: livePrice * 1.02,
+        strategy: "Fallback Analysis",
+        reason: "Market conditions unclear, basic technical setup"
+      };
+    }
   }
 
   async generateResponse(prompt: string, options: GroqOptions = {}): Promise<string> {

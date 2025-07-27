@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Brain, TrendingUp, Coins, Signal, User } from 'lucide-react';
+import { Brain, TrendingUp, Coins, Signal, User, Target, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -23,6 +23,8 @@ const Navigation = () => {
     { name: 'Education', href: '/education', icon: Brain },
     { name: 'Trading', href: '/trading', icon: TrendingUp },
     { name: 'Meme Coins', href: '/memecoins', icon: Coins },
+    { name: 'AI Bet Scanner', href: '/bet-scanner', icon: Target },
+    { name: 'AI Investments', href: '/investment-scanner', icon: TrendingDown },
   ];
 
   const isActive = (path: string) => location.pathname === path;

@@ -1,4 +1,6 @@
 
+import { fetchLivePrice } from '@/utils/fetchLivePrice';
+
 export interface PriceData {
   price: number;
   timestamp: number;
@@ -26,14 +28,19 @@ class EnhancedPriceService {
     console.log(`🔄 Fetching ultra-fresh price for ${pair}...`);
     
     try {
-      // Try multiple sources with no cache headers
-      const priceData = await this.fetchFromMultipleSources(pair);
+      // Use the new fallback system
+      const price = await fetchLivePrice(pair);
+      const timestamp = now;
       
-      this.priceCache.set(pair, priceData);
-      return {
-        ...priceData,
+      const priceData: PriceData = {
+        price,
+        timestamp,
+        source: 'Multi-API',
         age: 0
       };
+      
+      this.priceCache.set(pair, priceData);
+      return priceData;
     } catch (error) {
       console.error(`Failed to fetch price for ${pair}:`, error);
       
@@ -79,101 +86,6 @@ class EnhancedPriceService {
       }
     }
     return 'disconnected';
-  }
-
-  private async fetchFromMultipleSources(pair: string): Promise<PriceData> {
-    const sources = [
-      () => this.fetchFromTwelveData(pair),
-      () => this.fetchFromAlphaVantage(pair),
-      () => this.fetchFromPolygon(pair)
-    ];
-
-    for (const source of sources) {
-      try {
-        const result = await source();
-        if (result.price > 0) {
-          return result;
-        }
-      } catch (error) {
-        console.warn('Source failed, trying next:', error);
-        continue;
-      }
-    }
-
-    throw new Error('All price sources failed');
-  }
-
-  private async fetchFromTwelveData(pair: string): Promise<PriceData> {
-    const response = await fetch(
-      `https://api.twelvedata.com/price?symbol=${pair}&apikey=demo&_=${Date.now()}`,
-      {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      }
-    );
-
-    if (!response.ok) throw new Error('TwelveData API error');
-    
-    const data = await response.json();
-    const timestamp = Date.now();
-    
-    return {
-      price: parseFloat(data.price),
-      timestamp,
-      source: 'TwelveData',
-      age: 0
-    };
-  }
-
-  private async fetchFromAlphaVantage(pair: string): Promise<PriceData> {
-    const response = await fetch(
-      `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${pair.slice(0,3)}&to_currency=${pair.slice(3)}&apikey=demo&_=${Date.now()}`,
-      {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      }
-    );
-
-    if (!response.ok) throw new Error('AlphaVantage API error');
-    
-    const data = await response.json();
-    const rate = data['Realtime Currency Exchange Rate'];
-    const timestamp = Date.now();
-    
-    return {
-      price: parseFloat(rate['5. Exchange Rate']),
-      timestamp,
-      source: 'AlphaVantage',
-      age: 0
-    };
-  }
-
-  private async fetchFromPolygon(pair: string): Promise<PriceData> {
-    const response = await fetch(
-      `https://api.polygon.io/v1/last/currencies/${pair.slice(0,3)}/${pair.slice(3)}?apikey=demo&_=${Date.now()}`,
-      {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      }
-    );
-
-    if (!response.ok) throw new Error('Polygon API error');
-    
-    const data = await response.json();
-    const timestamp = Date.now();
-    
-    return {
-      price: data.last.bid,
-      timestamp,
-      source: 'Polygon',
-      age: 0
-    };
   }
 
   private getFallbackPrice(pair: string): PriceData {
