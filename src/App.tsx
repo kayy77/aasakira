@@ -7,6 +7,8 @@ import Education from '@/pages/Education';
 import Trading from '@/pages/Trading';
 import NotFound from '@/pages/NotFound';
 import MemeCoins from '@/pages/MemeCoins';
+import BetScanner from '@/pages/BetScanner';
+import InvestmentScanner from '@/pages/InvestmentScanner';
 import Dashboard from '@/components/Dashboard';
 import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
@@ -28,6 +30,8 @@ function App() {
                 <Route path="/education" element={<Education />} />
                 <Route path="/trading" element={<Trading />} />
                 <Route path="/memecoins" element={<MemeCoins />} />
+                <Route path="/bet-scanner" element={<BetScanner />} />
+                <Route path="/investment-scanner" element={<InvestmentScanner />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AuthGuard>

@@ -4,6 +4,7 @@ export interface PriceData {
   timestamp: number;
   source: string;
   age: number;
+  changePercent?: number;
 }
 
 class EnhancedPriceService {
