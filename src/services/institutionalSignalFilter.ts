@@ -223,7 +223,7 @@ class InstitutionalSignalFilter {
 
     // Filter 1: Structure Break - ULTRA STRICT REQUIREMENTS
     const structureBreak = {
-      passed: structure.lastBreakDirection !== 'none' && structure.structureStrength > 75, // Raised from 70
+      passed: structure.lastBreakDirection !== 'none' && structure.structureStrength > 75,
       score: structure.structureStrength,
       reason: structure.lastBreakDirection !== 'none' ? 
         `${structure.lastBreakDirection.toUpperCase()} structure break confirmed (${structure.structureStrength.toFixed(0)}%)` :
@@ -232,7 +232,7 @@ class InstitutionalSignalFilter {
 
     // Filter 2: Liquidity Sweep - INSTITUTIONAL VALIDATION
     const liquiditySweepFilter = {
-      passed: liquiditySweep.detected && liquiditySweep.reversalConfirmed && liquiditySweep.sweepStrength > 70, // Raised from 65
+      passed: liquiditySweep.detected && liquiditySweep.reversalConfirmed && liquiditySweep.sweepStrength > 70,
       score: liquiditySweep.sweepStrength,
       reason: liquiditySweep.detected && liquiditySweep.reversalConfirmed ? 
         `Institutional liquidity sweep ${liquiditySweep.direction} with reversal (${liquiditySweep.sweepStrength.toFixed(0)}%)` :
@@ -241,7 +241,7 @@ class InstitutionalSignalFilter {
 
     // Filter 3: Fair Value Gap - ELITE STANDARDS
     const fairValueGapFilter = {
-      passed: fvg.detected && fvg.strength > 75, // Raised from 70
+      passed: fvg.detected && fvg.strength > 75,
       score: fvg.strength,
       reason: fvg.detected ? 
         `${fvg.type.toUpperCase()} FVG at ${fvg.level.toFixed(5)} (${fvg.strength.toFixed(0)}%)` :
@@ -250,7 +250,7 @@ class InstitutionalSignalFilter {
 
     // Filter 4: Volume Spike - SMART MONEY ONLY
     const volumeSpikeFilter = {
-      passed: volume.spikeDetected && volume.divergenceStrength > 75, // Raised from 70
+      passed: volume.spikeDetected && volume.divergenceStrength > 75,
       score: volume.divergenceStrength,
       reason: volume.spikeDetected ? 
         `Smart money ${volume.institutionalFlow} detected (${volume.divergenceStrength.toFixed(0)}%)` :
@@ -259,7 +259,7 @@ class InstitutionalSignalFilter {
 
     // Filter 5: RSI Divergence - EXTREME LEVELS MANDATORY
     const rsiDivergenceFilter = {
-      passed: rsi.detected && rsi.strength > 80 && // Raised from 75
+      passed: rsi.detected && rsi.strength > 80 &&
         ((rsi.type === 'bullish' && rsi.oversoldBullish) || (rsi.type === 'bearish' && rsi.overboughtBearish)),
       score: rsi.strength,
       reason: rsi.detected && ((rsi.type === 'bullish' && rsi.oversoldBullish) || (rsi.type === 'bearish' && rsi.overboughtBearish)) ? 
@@ -269,7 +269,7 @@ class InstitutionalSignalFilter {
 
     // Filter 6: Session Filter - INSTITUTIONAL HOURS ONLY
     const sessionFilterResult = {
-      passed: session.activeSession && session.volatilityScore > 80, // Raised from 75
+      passed: session.activeSession && session.volatilityScore > 80,
       score: session.volatilityScore,
       reason: session.activeSession && session.volatilityScore > 80 ? 
         `Peak institutional ${session.sessionType} session (${session.volatilityScore.toFixed(0)}%)` :
@@ -288,10 +288,8 @@ class InstitutionalSignalFilter {
       confidence = 'STRONG';
     } else if (passedFilters >= this.MEDIUM_THRESHOLD) {
       confidence = 'MEDIUM';
-    } else if (passedFilters >= this.MIN_CONFLUENCE_FILTERS) {
-      confidence = 'WEAK'; // This is STANDARD grade
     } else {
-      confidence = 'WEAK'; // Will be rejected
+      confidence = 'WEAK';
     }
 
     return {
@@ -308,7 +306,6 @@ class InstitutionalSignalFilter {
   }
 
   isSignalValid(filterResults: FilterResults): boolean {
-    // ULTRA STRICT ENFORCEMENT: Must pass at least 3 filters
     return filterResults.passedFilters >= this.MIN_CONFLUENCE_FILTERS;
   }
 

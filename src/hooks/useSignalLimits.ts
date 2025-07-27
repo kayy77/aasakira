@@ -13,42 +13,45 @@ interface SignalLimits {
 
 export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () => Promise<boolean> } => {
   const { user } = useAuth();
-  const { subscription, usageStats, checkUsageLimit, incrementUsage } = useSubscription();
+  const { subscription, usageStats, incrementUsage } = useSubscription();
   const { toast } = useToast();
-  const [signalsUsedToday, setSignalsUsedToday] = useState(0);
 
   const isPremium = subscription?.tier === 'premium';
-  const dailyLimit = isPremium ? 999 : 1; // Unlimited for premium, 1 for free
-  const signalsUsed = usageStats?.signals || 0; // Use 'signals' instead of 'signals_generated'
+  const dailyLimit = isPremium ? 999 : 1; // 1 signal per day for free users
+  const signalsUsed = usageStats?.signals || 0;
   const canGenerateSignal = isPremium || signalsUsed < dailyLimit;
 
-  useEffect(() => {
-    setSignalsUsedToday(signalsUsed);
-  }, [signalsUsed]);
-
   const checkAndIncrementSignal = async (): Promise<boolean> => {
+    console.log('🔒 Checking signal limits:', { isPremium, signalsUsed, dailyLimit, canGenerateSignal });
+    
     if (!canGenerateSignal) {
+      console.log('❌ Signal generation blocked - limit reached');
       toast({
-        title: "🔒 Signal Limit Reached",
-        description: `You've used ${signalsUsed}/${dailyLimit} signals today. Upgrade to Premium for unlimited signals!`,
+        title: "🔒 Daily Signal Limit Reached",
+        description: `Free users get ${dailyLimit} signal per day. You've used ${signalsUsed}/${dailyLimit}. Upgrade to Premium for unlimited signals!`,
         variant: "destructive"
       });
       return false;
     }
 
     try {
-      await incrementUsage('signals'); // Use 'signals' instead of 'signals_generated'
-      setSignalsUsedToday(prev => prev + 1);
+      await incrementUsage('signals');
+      console.log('✅ Signal usage incremented');
       return true;
     } catch (error) {
-      console.error('Error incrementing signal usage:', error);
+      console.error('❌ Error incrementing signal usage:', error);
+      toast({
+        title: "Error",
+        description: "Failed to track signal usage. Please try again.",
+        variant: "destructive"
+      });
       return false;
     }
   };
 
   return {
     canGenerateSignal,
-    signalsUsedToday,
+    signalsUsedToday: signalsUsed,
     dailyLimit,
     upgradeRequired: !canGenerateSignal,
     checkAndIncrementSignal
