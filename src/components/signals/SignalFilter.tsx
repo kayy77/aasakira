@@ -6,7 +6,7 @@ interface SignalFilterProps {
   onChange: (strength: string) => void;
 }
 
-export const SignalFilter: React.FC<SignalFilterProps> = ({ selectedStrength, onChange }) => {
+const SignalFilter: React.FC<SignalFilterProps> = ({ selectedStrength, onChange }) => {
   const strengthLevels = [
     { value: 'All', label: 'All Signals', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
     { value: 'STANDARD', label: 'Standard', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
@@ -33,3 +33,5 @@ export const SignalFilter: React.FC<SignalFilterProps> = ({ selectedStrength, on
     </div>
   );
 };
+
+export default SignalFilter;

@@ -6,7 +6,7 @@ import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
 import FeatureGate from '@/components/FeatureGate';
-import { SignalFilter } from '@/components/signals/SignalFilter';
+import SignalFilter from '@/components/signals/SignalFilter';
 
 const Signals = () => {
   const isMobile = useIsMobile();
