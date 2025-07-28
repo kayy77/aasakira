@@ -1,14 +1,16 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import LiveSignalsDashboard from '@/components/signals/LiveSignalsDashboard';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
 import FeatureGate from '@/components/FeatureGate';
+import { SignalFilter } from '@/components/signals/SignalFilter';
 
 const Signals = () => {
   const isMobile = useIsMobile();
+  const [selectedStrength, setSelectedStrength] = useState('All');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative">
@@ -43,7 +45,13 @@ const Signals = () => {
           </div>
 
           <FeatureGate feature="signals" featureName="AI Signals">
-            <LiveSignalsDashboard />
+            <div className="mb-6">
+              <SignalFilter 
+                selectedStrength={selectedStrength} 
+                onChange={setSelectedStrength} 
+              />
+            </div>
+            <LiveSignalsDashboard selectedStrength={selectedStrength} />
           </FeatureGate>
         </div>
       </div>

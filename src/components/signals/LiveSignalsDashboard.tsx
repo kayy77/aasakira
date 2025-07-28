@@ -3,237 +3,274 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MobileSignalCard } from './MobileSignalCard';
-import FilterSettings from './FilterSettings';
-import { PerformanceStats } from './PerformanceStats';
-import { enhancedSignalService } from '@/services/enhancedSignalService';
-import { useSignalLimits } from '@/hooks/useSignalLimits';
-import { Signal } from '@/types/signalConfig';
-import { Zap, TrendingUp, Activity, RefreshCw, Wifi } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Brain, 
+  Target, 
+  Shield, 
+  Zap, 
+  RefreshCw,
+  Trash2,
+  Activity,
+  AlertTriangle,
+  Crown,
+  Loader,
+  CheckCircle2,
+  XCircle,
+  Clock
+} from 'lucide-react';
+import { Signal } from '@/types/signalConfig';
+import { signalService } from '@/services/signalService';
+import { useIsMobile } from '@/hooks/use-mobile';
+import EnhancedSignalGenerator from './EnhancedSignalGenerator';
 
-const LiveSignalsDashboard = () => {
+interface LiveSignalsDashboardProps {
+  selectedStrength?: string;
+}
+
+const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({ selectedStrength = 'All' }) => {
   const [signals, setSignals] = useState<Signal[]>([]);
-  const [minConfidence, setMinConfidence] = useState<number>(70);
-  const [minFilters, setMinFilters] = useState<number>(3);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [generationStatus, setGenerationStatus] = useState<string>('');
-  const { canGenerateSignal, signalsUsedToday, dailyLimit, upgradeRequired, checkAndIncrementSignal } = useSignalLimits();
+  const [filteredSignals, setFilteredSignals] = useState<Signal[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<string>('');
+  const [rejectionCount, setRejectionCount] = useState<number>(0);
+  const [lastRejectionReason, setLastRejectionReason] = useState<string>('');
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
-  const generateNewSignal = async () => {
-    console.log("🔥 GENERATE BUTTON CLICKED - Starting WebSocket-powered signal generation...");
-    console.log("Current state:", { canGenerateSignal, upgradeRequired, isGenerating });
-    console.log("Settings:", { minConfidence, minFilters });
-    
-    if (!checkAndIncrementSignal()) {
-      console.log("❌ checkAndIncrementSignal returned false");
-      return;
-    }
-
-    setIsGenerating(true);
-    setGenerationStatus('🔌 Connecting to live price feeds...');
-    
-    try {
-      console.log("🎯 Calling enhancedSignalService.generateLiveSignal with WebSocket prices...");
-      
-      const newSignal = await enhancedSignalService.generateLiveSignal(
-        minConfidence,
-        minFilters,
-        ['SMC', 'Volume', 'Session']
+  // Filter signals based on selected strength
+  useEffect(() => {
+    if (selectedStrength === 'All') {
+      setFilteredSignals(signals);
+    } else {
+      setFilteredSignals(
+        signals.filter((signal) => signal.signalStrength === selectedStrength)
       );
-
-      console.log("📊 WebSocket signal generation result:", newSignal);
-
-      if (newSignal) {
-        console.log("✅ New WebSocket signal generated successfully:", {
-          pair: newSignal.pair,
-          type: newSignal.type,
-          confidence: newSignal.confidence,
-          entry: newSignal.entry,
-          livePrice: newSignal.livePrice
-        });
-        
-        setSignals(prev => {
-          const updated = [newSignal, ...prev.slice(0, 9)];
-          console.log("📈 Updated signals array length:", updated.length);
-          return updated;
-        });
-        
-        setGenerationStatus('✅ Live WebSocket signal generated!');
-        
-        toast({
-          title: "🎯 Live WebSocket Signal Generated!",
-          description: `${newSignal.pair} ${newSignal.type} signal with ${newSignal.confidence}% confidence using real-time prices`,
-        });
-        
-        setTimeout(() => setGenerationStatus(''), 3000);
-      } else {
-        console.log("❌ No signal returned from WebSocket service");
-        setGenerationStatus('❌ No suitable setup found');
-        
-        toast({
-          title: "No Signal Generated",
-          description: "Market conditions don't meet the current filter criteria. Try adjusting your settings.",
-          variant: "destructive"
-        });
-        
-        setTimeout(() => setGenerationStatus(''), 3000);
-      }
-    } catch (error) {
-      console.error('❌ WebSocket signal generation error:', error);
-      setGenerationStatus('❌ Generation failed');
-      
-      toast({
-        title: "Generation Failed",
-        description: "Unable to generate signal. Please try again.",
-        variant: "destructive"
-      });
-      
-      setTimeout(() => setGenerationStatus(''), 3000);
-    } finally {
-      setIsGenerating(false);
-      console.log("🏁 WebSocket signal generation process completed");
     }
+  }, [selectedStrength, signals]);
+
+  const handleSignalGenerated = (signal: Signal) => {
+    setSignals(prev => [signal, ...prev.slice(0, 9)]);
+    toast({
+      title: "New Signal Generated",
+      description: `${signal.pair} ${signal.type} signal with ${signal.confidence}% confidence`,
+    });
   };
 
   const handleRemoveSignal = (signalId: string) => {
     setSignals(prev => prev.filter(signal => signal.id !== signalId));
-  };
-
-  const handleTakeSignal = (signal: Signal) => {
-    console.log('📋 Taking signal:', signal);
     toast({
-      title: "Signal Copied",
-      description: `${signal.pair} ${signal.type} signal details copied to clipboard`,
+      title: "Signal Removed",
+      description: `Signal has been removed from the dashboard.`,
     });
   };
 
-  useEffect(() => {
-    console.log("🔄 Loading initial signals...");
-    const initialSignals = enhancedSignalService.getSignals();
-    console.log("📊 Initial signals loaded:", initialSignals.length);
-    setSignals(initialSignals);
-  }, []);
-
-  useEffect(() => {
-    console.log("📊 Signals state updated:", signals.length, "signals");
-  }, [signals]);
+  const clearAllSignals = () => {
+    setSignals([]);
+    signalService.clearSignals();
+    toast({
+      title: "All Signals Cleared",
+      description: "Signal history has been cleared.",
+    });
+  };
 
   return (
     <div className="space-y-6">
-      {/* Dashboard Header - Mobile Optimized */}
-      <Card className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 border border-gray-700/50">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
-            <CardTitle className="text-xl font-semibold text-white flex items-center">
-              <Wifi className="mr-2 h-5 w-5 text-green-400" />
-              Live WebSocket Signals
-            </CardTitle>
-            <div className="text-right">
-              <div className="text-sm text-gray-400">
-                Signals Used: <span className="font-semibold text-blue-300">{signalsUsedToday} / {dailyLimit}</span>
-              </div>
-              {generationStatus && (
-                <div className="text-xs text-yellow-300 mt-1">
-                  {generationStatus}
-                </div>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
-            <div className="text-gray-300 text-sm">
-              Real-time WebSocket-powered signals with institutional accuracy.
-            </div>
-            <Button
-              onClick={generateNewSignal}
-              disabled={isGenerating || upgradeRequired || !canGenerateSignal}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white w-full sm:w-auto"
-            >
-              {isGenerating ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Zap className="mr-2 h-4 w-4" />
-                  Generate Live Signal
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Enhanced Signal Generator */}
+      <EnhancedSignalGenerator 
+        onSignalGenerated={handleSignalGenerated}
+        onFeatureUse={() => console.log('Enhanced Signal Generator used')}
+      />
 
-      {/* Tabs - Mobile Friendly */}
-      <Tabs defaultValue="signals" className="space-y-4">
-        <TabsList className="bg-gray-900/50 rounded-lg p-1 grid grid-cols-3 w-full">
-          <TabsTrigger value="signals" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-300 rounded-md px-4 py-2 text-sm font-medium">
-            <Activity className="mr-2 h-4 w-4" />
-            Signals ({signals.length})
-          </TabsTrigger>
-          <TabsTrigger value="performance" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-300 rounded-md px-4 py-2 text-sm font-medium">
-            <TrendingUp className="mr-2 h-4 w-4" />
-            Stats
-          </TabsTrigger>
-          <TabsTrigger value="filters" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-300 rounded-md px-4 py-2 text-sm font-medium">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-2">
-              <path d="M2.636 5.364a1 1 0 010-1.414l8-8a1 1 0 011.414 0l8 8a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-8-8z" />
-            </svg>
-            Filters
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="signals" className="space-y-4">
-          {signals.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {signals.map((signal) => (
-                <MobileSignalCard 
-                  key={signal.id} 
-                  signal={signal}
-                  onTakeSignal={handleTakeSignal}
-                  onRemoveSignal={handleRemoveSignal}
-                />
-              ))}
+      {/* Performance Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="glass-card border-green-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Target className="w-5 h-5 text-green-400" />
+              <div>
+                <p className="text-xs text-gray-400">Total Signals</p>
+                <p className="text-lg font-bold text-green-400">{signals.length}</p>
+              </div>
             </div>
-          ) : (
-            <Card className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 border border-gray-700/50">
-              <CardContent className="text-center text-gray-400 py-8">
-                <Wifi className="mx-auto h-12 w-12 text-gray-500 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No WebSocket Signals Yet</h3>
-                <p className="mb-4">Click "Generate Live Signal" to get started with real-time WebSocket-powered signals!</p>
-                {!canGenerateSignal && (
-                  <Badge variant="outline" className="text-yellow-400 border-yellow-500/30">
-                    Daily limit reached - Upgrade for unlimited signals
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card border-blue-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Activity className="w-5 h-5 text-blue-400" />
+              <div>
+                <p className="text-xs text-gray-400">Filtered</p>
+                <p className="text-lg font-bold text-blue-400">{filteredSignals.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card border-purple-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Brain className="w-5 h-5 text-purple-400" />
+              <div>
+                <p className="text-xs text-gray-400">Win Rate</p>
+                <p className="text-lg font-bold text-purple-400">72%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card border-orange-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Shield className="w-5 h-5 text-orange-400" />
+              <div>
+                <p className="text-xs text-gray-400">Avg R:R</p>
+                <p className="text-lg font-bold text-orange-400">2.1:1</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Signals Display */}
+      {filteredSignals.length > 0 && (
+        <Card className="glass-card border-blue-500/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-blue-400 flex items-center gap-2">
+                <Target className="w-5 h-5" />
+                Live Signals ({filteredSignals.length})
+                {selectedStrength !== 'All' && (
+                  <Badge className="ml-2 bg-blue-500/20 text-blue-400 border-blue-500/30">
+                    {selectedStrength} Filter
                   </Badge>
                 )}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+              </CardTitle>
+              {signals.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllSignals}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {filteredSignals.map((signal) => (
+              <div key={signal.id} className="glass-card p-4 border-blue-500/10 hover:border-blue-500/30 transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <Badge className={`${signal.type === 'BUY' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} border-current`}>
+                      {signal.type === 'BUY' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                      {signal.pair} {signal.type}
+                    </Badge>
+                    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                      {signal.confidence}%
+                    </Badge>
+                    {signal.signalStrength && (
+                      <Badge className={`${
+                        signal.signalStrength === 'ULTRA' ? 'bg-purple-500/20 text-purple-400' :
+                        signal.signalStrength === 'STRONG' ? 'bg-red-500/20 text-red-400' :
+                        signal.signalStrength === 'MEDIUM' ? 'bg-orange-500/20 text-orange-400' :
+                        'bg-yellow-500/20 text-yellow-400'
+                      } border-current`}>
+                        {signal.signalStrength}
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveSignal(signal.id)}
+                    className="text-red-400 hover:text-red-300"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-3">
+                  <div>
+                    <span className="text-gray-400">Entry:</span>
+                    <div className="text-white font-mono">{signal.entryPrice}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Stop Loss:</span>
+                    <div className="text-red-400 font-mono">{signal.stopLoss}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Take Profit:</span>
+                    <div className="text-green-400 font-mono">{signal.takeProfit}</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between text-sm mb-3">
+                  <span className="text-gray-400">R:R {signal.riskReward}:1</span>
+                  <span className="text-gray-400">{signal.timeframe}</span>
+                  <span className="text-gray-400">{new Date(signal.timestamp).toLocaleTimeString()}</span>
+                </div>
 
-        <TabsContent value="performance">
-          <PerformanceStats
-            winRate={78}
-            totalSignals={signals.length}
-            activeSignals={signals.filter(s => s.sessionActive).length}
-            avgRR={2.4}
-          />
-        </TabsContent>
+                {signal.confluenceScore && (
+                  <div className="flex items-center justify-between text-sm mb-3">
+                    <span className="text-blue-400">Confluence: {signal.confluenceScore}/6</span>
+                    {signal.sessionContext && (
+                      <span className="text-purple-400">Session: {signal.sessionContext}</span>
+                    )}
+                  </div>
+                )}
+                
+                {signal.technicalSetup && (
+                  <div className="mt-3 p-3 bg-gray-800/50 rounded text-sm">
+                    <span className="text-blue-400">Setup:</span> {signal.technicalSetup}
+                  </div>
+                )}
 
-        <TabsContent value="filters">
-          <FilterSettings
-            minFilters={minFilters}
-            onMinFiltersChange={setMinFilters}
-            minConfidence={minConfidence}
-            onMinConfidenceChange={setMinConfidence}
-          />
-        </TabsContent>
-      </Tabs>
+                {signal.analysis && (
+                  <div className="mt-3 p-3 bg-purple-800/20 rounded text-sm">
+                    <span className="text-purple-400">AI Analysis:</span> {signal.analysis}
+                  </div>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No Signals Message */}
+      {filteredSignals.length === 0 && signals.length > 0 && (
+        <Card className="glass-card border-gray-500/20">
+          <CardContent className="p-6 text-center">
+            <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-300 mb-2">
+              No {selectedStrength} Signals Found
+            </h3>
+            <p className="text-gray-400 text-sm">
+              Try selecting a different strength filter or generate new signals.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty State */}
+      {signals.length === 0 && (
+        <Card className="glass-card border-gray-500/20">
+          <CardContent className="p-6 text-center">
+            <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-300 mb-2">
+              No Signals Generated Yet
+            </h3>
+            <p className="text-gray-400 text-sm">
+              Generate your first AI signal to start tracking market opportunities.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
