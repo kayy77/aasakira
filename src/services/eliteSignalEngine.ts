@@ -65,7 +65,7 @@ export class EliteSignalEngine {
     userMinConfidence: number,
     requiredFilters: number,
     selectedFilters: string[]
-  ): Promise<EliteSignal | null> {
+  ): Promise<EliteSignal> {
     const pair = this.MAJOR_PAIRS[Math.floor(Math.random() * this.MAJOR_PAIRS.length)];
     console.log(`🎯 Analyzing ${pair} for institutional opportunities...`);
     
@@ -109,16 +109,13 @@ export class EliteSignalEngine {
       
       console.log(`📊 Filter Results: ${passedCount}/${filterResults.length} passed | Confidence: ${confidence}%`);
       
-      // More lenient approval logic to ensure signals are generated
-      const shouldApprove = confidence >= Math.max(35, userMinConfidence - 15) && passedCount >= Math.max(1, requiredFilters - 1);
-      
-      if (!shouldApprove) {
-        console.log(`⚠️ Signal below threshold, generating fallback signal...`);
-        return this.generateFallbackSignal(pair, livePrice);
-      }
-      
-      // Generate the signal
+      // ALWAYS GENERATE A SIGNAL - even if weak
       const signal = await this.createEliteSignal(pair, livePrice, confidence, filterResults);
+      
+      // Log why signal might be weak for debugging
+      if (confidence < userMinConfidence || passedCount < requiredFilters) {
+        console.log(`⚠️ Signal generated with lower quality: Confidence: ${confidence}%, Filters: ${passedCount}/${requiredFilters}`);
+      }
       
       console.log(`✅ ELITE SIGNAL GENERATED: ${pair} ${signal.type} | ${confidence}% confidence | ${passedCount} filters`);
       return signal;
@@ -303,6 +300,16 @@ export class EliteSignalEngine {
     const passedFilters = filterResults.filter(f => f.passed);
     const failedFilters = filterResults.filter(f => !f.passed);
     
+    // Generate reasoning based on signal strength
+    let reasoning = '';
+    if (confidence >= 80 && passedFilters.length >= 3) {
+      reasoning = `🏛️ INSTITUTIONAL SIGNAL: ${passedFilters.length} filters confirmed (${passedFilters.map(f => f.name).join(', ')}). ${confidence}% AI confidence with live price validation.`;
+    } else if (confidence >= 60 && passedFilters.length >= 2) {
+      reasoning = `⚡ MODERATE SIGNAL: ${passedFilters.length} filters passed (${passedFilters.map(f => f.name).join(', ')}). ${confidence}% confidence - monitor closely.`;
+    } else {
+      reasoning = `⚠️ WEAK SIGNAL: Limited confluence detected (${passedFilters.map(f => f.name).join(', ')}). ${confidence}% confidence - use smaller position size and tight stops.`;
+    }
+    
     return {
       id: `elite_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       pair,
@@ -317,7 +324,7 @@ export class EliteSignalEngine {
       signalStrength: this.getSignalStrength(confidence, passedFilters.length),
       lotSize: this.calculateLotSize(confidence, riskReward),
       strategy: this.determineStrategy(passedFilters),
-      reasoning: this.generateReasoning(passedFilters, confidence),
+      reasoning,
       livePrice: livePrice.toFixed(pair.includes('JPY') ? 3 : 5),
       timestamp: new Date().toISOString(),
       filterBreakdown: {
@@ -354,7 +361,7 @@ export class EliteSignalEngine {
       signalStrength: 'STANDARD',
       lotSize: 0.1,
       strategy: 'FALLBACK',
-      reasoning: '🚨 FALLBACK SIGNAL: Generated to ensure consistent signal flow. Entry uses live price normalization.',
+      reasoning: '🚨 FALLBACK SIGNAL: Generated to ensure consistent signal flow. Market conditions unclear, but this is the best pattern available. Use smaller position size.',
       livePrice: livePrice.toFixed(pair.includes('JPY') ? 3 : 5),
       timestamp: new Date().toISOString(),
       filterBreakdown: {

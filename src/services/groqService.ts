@@ -72,7 +72,7 @@ Output Format (JSON only):
     } catch (error) {
       console.error('❌ Multi-strategy signal generation failed:', error);
       
-      // Fallback signal
+      // ALWAYS return a fallback signal - never fail completely
       return {
         symbol,
         strength: "Weak",
@@ -81,7 +81,7 @@ Output Format (JSON only):
         tp1: livePrice * 1.01,
         tp2: livePrice * 1.02,
         strategy: "Fallback Analysis",
-        reason: "Market conditions unclear, basic technical setup"
+        reason: "Market conditions unclear, basic technical setup - use smaller position size"
       };
     }
   }

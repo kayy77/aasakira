@@ -31,10 +31,12 @@ class EnhancedPriceService {
       // Use the new fallback system
       const price = await fetchLivePrice(pair);
       const timestamp = now;
+      const changePercent = await this.calculateChangePercent(pair, price);
       
       const priceData: PriceData = {
         price,
         timestamp,
+        changePercent,
         source: 'Multi-API',
         age: 0
       };
@@ -88,6 +90,14 @@ class EnhancedPriceService {
     return 'disconnected';
   }
 
+  private async calculateChangePercent(pair: string, currentPrice: number): Promise<number> {
+    const cached = this.priceCache.get(pair);
+    if (cached && cached.price !== currentPrice) {
+      return ((currentPrice - cached.price) / cached.price) * 100;
+    }
+    return 0;
+  }
+
   private getFallbackPrice(pair: string): PriceData {
     const fallbackPrices: { [key: string]: number } = {
       'EURUSD': 1.0850,
@@ -102,7 +112,8 @@ class EnhancedPriceService {
       price: fallbackPrices[pair] || 1.0000,
       timestamp,
       source: 'Fallback',
-      age: 0
+      age: 0,
+      changePercent: 0
     };
   }
 

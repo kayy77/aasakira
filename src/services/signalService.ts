@@ -24,7 +24,7 @@ class SignalService {
       const freshPrices = await enhancedPriceService.getFreshPricesForSignals(majorPairs);
       console.log(`✅ Pre-fetched fresh prices for ${Object.keys(freshPrices).length} pairs`);
       
-      // Generate signal with the freshest possible market data
+      // Generate signal with the freshest possible market data - ALWAYS RETURNS A SIGNAL
       const eliteSignal = await EliteSignalEngine.generateEliteSignal(
         userMinConfidence,
         requiredFilters,
@@ -32,7 +32,7 @@ class SignalService {
       );
       
       if (!eliteSignal) {
-        console.log('❌ No elite signal generated');
+        console.log('❌ No elite signal generated - this should not happen with new logic');
         return null;
       }
       
@@ -63,7 +63,8 @@ class SignalService {
         
       } catch (error) {
         console.error(`❌ Failed to get ultra-fresh price for ${eliteSignal.pair}:`, error);
-        return null; // Don't generate signal with stale price
+        // Continue with the original price instead of failing
+        console.log('🔄 Using original signal price due to fetch error');
       }
       
       // Convert to Signal format with LIVE price
@@ -116,6 +117,7 @@ class SignalService {
       
     } catch (error) {
       console.error('❌ SignalService error:', error);
+      console.log('🚨 Signal generation failed - this should not happen with fallback logic');
       return null;
     }
   }
