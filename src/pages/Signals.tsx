@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
-import LiveSignalsDashboard from '@/components/signals/LiveSignalsDashboard';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
 import FeatureGate from '@/components/FeatureGate';
 import SignalFilter from '@/components/signals/SignalFilter';
+import LiveSignalsDashboard from '@/components/signals/LiveSignalsDashboard';
 
 const Signals = () => {
   const isMobile = useIsMobile();
