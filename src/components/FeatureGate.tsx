@@ -1,15 +1,27 @@
 
 import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Crown, Lock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { 
+  Lock, 
+  Crown, 
+  Star, 
+  Zap 
+} from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog';
 
 interface FeatureGateProps {
   children: React.ReactNode;
-  feature: 'signals' | 'memeScans' | 'mentorMessages';
+  feature: string;
   featureName: string;
 }
 
@@ -23,20 +35,21 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
   // If user is not authenticated, show login prompt
   if (!user) {
     return (
-      <Card className="glass-card border-purple-500/20">
-        <CardHeader>
-          <CardTitle className="flex items-center text-white">
-            <Lock className="w-5 h-5 mr-2 text-purple-400" />
-            Authentication Required
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-300 mb-4">
+      <Card className="glass-card border-gray-500/20">
+        <CardContent className="p-6 text-center">
+          <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-300 mb-2">
+            Sign In Required
+          </h3>
+          <p className="text-gray-400 text-sm mb-4">
             Please sign in to access {featureName}
           </p>
           <Button 
-            onClick={() => window.location.reload()} 
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            onClick={() => toast({
+              title: "Sign In Required",
+              description: "Please sign in to access this feature",
+            })}
+            className="bg-purple-600 hover:bg-purple-700"
           >
             Sign In
           </Button>
@@ -45,66 +58,70 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
     );
   }
 
-  // Check if user can use the feature
   const canUse = canUseFeature(feature);
   const remaining = getRemainingUsage(feature);
-  const isPremium = user.role === 'premium';
+  const subscription = user.subscription;
+  const isPremium = subscription?.tier === 'premium';
 
-  // If user can't use the feature, show upgrade prompt
+  console.log('Feature gate check:', {
+    feature,
+    canUse,
+    remaining,
+    isPremium,
+    subscription
+  });
+
+  // Show upgrade prompt if user has reached limits
   if (!canUse && !isPremium) {
     return (
-      <div className="space-y-6">
-        <Card className="glass-card border-orange-500/20">
-          <CardHeader>
-            <CardTitle className="flex items-center text-white">
-              <Crown className="w-5 h-5 mr-2 text-orange-400" />
-              Daily Limit Reached
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-300 mb-4">
-              You've reached your daily limit for {featureName}. Upgrade to Premium for unlimited access!
-            </p>
-            <div className="flex gap-3">
-              <Button 
+      <Card className="glass-card border-yellow-500/20">
+        <CardContent className="p-6 text-center">
+          <Crown className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-300 mb-2">
+            Daily Limit Reached
+          </h3>
+          <p className="text-gray-400 text-sm mb-4">
+            You've reached your daily limit for {featureName}. Upgrade to Premium for unlimited access.
+          </p>
+          <Button 
+            onClick={() => setShowUpgrade(true)}
+            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+          >
+            <Crown className="w-4 h-4 mr-2" />
+            Upgrade to Premium
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show usage warning for free users approaching limits
+  if (!isPremium && remaining <= 2 && remaining > 0) {
+    return (
+      <>
+        <Card className="glass-card border-yellow-500/20 mb-4">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Star className="w-5 h-5 text-yellow-400" />
+                <span className="text-sm text-yellow-400">
+                  {remaining} {featureName} uses remaining today
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={() => setShowUpgrade(true)}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                className="text-yellow-400 hover:text-yellow-300"
               >
-                <Crown className="w-4 h-4 mr-2" />
-                Upgrade to Premium
+                Upgrade
               </Button>
             </div>
           </CardContent>
         </Card>
         
-        <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>
-          <DialogContent className="glass-card border-purple-500/20">
-            <DialogHeader>
-              <DialogTitle className="flex items-center text-white">
-                <Crown className="w-5 h-5 mr-2 text-purple-400" />
-                Upgrade to Premium
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-gray-300">
-                Get unlimited access to all premium features including:
-              </p>
-              <ul className="text-gray-300 space-y-2">
-                <li>• Unlimited AI Signals</li>
-                <li>• Advanced Meme Coin Scanner</li>
-                <li>• Priority Support</li>
-                <li>• Advanced Analytics</li>
-              </ul>
-              <Button 
-                onClick={() => setShowUpgrade(false)}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              >
-                Contact Support for Upgrade
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+        {children}
+      </>
     );
   }
 
@@ -115,36 +132,45 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
       incrementUsage(feature);
       const newRemaining = remaining - 1;
       
-      if (newRemaining <= 1) {
+      if (newRemaining === 0) {
         toast({
-          title: "Usage Limit Warning",
-          description: `You have ${newRemaining} ${featureName.toLowerCase()} left today. Consider upgrading to Premium for unlimited access.`,
-          variant: "destructive"
+          title: "Daily Limit Reached",
+          description: `You've used all your ${featureName} for today. Upgrade for unlimited access!`,
+          action: (
+            <Button
+              size="sm"
+              onClick={() => setShowUpgrade(true)}
+              className="bg-yellow-500 hover:bg-yellow-600"
+            >
+              Upgrade
+            </Button>
+          ),
+        });
+      } else if (newRemaining <= 2) {
+        toast({
+          title: "Usage Warning",
+          description: `${newRemaining} ${featureName} uses remaining today`,
         });
       }
     }
   };
 
   return (
-    <div className="space-y-4">
+    <>
+      {/* Usage indicator for free users */}
       {!isPremium && (
-        <Card className="glass-card border-blue-500/20">
+        <Card className="glass-card border-purple-500/20 mb-4">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-300">
-                  {featureName} remaining today: <span className="font-bold text-blue-400">{remaining}</span>
-                </p>
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-purple-400" />
+                <span className="text-sm text-gray-300">
+                  {remaining} {featureName} uses remaining today
+                </span>
               </div>
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => setShowUpgrade(true)}
-                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-              >
-                <Crown className="w-3 h-3 mr-1" />
-                Upgrade
-              </Button>
+              <Badge variant="outline" className="text-purple-400 border-purple-500/30">
+                Free Plan
+              </Badge>
             </div>
           </CardContent>
         </Card>
@@ -152,7 +178,7 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
       
       <div>
         {React.isValidElement(children) ? 
-          React.cloneElement(children, { onFeatureUse: handleFeatureUse }) : 
+          React.cloneElement(children as React.ReactElement<any>, { onFeatureUse: handleFeatureUse }) : 
           children
         }
       </div>
@@ -160,31 +186,50 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
       <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>
         <DialogContent className="glass-card border-purple-500/20">
           <DialogHeader>
-            <DialogTitle className="flex items-center text-white">
-              <Crown className="w-5 h-5 mr-2 text-purple-400" />
+            <DialogTitle className="flex items-center gap-2 text-purple-400">
+              <Crown className="w-5 h-5" />
               Upgrade to Premium
             </DialogTitle>
+            <DialogDescription>
+              Get unlimited access to all features, including unlimited {featureName}.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-gray-300">
-              Get unlimited access to all premium features including:
-            </p>
-            <ul className="text-gray-300 space-y-2">
-              <li>• Unlimited AI Signals</li>
-              <li>• Advanced Meme Coin Scanner</li>
-              <li>• Priority Support</li>
-              <li>• Advanced Analytics</li>
-            </ul>
-            <Button 
-              onClick={() => setShowUpgrade(false)}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            >
-              Contact Support for Upgrade
-            </Button>
+            <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 p-4 rounded-lg">
+              <h4 className="font-semibold text-white mb-2">Premium Benefits:</h4>
+              <ul className="text-sm text-gray-300 space-y-1">
+                <li>• Unlimited {featureName}</li>
+                <li>• Priority support</li>
+                <li>• Advanced analytics</li>
+                <li>• Early access to new features</li>
+              </ul>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setShowUpgrade(false)}
+                variant="ghost"
+                className="flex-1"
+              >
+                Maybe Later
+              </Button>
+              <Button 
+                onClick={() => {
+                  setShowUpgrade(false);
+                  toast({
+                    title: "Upgrade Feature",
+                    description: "Premium upgrade feature coming soon!",
+                  });
+                }}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade Now
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 

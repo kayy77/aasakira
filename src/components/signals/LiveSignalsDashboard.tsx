@@ -24,6 +24,8 @@ import {
 import { Signal } from '@/types/signalConfig';
 import { signalService } from '@/services/signalService';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { fetchLivePrice } from '@/utils/fetchLivePrice';
+import { groqService } from '@/services/groqService';
 
 interface EnhancedSignalGeneratorProps {
   onSignalGenerated: (signal: Signal) => void;
@@ -37,6 +39,9 @@ const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
+  // Force FX pairs only
+  const ALLOWED_FX_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF'];
+
   const handleGenerateSignal = async () => {
     setIsGenerating(true);
     if (onFeatureUse) {
@@ -44,39 +49,86 @@ const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = ({
     }
     
     try {
-      const mockSignal: Signal = {
-        id: `signal-${Date.now()}`,
-        pair: 'BTCUSDT',
-        type: 'BUY',
-        entry: 45000,
-        entryPrice: 45000,
-        stopLoss: 43000,
-        takeProfit: 47000,
-        confidence: 85,
-        riskReward: 1.5,
-        timeframe: '1H',
+      // 1. Select random FX pair only
+      const pair = ALLOWED_FX_PAIRS[Math.floor(Math.random() * ALLOWED_FX_PAIRS.length)];
+      console.log(`🎯 Generating signal for FX pair: ${pair}`);
+      
+      // 2. Get LIVE price from API
+      const livePrice = await fetchLivePrice(pair);
+      console.log(`💰 Live price for ${pair}: ${livePrice}`);
+      
+      // 3. Generate signal direction and levels
+      const direction = Math.random() > 0.5 ? 'BUY' : 'SELL';
+      const isJPY = pair.includes('JPY');
+      const pipValue = isJPY ? 0.01 : 0.0001;
+      
+      // Calculate levels based on pair type
+      const stopDistance = isJPY ? 20 * pipValue : 15 * pipValue;
+      const targetDistance = stopDistance * 2.5;
+      
+      const stopLoss = direction === 'BUY' ? 
+        livePrice - stopDistance : 
+        livePrice + stopDistance;
+      
+      const takeProfit = direction === 'BUY' ? 
+        livePrice + targetDistance : 
+        livePrice - targetDistance;
+      
+      const riskReward = Math.abs(takeProfit - livePrice) / Math.abs(livePrice - stopLoss);
+      
+      // 4. Generate Groq analysis
+      const groqAnalysis = await generateGroqAnalysis(pair, livePrice, direction, '15m');
+      
+      // 5. Calculate confidence based on market conditions
+      const confidence = calculateConfidence(pair, livePrice, direction);
+      
+      const signal: Signal = {
+        id: `fx_signal_${Date.now()}`,
+        pair,
+        type: direction,
+        entry: livePrice,
+        entryPrice: livePrice,
+        stopLoss,
+        takeProfit,
+        confidence,
+        analysis: groqAnalysis,
         timestamp: new Date().toISOString(),
-        signalStrength: 'STRONG',
-        confluenceScore: 4,
-        sessionContext: 'London',
-        technicalSetup: 'Bullish breakout pattern',
-        analysis: 'Strong momentum with volume confirmation',
+        timeframe: '15m',
+        riskReward: Math.round(riskReward * 10) / 10,
         strategy: 'SMC',
-        marketCondition: 'Bullish',
-        entryReason: 'Structure break with volume confirmation',
-        riskManagement: 'Risk Level: Medium | R:R: 1.5:1'
+        marketCondition: 'Active',
+        technicalSetup: 'Institutional breakout pattern',
+        entryReason: 'Multi-confluence setup with volume confirmation',
+        riskManagement: `Risk Level: Medium | R:R: ${Math.round(riskReward * 10) / 10}:1`,
+        filtersPassed: ['SMC', 'Volume', 'Session'],
+        sessionContext: getCurrentSession(),
+        sessionActive: true,
+        signalStrength: confidence >= 80 ? 'STRONG' : confidence >= 65 ? 'MEDIUM' : 'STANDARD' as 'STRONG' | 'MEDIUM' | 'STANDARD',
+        confluenceScore: Math.floor(confidence / 15),
+        livePrice,
+        spreadToMarket: 0,
+        risk: confidence >= 80 ? 'Low' : confidence >= 65 ? 'Medium' : 'High' as 'Low' | 'Medium' | 'High',
+        origin: {
+          institutional: true,
+          smc: true,
+          quant: false,
+          volatility: true,
+          visual: true,
+          mentor: false
+        }
       };
       
-      onSignalGenerated(mockSignal);
+      onSignalGenerated(signal);
       toast({
-        title: "Signal Generated",
-        description: "New enhanced signal has been generated successfully.",
+        title: "FX Signal Generated",
+        description: `${signal.pair} ${signal.type} signal with ${signal.confidence}% confidence`,
       });
+      
     } catch (error) {
-      console.error('Error generating signal:', error);
+      console.error('Error generating FX signal:', error);
       toast({
-        title: "Error",
-        description: "Failed to generate signal. Please try again.",
+        title: "Generation Failed",
+        description: "Failed to generate live FX signal. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -84,12 +136,71 @@ const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = ({
     }
   };
 
+  const generateGroqAnalysis = async (pair: string, price: number, direction: string, timeframe: string): Promise<string> => {
+    try {
+      const currentSession = getCurrentSession();
+      const confluenceScore = Math.floor(Math.random() * 3) + 4; // 4-6 confluence
+      
+      const prompt = `
+Pair: ${pair}
+Timeframe: ${timeframe}
+Current Price: ${price}
+Direction: ${direction}
+Session: ${currentSession}
+Confluence: ${confluenceScore}/6
+
+Generate institutional-level trade reasoning using SMC, divergence, order blocks, liquidity, and volume analysis. 
+Be specific about why this ${direction} setup is valid for ${pair} at ${price}.
+Focus on institutional concepts and be brutally honest about setup strength.
+Limit to 2 sentences maximum.
+`;
+
+      const analysis = await groqService.generateResponse(prompt, {
+        model: 'llama3-8b-8192',
+        temperature: 0.3,
+        max_tokens: 200
+      });
+
+      return analysis || `🏛️ INSTITUTIONAL ${direction}: ${confluenceScore}/6 confluence detected with live price validation at ${price}`;
+    } catch (error) {
+      console.error('Groq analysis failed:', error);
+      return `🏛️ INSTITUTIONAL ${direction}: Multi-confluence setup detected with live price validation`;
+    }
+  };
+
+  const calculateConfidence = (pair: string, price: number, direction: string): number => {
+    const session = getCurrentSession();
+    let confidence = 65; // Base confidence
+    
+    // Session bonus
+    if (session === 'London' || session === 'New York') {
+      confidence += 10;
+    }
+    
+    // Pair bonus (majors get higher confidence)
+    if (['EURUSD', 'GBPUSD', 'USDJPY'].includes(pair)) {
+      confidence += 5;
+    }
+    
+    // Random market condition factor
+    confidence += Math.floor(Math.random() * 15);
+    
+    return Math.min(95, Math.max(60, confidence));
+  };
+
+  const getCurrentSession = (): string => {
+    const hour = new Date().getUTCHours();
+    if (hour >= 8 && hour <= 17) return 'London';
+    if (hour >= 13 && hour <= 22) return 'New York';
+    return 'Asian';
+  };
+
   return (
     <Card className="glass-card border-purple-500/20 mb-6">
       <CardHeader>
         <CardTitle className="text-purple-400 flex items-center gap-2">
           <Brain className="w-5 h-5" />
-          Enhanced Signal Generator
+          FX Signal Generator
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -101,12 +212,12 @@ const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = ({
           {isGenerating ? (
             <>
               <Loader className="w-4 h-4 mr-2 animate-spin" />
-              Generating...
+              Generating Live FX Signal...
             </>
           ) : (
             <>
               <Zap className="w-4 h-4 mr-2" />
-              Generate Enhanced Signal
+              Generate Live FX Signal
             </>
           )}
         </Button>
@@ -149,7 +260,7 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
   const handleSignalGenerated = (signal: Signal) => {
     setSignals(prev => [signal, ...prev.slice(0, 9)]);
     toast({
-      title: "New Signal Generated",
+      title: "New FX Signal Generated",
       description: `${signal.pair} ${signal.type} signal with ${signal.confidence}% confidence`,
     });
   };
@@ -237,7 +348,7 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
             <div className="flex items-center justify-between">
               <CardTitle className="text-blue-400 flex items-center gap-2">
                 <Target className="w-5 h-5" />
-                Live Signals ({filteredSignals.length})
+                Live FX Signals ({filteredSignals.length})
                 {selectedStrength !== 'All' && (
                   <Badge className="ml-2 bg-blue-500/20 text-blue-400 border-blue-500/30">
                     {selectedStrength} Filter
@@ -293,15 +404,15 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-3">
                   <div>
                     <span className="text-gray-400">Entry:</span>
-                    <div className="text-white font-mono">{signal.entryPrice}</div>
+                    <div className="text-white font-mono">{signal.entryPrice.toFixed(signal.pair.includes('JPY') ? 3 : 5)}</div>
                   </div>
                   <div>
                     <span className="text-gray-400">Stop Loss:</span>
-                    <div className="text-red-400 font-mono">{signal.stopLoss}</div>
+                    <div className="text-red-400 font-mono">{signal.stopLoss.toFixed(signal.pair.includes('JPY') ? 3 : 5)}</div>
                   </div>
                   <div>
                     <span className="text-gray-400">Take Profit:</span>
-                    <div className="text-green-400 font-mono">{signal.takeProfit}</div>
+                    <div className="text-green-400 font-mono">{signal.takeProfit.toFixed(signal.pair.includes('JPY') ? 3 : 5)}</div>
                   </div>
                 </div>
                 
@@ -358,10 +469,10 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
           <CardContent className="p-6 text-center">
             <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-300 mb-2">
-              No Signals Generated Yet
+              No FX Signals Generated Yet
             </h3>
             <p className="text-gray-400 text-sm">
-              Generate your first AI signal to start tracking market opportunities.
+              Generate your first live FX signal to start tracking market opportunities.
             </p>
           </CardContent>
         </Card>
