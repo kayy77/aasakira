@@ -25,20 +25,25 @@ import { Signal } from '@/types/signalConfig';
 import { signalService } from '@/services/signalService';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-// Create a simple EnhancedSignalGenerator component since the original is in read-only files
-const EnhancedSignalGenerator: React.FC<{
+interface EnhancedSignalGeneratorProps {
   onSignalGenerated: (signal: Signal) => void;
-  onFeatureUse: () => void;
-}> = ({ onSignalGenerated, onFeatureUse }) => {
+  onFeatureUse?: () => void;
+}
+
+const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = ({ 
+  onSignalGenerated, 
+  onFeatureUse 
+}) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
   const handleGenerateSignal = async () => {
     setIsGenerating(true);
-    onFeatureUse();
+    if (onFeatureUse) {
+      onFeatureUse();
+    }
     
     try {
-      // Mock signal generation for now
       const mockSignal: Signal = {
         id: `signal-${Date.now()}`,
         pair: 'BTCUSDT',
@@ -112,9 +117,13 @@ const EnhancedSignalGenerator: React.FC<{
 
 interface LiveSignalsDashboardProps {
   selectedStrength?: string;
+  onFeatureUse?: () => void;
 }
 
-const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({ selectedStrength = 'All' }) => {
+const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({ 
+  selectedStrength = 'All',
+  onFeatureUse
+}) => {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [filteredSignals, setFilteredSignals] = useState<Signal[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -123,6 +132,8 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({ selectedStr
   const [lastRejectionReason, setLastRejectionReason] = useState<string>('');
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  console.log('LiveSignalsDashboard rendering with selectedStrength:', selectedStrength);
 
   // Filter signals based on selected strength
   useEffect(() => {
@@ -165,7 +176,7 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({ selectedStr
       {/* Enhanced Signal Generator */}
       <EnhancedSignalGenerator 
         onSignalGenerated={handleSignalGenerated}
-        onFeatureUse={() => console.log('Enhanced Signal Generator used')}
+        onFeatureUse={onFeatureUse}
       />
 
       {/* Performance Stats */}

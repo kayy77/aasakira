@@ -18,6 +18,8 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
   const { toast } = useToast();
   const [showUpgrade, setShowUpgrade] = React.useState(false);
 
+  console.log('FeatureGate rendering for feature:', feature, 'user:', user);
+
   // If user is not authenticated, show login prompt
   if (!user) {
     return (
@@ -106,8 +108,9 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
     );
   }
 
-  // Wrap children with usage tracking
+  // Handle feature usage tracking
   const handleFeatureUse = () => {
+    console.log('Feature use triggered for:', feature);
     if (!isPremium) {
       incrementUsage(feature);
       const newRemaining = remaining - 1;
@@ -147,9 +150,12 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
         </Card>
       )}
       
-      {React.cloneElement(children as React.ReactElement, { 
-        onFeatureUse: handleFeatureUse 
-      })}
+      <div>
+        {React.isValidElement(children) ? 
+          React.cloneElement(children, { onFeatureUse: handleFeatureUse }) : 
+          children
+        }
+      </div>
       
       <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>
         <DialogContent className="glass-card border-purple-500/20">
