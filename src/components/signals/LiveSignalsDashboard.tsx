@@ -43,6 +43,7 @@ const EnhancedSignalGenerator: React.FC<{
         id: `signal-${Date.now()}`,
         pair: 'BTCUSDT',
         type: 'BUY',
+        entry: 45000,
         entryPrice: 45000,
         stopLoss: 43000,
         takeProfit: 47000,
@@ -54,7 +55,11 @@ const EnhancedSignalGenerator: React.FC<{
         confluenceScore: 4,
         sessionContext: 'London',
         technicalSetup: 'Bullish breakout pattern',
-        analysis: 'Strong momentum with volume confirmation'
+        analysis: 'Strong momentum with volume confirmation',
+        strategy: 'SMC',
+        marketCondition: 'Bullish',
+        entryReason: 'Structure break with volume confirmation',
+        riskManagement: 'Risk Level: Medium | R:R: 1.5:1'
       };
       
       onSignalGenerated(mockSignal);
