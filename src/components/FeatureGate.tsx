@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Crown, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import EnhancedPremiumUpgrade from './enhanced/EnhancedPremiumUpgrade';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface FeatureGateProps {
   children: React.ReactNode;
@@ -75,12 +75,33 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
           </CardContent>
         </Card>
         
-        {showUpgrade && (
-          <EnhancedPremiumUpgrade 
-            open={showUpgrade} 
-            onOpenChange={setShowUpgrade} 
-          />
-        )}
+        <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>
+          <DialogContent className="glass-card border-purple-500/20">
+            <DialogHeader>
+              <DialogTitle className="flex items-center text-white">
+                <Crown className="w-5 h-5 mr-2 text-purple-400" />
+                Upgrade to Premium
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-gray-300">
+                Get unlimited access to all premium features including:
+              </p>
+              <ul className="text-gray-300 space-y-2">
+                <li>• Unlimited AI Signals</li>
+                <li>• Advanced Meme Coin Scanner</li>
+                <li>• Priority Support</li>
+                <li>• Advanced Analytics</li>
+              </ul>
+              <Button 
+                onClick={() => setShowUpgrade(false)}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                Contact Support for Upgrade
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -130,12 +151,33 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ children, feature, featureNam
         onFeatureUse: handleFeatureUse 
       })}
       
-      {showUpgrade && (
-        <EnhancedPremiumUpgrade 
-          open={showUpgrade} 
-          onOpenChange={setShowUpgrade} 
-        />
-      )}
+      <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>
+        <DialogContent className="glass-card border-purple-500/20">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-white">
+              <Crown className="w-5 h-5 mr-2 text-purple-400" />
+              Upgrade to Premium
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-gray-300">
+              Get unlimited access to all premium features including:
+            </p>
+            <ul className="text-gray-300 space-y-2">
+              <li>• Unlimited AI Signals</li>
+              <li>• Advanced Meme Coin Scanner</li>
+              <li>• Priority Support</li>
+              <li>• Advanced Analytics</li>
+            </ul>
+            <Button 
+              onClick={() => setShowUpgrade(false)}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            >
+              Contact Support for Upgrade
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
