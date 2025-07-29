@@ -8,23 +8,25 @@ import { Crown, Lock, Zap, Star } from 'lucide-react';
 
 interface FeatureGateProps {
   feature: 'signals' | 'memeScans' | 'mentorMessages';
+  featureName?: string;
   children: React.ReactNode;
   onFeatureUse?: () => void;
 }
 
 const FeatureGate: React.FC<FeatureGateProps> = ({ 
   feature, 
+  featureName,
   children, 
   onFeatureUse 
 }) => {
-  const { subscription, user } = useSubscription();
+  const { subscription, isPremium, usageStats, dailyLimits } = useSubscription();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   // Feature limits for free users
   const featureLimits = {
-    signals: 3,
-    memeScans: 5,
-    mentorMessages: 10
+    signals: 1,
+    memeScans: 2,
+    mentorMessages: 3
   };
 
   const featureNames = {
@@ -33,23 +35,23 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
     mentorMessages: 'Mentor Messages'
   };
 
-  const isPremium = subscription?.tier === 'premium';
+  const displayName = featureName || featureNames[feature];
   const dailyLimit = featureLimits[feature];
-  const featureName = featureNames[feature];
 
-  // Simple usage tracking (in real app, this would be from backend)
+  // Get usage count from subscription context
   const getUsageCount = () => {
-    const today = new Date().toDateString();
-    const key = `${feature}_usage_${today}`;
-    const stored = localStorage.getItem(key);
-    return stored ? parseInt(stored) : 0;
-  };
-
-  const incrementUsage = () => {
-    const today = new Date().toDateString();
-    const key = `${feature}_usage_${today}`;
-    const current = getUsageCount();
-    localStorage.setItem(key, (current + 1).toString());
+    if (!usageStats) return 0;
+    
+    switch (feature) {
+      case 'signals':
+        return usageStats.signals || 0;
+      case 'memeScans':
+        return usageStats.meme_scans || 0;
+      case 'mentorMessages':
+        return usageStats.mentor_messages || 0;
+      default:
+        return 0;
+    }
   };
 
   const usageCount = getUsageCount();
@@ -59,10 +61,6 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
     if (!canUseFeature) {
       setShowUpgradeDialog(true);
       return;
-    }
-
-    if (!isPremium) {
-      incrementUsage();
     }
 
     onFeatureUse?.();
@@ -80,14 +78,14 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
       <CardContent className="space-y-4">
         <div className="text-center">
           <p className="text-gray-300 mb-4">
-            You've reached your daily limit for {featureName}
+            You've reached your daily limit for {displayName}
           </p>
           <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
             <h4 className="text-white font-semibold mb-2">
               🚀 Premium Benefits
             </h4>
             <ul className="text-sm text-gray-300 space-y-1">
-              <li>• Unlimited {featureName}</li>
+              <li>• Unlimited {displayName}</li>
               <li>• Priority support</li>
               <li>• Advanced features</li>
               <li>• No daily limits</li>
@@ -132,7 +130,7 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
             Daily Limit Reached
           </h3>
           <p className="text-gray-400 text-sm mb-4">
-            You've used all {dailyLimit} daily {featureName} for today.
+            You've used all {dailyLimit} daily {displayName} for today.
           </p>
           <Button
             onClick={() => setShowUpgradeDialog(true)}
@@ -146,10 +144,18 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
     );
   }
 
-  // Clone children and pass the handleFeatureUse function
+  // Enhanced children with feature use handler
   const enhancedChildren = React.Children.map(children, (child) => {
-    if (React.isValidElement(child)) {
-      return React.cloneElement(child, { onFeatureUse: handleFeatureUse });
+    if (React.isValidElement(child) && typeof child.type !== 'string') {
+      // Only clone if it's a custom component that might accept onFeatureUse
+      try {
+        return React.cloneElement(child as React.ReactElement<any>, { 
+          onFeatureUse: handleFeatureUse 
+        });
+      } catch (error) {
+        // If cloning fails, return original child
+        return child;
+      }
     }
     return child;
   });
@@ -161,7 +167,7 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
           <div className="flex items-center gap-2">
             <Star className="w-4 h-4 text-blue-400" />
             <span className="text-sm text-blue-300">
-              {featureName}: {usageCount}/{dailyLimit} used today
+              {displayName}: {usageCount}/{dailyLimit} used today
             </span>
           </div>
           <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
