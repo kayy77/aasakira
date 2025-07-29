@@ -1,7 +1,5 @@
-
 import { livePriceService } from './livePriceWebSocket';
 import { groqService } from './groqService';
-import { v4 as uuidv4 } from 'uuid';
 
 export interface EnhancedSignal {
   id: string;
@@ -69,7 +67,7 @@ export class EnhancedEliteSignalEngine {
       const { stopLoss, takeProfit, riskReward } = this.calculateTradeLevels(symbol, priceData, direction, quality);
       
       const signal: EnhancedSignal = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         symbol,
         entry: priceData,
         stopLoss,
