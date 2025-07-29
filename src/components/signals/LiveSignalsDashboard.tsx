@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,7 +46,7 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
   
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { canGenerateSignal, checkAndIncrementSignal } = useSignalLimits();
+  const { canGenerateSignal, checkAndIncrementSignal, signalsUsedToday, dailyLimit } = useSignalLimits();
   const { subscription } = useSubscription();
   
   const isPremium = subscription?.tier === 'premium';
@@ -70,18 +71,12 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
   };
 
   const handleGenerateSignal = async () => {
-    if (!canGenerateSignal) {
-      toast({
-        title: "🔒 Daily Limit Reached",
-        description: "Free users get 1 signal per day. Upgrade to Premium for unlimited signals!",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Check and increment usage
+    console.log('🎯 Generate signal clicked - checking limits...');
+    
+    // Check and increment usage first
     const canProceed = await checkAndIncrementSignal();
     if (!canProceed) {
+      console.log('❌ Signal generation blocked by limits');
       return;
     }
 
@@ -98,12 +93,14 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
       const signal = await EnhancedSignalEngine.generateEnhancedSignal();
       
       if (signal) {
+        console.log('✅ Signal generated successfully:', signal);
         setSignals(prev => [signal, ...prev.slice(0, 9)]);
         toast({
           title: `🎯 ${signal.strength} Signal Generated!`,
           description: `${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice.toFixed(5)}`,
         });
       } else {
+        console.log('❌ Signal generation returned null');
         toast({
           title: "Generation Failed",
           description: "Unable to generate signal. Please try again.",
@@ -112,7 +109,7 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
       }
       
     } catch (error) {
-      console.error('Error generating enhanced signal:', error);
+      console.error('❌ Error generating enhanced signal:', error);
       toast({
         title: "Signal Generation Error",
         description: "Failed to generate enhanced signal. Please try again.",
@@ -198,7 +195,7 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
 
           <Button
             onClick={handleGenerateSignal}
-            disabled={isGenerating || !canGenerateSignal}
+            disabled={isGenerating}
             className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
           >
             {isGenerating ? (
@@ -214,11 +211,23 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
             )}
           </Button>
 
-          {!isPremium && (
-            <div className="text-center text-sm text-gray-400">
-              Free users: 1 signal per day | Premium: Unlimited signals
-            </div>
-          )}
+          {/* Usage Display */}
+          <div className="text-center text-sm">
+            {isPremium ? (
+              <div className="text-green-400">
+                ✨ Premium: Unlimited signals
+              </div>
+            ) : (
+              <div className="text-orange-400">
+                🔒 Free: {signalsUsedToday}/{dailyLimit} signals used today
+                {signalsUsedToday >= dailyLimit && (
+                  <div className="text-red-400 mt-1">
+                    Daily limit reached! Upgrade to Premium for unlimited signals.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -371,6 +380,17 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
           <p className="text-gray-500">
             Click "Generate Enhanced FX Signal" to get started
           </p>
+          {!isPremium && signalsUsedToday >= dailyLimit && (
+            <div className="mt-4">
+              <Button
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+                onClick={() => {/* Add upgrade logic */}}
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade to Premium for Unlimited Signals
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -17,19 +17,21 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
   const { toast } = useToast();
 
   const isPremium = subscription?.tier === 'premium';
-  const dailyLimit = isPremium ? 999 : 1; // Strict 1 signal per day for free users
+  const dailyLimit = isPremium ? 999 : 1; // STRICT: Only 1 signal per day for free users
   const signalsUsed = usageStats?.signals || 0;
-  const canGenerateSignal = isPremium || signalsUsed < dailyLimit;
+  
+  // STRICT CHECK: Free users can only generate if they haven't used any signals today
+  const canGenerateSignal = isPremium || signalsUsed === 0;
 
   const checkAndIncrementSignal = async (): Promise<boolean> => {
     console.log('🔒 Checking signal limits:', { isPremium, signalsUsed, dailyLimit, canGenerateSignal });
     
-    // Strict enforcement for free users
-    if (!isPremium && signalsUsed >= dailyLimit) {
-      console.log('❌ Signal generation blocked - FREE USER DAILY LIMIT REACHED');
+    // STRICT enforcement for free users - block completely after first signal
+    if (!isPremium && signalsUsed >= 1) {
+      console.log('❌ Signal generation blocked - FREE USER DAILY LIMIT REACHED (1/day)');
       toast({
         title: "🔒 Daily Signal Limit Reached",
-        description: `Free users get only ${dailyLimit} signal per day. You've used ${signalsUsed}/${dailyLimit}. Upgrade to Premium for unlimited signals!`,
+        description: `Free users get only 1 signal per day. You've already used yours! Upgrade to Premium for unlimited signals.`,
         variant: "destructive"
       });
       return false;
@@ -39,7 +41,7 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
       console.log('❌ Signal generation blocked - general limit reached');
       toast({
         title: "🔒 Signal Generation Blocked",
-        description: "Signal generation is currently not available. Please try again later.",
+        description: "You've reached your daily limit. Upgrade to Premium for unlimited access.",
         variant: "destructive"
       });
       return false;
@@ -49,11 +51,11 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
       await incrementUsage('signals');
       console.log('✅ Signal usage incremented successfully');
       
-      // Show warning if approaching limit (for free users)
-      if (!isPremium && signalsUsed + 1 >= dailyLimit) {
+      // Show warning for free users that they've used their only signal
+      if (!isPremium) {
         toast({
-          title: "⚠️ Daily Limit Reached",
-          description: "You've used your daily free signal. Upgrade to Premium for unlimited access!",
+          title: "✅ Signal Generated!",
+          description: "You've used your 1 daily free signal. Upgrade to Premium for unlimited access!",
           variant: "default"
         });
       }
