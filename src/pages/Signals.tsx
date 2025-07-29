@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import CherryBlossomBackground from '@/components/CherryBlossomBackground';
@@ -8,9 +7,10 @@ import FeatureGate from '@/components/FeatureGate';
 import SignalFilter from '@/components/signals/SignalFilter';
 import LiveSignalsDashboard from '@/components/signals/LiveSignalsDashboard';
 
+import EnhancedSignalsDashboard from '@/components/signals/EnhancedSignalsDashboard';
+
 const Signals = () => {
   const isMobile = useIsMobile();
-  const [selectedStrength, setSelectedStrength] = useState('All');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900/20 to-black relative">
@@ -21,10 +21,10 @@ const Signals = () => {
         <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8">
           <div className="text-center mb-4 md:mb-6 lg:mb-8">
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold gradient-text mb-2 md:mb-3 lg:mb-4">
-              Enhanced AI Signals
+              Enhanced Elite AI Signals
             </h1>
             <p className="text-gray-300 text-xs sm:text-sm md:text-base lg:text-lg max-w-3xl mx-auto px-2 md:px-4">
-              Multi-API price verification with enhanced signal digest, coach mode explanations, and real-time accuracy tracking
+              Multi-strategy analysis with EV scoring, institutional-grade logic, and Groq-enhanced explanations
             </p>
             <div className={`flex justify-center gap-1 sm:gap-2 md:gap-4 mt-2 md:mt-3 lg:mt-4 ${
               isMobile ? 'flex-wrap px-2' : ''
@@ -35,23 +35,17 @@ const Signals = () => {
               </div>
               <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400">
                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                <span className={isMobile ? 'text-xs' : ''}>Enhanced Digest</span>
+                <span className={isMobile ? 'text-xs' : ''}>EV Scoring</span>
               </div>
               <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400">
                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                <span className={isMobile ? 'text-xs' : ''}>Coach Mode</span>
+                <span className={isMobile ? 'text-xs' : ''}>Institutional Logic</span>
               </div>
             </div>
           </div>
 
-          <FeatureGate feature="signals" featureName="AI Signals">
-            <div className="mb-6">
-              <SignalFilter 
-                selectedStrength={selectedStrength} 
-                onChange={setSelectedStrength} 
-              />
-            </div>
-            <LiveSignalsDashboard selectedStrength={selectedStrength} />
+          <FeatureGate feature="signals" featureName="Enhanced Elite AI Signals">
+            <EnhancedSignalsDashboard />
           </FeatureGate>
         </div>
       </div>
