@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,7 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { EnhancedSignal, enhancedSignalEngine } from '@/services/enhancedSignalEngine';
+import { EnhancedSignal, EnhancedSignalEngine } from '@/services/enhancedSignalEngine';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -96,7 +95,7 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
     try {
       console.log('🚀 Starting enhanced signal generation...');
       
-      const signal = await enhancedSignalEngine.generateEnhancedSignal();
+      const signal = await EnhancedSignalEngine.generateEnhancedSignal();
       
       if (signal) {
         setSignals(prev => [signal, ...prev.slice(0, 9)]);
