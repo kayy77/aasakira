@@ -1,6 +1,6 @@
 
 import React from 'react';
-import ImprovedMemeCoinScanner from './ImprovedMemeCoinScanner';
+import EliteMemeCoinScanner from './EliteMemeCoinScanner';
 
 interface MemeCoinScannerProps {
   onFeatureUse?: () => void;
@@ -12,7 +12,7 @@ export const MemeCoinScanner: React.FC<MemeCoinScannerProps> = ({ onFeatureUse }
     onFeatureUse?.();
   }, [onFeatureUse]);
 
-  return <ImprovedMemeCoinScanner />;
+  return <EliteMemeCoinScanner />;
 };
 
 export default MemeCoinScanner;
