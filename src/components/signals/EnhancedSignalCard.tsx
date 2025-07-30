@@ -11,7 +11,9 @@ import {
   Clock,
   XCircle,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Zap,
+  Users
 } from 'lucide-react';
 import { EnhancedSignal } from '@/services/enhancedEliteSignalEngine';
 
@@ -39,6 +41,12 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({ signal, onRemov
     }
   };
 
+  const getConsensusColor = (approved: boolean, confidenceScore: number) => {
+    if (!approved) return 'text-red-400';
+    if (confidenceScore >= 4) return 'text-green-400';
+    return 'text-yellow-400';
+  };
+
   return (
     <Card className="glass-card border-purple-500/20 hover:border-purple-400/40 transition-all">
       <CardHeader className="pb-3">
@@ -54,6 +62,12 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({ signal, onRemov
               {getQualityIcon(signal.quality)}
               {signal.quality.toUpperCase()}
             </Badge>
+            {signal.multiAIVerified && (
+              <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                <Users className="w-3 h-3 mr-1" />
+                AI VERIFIED
+              </Badge>
+            )}
           </div>
           {onRemove && (
             <Button
@@ -66,6 +80,24 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({ signal, onRemov
             </Button>
           )}
         </div>
+
+        {/* Multi-AI Consensus Display */}
+        {signal.aiConsensus && (
+          <div className="mt-2 p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <Brain className="w-4 h-4 text-purple-400" />
+                <span className="text-sm font-semibold text-purple-300">Multi-AI Consensus</span>
+              </div>
+              <Badge className={`${getConsensusColor(signal.aiConsensus.approved, signal.aiConsensus.confidence_score)} bg-transparent border`}>
+                {signal.consensusLabel}
+              </Badge>
+            </div>
+            <div className="text-xs text-gray-400">
+              {signal.aiConsensus.confidence_score}/5 AI models agree • Rating: {signal.aiConsensus.final_rating}/10
+            </div>
+          </div>
+        )}
       </CardHeader>
       
       <CardContent className="space-y-4">
@@ -81,7 +113,6 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({ signal, onRemov
           </div>
         </div>
 
-        {/* Levels */}
         <div className="grid grid-cols-3 gap-2 text-sm">
           <div>
             <div className="text-gray-400">Stop Loss</div>
@@ -97,13 +128,35 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({ signal, onRemov
           </div>
         </div>
 
-        {/* Expected Value */}
         <div className="text-center">
           <div className="text-sm text-gray-400">Expected Value</div>
           <div className={`font-bold ${signal.expectedValue > 0 ? 'text-green-400' : 'text-red-400'}`}>
             {signal.expectedValue > 0 ? '+' : ''}{signal.expectedValue.toFixed(2)}
           </div>
         </div>
+
+        {/* AI Votes Breakdown */}
+        {signal.aiConsensus && (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold text-gray-300">AI Model Votes:</div>
+            <div className="grid grid-cols-2 gap-1 text-xs">
+              {Object.entries(signal.aiConsensus.ai_votes).map(([model, vote]) => (
+                <div key={model} className="flex items-center justify-between bg-gray-800/30 rounded p-1">
+                  <span className="capitalize text-gray-400">{model}</span>
+                  <Badge className={`text-xs ${
+                    ['Elite', 'Strong'].includes(vote.verdict) 
+                      ? 'bg-green-500/20 text-green-400' 
+                      : vote.verdict === 'Moderate' 
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {vote.verdict}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Active Strategies */}
         <div className="space-y-2">

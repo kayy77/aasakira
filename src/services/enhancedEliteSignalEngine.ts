@@ -1,5 +1,6 @@
 import { livePriceService } from './livePriceWebSocket';
 import { groqService } from './groqService';
+import { multiAIConsensusEngine, type ConsensusResult } from './multiAIConsensusEngine';
 
 export interface EnhancedSignal {
   id: string;
@@ -19,6 +20,10 @@ export interface EnhancedSignal {
   confluenceScore?: number;
   riskRating?: 'Low' | 'Medium' | 'High';
   signalLabel?: string;
+  // New Multi-AI fields
+  aiConsensus?: ConsensusResult;
+  multiAIVerified?: boolean;
+  consensusLabel?: string;
 }
 
 interface MarketContext {
@@ -56,52 +61,61 @@ export class EnhancedEliteSignalEngine {
     console.log('🏛️ Enhanced Elite Signal Engine: Starting institutional-grade analysis...');
     
     try {
-      // 1. Select random major pair
       const symbol = this.MAJOR_PAIRS[Math.floor(Math.random() * this.MAJOR_PAIRS.length)];
       console.log(`🎯 Analyzing ${symbol}...`);
       
-      // 2. Get live price data (unchanged - just consuming the data)
       const priceData = await livePriceService.getLivePrice(symbol);
       console.log(`💰 Live price for ${symbol}: ${priceData.toFixed(5)}`);
       
-      // 3. Build comprehensive market context
       const marketContext = await this.buildMarketContext(symbol, priceData);
-      
-      // 4. Get enhanced strategy indicators
       const indicators = await this.getEnhancedIndicators(symbol, priceData, marketContext);
-      
-      // 5. Calculate institutional-grade score
       const score = this.calculateInstitutionalScore(indicators);
-      
-      // 6. Determine signal quality with proper thresholds
       const quality = this.determineSignalQuality(score, indicators.confluenceScore);
       const confidence = Math.round(score * 100);
-      
-      // 7. Calculate expected value with enhanced logic
       const expectedValue = this.calculateExpectedValue(score, indicators.confluenceScore);
-      
-      // 8. Generate elite Groq analysis using structured prompt
       const groqAnalysis = await this.generateEliteGroqAnalysis(marketContext, indicators, quality, confidence);
-      
-      // 9. Determine trade direction with confluence
       const direction = this.determineTradeDirection(indicators, marketContext);
-      
-      // 10. Calculate precise trade levels
       const { stopLoss, takeProfit, riskReward } = this.calculatePrecisionTradeLevels(
         symbol, priceData, direction, quality, indicators.confluenceScore
       );
-
-      // 11. Generate signal label
       const signalLabel = this.generateSignalLabel(confidence, indicators.confluenceScore, quality);
+
+      // NEW: Multi-AI Consensus Analysis
+      console.log('🧠 Running Multi-AI Consensus Analysis...');
+      const signalContext = {
+        pair: symbol,
+        timeframe: '15m',
+        direction: direction,
+        entry_price: priceData,
+        stop_loss: stopLoss,
+        take_profit: takeProfit,
+        structure_desc: indicators.smc.structure,
+        liquidity_zone_info: indicators.liquiditySweep ? 'Liquidity sweep detected' : 'No sweep zones',
+        fvg_info: indicators.fvg.valid ? `FVG strength: ${indicators.fvg.strength}` : 'No FVG present',
+        rsi_data: indicators.rsiDivergence ? 'RSI divergence confirmed' : 'No divergence',
+        volume_snapshot: indicators.volumeSpike ? 'Volume spike detected' : 'Normal volume',
+        session_info: indicators.sessionContext,
+        time: new Date().toISOString(),
+        news_context: 'No major news events',
+        confluences_list: this.getActiveStrategies(indicators)
+      };
+
+      const aiConsensus = await multiAIConsensusEngine.analyzeSignalConsensus(signalContext);
       
+      // Enhanced quality based on AI consensus
+      let enhancedQuality = quality;
+      if (aiConsensus.approved && aiConsensus.confidence_score >= 4) {
+        enhancedQuality = aiConsensus.final_rating >= 8 ? 'strong' : 'medium';
+      }
+
       const signal: EnhancedSignal = {
         id: crypto.randomUUID(),
         symbol,
         entry: priceData,
         stopLoss,
         takeProfit,
-        quality,
-        confidence,
+        quality: enhancedQuality,
+        confidence: Math.max(confidence, aiConsensus.final_rating * 10),
         expectedValue,
         createdAt: Date.now(),
         groqAnalysis,
@@ -111,10 +125,14 @@ export class EnhancedEliteSignalEngine {
         timestamp: new Date().toISOString(),
         confluenceScore: indicators.confluenceScore,
         riskRating: this.calculateRiskRating(confidence, indicators.confluenceScore),
-        signalLabel
+        signalLabel,
+        // New Multi-AI fields
+        aiConsensus,
+        multiAIVerified: aiConsensus.approved,
+        consensusLabel: aiConsensus.label
       };
       
-      console.log(`✅ Elite signal generated: ${symbol} ${direction} | ${quality} quality | ${confidence}% confidence | Confluence: ${indicators.confluenceScore}/6`);
+      console.log(`✅ Elite signal with AI consensus: ${symbol} ${direction} | ${enhancedQuality} | ${aiConsensus.label}`);
       return signal;
       
     } catch (error) {
@@ -126,13 +144,11 @@ export class EnhancedEliteSignalEngine {
   private static async buildMarketContext(symbol: string, livePrice: number): Promise<MarketContext> {
     const hour = new Date().getUTCHours();
     
-    // Determine trading session
     let session = 'CONSOLIDATION';
     if (hour >= 0 && hour < 8) session = 'ASIA';
     else if (hour >= 8 && hour < 16) session = 'LONDON'; 
     else if (hour >= 16 && hour < 24) session = 'NY';
     
-    // Simulate market structure analysis
     const structureStates = ['BOS_BULLISH', 'CHoCH_BEARISH', 'CONSOLIDATION', 'LIQUIDITY_SWEEP'];
     const trendBiases = ['BULLISH', 'BEARISH', 'NEUTRAL', 'REVERSAL_PENDING'];
     
@@ -148,16 +164,14 @@ export class EnhancedEliteSignalEngine {
       liquidityZones: Math.random() > 0.3,
       volumeSpikes: Math.random() > 0.6,
       rsiDivergence: Math.random() > 0.65,
-      confluenceScore: Math.floor(Math.random() * 7) // 0-6
+      confluenceScore: Math.floor(Math.random() * 7)
     };
   }
   
   private static async getEnhancedIndicators(symbol: string, price: number, context: MarketContext): Promise<StrategyIndicators> {
-    // Enhanced institutional-grade indicator analysis
-    const smcScore = 0.5 + Math.random() * 0.4; // 0.5 to 0.9
+    const smcScore = 0.5 + Math.random() * 0.4;
     const smcValid = smcScore > 0.6;
     
-    // Structure state influences SMC validity
     const structureBonus = context.structureState.includes('BOS') || context.structureState.includes('CHoCH') ? 0.1 : 0;
     
     return {
@@ -185,7 +199,6 @@ export class EnhancedEliteSignalEngine {
   }
   
   private static calculateInstitutionalScore(indicators: StrategyIndicators): number {
-    // Enhanced scoring with confluence weighting
     const smcWeight = indicators.smc.valid ? indicators.smc.score * 0.25 : 0.1;
     const liquidityWeight = indicators.liquiditySweep ? 0.2 : 0;
     const fvgWeight = indicators.fvg.valid ? indicators.fvg.strength * 0.15 : 0;
@@ -198,12 +211,10 @@ export class EnhancedEliteSignalEngine {
     const score = smcWeight + liquidityWeight + fvgWeight + trendWeight + 
                  volumeWeight + sentimentWeight + divergenceWeight + confluenceBonus;
     
-    // Ensure minimum score for weak signals (never below 0.35)
     return Math.min(0.95, Math.max(0.35, score));
   }
   
   private static determineSignalQuality(score: number, confluenceScore: number): 'weak' | 'medium' | 'strong' {
-    // Enhanced quality determination with confluence factor
     const confluenceAdjustment = confluenceScore >= 5 ? 0.1 : confluenceScore >= 3 ? 0.05 : 0;
     const adjustedScore = score + confluenceAdjustment;
     
@@ -217,7 +228,7 @@ export class EnhancedEliteSignalEngine {
     const confluenceMultiplier = 1 + (confluenceScore / 10);
     const enhancedRR = baseRR * confluenceMultiplier;
     
-    const winRate = Math.min(0.85, score); // Cap at 85% win rate
+    const winRate = Math.min(0.85, score);
     return winRate * enhancedRR - (1 - winRate) * 1;
   }
   
@@ -276,19 +287,16 @@ Respond in 2-3 sentences maximum with precise execution logic.`;
     let bullishScore = 0;
     let bearishScore = 0;
     
-    // SMC structure influence
     if (indicators.smc.structure.includes('BULLISH') || indicators.smc.structure.includes('BOS')) bullishScore += 2;
     if (indicators.smc.structure.includes('BEARISH') || indicators.smc.structure.includes('CHoCH')) bearishScore += 2;
     
-    // Trend alignment
     if (context.trendBias === 'BULLISH') bullishScore += 2;
     if (context.trendBias === 'BEARISH') bearishScore += 2;
     
-    // Other indicators
     if (indicators.sentiment.value > 0) bullishScore += 1;
     else bearishScore += 1;
     
-    if (indicators.liquiditySweep) bearishScore += 1; // Liquidity sweep often leads to reversal
+    if (indicators.liquiditySweep) bearishScore += 1;
     if (indicators.rsiDivergence) bullishScore += 1;
     if (indicators.fvg.valid) bullishScore += 1;
     
@@ -305,7 +313,6 @@ Respond in 2-3 sentences maximum with precise execution logic.`;
     const isJPY = symbol.includes('JPY');
     const pipValue = isJPY ? 0.01 : 0.0001;
     
-    // Enhanced level calculation based on quality and confluence
     const qualityMultiplier = quality === 'strong' ? 1.8 : quality === 'medium' ? 1.4 : 1.0;
     const confluenceMultiplier = 1 + (confluenceScore / 10);
     
