@@ -1,4 +1,3 @@
-
 export interface AIModelResponse {
   rating: number;
   verdict: 'Elite' | 'Strong' | 'Moderate' | 'Weak' | 'Avoid';
@@ -6,6 +5,12 @@ export interface AIModelResponse {
   key_confluences: string[];
   concerns: string[];
   recommendation: string;
+  // Enhanced institutional analysis fields
+  ai_analysis: string;
+  confidence_level: 'High' | 'Medium' | 'Low';
+  setup_type: string;
+  market_phase: string;
+  justification: string[];
 }
 
 export interface AIVotes {
@@ -54,12 +59,19 @@ class MultiAIConsensusEngine {
   };
 
   private buildMasterPrompt(context: SignalContext): string {
-    return `You are a professional institutional-grade trading analyst using Smart Money Concepts, Order Flow, Liquidity Theory, Risk Management, and Volume Behavior to analyze trade setups.
+    return `🔒 ENHANCED AI ANALYSIS INSTRUCTION
 
-A trade idea is being reviewed by a panel of AI analysts. Your role is to independently evaluate the trade, determine its quality, and return a structured, professional response.
+You are an elite hedge-fund-grade trading AI acting as part of a multi-AI consensus panel. You will receive a pre-generated signal including entry, stop loss, take profit, and confluence points. Your task is to:
+
+• Validate the logic behind the trade from a macro, technical, and microstructure point of view.
+• Assess whether the market structure, volume behavior, liquidity, session timing, and multi-timeframe alignment support the direction.
+• Write a decisive, non-conflicting AI analysis that adds strong conviction, removes uncertainty, and reads like a quant research note from a tier-1 institution.
+• Include powerful technical language (e.g., "premium/discount imbalance", "liquidity void", "smart money absorption", "buy/sell-side inefficiency", "asymmetric R:R", "unmitigated order flow", "volume exhaustion").
+• Identify if this is a momentum play, mean reversion, or liquidity sweep trap, and explain why based on market structure.
+• Label the market phase clearly (e.g., accumulation, expansion, reversal, reaccumulation, or redistribution).
 
 ===============================
-📊 Trade Setup:
+📊 PRE-GENERATED TRADE SETUP:
 - Pair: ${context.pair}
 - Timeframe: ${context.timeframe}
 - Trade Direction: ${context.direction}
@@ -68,7 +80,7 @@ A trade idea is being reviewed by a panel of AI analysts. Your role is to indepe
 - Take Profit: ${context.take_profit}
 
 ===============================
-🧠 Market Context:
+🧠 Market Context Analysis:
 - Market Structure: ${context.structure_desc}
 - Liquidity Context: ${context.liquidity_zone_info}
 - Fair Value Gaps (FVG): ${context.fvg_info}
@@ -80,30 +92,50 @@ A trade idea is being reviewed by a panel of AI analysts. Your role is to indepe
 - Confluences Present: ${context.confluences_list.join(', ')}
 
 ===============================
-✅ Instructions:
-1. Determine if this is a **valid institutional-grade trade setup**.
-2. Rate this trade from 1 to 10 based on:
-   - Confluence of SMC, volume, and time session
+✅ VALIDATION REQUIREMENTS:
+1. Rate this trade from 1 to 10 based on:
+   - Confluence of SMC, volume, and time session alignment
    - Clean entry logic (based on imbalances, liquidity sweep, inducement zones)
-   - Risk-to-reward quality
-   - Likelihood of the trade reaching TP without SL hit
+   - Risk-to-reward asymmetric opportunity
+   - Likelihood of reaching TP without SL hit based on market microstructure
+   - Session timing and volatility context
 
-3. Give a **verdict** in one of these exact labels:
-   - \`Elite\` (9-10)
-   - \`Strong\` (8-9)
-   - \`Moderate\` (6-7)
-   - \`Weak\` (4-5)
-   - \`Avoid\` (1-3)
+2. Provide institutional-grade verdict:
+   - \`Elite\` (9-10): Institutional-grade setup with multiple confluences
+   - \`Strong\` (8-9): High-conviction trade with solid backing
+   - \`Moderate\` (6-7): Opportunistic setup with decent edge
+   - \`Weak\` (4-5): Counter-trend or low-confluence play
+   - \`Avoid\` (1-3): High-risk or conflicting setup
 
-4. Return your answer in **this exact JSON format**:
+3. If high confluence is present, back it with precision language: "This aligns across 3 timeframes and shows a clean sweep-retest model at the edge of a daily FVG."
+
+4. If confidence is medium or low, do not fake strength — give proper reasoning and label appropriately (e.g., "opportunistic", "counter-trend", "scalper precision").
+
+🚨 FAIL CONDITIONS:
+- Do NOT generate conflicting directional language
+- Do NOT alter the direction of the signal
+- Do NOT change any price levels or live data
+- Do NOT water down reasoning - speak like a top-tier quant fund analyst
+- Do NOT hallucinate confidence - if weak, say it clearly and why
+
+Return your analysis in this exact JSON format:
 
 {
-  "rating": 9,
+  "rating": 8,
   "verdict": "Strong",
-  "summary": "Brief analysis summary",
+  "summary": "This trade presents a strong asymmetric opportunity based on [describe], with [#] key institutional confluences aligning across multiple timeframes.",
   "key_confluences": ["confluence1", "confluence2"],
-  "concerns": ["concern1"],
-  "recommendation": "Action recommendation"
+  "concerns": ["concern1 if any"],
+  "recommendation": "Execute with institutional risk parameters",
+  "ai_analysis": "Detailed institutional analysis using smart money language",
+  "confidence_level": "High",
+  "setup_type": "Momentum / Mean Reversion / Liquidity Sweep Trap / Scalper Play",
+  "market_phase": "Expansion / Accumulation / Reversal / Redistribution",
+  "justification": [
+    "Reason 1 with smart money language",
+    "Reason 2 with market structure context", 
+    "Reason 3 with session timing or volatility event"
+  ]
 }
 
 Return only the JSON. No other text.`;
@@ -213,10 +245,16 @@ Return only the JSON. No other text.`;
         return {
           rating: parsed.rating || 5,
           verdict: parsed.verdict || 'Moderate',
-          summary: parsed.summary || 'Analysis unavailable',
+          summary: parsed.summary || parsed.ai_analysis || 'Analysis unavailable',
           key_confluences: parsed.key_confluences || [],
           concerns: parsed.concerns || [],
-          recommendation: parsed.recommendation || 'Review setup'
+          recommendation: parsed.recommendation || 'Review setup',
+          // Enhanced fields
+          ai_analysis: parsed.ai_analysis || parsed.summary || 'Institutional analysis unavailable',
+          confidence_level: parsed.confidence_level || 'Medium',
+          setup_type: parsed.setup_type || 'Standard',
+          market_phase: parsed.market_phase || 'Analysis',
+          justification: parsed.justification || []
         };
       }
     } catch (error) {
@@ -230,10 +268,15 @@ Return only the JSON. No other text.`;
     return {
       rating: 5,
       verdict: 'Moderate',
-      summary: 'AI analysis unavailable',
+      summary: 'AI analysis unavailable - system fallback',
       key_confluences: [],
       concerns: ['AI response error'],
-      recommendation: 'Manual review required'
+      recommendation: 'Manual review required',
+      ai_analysis: 'Enhanced analysis temporarily unavailable',
+      confidence_level: 'Medium',
+      setup_type: 'Standard',
+      market_phase: 'Analysis',
+      justification: ['System fallback - manual validation recommended']
     };
   }
 
