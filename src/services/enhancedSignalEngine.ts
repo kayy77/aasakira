@@ -1,6 +1,8 @@
-
 import { livePriceService } from './livePriceWebSocket';
 import { groqService } from './groqService';
+import { multiStrategyValidator } from './multiStrategyValidator';
+import { newsImpactAnalyzer } from './newsImpactAnalyzer';
+import { signalJustificationEngine } from './signalJustificationEngine';
 
 export interface EnhancedSignal {
   id: string;
@@ -30,6 +32,19 @@ export interface EnhancedSignal {
     validated: boolean;
     accuracy: string;
   };
+}
+
+export interface UltraEnhancedSignal extends EnhancedSignal {
+  validation: any;
+  newsImpact: any;
+  justification: any;
+  enhancedGrade: 'Elite' | 'Strong' | 'Decent' | 'Weak' | 'Rejected';
+  convictionScore: number;
+  strategyBlend: string;
+  aiConsensus: string;
+  backtestedEdge?: string;
+  newsWarning?: string;
+  finalDecision: 'APPROVED' | 'CAUTION' | 'REJECTED';
 }
 
 export class EnhancedSignalEngine {
@@ -303,6 +318,93 @@ Limit to 2-3 sentences maximum. Be concise and technical.
     if (hour >= 13 && hour <= 22) return 'New York';
     return 'Asian';
   }
+
+  static async enhanceExistingSignal(baseSignal: any): Promise<UltraEnhancedSignal | null> {
+    console.log(`🚀 Ultra-enhancing signal: ${baseSignal.pair} ${baseSignal.type}`);
+    
+    try {
+      // Run parallel enhancement analysis
+      const [validation, newsImpact] = await Promise.all([
+        multiStrategyValidator.validateSignal(
+          baseSignal.pair,
+          baseSignal.type,
+          baseSignal.entry,
+          baseSignal.stopLoss,
+          baseSignal.takeProfit,
+          baseSignal.confidence
+        ),
+        newsImpactAnalyzer.analyzeNewsImpact(baseSignal.pair)
+      ]);
+
+      console.log(`📊 Validation: ${validation.institutionalGrade} | News: ${newsImpact.impactLevel}`);
+
+      // Generate institutional justification
+      const justification = signalJustificationEngine.generateJustification(
+        baseSignal.pair,
+        baseSignal.type,
+        baseSignal.entry,
+        baseSignal.stopLoss,
+        baseSignal.takeProfit,
+        validation,
+        newsImpact,
+        baseSignal.confidence
+      );
+
+      // Make final decision
+      const finalDecision = this.makeFinalDecision(validation, newsImpact);
+      
+      // Reject if not approved
+      if (finalDecision === 'REJECTED') {
+        console.log('❌ Signal rejected by ultra-enhancement validation');
+        return null;
+      }
+
+      const enhancedSignal: UltraEnhancedSignal = {
+        ...baseSignal,
+        validation,
+        newsImpact,
+        justification,
+        enhancedGrade: validation.institutionalGrade,
+        convictionScore: justification.convictionScore,
+        strategyBlend: justification.strategyBlend,
+        aiConsensus: justification.aiConsensus,
+        backtestedEdge: justification.backtestedEdge,
+        newsWarning: justification.newsWarning,
+        finalDecision
+      };
+
+      console.log(`✅ Ultra-enhanced signal: ${finalDecision} | Conviction: ${justification.convictionScore}%`);
+      return enhancedSignal;
+
+    } catch (error) {
+      console.error('❌ Ultra-enhancement failed:', error);
+      return null;
+    }
+  }
+
+  private static makeFinalDecision(validation: any, newsImpact: any): 'APPROVED' | 'CAUTION' | 'REJECTED' {
+    // Reject if validation failed
+    if (!validation.validationPassed || validation.institutionalGrade === 'Rejected') {
+      return 'REJECTED';
+    }
+
+    // Reject if critical news impact
+    if (newsImpact.recommendation === 'Cancel') {
+      return 'REJECTED';
+    }
+
+    // Caution for high news impact or weak validation
+    if (newsImpact.recommendation === 'Caution' || newsImpact.recommendation === 'Delay') {
+      return 'CAUTION';
+    }
+
+    if (validation.institutionalGrade === 'Weak') {
+      return 'CAUTION';
+    }
+
+    return 'APPROVED';
+  }
 }
 
 export const enhancedSignalEngine = new EnhancedSignalEngine();
+export const ultraEnhancedSignalEngine = new EnhancedSignalEngine();

@@ -1,7 +1,7 @@
-
 import { Signal } from '@/types/signalConfig';
 import { EliteSignalEngine } from './eliteSignalEngine';
 import { enhancedPriceService } from './enhancedPriceService';
+import { ultraEnhancedSignalEngine, type UltraEnhancedSignal } from './enhancedSignalEngine';
 
 class SignalService {
   private signals: Signal[] = [];
@@ -68,7 +68,7 @@ class SignalService {
       }
       
       // Convert to Signal format with LIVE price
-      const signal: Signal = {
+      const baseSignal: Signal = {
         id: eliteSignal.id,
         pair: eliteSignal.pair,
         type: eliteSignal.type,
@@ -103,17 +103,55 @@ class SignalService {
           mentor: false
         }
       };
+
+      // 🚀 ULTRA-ENHANCEMENT: Run through multi-strategy validation and news analysis
+      console.log('🚀 Running ultra-enhancement validation...');
+      const enhancedSignal = await ultraEnhancedSignalEngine.enhanceExistingSignal(baseSignal);
+      
+      if (!enhancedSignal) {
+        console.log('❌ Signal rejected by ultra-enhancement validation');
+        return null;
+      }
+
+      // Add enhanced properties to the signal
+      const finalSignal: Signal = {
+        ...baseSignal,
+        analysis: enhancedSignal.justification.entryLogic + ' ' + enhancedSignal.justification.institutionalConfluence,
+        confidence: Math.max(baseSignal.confidence, enhancedSignal.convictionScore),
+        technicalSetup: enhancedSignal.strategyBlend + ' | ' + baseSignal.technicalSetup,
+        entryReason: enhancedSignal.justification.entryLogic,
+        riskManagement: enhancedSignal.justification.riskManagement,
+        // Add ultra-enhanced metadata
+        metadata: {
+          enhancedGrade: enhancedSignal.enhancedGrade,
+          convictionScore: enhancedSignal.convictionScore,
+          strategyBlend: enhancedSignal.strategyBlend,
+          aiConsensus: enhancedSignal.aiConsensus,
+          backtestedEdge: enhancedSignal.backtestedEdge,
+          newsWarning: enhancedSignal.newsWarning,
+          validationPassed: enhancedSignal.validation.validationPassed,
+          newsImpactLevel: enhancedSignal.newsImpact.impactLevel
+        }
+      };
+
+      // Add caution flag if needed
+      if (enhancedSignal.finalDecision === 'CAUTION') {
+        finalSignal.cautionFlags = [
+          ...(enhancedSignal.newsWarning ? [enhancedSignal.newsWarning] : []),
+          ...(enhancedSignal.enhancedGrade === 'Weak' ? ['Weak validation score'] : [])
+        ];
+      }
       
       // Add to signals array
-      this.signals.unshift(signal);
+      this.signals.unshift(finalSignal);
       
       // Keep only last 10 signals
       if (this.signals.length > 10) {
         this.signals = this.signals.slice(0, 10);
       }
       
-      console.log(`✅ ULTRA-FRESH SIGNAL generated: ${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice}`);
-      return signal;
+      console.log(`✅ ULTRA-ENHANCED SIGNAL: ${finalSignal.pair} ${finalSignal.type} | ${finalSignal.confidence}% | ${enhancedSignal.enhancedGrade}`);
+      return finalSignal;
       
     } catch (error) {
       console.error('❌ SignalService error:', error);
