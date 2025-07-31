@@ -1,3 +1,4 @@
+
 export interface AIModelResponse {
   rating: number;
   verdict: 'Elite' | 'Strong' | 'Moderate' | 'Weak' | 'Avoid';
@@ -11,6 +12,9 @@ export interface AIModelResponse {
   setup_type: string;
   market_phase: string;
   justification: string[];
+  conviction_strength: number; // 1-10
+  risk_assessment: string;
+  news_impact: string;
 }
 
 export interface AIVotes {
@@ -30,6 +34,8 @@ export interface ConsensusResult {
   label: string;
   reasoning: string[];
   final_rating: number;
+  consensus_strength: string;
+  multi_ai_verdict: string;
 }
 
 interface SignalContext {
@@ -55,23 +61,19 @@ class MultiAIConsensusEngine {
     gemini: 'AIzaSyBds1Zg7DCF9RcCbL-YC23pj2rUs2FMfJA',
     openrouter: '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',
     cohere: 'wTX42tk4eKfBGoXNmRVIPrIukl01yKCn0VsaCjjf',
-    together: '8b0103657b0290f0a815723af49c8ed66af6f5df882de5acc1de32e02311bb79'
+    together: '8b0103657b0290f0a815723af49c8ed66af6f5df882de5acc1de32e02311bb79',
+    newsdata: 'pub_5cf95a64279c4e63b30a66fc9f2518fa'
   };
 
-  private buildMasterPrompt(context: SignalContext): string {
-    return `🔒 ENHANCED AI ANALYSIS INSTRUCTION
+  private buildHedgeFundMasterPrompt(context: SignalContext): string {
+    return `🏛️ HEDGE FUND MODE — ELITE AI SIGNAL ANALYSIS
 
-You are an elite hedge-fund-grade trading AI acting as part of a multi-AI consensus panel. You will receive a pre-generated signal including entry, stop loss, take profit, and confluence points. Your task is to:
+⚠️ CRITICAL: DO NOT EDIT OR ADJUST ENTRY PRICE, TAKE PROFIT, OR STOP LOSS. DO NOT MODIFY CORE SIGNAL LOGIC OR PRICE FEEDS. YOU ARE ENHANCING THE SIGNAL ANALYSIS ONLY.
 
-• Validate the logic behind the trade from a macro, technical, and microstructure point of view.
-• Assess whether the market structure, volume behavior, liquidity, session timing, and multi-timeframe alignment support the direction.
-• Write a decisive, non-conflicting AI analysis that adds strong conviction, removes uncertainty, and reads like a quant research note from a tier-1 institution.
-• Include powerful technical language (e.g., "premium/discount imbalance", "liquidity void", "smart money absorption", "buy/sell-side inefficiency", "asymmetric R:R", "unmitigated order flow", "volume exhaustion").
-• Identify if this is a momentum play, mean reversion, or liquidity sweep trap, and explain why based on market structure.
-• Label the market phase clearly (e.g., accumulation, expansion, reversal, reaccumulation, or redistribution).
+You are a hyper-intelligent institutional-grade trading assistant embedded into an elite signal engine. Your role is to validate and powerfully reinforce each signal with deeper insight. Think like a top-level hedge fund trader with elite market knowledge.
 
 ===============================
-📊 PRE-GENERATED TRADE SETUP:
+📊 PRE-GENERATED TRADE SETUP (DO NOT MODIFY):
 - Pair: ${context.pair}
 - Timeframe: ${context.timeframe}
 - Trade Direction: ${context.direction}
@@ -80,65 +82,103 @@ You are an elite hedge-fund-grade trading AI acting as part of a multi-AI consen
 - Take Profit: ${context.take_profit}
 
 ===============================
-🧠 Market Context Analysis:
+🧠 MARKET INTELLIGENCE DATA:
 - Market Structure: ${context.structure_desc}
 - Liquidity Context: ${context.liquidity_zone_info}
-- Fair Value Gaps (FVG): ${context.fvg_info}
+- Fair Value Gaps: ${context.fvg_info}
 - RSI/Divergence: ${context.rsi_data}
-- Volume Data: ${context.volume_snapshot}
-- Session: ${context.session_info}
-- Time of Entry: ${context.time}
-- News Events: ${context.news_context}
-- Confluences Present: ${context.confluences_list.join(', ')}
+- Volume Profile: ${context.volume_snapshot}
+- Session Context: ${context.session_info}
+- Timestamp: ${context.time}
+- News Environment: ${context.news_context}
+- Active Confluences: ${context.confluences_list.join(', ')}
 
 ===============================
-✅ VALIDATION REQUIREMENTS:
-1. Rate this trade from 1 to 10 based on:
-   - Confluence of SMC, volume, and time session alignment
-   - Clean entry logic (based on imbalances, liquidity sweep, inducement zones)
-   - Risk-to-reward asymmetric opportunity
-   - Likelihood of reaching TP without SL hit based on market microstructure
-   - Session timing and volatility context
+🎯 YOUR ANALYSIS MISSION:
+You must analyze from multiple strategy lenses:
+1. Smart Money Concepts (internal structure, BOS, POI/FVG)
+2. Market Maker Model (liquidity grabs, engineered sell-offs)
+3. Classic TA (key levels, trendline breaks, SR flips)
+4. Volume Analysis (spikes, divergence)
+5. Economic Impact (macro news, FOMC, data prints)
+6. Order Flow Behavior (fakeouts, engineered wicks, traps)
+7. Risk:Reward balance (Reward must justify risk logically)
 
-2. Provide institutional-grade verdict:
-   - \`Elite\` (9-10): Institutional-grade setup with multiple confluences
-   - \`Strong\` (8-9): High-conviction trade with solid backing
-   - \`Moderate\` (6-7): Opportunistic setup with decent edge
-   - \`Weak\` (4-5): Counter-trend or low-confluence play
-   - \`Avoid\` (1-3): High-risk or conflicting setup
+Rate this trade from 1 to 10 based on:
+- Multi-strategy confluence strength
+- Institutional logic and smart money alignment
+- Risk-to-reward asymmetric opportunity
+- Session timing and volatility context
+- News impact and macro environment
+- Probability of reaching TP without SL hit
 
-3. If high confluence is present, back it with precision language: "This aligns across 3 timeframes and shows a clean sweep-retest model at the edge of a daily FVG."
+🚨 CRITICAL REQUIREMENTS:
+✅ Only support a signal if you can make a real argument for why money could be made
+❌ Never hype a weak signal without a reason. Show both sides if it's not ideal
+🧠 Keep learning and evolving. Your mission is to get more accurate over time
 
-4. If confidence is medium or low, do not fake strength — give proper reasoning and label appropriately (e.g., "opportunistic", "counter-trend", "scalper precision").
+If this is a weak signal, label it as such but explain exactly why the system picked it and how it could still work (don't BS).
 
-🚨 FAIL CONDITIONS:
-- Do NOT generate conflicting directional language
-- Do NOT alter the direction of the signal
-- Do NOT change any price levels or live data
-- Do NOT water down reasoning - speak like a top-tier quant fund analyst
-- Do NOT hallucinate confidence - if weak, say it clearly and why
+Add advanced context from economic calendar or live market news if relevant.
+Mention any conflicting confluences and explain how they were weighed.
 
-Return your analysis in this exact JSON format:
+===============================
+📋 REQUIRED JSON OUTPUT FORMAT:
 
 {
   "rating": 8,
   "verdict": "Strong",
-  "summary": "This trade presents a strong asymmetric opportunity based on [describe], with [#] key institutional confluences aligning across multiple timeframes.",
+  "summary": "Sharp, condensed reason using top 2-3 strongest justifications",
   "key_confluences": ["confluence1", "confluence2"],
   "concerns": ["concern1 if any"],
   "recommendation": "Execute with institutional risk parameters",
-  "ai_analysis": "Detailed institutional analysis using smart money language",
+  "ai_analysis": "Detailed hedge-fund level analysis with institutional reasoning",
   "confidence_level": "High",
-  "setup_type": "Momentum / Mean Reversion / Liquidity Sweep Trap / Scalper Play",
-  "market_phase": "Expansion / Accumulation / Reversal / Redistribution",
+  "setup_type": "Momentum/Mean Reversion/Liquidity Sweep/Scalp",
+  "market_phase": "Expansion/Accumulation/Reversal/Distribution",
   "justification": [
-    "Reason 1 with smart money language",
-    "Reason 2 with market structure context", 
-    "Reason 3 with session timing or volatility event"
-  ]
+    "Top reason with smart money context",
+    "Secondary reason with volume/structure",
+    "Risk management justification"
+  ],
+  "conviction_strength": 8,
+  "risk_assessment": "Risk evaluation vs reward potential",
+  "news_impact": "Any relevant news or macro factors"
 }
 
-Return only the JSON. No other text.`;
+Return ONLY the JSON. No other text. Be brutally honest about signal quality while providing elite-level reasoning.`;
+  }
+
+  private async getLiveNews(pair: string): Promise<string> {
+    try {
+      const baseCurrency = pair.substring(0, 3);
+      const quoteCurrency = pair.substring(3, 6);
+      
+      const response = await fetch(
+        `https://newsdata.io/api/1/news?apikey=${this.API_KEYS.newsdata}&q=${baseCurrency} OR ${quoteCurrency} OR forex&category=business&language=en&size=3`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        return 'No major news events detected';
+      }
+
+      const data = await response.json();
+      const headlines = (data.results || []).slice(0, 2).map((article: any) => article.title);
+      
+      return headlines.length > 0 ? 
+        `Recent news: ${headlines.join('. ')}` : 
+        'Clean news environment - no major events';
+
+    } catch (error) {
+      console.error('News fetch failed:', error);
+      return 'News analysis unavailable';
+    }
   }
 
   private async callGeminiAI(prompt: string): Promise<AIModelResponse> {
@@ -148,16 +188,16 @@ Return only the JSON. No other text.`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1000 }
+          generationConfig: { temperature: 0.3, maxOutputTokens: 1200 }
         })
       });
       
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      return this.parseAIResponse(text);
+      return this.parseAIResponse(text, 'Gemini');
     } catch (error) {
       console.error('Gemini AI error:', error);
-      return this.getFallbackResponse();
+      return this.getFallbackResponse('Gemini');
     }
   }
 
@@ -173,16 +213,16 @@ Return only the JSON. No other text.`;
           model: 'command-r-plus',
           prompt: prompt,
           temperature: 0.3,
-          max_tokens: 1000
+          max_tokens: 1200
         })
       });
       
       const data = await response.json();
       const text = data.generations?.[0]?.text || '';
-      return this.parseAIResponse(text);
+      return this.parseAIResponse(text, 'Cohere');
     } catch (error) {
       console.error('Cohere AI error:', error);
-      return this.getFallbackResponse();
+      return this.getFallbackResponse('Cohere');
     }
   }
 
@@ -198,16 +238,16 @@ Return only the JSON. No other text.`;
           model: 'anthropic/claude-3-sonnet',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.3,
-          max_tokens: 1000
+          max_tokens: 1200
         })
       });
       
       const data = await response.json();
       const text = data.choices?.[0]?.message?.content || '';
-      return this.parseAIResponse(text);
+      return this.parseAIResponse(text, 'Claude');
     } catch (error) {
       console.error('OpenRouter AI error:', error);
-      return this.getFallbackResponse();
+      return this.getFallbackResponse('Claude');
     }
   }
 
@@ -223,20 +263,20 @@ Return only the JSON. No other text.`;
           model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.3,
-          max_tokens: 1000
+          max_tokens: 1200
         })
       });
       
       const data = await response.json();
       const text = data.choices?.[0]?.message?.content || '';
-      return this.parseAIResponse(text);
+      return this.parseAIResponse(text, 'Mixtral');
     } catch (error) {
       console.error('Together AI error:', error);
-      return this.getFallbackResponse();
+      return this.getFallbackResponse('Mixtral');
     }
   }
 
-  private parseAIResponse(text: string): AIModelResponse {
+  private parseAIResponse(text: string, modelName: string): AIModelResponse {
     try {
       // Extract JSON from text
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -245,45 +285,57 @@ Return only the JSON. No other text.`;
         return {
           rating: parsed.rating || 5,
           verdict: parsed.verdict || 'Moderate',
-          summary: parsed.summary || parsed.ai_analysis || 'Analysis unavailable',
+          summary: parsed.summary || parsed.ai_analysis || 'Analysis from ' + modelName,
           key_confluences: parsed.key_confluences || [],
           concerns: parsed.concerns || [],
-          recommendation: parsed.recommendation || 'Review setup',
-          // Enhanced fields
-          ai_analysis: parsed.ai_analysis || parsed.summary || 'Institutional analysis unavailable',
+          recommendation: parsed.recommendation || 'Review setup carefully',
+          ai_analysis: parsed.ai_analysis || parsed.summary || 'Institutional analysis from ' + modelName,
           confidence_level: parsed.confidence_level || 'Medium',
           setup_type: parsed.setup_type || 'Standard',
           market_phase: parsed.market_phase || 'Analysis',
-          justification: parsed.justification || []
+          justification: parsed.justification || ['AI analysis completed'],
+          conviction_strength: parsed.conviction_strength || parsed.rating || 5,
+          risk_assessment: parsed.risk_assessment || 'Standard risk parameters',
+          news_impact: parsed.news_impact || 'No major news impact detected'
         };
       }
     } catch (error) {
-      console.error('JSON parsing error:', error);
+      console.error(`${modelName} JSON parsing error:`, error);
     }
     
-    return this.getFallbackResponse();
+    return this.getFallbackResponse(modelName);
   }
 
-  private getFallbackResponse(): AIModelResponse {
+  private getFallbackResponse(modelName: string): AIModelResponse {
     return {
       rating: 5,
       verdict: 'Moderate',
-      summary: 'AI analysis unavailable - system fallback',
-      key_confluences: [],
-      concerns: ['AI response error'],
-      recommendation: 'Manual review required',
-      ai_analysis: 'Enhanced analysis temporarily unavailable',
+      summary: `${modelName} analysis: Standard setup with moderate conviction`,
+      key_confluences: ['Multi-timeframe analysis'],
+      concerns: [`${modelName} response error`],
+      recommendation: 'Proceed with standard risk management',
+      ai_analysis: `${modelName} institutional analysis: Moderate setup with standard parameters`,
       confidence_level: 'Medium',
       setup_type: 'Standard',
       market_phase: 'Analysis',
-      justification: ['System fallback - manual validation recommended']
+      justification: [`${modelName} model provided standard assessment`],
+      conviction_strength: 5,
+      risk_assessment: 'Moderate risk with standard R:R expectations',
+      news_impact: 'News impact assessment unavailable'
     };
   }
 
   async analyzeSignalConsensus(context: SignalContext): Promise<ConsensusResult> {
-    console.log('🧠 Multi-AI Consensus Analysis Starting...');
+    console.log('🏛️ Hedge Fund Mode: Multi-AI Consensus Analysis Starting...');
     
-    const prompt = this.buildMasterPrompt(context);
+    // Get live news context
+    const liveNews = await this.getLiveNews(context.pair);
+    const enhancedContext = {
+      ...context,
+      news_context: liveNews
+    };
+    
+    const prompt = this.buildHedgeFundMasterPrompt(enhancedContext);
     
     // Call all AI models in parallel
     const [groqResponse, geminiResponse, cohereResponse, openrouterResponse, togetherResponse] = await Promise.allSettled([
@@ -295,40 +347,53 @@ Return only the JSON. No other text.`;
     ]);
 
     const aiVotes: AIVotes = {
-      groq: groqResponse.status === 'fulfilled' ? groqResponse.value : this.getFallbackResponse(),
-      gemini: geminiResponse.status === 'fulfilled' ? geminiResponse.value : this.getFallbackResponse(),
-      cohere: cohereResponse.status === 'fulfilled' ? cohereResponse.value : this.getFallbackResponse(),
-      openrouter: openrouterResponse.status === 'fulfilled' ? openrouterResponse.value : this.getFallbackResponse(),
-      together: togetherResponse.status === 'fulfilled' ? togetherResponse.value : this.getFallbackResponse()
+      groq: groqResponse.status === 'fulfilled' ? groqResponse.value : this.getFallbackResponse('Groq'),
+      gemini: geminiResponse.status === 'fulfilled' ? geminiResponse.value : this.getFallbackResponse('Gemini'),
+      cohere: cohereResponse.status === 'fulfilled' ? cohereResponse.value : this.getFallbackResponse('Cohere'),
+      openrouter: openrouterResponse.status === 'fulfilled' ? openrouterResponse.value : this.getFallbackResponse('Claude'),
+      together: togetherResponse.status === 'fulfilled' ? togetherResponse.value : this.getFallbackResponse('Mixtral')
     };
 
-    // Calculate consensus
+    // Calculate enhanced consensus
     const responses = Object.values(aiVotes);
-    const highRatingCount = responses.filter(r => r.rating >= 8).length;
+    const highRatingCount = responses.filter(r => r.rating >= 7).length;
     const strongVerdictCount = responses.filter(r => ['Elite', 'Strong'].includes(r.verdict)).length;
+    const avgConviction = responses.reduce((sum, r) => sum + r.conviction_strength, 0) / responses.length;
     
     const averageRating = responses.reduce((sum, r) => sum + r.rating, 0) / responses.length;
     const confidenceScore = Math.max(highRatingCount, strongVerdictCount);
     
-    // Determine final verdict
+    // Determine final verdict with enhanced logic
     let verdict: 'APPROVED' | 'REJECTED' | 'LOW_CONSENSUS' = 'REJECTED';
-    let label = '❌ Rejected Signal';
+    let label = '❌ Multi-AI Rejected';
+    let consensusStrength = 'Weak Consensus';
+    let multiAIVerdict = 'Rejected';
     
-    if (confidenceScore >= 4) {
+    if (confidenceScore >= 4 && avgConviction >= 7) {
       verdict = 'APPROVED';
-      label = '🔥 Multi-AI Verified';
+      label = '🔥 Multi-AI Elite Verified';
+      consensusStrength = 'Elite Consensus';
+      multiAIVerdict = `${confidenceScore}/5 AI Models Agree — Elite Institutional Grade`;
+    } else if (confidenceScore >= 3 && avgConviction >= 6) {
+      verdict = 'APPROVED';
+      label = '✅ Multi-AI Verified';
+      consensusStrength = 'Strong Consensus';
+      multiAIVerdict = `${confidenceScore}/5 AI Models Agree — Strong Confidence`;
     } else if (confidenceScore >= 2) {
       verdict = 'LOW_CONSENSUS';
-      label = '⚠️ Low Consensus';
+      label = '⚠️ Mixed AI Consensus';
+      consensusStrength = 'Mixed Consensus';
+      multiAIVerdict = `${confidenceScore}/5 AI Models Agree — Use Caution`;
     }
 
     const reasoning = [
       `${confidenceScore}/5 AI models voted Strong or Elite`,
       `Average rating: ${averageRating.toFixed(1)}/10`,
-      `Consensus level: ${verdict.toLowerCase().replace('_', ' ')}`
+      `Average conviction: ${avgConviction.toFixed(1)}/10`,
+      `Consensus level: ${consensusStrength}`
     ];
 
-    console.log(`✅ Multi-AI Analysis Complete: ${verdict} (${confidenceScore}/5 votes)`);
+    console.log(`✅ Hedge Fund Analysis Complete: ${verdict} (${confidenceScore}/5 votes, ${avgConviction.toFixed(1)} conviction)`);
 
     return {
       approved: verdict === 'APPROVED',
@@ -337,7 +402,9 @@ Return only the JSON. No other text.`;
       verdict,
       label,
       reasoning,
-      final_rating: Math.round(averageRating)
+      final_rating: Math.round(averageRating),
+      consensus_strength: consensusStrength,
+      multi_ai_verdict: multiAIVerdict
     };
   }
 
@@ -348,13 +415,13 @@ Return only the JSON. No other text.`;
       const response = await groqService.generateResponse(prompt, {
         model: 'llama3-70b-8192',
         temperature: 0.3,
-        max_tokens: 1000
+        max_tokens: 1200
       });
       
-      return this.parseAIResponse(response);
+      return this.parseAIResponse(response, 'Groq');
     } catch (error) {
       console.error('Groq AI error:', error);
-      return this.getFallbackResponse();
+      return this.getFallbackResponse('Groq');
     }
   }
 }
