@@ -1,7 +1,7 @@
 import { Signal } from '@/types/signalConfig';
 import { EliteSignalEngine } from './eliteSignalEngine';
 import { enhancedPriceService } from './enhancedPriceService';
-import { ultraEnhancedSignalEngine, type UltraEnhancedSignal } from './enhancedSignalEngine';
+import { EnhancedSignalEngine, type UltraEnhancedSignal } from './enhancedSignalEngine';
 
 class SignalService {
   private signals: Signal[] = [];
@@ -106,7 +106,7 @@ class SignalService {
 
       // 🚀 ULTRA-ENHANCEMENT: Run through multi-strategy validation and news analysis
       console.log('🚀 Running ultra-enhancement validation...');
-      const enhancedSignal = await ultraEnhancedSignalEngine.enhanceExistingSignal(baseSignal);
+      const enhancedSignal = await EnhancedSignalEngine.enhanceExistingSignal(baseSignal);
       
       if (!enhancedSignal) {
         console.log('❌ Signal rejected by ultra-enhancement validation');
@@ -114,7 +114,10 @@ class SignalService {
       }
 
       // Add enhanced properties to the signal
-      const finalSignal: Signal = {
+      const finalSignal: Signal & { 
+        metadata?: any; 
+        cautionFlags?: string[]; 
+      } = {
         ...baseSignal,
         analysis: enhancedSignal.justification.entryLogic + ' ' + enhancedSignal.justification.institutionalConfluence,
         confidence: Math.max(baseSignal.confidence, enhancedSignal.convictionScore),
@@ -143,7 +146,7 @@ class SignalService {
       }
       
       // Add to signals array
-      this.signals.unshift(finalSignal);
+      this.signals.unshift(finalSignal as Signal);
       
       // Keep only last 10 signals
       if (this.signals.length > 10) {
@@ -151,7 +154,7 @@ class SignalService {
       }
       
       console.log(`✅ ULTRA-ENHANCED SIGNAL: ${finalSignal.pair} ${finalSignal.type} | ${finalSignal.confidence}% | ${enhancedSignal.enhancedGrade}`);
-      return finalSignal;
+      return finalSignal as Signal;
       
     } catch (error) {
       console.error('❌ SignalService error:', error);
