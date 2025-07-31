@@ -59,7 +59,15 @@ class BettingAIConsensusEngine {
     openrouter: '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',
     cohere: 'wTX42tk4eKfBGoXNmRVIPrIukl01yKCn0VsaCjjf',
     together: '8b0103657b0290f0a815723af49c8ed66af6f5df882de5acc1de32e02311bb79',
-    newsdata: 'pub_5cf95a64279c4e63b30a66fc9f2518fa'
+    newsdata: 'pub_5cf95a64279c4e63b30a66fc9f2518fa',
+    // Sports betting API keys
+    odds_api_uk: 'sk_live_abc123xyz456',
+    odds_api_us: 'ea5ba72a9050a285ba94e46ffbfc95d88c289aa9',
+    odds_api_eu: 'PK_467287B5D05A44BA8B5EC8C6DD8E4461',
+    odds_api_au: 'pk_52cfe539bd784117a34a04db207a1416',
+    football_stats: '0f546627dff52b35548ea2d52c555043',
+    basketball_stats: '0f546627dff52b35548ea2d52c555043',
+    mma_stats: '0f546627dff52b35548ea2d52c555043'
   };
 
   private buildBettingMasterPrompt(context: BettingContext): string {
@@ -82,7 +90,7 @@ You are a hyper-intelligent institutional-grade sports betting analyst embedded 
 - Team Statistics: ${context.team_stats}
 - Injury Report: ${context.injury_report}
 - Recent Form: ${context.recent_form}
-- Head-to-Head: ${context.head_to-head}
+- Head-to-Head: ${context.head_to_head}
 - Line Movement: ${context.line_movement}
 - Betting Trends: ${context.betting_trends}
 - News Context: ${context.news_context}
