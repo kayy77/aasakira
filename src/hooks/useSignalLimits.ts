@@ -20,13 +20,13 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
   const dailyLimit = isPremium ? 999 : 1;
   const signalsUsed = usageStats?.signals || 0;
   
-  // Fix: Allow free users to use their daily signal properly
+  // Fixed: Only block AFTER user has actually used their daily limit
   const canGenerateSignal = isPremium || signalsUsed < dailyLimit;
 
   const checkAndIncrementSignal = async (): Promise<boolean> => {
     console.log('🔒 Checking signal limits:', { isPremium, signalsUsed, dailyLimit, canGenerateSignal });
     
-    // Fixed logic: Only block after user has actually used their daily limit
+    // Block only if user has already used their daily limit
     if (!isPremium && signalsUsed >= dailyLimit) {
       console.log('❌ Signal generation blocked - FREE USER DAILY LIMIT REACHED (1/day)');
       toast({
@@ -37,21 +37,11 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
       return false;
     }
 
-    if (!canGenerateSignal) {
-      console.log('❌ Signal generation blocked - general limit reached');
-      toast({
-        title: "🔒 Signal Generation Blocked",
-        description: "You've reached your daily limit. Upgrade to Premium for unlimited access.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
     try {
       await incrementUsage('signals');
       console.log('✅ Signal usage incremented successfully');
       
-      // Only show limit warning AFTER using the signal, not before
+      // Show upgrade prompt AFTER using the signal if this was their last free one
       if (!isPremium && signalsUsed + 1 >= dailyLimit) {
         toast({
           title: "✅ Signal Generated!",

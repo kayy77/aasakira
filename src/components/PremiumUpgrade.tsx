@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Crown, Zap, Star, Check } from 'lucide-react';
+import { Crown, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { stripeService } from '@/services/stripeService';
@@ -36,7 +36,7 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({ open, onOpenChange }) =
       
       console.log('✅ Checkout URL received, redirecting...');
       
-      // Fixed: Open Stripe checkout in same window for better UX
+      // Redirect to Stripe checkout
       window.location.href = checkoutUrl;
       
       // Show loading state until redirect happens
@@ -85,7 +85,7 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({ open, onOpenChange }) =
               <CardContent className="p-4">
                 <div className="text-center">
                   <h3 className="text-lg font-bold text-white mb-2">Monthly Plan</h3>
-                  <div className="text-3xl font-bold text-purple-400 mb-4">$49/month</div>
+                  <div className="text-3xl font-bold text-purple-400 mb-4">$25/month</div>
                   <Button
                     onClick={() => handleUpgrade('premium')}
                     disabled={isLoading}
@@ -101,8 +101,8 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({ open, onOpenChange }) =
               <CardContent className="p-4">
                 <div className="text-center">
                   <h3 className="text-lg font-bold text-white mb-2">Annual Plan</h3>
-                  <div className="text-3xl font-bold text-yellow-400 mb-2">$497/year</div>
-                  <div className="text-sm text-green-400 mb-4">Save $91 per year!</div>
+                  <div className="text-3xl font-bold text-yellow-400 mb-2">$200/year</div>
+                  <div className="text-sm text-green-400 mb-4">Save $100 per year!</div>
                   <Button
                     onClick={() => handleUpgrade('yearly')}
                     disabled={isLoading}

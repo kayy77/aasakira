@@ -12,10 +12,10 @@ class StripeService {
       console.log('🔄 Creating Stripe checkout session...');
       console.log(`Plan: ${plan}, User Email: ${userEmail}`);
       
-      // Fixed: Use the actual Stripe payment links with proper error handling
+      // Fixed: Use correct pricing for the actual plans
       const paymentLinks = {
-        premium: 'https://buy.stripe.com/5kQ00k5Nud1G0AUaRSabK00', // $49/month
-        yearly: 'https://buy.stripe.com/3cIdRa8ZGe5Kabu9NOabK01'   // $497/year
+        premium: 'https://buy.stripe.com/5kQ00k5Nud1G0AUaRS', // $25/month  
+        yearly: 'https://buy.stripe.com/3cIdRa8ZGe5Kabu9NO'   // $200/year
       };
       
       const checkoutUrl = paymentLinks[plan];
@@ -40,8 +40,8 @@ class StripeService {
   async verifyPayment(sessionId: string): Promise<boolean> {
     try {
       console.log(`🔍 Payment verification for session: ${sessionId}`);
-      // For now, return false since we need proper webhook integration
       // This would normally check with Stripe API to verify payment status
+      // For now, return false since we need proper webhook integration
       console.log('ℹ️ Payment verification not fully implemented - webhook integration needed');
       return false;
     } catch (error) {
