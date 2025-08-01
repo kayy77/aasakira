@@ -12,7 +12,7 @@ class StripeService {
       console.log('🔄 Creating Stripe checkout session...');
       console.log(`Plan: ${plan}, User Email: ${userEmail}`);
       
-      // Use your working Stripe payment links
+      // Use your actual Stripe payment links for direct redirect
       const paymentLinks = {
         premium: 'https://buy.stripe.com/5kQ00k5Nud1G0AUaRS', // $25/month  
         yearly: 'https://buy.stripe.com/3cIdRa8ZGe5Kabu9NO'   // $200/year

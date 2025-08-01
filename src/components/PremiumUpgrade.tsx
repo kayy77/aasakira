@@ -36,14 +36,14 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({ open, onOpenChange }) =
       
       console.log('✅ Checkout URL received, redirecting...');
       
-      // Open Stripe checkout in current window
-      window.location.href = checkoutUrl;
-      
-      // Show loading state until redirect happens
+      // Show loading state
       toast({
         title: "Redirecting to Stripe...",
         description: "Please wait while we redirect you to the payment page.",
       });
+      
+      // Redirect to Stripe checkout
+      window.location.href = checkoutUrl;
       
     } catch (error) {
       console.error('❌ Upgrade error:', error);
