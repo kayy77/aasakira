@@ -29,21 +29,29 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({ open, onOpenChange }) =
 
     try {
       setIsLoading(true);
+      console.log(`🚀 Starting upgrade process for plan: ${plan}`);
       
       // Get the checkout URL from our service
       const checkoutUrl = await stripeService.createCheckoutSession(plan, user.email || '');
       
-      // Open Stripe checkout in current window
+      console.log('✅ Checkout URL received, redirecting...');
+      
+      // Fixed: Open Stripe checkout in same window for better UX
       window.location.href = checkoutUrl;
       
+      // Show loading state until redirect happens
+      toast({
+        title: "Redirecting to Stripe...",
+        description: "Please wait while we redirect you to the payment page.",
+      });
+      
     } catch (error) {
-      console.error('Upgrade error:', error);
+      console.error('❌ Upgrade error:', error);
       toast({
         title: "Upgrade Failed",
-        description: "Something went wrong. Please try again.",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -65,6 +73,7 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({ open, onOpenChange }) =
               variant="ghost"
               onClick={() => onOpenChange(false)}
               className="text-gray-400 hover:text-white"
+              disabled={isLoading}
             >
               ✕
             </Button>
@@ -92,7 +101,8 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({ open, onOpenChange }) =
               <CardContent className="p-4">
                 <div className="text-center">
                   <h3 className="text-lg font-bold text-white mb-2">Annual Plan</h3>
-                  <div className="text-3xl font-bold text-yellow-400 mb-4">$497/year</div>
+                  <div className="text-3xl font-bold text-yellow-400 mb-2">$497/year</div>
+                  <div className="text-sm text-green-400 mb-4">Save $91 per year!</div>
                   <Button
                     onClick={() => handleUpgrade('yearly')}
                     disabled={isLoading}
@@ -114,6 +124,10 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({ open, onOpenChange }) =
               </li>
               <li className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-green-400" />
+                Unlimited Sports Betting Analysis
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-green-400" />
                 Unlimited Meme Coin Scans
               </li>
               <li className="flex items-center gap-2">
@@ -126,6 +140,14 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({ open, onOpenChange }) =
               </li>
             </ul>
           </div>
+
+          {isLoading && (
+            <div className="text-center">
+              <div className="text-sm text-gray-400">
+                🔄 Redirecting to secure payment...
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

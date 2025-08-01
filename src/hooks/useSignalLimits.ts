@@ -17,21 +17,21 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
   const { toast } = useToast();
 
   const isPremium = subscription?.tier === 'premium';
-  const dailyLimit = isPremium ? 999 : 1; // STRICT: Only 1 signal per day for free users
+  const dailyLimit = isPremium ? 999 : 1;
   const signalsUsed = usageStats?.signals || 0;
   
-  // STRICT CHECK: Free users can only generate if they haven't used any signals today
-  const canGenerateSignal = isPremium || signalsUsed === 0;
+  // Fix: Allow free users to use their daily signal properly
+  const canGenerateSignal = isPremium || signalsUsed < dailyLimit;
 
   const checkAndIncrementSignal = async (): Promise<boolean> => {
     console.log('🔒 Checking signal limits:', { isPremium, signalsUsed, dailyLimit, canGenerateSignal });
     
-    // STRICT enforcement for free users - block completely after first signal
-    if (!isPremium && signalsUsed >= 1) {
+    // Fixed logic: Only block after user has actually used their daily limit
+    if (!isPremium && signalsUsed >= dailyLimit) {
       console.log('❌ Signal generation blocked - FREE USER DAILY LIMIT REACHED (1/day)');
       toast({
         title: "🔒 Daily Signal Limit Reached",
-        description: `Free users get only 1 signal per day. You've already used yours! Upgrade to Premium for unlimited signals.`,
+        description: `Free users get 1 signal per day. You've already used yours! Upgrade to Premium for unlimited signals.`,
         variant: "destructive"
       });
       return false;
@@ -51,11 +51,11 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
       await incrementUsage('signals');
       console.log('✅ Signal usage incremented successfully');
       
-      // Show warning for free users that they've used their only signal
-      if (!isPremium) {
+      // Only show limit warning AFTER using the signal, not before
+      if (!isPremium && signalsUsed + 1 >= dailyLimit) {
         toast({
           title: "✅ Signal Generated!",
-          description: "You've used your 1 daily free signal. Upgrade to Premium for unlimited access!",
+          description: "You've used your daily free signal. Upgrade to Premium for unlimited access!",
           variant: "default"
         });
       }
