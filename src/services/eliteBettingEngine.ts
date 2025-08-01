@@ -105,9 +105,10 @@ class EliteBettingEngine {
       const selectedMatch = this.selectBestMatch(liveMatches);
       
       // Build enhanced betting context
+      const matchup = `${selectedMatch.home_team} vs ${selectedMatch.away_team}`;
       const bettingContext = {
         sport: selectedMatch.sport,
-        matchup: `${selectedMatch.home_team} vs ${selectedMatch.away_team}`,
+        matchup: matchup,
         bet_type: this.generateBetType(selectedMatch),
         odds: this.selectBestOdds(selectedMatch),
         game_time: new Date(selectedMatch.commence_time).toLocaleString(),
@@ -126,7 +127,7 @@ class EliteBettingEngine {
       const consensus = await bettingAIConsensusEngine.analyzeBettingConsensus(bettingContext);
       
       if (!consensus.approved) {
-        console.log(`❌ Betting signal rejected by AI consensus: ${selectedMatch.matchup}`);
+        console.log(`❌ Betting signal rejected by AI consensus: ${matchup}`);
         return null;
       }
 
