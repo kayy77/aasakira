@@ -20,29 +20,37 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
   const dailyLimit = isPremium ? 999 : 1;
   const signalsUsed = usageStats?.signals || 0;
   
-  // Fixed: Only block AFTER user has actually used their daily limit
+  // Fixed: Allow signal generation if user hasn't reached their limit yet
   const canGenerateSignal = isPremium || signalsUsed < dailyLimit;
 
   const checkAndIncrementSignal = async (): Promise<boolean> => {
     console.log('🔒 Checking signal limits:', { isPremium, signalsUsed, dailyLimit, canGenerateSignal });
     
-    // Block only if user has already used their daily limit
-    if (!isPremium && signalsUsed >= dailyLimit) {
-      console.log('❌ Signal generation blocked - FREE USER DAILY LIMIT REACHED (1/day)');
+    // For premium users, always allow
+    if (isPremium) {
+      console.log('✅ Premium user - unlimited signals');
+      await incrementUsage('signals');
+      return true;
+    }
+
+    // For free users, check if they have signals remaining
+    if (signalsUsed >= dailyLimit) {
+      console.log('❌ Signal generation blocked - FREE USER DAILY LIMIT REACHED');
       toast({
         title: "🔒 Daily Signal Limit Reached",
-        description: `Free users get 1 signal per day. You've already used yours! Upgrade to Premium for unlimited signals.`,
+        description: `You've used your ${dailyLimit} free signal today. Upgrade to Premium for unlimited access!`,
         variant: "destructive"
       });
       return false;
     }
 
+    // Allow signal generation and increment usage
     try {
       await incrementUsage('signals');
       console.log('✅ Signal usage incremented successfully');
       
-      // Show upgrade prompt AFTER using the signal if this was their last free one
-      if (!isPremium && signalsUsed + 1 >= dailyLimit) {
+      // Show upgrade prompt if this was their last free signal
+      if (signalsUsed + 1 >= dailyLimit) {
         toast({
           title: "✅ Signal Generated!",
           description: "You've used your daily free signal. Upgrade to Premium for unlimited access!",

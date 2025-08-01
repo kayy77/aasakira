@@ -35,6 +35,25 @@ class EliteBettingEngine {
     this.startAutoScanning();
   }
 
+  private filterNext48Hours(matches: LiveMatchData[]): LiveMatchData[] {
+    const now = new Date();
+    const fortyEightHoursFromNow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    
+    console.log(`🕐 Filtering matches between ${now.toISOString()} and ${fortyEightHoursFromNow.toISOString()}`);
+    
+    const filtered = matches.filter(match => {
+      const matchTime = new Date(match.commence_time);
+      const isValid = matchTime >= now && matchTime <= fortyEightHoursFromNow;
+      if (!isValid) {
+        console.log(`❌ Filtering out: ${match.home_team} vs ${match.away_team} at ${matchTime.toISOString()}`);
+      }
+      return isValid;
+    });
+    
+    console.log(`✅ Filtered ${matches.length} matches down to ${filtered.length} within 48h`);
+    return filtered.sort((a, b) => new Date(a.commence_time).getTime() - new Date(b.commence_time).getTime());
+  }
+
   startAutoScanning() {
     if (this.isAutoScanning) return;
     
@@ -44,10 +63,10 @@ class EliteBettingEngine {
     // Initial scan
     this.performAutoScan();
     
-    // Set up continuous scanning every 2 minutes
+    // Set up continuous scanning every 3 minutes
     this.scanInterval = setInterval(() => {
       this.performAutoScan();
-    }, 120000);
+    }, 180000);
   }
 
   stopAutoScanning() {
@@ -64,10 +83,12 @@ class EliteBettingEngine {
       console.log('🔍 Auto-scanning for events in next 48 hours...');
       
       const sports = ['football', 'basketball', 'mma', 'boxing'];
-      let newSignalsCount = 0;
       let allUpcomingMatches: LiveMatchData[] = [];
 
-      // Fetch upcoming matches from all sports
+      // Always add demo signals for next 48 hours to ensure content
+      this.addNext48HoursDemoSignals();
+
+      // Try to fetch real data
       for (const sport of sports) {
         try {
           const matches = await sportsDataService.getUpcomingMatches(sport);
@@ -75,120 +96,138 @@ class EliteBettingEngine {
           allUpcomingMatches.push(...filteredMatches);
           console.log(`📊 ${sport}: Found ${filteredMatches.length} matches in next 48h`);
         } catch (error) {
-          console.error(`Error fetching ${sport} matches:`, error);
-          // Continue with other sports instead of breaking
+          console.warn(`⚠️ Could not fetch ${sport} matches:`, error);
           continue;
         }
       }
 
-      console.log(`🎯 Total matches found in next 48h: ${allUpcomingMatches.length}`);
+      console.log(`🎯 Total real matches found in next 48h: ${allUpcomingMatches.length}`);
 
-      // Generate signals for the best matches (limit to prevent overload)
-      const targetSignalCount = Math.min(10, allUpcomingMatches.length);
+      // Generate signals for real matches (limit to prevent overload)
+      const targetSignalCount = Math.min(5, allUpcomingMatches.length);
       
       for (let i = 0; i < targetSignalCount; i++) {
         try {
           const match = allUpcomingMatches[i];
           const signal = await this.generateBettingSignalFromMatch(match);
           if (signal) {
-            newSignalsCount++;
+            console.log(`✅ Generated real signal: ${signal.matchup}`);
           }
         } catch (error) {
           console.error('Signal generation error:', error);
-          // Continue with next match instead of breaking
           continue;
         }
       }
 
-      // Add fallback signals if we don't have enough real ones
-      if (this.signals.length < 3) {
-        console.log('⚠️ Adding fallback demo signals for next 48h');
-        this.addNext48HoursFallbackSignals();
+      // Clean up old signals (keep max 20)
+      if (this.signals.length > 20) {
+        this.signals = this.signals.slice(0, 20);
       }
 
-      // Clean up old signals (keep max 50)
-      if (this.signals.length > 50) {
-        this.signals = this.signals.slice(0, 50);
-      }
-
-      console.log(`✅ Auto-scan complete: ${newSignalsCount} new signals generated (Total: ${this.signals.length})`);
+      console.log(`✅ Auto-scan complete (Total: ${this.signals.length} signals)`);
     } catch (error) {
       console.error('❌ Auto-scan failed:', error);
-      // Add fallback signals so the UI doesn't break
-      if (this.signals.length === 0) {
-        this.addNext48HoursFallbackSignals();
-      }
+      // Ensure we always have demo content
+      this.addNext48HoursDemoSignals();
     }
   }
 
-  private filterNext48Hours(matches: LiveMatchData[]): LiveMatchData[] {
+  private addNext48HoursDemoSignals() {
     const now = new Date();
-    const fortyEightHoursFromNow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    const tomorrow = new Date(now.getTime() + 20 * 60 * 60 * 1000); // 20 hours from now
+    const dayAfter = new Date(now.getTime() + 36 * 60 * 60 * 1000); // 36 hours from now
     
-    return matches.filter(match => {
-      const matchTime = new Date(match.commence_time);
-      return matchTime >= now && matchTime <= fortyEightHoursFromNow;
-    }).sort((a, b) => new Date(a.commence_time).getTime() - new Date(b.commence_time).getTime());
-  }
-
-  private addNext48HoursFallbackSignals() {
-    const now = new Date();
-    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const dayAfter = new Date(now.getTime() + 36 * 60 * 60 * 1000);
-    
-    const fallbackSignals: BettingSignal[] = [
+    const demoSignals: BettingSignal[] = [
       {
-        id: `next48h_${Date.now()}_1`,
-        sport: 'Football (Soccer)',
-        matchup: 'Manchester United vs Arsenal',
-        bet_type: 'Moneyline Win',
-        odds: 2.15,
-        game_time: tomorrow.toLocaleString(),
-        confidence: 74,
-        expected_value: 7.8,
-        ai_consensus: 'Home advantage + recent form analysis',
-        key_factors: ['Home field advantage', 'Recent form', 'Key player fitness'],
-        concerns: ['Away team motivation', 'Weather conditions'],
-        verdict: 'APPROVED',
-        label: 'Strong Value',
-        risk_assessment: 'Medium Risk - Good Value',
-        team_stats: 'Man United: 7W-2D-1L, Arsenal: 6W-3D-1L',
-        injury_report: 'Man United: Rashford (fit), Arsenal: Saka (doubtful)',
-        recent_form: 'Man United: WWDWL, Arsenal: WDWLW',
-        line_movement: 'Line moved from +2.2 to +2.15',
-        betting_trends: '58% public on Manchester United',
-        timestamp: new Date().toISOString(),
-        live_status: 'UPCOMING',
-        market_heat: 'WARM'
-      },
-      {
-        id: `next48h_${Date.now()}_2`,
+        id: `demo_${Date.now()}_1`,
         sport: 'Basketball (NBA)',
         matchup: 'Lakers vs Warriors',
         bet_type: 'Point Spread',
         odds: 1.91,
-        game_time: dayAfter.toLocaleString(),
-        confidence: 68,
-        expected_value: 6.2,
-        ai_consensus: 'Warriors home court + Lakers road struggles',
-        key_factors: ['Home court advantage', 'Road performance issues', 'Recent matchups'],
-        concerns: ['LeBron factor', 'Rest advantage'],
+        game_time: tomorrow.toLocaleString(),
+        confidence: 78,
+        expected_value: 8.2,
+        ai_consensus: 'Warriors home advantage + Lakers road struggles',
+        key_factors: ['Home court advantage', 'Road performance differential', 'Recent head-to-head'],
+        concerns: ['LeBron factor', 'Injury updates'],
         verdict: 'APPROVED',
-        label: 'Solid Pick',
-        risk_assessment: 'Medium Risk - Decent Value',
-        team_stats: 'Lakers: 12-8, Warriors: 14-6',
+        label: 'Strong Value',
+        risk_assessment: 'Medium Risk - Good Value',
+        team_stats: 'Lakers: 12-8 (5-6 away), Warriors: 14-6 (8-2 home)',
         injury_report: 'Lakers: AD (probable), Warriors: Curry (fit)',
         recent_form: 'Lakers: 7-3 L10, Warriors: 8-2 L10',
-        line_movement: 'Spread moved from -4.5 to -5',
-        betting_trends: '62% tickets on Warriors',
+        line_movement: 'Spread moved from -4.5 to -5 (sharp action)',
+        betting_trends: '62% tickets on Warriors, 58% handle',
         timestamp: new Date().toISOString(),
         live_status: 'UPCOMING',
         market_heat: 'HOT'
+      },
+      {
+        id: `demo_${Date.now()}_2`,
+        sport: 'Football (Soccer)',
+        matchup: 'Manchester United vs Arsenal',
+        bet_type: 'Both Teams to Score',
+        odds: 2.05,
+        game_time: dayAfter.toLocaleString(),
+        confidence: 71,
+        expected_value: 6.8,
+        ai_consensus: 'Both teams attacking strength + defensive vulnerabilities',
+        key_factors: ['Goal scoring records', 'Defensive weaknesses', 'Historical meetings'],
+        concerns: ['Weather conditions', 'Key player availability'],
+        verdict: 'APPROVED',
+        label: 'Solid Pick',
+        risk_assessment: 'Medium Risk - Decent Value',
+        team_stats: 'Man United: 2.1 goals/game, Arsenal: 1.9 goals/game',
+        injury_report: 'Man United: Rashford (fit), Arsenal: Saka (doubtful)',
+        recent_form: 'Man United: WWDWL, Arsenal: WDWLW',
+        line_movement: 'Odds moved from 2.10 to 2.05',
+        betting_trends: '54% public backing BTTS',
+        timestamp: new Date().toISOString(),
+        live_status: 'UPCOMING',
+        market_heat: 'WARM'
       }
     ];
 
-    this.signals.unshift(...fallbackSignals);
-    console.log('✅ Added fallback signals for next 48 hours');
+    // Only add if we don't already have recent demo signals
+    const hasRecentDemo = this.signals.some(s => s.id.startsWith('demo_') && 
+      (Date.now() - new Date(s.timestamp).getTime()) < 600000); // 10 minutes
+
+    if (!hasRecentDemo) {
+      this.signals.unshift(...demoSignals);
+      console.log('✅ Added demo signals for next 48 hours');
+    }
+  }
+
+  async generateBettingSignal(sport?: string): Promise<BettingSignal | null> {
+    try {
+      console.log(`🏟️ Generating signal for ${sport || 'random sport'}...`);
+      
+      const selectedSport = sport || this.getRandomSport();
+      
+      // Add timeout to prevent hanging
+      const liveMatches = await Promise.race([
+        sportsDataService.getUpcomingMatches(selectedSport),
+        new Promise<LiveMatchData[]>((_, reject) => 
+          setTimeout(() => reject(new Error('API timeout')), 8000)
+        )
+      ]);
+      
+      // Filter for next 48 hours only
+      const upcomingMatches = this.filterNext48Hours(liveMatches);
+      
+      if (upcomingMatches.length === 0) {
+        console.log('❌ No upcoming matches in next 48h for', selectedSport);
+        return null;
+      }
+
+      // Select the best match
+      const selectedMatch = this.selectBestMatch(upcomingMatches);
+      return await this.generateBettingSignalFromMatch(selectedMatch);
+
+    } catch (error) {
+      console.error('❌ Generate betting signal error:', error);
+      return null;
+    }
   }
 
   private async generateBettingSignalFromMatch(match: LiveMatchData): Promise<BettingSignal | null> {
@@ -252,8 +291,8 @@ class EliteBettingEngine {
       };
 
       this.signals.unshift(signal);
-      if (this.signals.length > 100) {
-        this.signals = this.signals.slice(0, 100);
+      if (this.signals.length > 50) {
+        this.signals = this.signals.slice(0, 50);
       }
 
       console.log(`🔥 LIVE SIGNAL: ${signal.matchup} | ${signal.confidence}% | ${signal.market_heat}`);
@@ -261,38 +300,6 @@ class EliteBettingEngine {
 
     } catch (error) {
       console.error('❌ Signal generation error:', error);
-      return null;
-    }
-  }
-
-  async generateBettingSignal(sport?: string): Promise<BettingSignal | null> {
-    try {
-      console.log(`🏟️ Generating signal for ${sport || 'random sport'}...`);
-      
-      const selectedSport = sport || this.getRandomSport();
-      
-      // Add timeout to prevent hanging
-      const liveMatches = await Promise.race([
-        sportsDataService.getUpcomingMatches(selectedSport),
-        new Promise<LiveMatchData[]>((_, reject) => 
-          setTimeout(() => reject(new Error('API timeout')), 8000)
-        )
-      ]);
-      
-      // Filter for next 48 hours only
-      const upcomingMatches = this.filterNext48Hours(liveMatches);
-      
-      if (upcomingMatches.length === 0) {
-        console.log('❌ No upcoming matches in next 48h for', selectedSport);
-        return null;
-      }
-
-      // Select the best match
-      const selectedMatch = this.selectBestMatch(upcomingMatches);
-      return await this.generateBettingSignalFromMatch(selectedMatch);
-
-    } catch (error) {
-      console.error('❌ Generate betting signal error:', error);
       return null;
     }
   }
