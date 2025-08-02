@@ -30,6 +30,8 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLivePrices } from '@/components/signals/hooks/useLivePrices';
+import EnhancedAIConsensusDisplay from './EnhancedAIConsensusDisplay';
+import EnhancedSignalMetrics from './EnhancedSignalMetrics';
 
 interface SignalCardProps {
   signal: Signal;
@@ -46,6 +48,16 @@ const SignalCard: React.FC<SignalCardProps> = ({ signal, isPremium, onExplain, o
     minute: '2-digit',
     timeZone: 'UTC'
   });
+
+  // Calculate risk:reward ratio
+  const calculateRiskReward = () => {
+    if (typeof signal.entry === 'number' && typeof signal.takeProfit === 'number' && typeof signal.stopLoss === 'number') {
+      const profit = Math.abs(signal.takeProfit - signal.entry);
+      const loss = Math.abs(signal.entry - signal.stopLoss);
+      return loss > 0 ? profit / loss : 2.5;
+    }
+    return 2.5;
+  };
   
   return (
     <Card className={`glass-card hover-glow border-2 transition-all duration-300 ${
@@ -79,15 +91,6 @@ const SignalCard: React.FC<SignalCardProps> = ({ signal, isPremium, onExplain, o
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={`border-0 ${
-              signal.confidence >= 80 ? 'bg-green-500/20 text-green-400' :
-              signal.confidence >= 65 ? 'bg-yellow-500/20 text-yellow-400' :
-              'bg-red-500/20 text-red-400'
-            }`}>
-              {signal.confidence}% Confidence
-            </Badge>
-          </div>
         </div>
         
         {/* Live Price Display */}
@@ -107,6 +110,15 @@ const SignalCard: React.FC<SignalCardProps> = ({ signal, isPremium, onExplain, o
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Enhanced Signal Metrics */}
+        <EnhancedSignalMetrics
+          confidence={signal.confidence}
+          risk={signal.risk}
+          strategy={signal.strategy}
+          riskReward={calculateRiskReward()}
+          confluence={signal.confluenceLevel || 5}
+        />
+
         {/* Entry Details */}
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div className="bg-gray-800/20 rounded p-3">
@@ -138,19 +150,10 @@ const SignalCard: React.FC<SignalCardProps> = ({ signal, isPremium, onExplain, o
           </div>
         </div>
 
-        {/* Strategy & Risk */}
-        <div className="flex items-center justify-between">
-          <Badge variant="outline" className="border-purple-500/30 text-purple-400">
-            {signal.strategy.replace('_', ' ')}
-          </Badge>
-          <Badge variant="outline" className={`border-0 ${
-            signal.risk === 'Low' ? 'bg-green-500/20 text-green-400' :
-            signal.risk === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
-            'bg-red-500/20 text-red-400'
-          }`}>
-            {signal.risk} Risk
-          </Badge>
-        </div>
+        {/* Enhanced AI Consensus Display */}
+        {signal.consensus && (
+          <EnhancedAIConsensusDisplay consensus={signal.consensus} />
+        )}
 
         {/* Analysis */}
         <div className="space-y-2">
