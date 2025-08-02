@@ -1,5 +1,5 @@
-
 import React from 'react';
+import EnhancedSignalFilter from './EnhancedSignalFilter';
 
 interface SignalFilterProps {
   selectedStrength: string;
