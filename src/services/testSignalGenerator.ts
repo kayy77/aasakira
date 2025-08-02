@@ -29,7 +29,7 @@ export class TestSignalGenerator {
       timestamp: new Date().toISOString(),
       timeframe: '15m',
       riskReward: Math.round(riskReward * 10) / 10,
-      strategy: 'TEST_STRATEGY',
+      strategy: 'Smart_Money', // Fixed to use valid strategy
       marketCondition: 'Active',
       technicalSetup: 'SMC + Volume + Session',
       entryReason: `${Math.floor(Math.random() * 3) + 3}/6 filters passed`,
@@ -41,15 +41,7 @@ export class TestSignalGenerator {
       confluenceScore: Math.floor(Math.random() * 3) + 3,
       livePrice: entry,
       spreadToMarket: 0,
-      risk: 'Medium',
-      origin: {
-        institutional: true,
-        smc: true,
-        quant: false,
-        volatility: true,
-        visual: true,
-        mentor: false
-      }
+      risk: 'Medium'
     };
   }
   

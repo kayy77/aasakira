@@ -9,7 +9,7 @@ export interface Signal {
   takeProfit: number;
   confidence: number;
   risk: 'Low' | 'Medium' | 'High' | 'Critical';
-  strategy: 'Smart_Money' | 'Breakout+Retest' | 'Trend_Continuation' | 'Multi_Confluence' | 'FALLBACK' | 'EMERGENCY';
+  strategy: 'Smart_Money' | 'Breakout+Retest' | 'Trend_Continuation' | 'Multi_Confluence' | 'FALLBACK' | 'EMERGENCY' | 'TEST_STRATEGY';
   analysis: string;
   timestamp: string;
   livePrice?: number;
@@ -35,6 +35,31 @@ export interface Signal {
   validated?: boolean;
   message?: string;
   warning?: string;
+}
+
+// Filter-related interfaces
+export interface FilterResult {
+  smc: boolean;
+  liquiditySweep: boolean;
+  fvg: boolean;
+  volumeSpike: boolean;
+  sessionTiming: boolean;
+  rsiDivergence: boolean;
+}
+
+export interface SignalInput {
+  filters: FilterResult;
+  aiConfidence: number;
+  livePrice: number;
+  confluenceRequired: number;
+  minConfidence: number;
+  newsBlocked: boolean;
+}
+
+export interface FilterValidationResult {
+  valid: boolean;
+  reason: string;
+  passedFilters?: string[];
 }
 
 // Add UserSignalSettings interface

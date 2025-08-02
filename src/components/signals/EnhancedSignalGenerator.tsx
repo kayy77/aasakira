@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -114,7 +113,8 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
         technicalSetup: 'RSI Divergence + Volume Spike',
         entryReason: 'Fallback mode activation during low confluence period',
         riskManagement: 'Reduced position size - fallback signal',
-        filtersPassed: ['RSI Divergence', 'Volume Spike']
+        filtersPassed: ['RSI Divergence', 'Volume Spike'],
+        risk: 'Medium'
       };
 
       return baseSignal;
@@ -153,7 +153,8 @@ export const EnhancedSignalGenerator: React.FC<EnhancedSignalGeneratorProps> = (
         entryReason: 'Emergency override activation',
         riskManagement: 'CRITICAL RISK - Monitor closely',
         filtersPassed: selectedFactors,
-        warning: 'EMERGENCY SIGNAL - Use extreme caution'
+        warning: 'EMERGENCY SIGNAL - Use extreme caution',
+        risk: 'Critical'
       };
 
       return signal;
