@@ -3,8 +3,7 @@ import { Signal } from '@/types/signalConfig';
 
 const MAJOR_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
 
-// Remove the mockSignals import that doesn't exist
-let refreshTimer: NodeJS.Timeout | null = null;
+let refreshTimer: number | null = null;
 
 class SignalService {
   private signals: Signal[] = [];
@@ -48,7 +47,7 @@ class SignalService {
             { name: 'GPT-4', confidence: 75, reasoning: 'Smart money concepts align with trend' }
           ],
           averageConfidence: 78,
-          verdict: 'STRONG',
+          verdict: 'APPROVED', // Fixed: Use 'APPROVED' instead of 'STRONG'
           summary: 'Strong institutional setup with multi-AI agreement on entry timing'
         }
       };
@@ -65,7 +64,7 @@ class SignalService {
     
     refreshTimer = setInterval(() => {
       // Auto-refresh logic if needed
-    }, 30000) as NodeJS.Timeout;
+    }, 30000);
   }
   
   async getLatestSignals(): Promise<Signal[]> {

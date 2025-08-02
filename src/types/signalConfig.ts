@@ -79,10 +79,11 @@ export interface UserSignalSettings {
   emergencyOverride: boolean;
 }
 
-// Add SavedPreset interface
+// Add SavedPreset interface with description property
 export interface SavedPreset {
   id: string;
   name: string;
+  description?: string;  // Add optional description property
   settings: UserSignalSettings;
   createdAt: string;
 }
@@ -98,5 +99,14 @@ export interface StrategyBreakdown {
   avgRiskReward: number;
 }
 
-// Add import for ConsensusResult if not already imported
-import type { ConsensusResult } from '@/services/multiAIConsensusEngine';
+// Add ConsensusResult interface with proper verdict types
+export interface ConsensusResult {
+  models: Array<{
+    name: string;
+    confidence: number;
+    reasoning: string;
+  }>;
+  averageConfidence: number;
+  verdict: 'APPROVED' | 'REJECTED' | 'LOW_CONSENSUS' | 'STRONG' | 'WEAK' | 'MEDIUM';
+  summary: string;
+}
