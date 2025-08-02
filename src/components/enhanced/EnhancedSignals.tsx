@@ -49,8 +49,10 @@ const SignalCard: React.FC<SignalCardProps> = ({ signal, isPremium, onExplain, o
     timeZone: 'UTC'
   });
 
-  // Calculate risk:reward ratio
+  // Calculate risk:reward ratio with proper type checking
   const calculateRiskReward = () => {
+    if (signal.riskReward) return signal.riskReward;
+    
     if (typeof signal.entry === 'number' && typeof signal.takeProfit === 'number' && typeof signal.stopLoss === 'number') {
       const profit = Math.abs(signal.takeProfit - signal.entry);
       const loss = Math.abs(signal.entry - signal.stopLoss);
@@ -117,6 +119,7 @@ const SignalCard: React.FC<SignalCardProps> = ({ signal, isPremium, onExplain, o
           strategy={signal.strategy}
           riskReward={calculateRiskReward()}
           confluence={signal.confluenceLevel || 5}
+          timeframe={signal.timeframe}
         />
 
         {/* Entry Details */}
@@ -124,28 +127,19 @@ const SignalCard: React.FC<SignalCardProps> = ({ signal, isPremium, onExplain, o
           <div className="bg-gray-800/20 rounded p-3">
             <div className="text-gray-400 mb-1">Entry</div>
             <div className="text-white font-bold font-mono">
-              {typeof signal.entry === 'number' ? 
-                signal.entry.toFixed(signal.pair.includes('JPY') ? 3 : signal.pair.includes('USD') && (signal.pair.includes('BTC') || signal.pair.includes('ETH')) ? 2 : 5) :
-                signal.entry
-              }
+              {signal.entry.toFixed(signal.pair.includes('JPY') ? 3 : signal.pair.includes('USD') && (signal.pair.includes('BTC') || signal.pair.includes('ETH')) ? 2 : 5)}
             </div>
           </div>
           <div className="bg-red-500/10 rounded p-3">
             <div className="text-gray-400 mb-1">Stop Loss</div>
             <div className="text-red-400 font-bold font-mono">
-              {typeof signal.stopLoss === 'number' ? 
-                signal.stopLoss.toFixed(signal.pair.includes('JPY') ? 3 : signal.pair.includes('USD') && (signal.pair.includes('BTC') || signal.pair.includes('ETH')) ? 2 : 5) :
-                signal.stopLoss
-              }
+              {signal.stopLoss.toFixed(signal.pair.includes('JPY') ? 3 : signal.pair.includes('USD') && (signal.pair.includes('BTC') || signal.pair.includes('ETH')) ? 2 : 5)}
             </div>
           </div>
           <div className="bg-green-500/10 rounded p-3">
             <div className="text-gray-400 mb-1">Take Profit</div>
             <div className="text-green-400 font-bold font-mono">
-              {typeof signal.takeProfit === 'number' ? 
-                signal.takeProfit.toFixed(signal.pair.includes('JPY') ? 3 : signal.pair.includes('USD') && (signal.pair.includes('BTC') || signal.pair.includes('ETH')) ? 2 : 5) :
-                signal.takeProfit
-              }
+              {signal.takeProfit.toFixed(signal.pair.includes('JPY') ? 3 : signal.pair.includes('USD') && (signal.pair.includes('BTC') || signal.pair.includes('ETH')) ? 2 : 5)}
             </div>
           </div>
         </div>
@@ -230,9 +224,8 @@ const EnhancedSignals = () => {
       if (newSignal) {
         if (livePrices[newSignal.pair]) {
           newSignal.livePrice = livePrices[newSignal.pair];
-          newSignal.spreadToMarket = parseFloat(
-            ((Math.abs(newSignal.entry - newSignal.livePrice) / newSignal.livePrice) * 100).toFixed(2)
-          );
+          const spreadCalc = Math.abs(newSignal.entry - livePrices[newSignal.pair]) / livePrices[newSignal.pair];
+          newSignal.spreadToMarket = parseFloat((spreadCalc * 100).toFixed(2));
         }
         
         setSignals(prev => [newSignal, ...prev.slice(0, 4)]);
@@ -274,7 +267,9 @@ const EnhancedSignals = () => {
       'Smart_Money': `This signal is based on institutional order flow analysis. Price action shows smart money accumulation at key levels with confluence of multiple factors: liquidity sweeps, fair value gaps, and order block formation. Entry timing aligns with market structure breaks.`,
       'Breakout+Retest': `Clean break of significant structure followed by institutional retest. Smart money accumulated during pullback phase, creating optimal entry conditions with defined risk parameters.`,
       'Trend_Continuation': `Higher timeframe trend remains intact with lower timeframe confirmation signals. Momentum indicators and institutional positioning support continuation of the prevailing trend.`,
-      'Multi_Confluence': `Multiple technical factors aligned: ${signal.analysis.split('.')[0]}. This creates a high-probability setup with well-defined risk/reward parameters.`
+      'Multi_Confluence': `Multiple technical factors aligned: ${signal.analysis.split('.')[0]}. This creates a high-probability setup with well-defined risk/reward parameters.`,
+      'FALLBACK': `Fallback signal generated during market quiet periods using basic confluence factors.`,
+      'EMERGENCY': `Emergency override signal - use with extreme caution.`
     };
     
     setExplanation(explanations[signal.strategy] || signal.analysis);
@@ -310,7 +305,11 @@ const EnhancedSignals = () => {
 
   useEffect(() => {
     signalService.startAutoRefresh();
-    signalService.getLatestSignals().then(setSignals);
+    const getSignals = async () => {
+      const latestSignals = await signalService.getLatestSignals();
+      setSignals(latestSignals);
+    };
+    getSignals();
   }, []);
 
   return (
@@ -491,7 +490,7 @@ const EnhancedSignals = () => {
               <div className={isMobile ? 'text-sm' : ''}>
                 <strong>Backtest Result:</strong> Similar setups hit TP in avg 2.1 hours. Historical win rate: 82%. 
                 Expected RRR: {replayMode.takeProfit && replayMode.entry && replayMode.stopLoss ? 
-                  ((Number(replayMode.takeProfit) - Number(replayMode.entry)) / (Number(replayMode.entry) - Number(replayMode.stopLoss))).toFixed(1) : '2.4'}R
+                  ((replayMode.takeProfit - replayMode.entry) / (replayMode.entry - replayMode.stopLoss)).toFixed(1) : '2.4'}R
               </div>
               <Button
                 variant="ghost"
