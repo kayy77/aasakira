@@ -15,6 +15,12 @@ export interface AIModelResponse {
   conviction_strength: number; // 1-10
   risk_assessment: string;
   news_impact: string;
+  // New enhanced fields for deeper analysis
+  expected_value: number; // -2 to +2 scale
+  quality_grade: 'Elite' | 'Smart_Risk' | 'Standard' | 'Questionable' | 'Reject';
+  institutional_reasoning: string;
+  risk_reward_analysis: string;
+  market_context: string;
 }
 
 export interface AIVotes {
@@ -36,6 +42,11 @@ export interface ConsensusResult {
   final_rating: number;
   consensus_strength: string;
   multi_ai_verdict: string;
+  // Enhanced consensus fields
+  expected_value: number;
+  quality_tier: 'INSTITUTIONAL' | 'PROFESSIONAL' | 'STANDARD' | 'SPECULATIVE';
+  ai_agreement_level: string;
+  institutional_grade: string;
 }
 
 interface SignalContext {
@@ -65,88 +76,84 @@ class MultiAIConsensusEngine {
     newsdata: 'pub_5cf95a64279c4e63b30a66fc9f2518fa'
   };
 
-  private buildHedgeFundMasterPrompt(context: SignalContext): string {
-    return `🏛️ HEDGE FUND MODE — ELITE AI SIGNAL ANALYSIS
+  private buildInstitutionalPrompt(context: SignalContext, modelRole: string): string {
+    const riskReward = Math.abs(context.take_profit - context.entry_price) / Math.abs(context.entry_price - context.stop_loss);
+    
+    const rolePrompts = {
+      'institutional': `You are a senior quant analyst at Citadel Securities. Your job is to evaluate trades with institutional precision and macro awareness.`,
+      'technical': `You are a professional Smart Money Concepts trader with 10+ years experience. Focus on structure, order flow, and price action.`,
+      'risk': `You are a risk management specialist at a hedge fund. Your primary focus is expected value optimization and R:R analysis.`,
+      'pattern': `You are a pattern recognition expert. Look for clean setups and identify any structural flaws or conflicting signals.`,
+      'contrarian': `You are a contrarian analyst. Your job is to find potential red flags and reasons this trade might fail.`
+    };
 
-⚠️ CRITICAL: DO NOT EDIT OR ADJUST ENTRY PRICE, TAKE PROFIT, OR STOP LOSS. DO NOT MODIFY CORE SIGNAL LOGIC OR PRICE FEEDS. YOU ARE ENHANCING THE SIGNAL ANALYSIS ONLY.
+    return `${rolePrompts[modelRole] || rolePrompts['institutional']}
 
-You are a hyper-intelligent institutional-grade trading assistant embedded into an elite signal engine. Your role is to validate and powerfully reinforce each signal with deeper insight. Think like a top-level hedge fund trader with elite market knowledge.
-
-===============================
-📊 PRE-GENERATED TRADE SETUP (DO NOT MODIFY):
+CRITICAL SETUP ANALYSIS:
 - Pair: ${context.pair}
-- Timeframe: ${context.timeframe}
-- Trade Direction: ${context.direction}
-- Entry Price: ${context.entry_price}
+- Direction: ${context.direction}
+- Entry: ${context.entry_price}
 - Stop Loss: ${context.stop_loss}
 - Take Profit: ${context.take_profit}
+- Risk:Reward Ratio: ${riskReward.toFixed(2)}:1
 
-===============================
-🧠 MARKET INTELLIGENCE DATA:
+MARKET INTELLIGENCE:
 - Market Structure: ${context.structure_desc}
 - Liquidity Context: ${context.liquidity_zone_info}
 - Fair Value Gaps: ${context.fvg_info}
-- RSI/Divergence: ${context.rsi_data}
+- RSI/Momentum: ${context.rsi_data}
 - Volume Profile: ${context.volume_snapshot}
-- Session Context: ${context.session_info}
-- Timestamp: ${context.time}
+- Session: ${context.session_info}
 - News Environment: ${context.news_context}
-- Active Confluences: ${context.confluences_list.join(', ')}
+- Confluences: ${context.confluences_list.join(', ')}
 
-===============================
-🎯 YOUR ANALYSIS MISSION:
-You must analyze from multiple strategy lenses:
-1. Smart Money Concepts (internal structure, BOS, POI/FVG)
-2. Market Maker Model (liquidity grabs, engineered sell-offs)
-3. Classic TA (key levels, trendline breaks, SR flips)
-4. Volume Analysis (spikes, divergence)
-5. Economic Impact (macro news, FOMC, data prints)
-6. Order Flow Behavior (fakeouts, engineered wicks, traps)
-7. Risk:Reward balance (Reward must justify risk logically)
+YOUR ANALYSIS MISSION:
+1. Rate the EXPECTED VALUE of this trade (-2 to +2 scale):
+   -2 = High probability loss
+   -1 = Slight negative expectancy
+    0 = Neutral/coin flip
+   +1 = Positive expectancy
+   +2 = High probability winner
 
-Rate this trade from 1 to 10 based on:
-- Multi-strategy confluence strength
-- Institutional logic and smart money alignment
-- Risk-to-reward asymmetric opportunity
-- Session timing and volatility context
-- News impact and macro environment
-- Probability of reaching TP without SL hit
+2. Assign QUALITY GRADE:
+   - Elite: Institutional-grade setup with multiple confluences
+   - Smart_Risk: Good setup with manageable risk
+   - Standard: Basic setup meeting minimum criteria
+   - Questionable: Weak setup with concerns
+   - Reject: Should not be traded
 
-🚨 CRITICAL REQUIREMENTS:
-✅ Only support a signal if you can make a real argument for why money could be made
-❌ Never hype a weak signal without a reason. Show both sides if it's not ideal
-🧠 Keep learning and evolving. Your mission is to get more accurate over time
+3. Provide INSTITUTIONAL REASONING:
+   - Why would/wouldn't a hedge fund take this trade?
+   - What's the logical basis for the setup?
+   - How does this fit current market regime?
 
-If this is a weak signal, label it as such but explain exactly why the system picked it and how it could still work (don't BS).
+4. Give CONFIDENCE (0-100%):
+   Based on your experience and analysis quality
 
-Add advanced context from economic calendar or live market news if relevant.
-Mention any conflicting confluences and explain how they were weighed.
-
-===============================
-📋 REQUIRED JSON OUTPUT FORMAT:
-
+RESPONSE FORMAT (JSON only):
 {
   "rating": 8,
   "verdict": "Strong",
-  "summary": "Sharp, condensed reason using top 2-3 strongest justifications",
+  "summary": "High-conviction institutional setup with multi-timeframe confluence",
   "key_confluences": ["confluence1", "confluence2"],
-  "concerns": ["concern1 if any"],
-  "recommendation": "Execute with institutional risk parameters",
-  "ai_analysis": "Detailed hedge-fund level analysis with institutional reasoning",
+  "concerns": ["any concerns"],
+  "recommendation": "Execute with full institutional parameters",
+  "ai_analysis": "Detailed analysis with specific reasoning",
   "confidence_level": "High",
-  "setup_type": "Momentum/Mean Reversion/Liquidity Sweep/Scalp",
-  "market_phase": "Expansion/Accumulation/Reversal/Distribution",
-  "justification": [
-    "Top reason with smart money context",
-    "Secondary reason with volume/structure",
-    "Risk management justification"
-  ],
+  "setup_type": "Momentum/Reversal/Breakout",
+  "market_phase": "Expansion/Accumulation/Distribution",
+  "justification": ["Primary reason", "Supporting evidence", "Risk management"],
   "conviction_strength": 8,
-  "risk_assessment": "Risk evaluation vs reward potential",
-  "news_impact": "Any relevant news or macro factors"
+  "risk_assessment": "Risk vs reward evaluation",
+  "news_impact": "News context impact",
+  "expected_value": 1.5,
+  "quality_grade": "Elite",
+  "institutional_reasoning": "Why a hedge fund would/wouldn't take this trade",
+  "risk_reward_analysis": "Detailed R:R breakdown and probability assessment",
+  "market_context": "How this fits current market conditions"
 }
 
-Return ONLY the JSON. No other text. Be brutally honest about signal quality while providing elite-level reasoning.`;
+Be brutally honest. If it's a weak setup, grade it accordingly. Focus on LOGIC over hype.`;
   }
 
   private async getLiveNews(pair: string): Promise<string> {
@@ -181,6 +188,22 @@ Return ONLY the JSON. No other text. Be brutally honest about signal quality whi
     }
   }
 
+  private async callGroqAI(prompt: string): Promise<AIModelResponse> {
+    try {
+      const { groqService } = await import('./groqService');
+      const response = await groqService.generateResponse(prompt, {
+        model: 'llama3-70b-8192',
+        temperature: 0.2, // Lower temperature for more consistent analysis
+        max_tokens: 1500
+      });
+      
+      return this.parseAIResponse(response, 'Groq-Institutional');
+    } catch (error) {
+      console.error('Groq AI error:', error);
+      return this.getFallbackResponse('Groq');
+    }
+  }
+
   private async callGeminiAI(prompt: string): Promise<AIModelResponse> {
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.API_KEYS.gemini}`, {
@@ -188,13 +211,13 @@ Return ONLY the JSON. No other text. Be brutally honest about signal quality whi
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1200 }
+          generationConfig: { temperature: 0.2, maxOutputTokens: 1500 }
         })
       });
       
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      return this.parseAIResponse(text, 'Gemini');
+      return this.parseAIResponse(text, 'Gemini-Technical');
     } catch (error) {
       console.error('Gemini AI error:', error);
       return this.getFallbackResponse('Gemini');
@@ -212,14 +235,14 @@ Return ONLY the JSON. No other text. Be brutally honest about signal quality whi
         body: JSON.stringify({
           model: 'command-r-plus',
           prompt: prompt,
-          temperature: 0.3,
-          max_tokens: 1200
+          temperature: 0.2,
+          max_tokens: 1500
         })
       });
       
       const data = await response.json();
       const text = data.generations?.[0]?.text || '';
-      return this.parseAIResponse(text, 'Cohere');
+      return this.parseAIResponse(text, 'Cohere-Risk');
     } catch (error) {
       console.error('Cohere AI error:', error);
       return this.getFallbackResponse('Cohere');
@@ -237,14 +260,14 @@ Return ONLY the JSON. No other text. Be brutally honest about signal quality whi
         body: JSON.stringify({
           model: 'anthropic/claude-3-sonnet',
           messages: [{ role: 'user', content: prompt }],
-          temperature: 0.3,
-          max_tokens: 1200
+          temperature: 0.2,
+          max_tokens: 1500
         })
       });
       
       const data = await response.json();
       const text = data.choices?.[0]?.message?.content || '';
-      return this.parseAIResponse(text, 'Claude');
+      return this.parseAIResponse(text, 'Claude-Pattern');
     } catch (error) {
       console.error('OpenRouter AI error:', error);
       return this.getFallbackResponse('Claude');
@@ -262,14 +285,14 @@ Return ONLY the JSON. No other text. Be brutally honest about signal quality whi
         body: JSON.stringify({
           model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
           messages: [{ role: 'user', content: prompt }],
-          temperature: 0.3,
-          max_tokens: 1200
+          temperature: 0.2,
+          max_tokens: 1500
         })
       });
       
       const data = await response.json();
       const text = data.choices?.[0]?.message?.content || '';
-      return this.parseAIResponse(text, 'Mixtral');
+      return this.parseAIResponse(text, 'Mixtral-Contrarian');
     } catch (error) {
       console.error('Together AI error:', error);
       return this.getFallbackResponse('Mixtral');
@@ -296,7 +319,12 @@ Return ONLY the JSON. No other text. Be brutally honest about signal quality whi
           justification: parsed.justification || ['AI analysis completed'],
           conviction_strength: parsed.conviction_strength || parsed.rating || 5,
           risk_assessment: parsed.risk_assessment || 'Standard risk parameters',
-          news_impact: parsed.news_impact || 'No major news impact detected'
+          news_impact: parsed.news_impact || 'No major news impact detected',
+          expected_value: parsed.expected_value || 0,
+          quality_grade: parsed.quality_grade || 'Standard',
+          institutional_reasoning: parsed.institutional_reasoning || 'Standard institutional analysis',
+          risk_reward_analysis: parsed.risk_reward_analysis || 'Standard risk-reward evaluation',
+          market_context: parsed.market_context || 'Current market conditions analysis'
         };
       }
     } catch (error) {
@@ -321,12 +349,47 @@ Return ONLY the JSON. No other text. Be brutally honest about signal quality whi
       justification: [`${modelName} model provided standard assessment`],
       conviction_strength: 5,
       risk_assessment: 'Moderate risk with standard R:R expectations',
-      news_impact: 'News impact assessment unavailable'
+      news_impact: 'News impact assessment unavailable',
+      expected_value: 0,
+      quality_grade: 'Standard',
+      institutional_reasoning: 'Standard institutional parameters applied',
+      risk_reward_analysis: 'Standard risk-reward calculation',
+      market_context: 'Standard market conditions'
     };
   }
 
+  private calculateEnhancedConsensus(responses: AIModelResponse[]): {
+    avgExpectedValue: number;
+    qualityTier: 'INSTITUTIONAL' | 'PROFESSIONAL' | 'STANDARD' | 'SPECULATIVE';
+    agreementLevel: string;
+    institutionalGrade: string;
+  } {
+    const avgEV = responses.reduce((sum, r) => sum + r.expected_value, 0) / responses.length;
+    const avgConfidence = responses.reduce((sum, r) => sum + r.conviction_strength, 0) / responses.length;
+    const eliteCount = responses.filter(r => r.quality_grade === 'Elite').length;
+    const strongCount = responses.filter(r => r.quality_grade === 'Smart_Risk' || r.quality_grade === 'Elite').length;
+    
+    let qualityTier: 'INSTITUTIONAL' | 'PROFESSIONAL' | 'STANDARD' | 'SPECULATIVE' = 'SPECULATIVE';
+    let institutionalGrade = 'Standard';
+    
+    if (eliteCount >= 3 && avgEV >= 1.2 && avgConfidence >= 80) {
+      qualityTier = 'INSTITUTIONAL';
+      institutionalGrade = 'Elite Institutional';
+    } else if (strongCount >= 4 && avgEV >= 0.8 && avgConfidence >= 70) {
+      qualityTier = 'PROFESSIONAL';
+      institutionalGrade = 'Professional Grade';
+    } else if (strongCount >= 2 && avgEV >= 0.3 && avgConfidence >= 60) {
+      qualityTier = 'STANDARD';
+      institutionalGrade = 'Standard Trading';
+    }
+    
+    const agreementLevel = `${strongCount}/5 AI Models Recommend - Avg EV: ${avgEV.toFixed(2)}`;
+    
+    return { avgExpectedValue: avgEV, qualityTier, agreementLevel, institutionalGrade };
+  }
+
   async analyzeSignalConsensus(context: SignalContext): Promise<ConsensusResult> {
-    console.log('🏛️ Hedge Fund Mode: Multi-AI Consensus Analysis Starting...');
+    console.log('🧠 Enhanced Multi-AI Institutional Analysis Starting...');
     
     // Get live news context
     const liveNews = await this.getLiveNews(context.pair);
@@ -335,15 +398,20 @@ Return ONLY the JSON. No other text. Be brutally honest about signal quality whi
       news_context: liveNews
     };
     
-    const prompt = this.buildHedgeFundMasterPrompt(enhancedContext);
+    // Build specialized prompts for each AI model
+    const institutionalPrompt = this.buildInstitutionalPrompt(enhancedContext, 'institutional');
+    const technicalPrompt = this.buildInstitutionalPrompt(enhancedContext, 'technical');
+    const riskPrompt = this.buildInstitutionalPrompt(enhancedContext, 'risk');
+    const patternPrompt = this.buildInstitutionalPrompt(enhancedContext, 'pattern');
+    const contrarianPrompt = this.buildInstitutionalPrompt(enhancedContext, 'contrarian');
     
-    // Call all AI models in parallel
+    // Call all AI models with specialized prompts
     const [groqResponse, geminiResponse, cohereResponse, openrouterResponse, togetherResponse] = await Promise.allSettled([
-      this.callGroqAI(prompt),
-      this.callGeminiAI(prompt),
-      this.callCohereAI(prompt),
-      this.callOpenRouterAI(prompt),
-      this.callTogetherAI(prompt)
+      this.callGroqAI(institutionalPrompt),
+      this.callGeminiAI(technicalPrompt),
+      this.callCohereAI(riskPrompt),
+      this.callOpenRouterAI(patternPrompt),
+      this.callTogetherAI(contrarianPrompt)
     ]);
 
     const aiVotes: AIVotes = {
@@ -354,75 +422,62 @@ Return ONLY the JSON. No other text. Be brutally honest about signal quality whi
       together: togetherResponse.status === 'fulfilled' ? togetherResponse.value : this.getFallbackResponse('Mixtral')
     };
 
-    // Calculate enhanced consensus
+    // Enhanced consensus calculation
     const responses = Object.values(aiVotes);
-    const highRatingCount = responses.filter(r => r.rating >= 7).length;
-    const strongVerdictCount = responses.filter(r => ['Elite', 'Strong'].includes(r.verdict)).length;
-    const avgConviction = responses.reduce((sum, r) => sum + r.conviction_strength, 0) / responses.length;
+    const { avgExpectedValue, qualityTier, agreementLevel, institutionalGrade } = this.calculateEnhancedConsensus(responses);
     
     const averageRating = responses.reduce((sum, r) => sum + r.rating, 0) / responses.length;
-    const confidenceScore = Math.max(highRatingCount, strongVerdictCount);
+    const avgConviction = responses.reduce((sum, r) => sum + r.conviction_strength, 0) / responses.length;
+    const approvedCount = responses.filter(r => r.expected_value > 0 && r.conviction_strength >= 60).length;
     
-    // Determine final verdict with enhanced logic
+    // Enhanced verdict logic based on expected value and institutional analysis
     let verdict: 'APPROVED' | 'REJECTED' | 'LOW_CONSENSUS' = 'REJECTED';
-    let label = '❌ Multi-AI Rejected';
+    let label = '❌ AI Consensus Rejected';
     let consensusStrength = 'Weak Consensus';
-    let multiAIVerdict = 'Rejected';
+    let multiAIVerdict = 'Rejected by AI Analysis';
     
-    if (confidenceScore >= 4 && avgConviction >= 7) {
+    if (qualityTier === 'INSTITUTIONAL' && avgExpectedValue >= 1.0) {
       verdict = 'APPROVED';
-      label = '🔥 Multi-AI Elite Verified';
-      consensusStrength = 'Elite Consensus';
-      multiAIVerdict = `${confidenceScore}/5 AI Models Agree — Elite Institutional Grade`;
-    } else if (confidenceScore >= 3 && avgConviction >= 6) {
+      label = '🏛️ INSTITUTIONAL GRADE - Elite AI Consensus';
+      consensusStrength = 'Elite Institutional';
+      multiAIVerdict = `${approvedCount}/5 AI Models - Institutional Grade (EV: +${avgExpectedValue.toFixed(2)})`;
+    } else if (qualityTier === 'PROFESSIONAL' && avgExpectedValue >= 0.6) {
       verdict = 'APPROVED';
-      label = '✅ Multi-AI Verified';
-      consensusStrength = 'Strong Consensus';
-      multiAIVerdict = `${confidenceScore}/5 AI Models Agree — Strong Confidence`;
-    } else if (confidenceScore >= 2) {
+      label = '✅ PROFESSIONAL GRADE - Strong AI Consensus';
+      consensusStrength = 'Professional Grade';
+      multiAIVerdict = `${approvedCount}/5 AI Models - Professional Setup (EV: +${avgExpectedValue.toFixed(2)})`;
+    } else if (approvedCount >= 3 && avgExpectedValue >= 0.3) {
       verdict = 'LOW_CONSENSUS';
-      label = '⚠️ Mixed AI Consensus';
-      consensusStrength = 'Mixed Consensus';
-      multiAIVerdict = `${confidenceScore}/5 AI Models Agree — Use Caution`;
+      label = '⚠️ MIXED CONSENSUS - Use Caution';
+      consensusStrength = 'Mixed Analysis';
+      multiAIVerdict = `${approvedCount}/5 AI Models - Limited Agreement (EV: ${avgExpectedValue >= 0 ? '+' : ''}${avgExpectedValue.toFixed(2)})`;
     }
 
     const reasoning = [
-      `${confidenceScore}/5 AI models voted Strong or Elite`,
-      `Average rating: ${averageRating.toFixed(1)}/10`,
-      `Average conviction: ${avgConviction.toFixed(1)}/10`,
-      `Consensus level: ${consensusStrength}`
+      `${approvedCount}/5 AI models approved with positive expected value`,
+      `Average Expected Value: ${avgExpectedValue >= 0 ? '+' : ''}${avgExpectedValue.toFixed(2)}`,
+      `Quality Tier: ${qualityTier}`,
+      `Institutional Grade: ${institutionalGrade}`,
+      `Average Conviction: ${avgConviction.toFixed(1)}/10`
     ];
 
-    console.log(`✅ Hedge Fund Analysis Complete: ${verdict} (${confidenceScore}/5 votes, ${avgConviction.toFixed(1)} conviction)`);
+    console.log(`✅ Enhanced Analysis Complete: ${verdict} (${qualityTier}, EV: ${avgExpectedValue.toFixed(2)})`);
 
     return {
       approved: verdict === 'APPROVED',
-      confidence_score: confidenceScore,
+      confidence_score: Math.round(avgConviction),
       ai_votes: aiVotes,
       verdict,
       label,
       reasoning,
       final_rating: Math.round(averageRating),
       consensus_strength: consensusStrength,
-      multi_ai_verdict: multiAIVerdict
+      multi_ai_verdict: multiAIVerdict,
+      expected_value: avgExpectedValue,
+      quality_tier: qualityTier,
+      ai_agreement_level: agreementLevel,
+      institutional_grade: institutionalGrade
     };
-  }
-
-  private async callGroqAI(prompt: string): Promise<AIModelResponse> {
-    try {
-      // Use existing groqService
-      const { groqService } = await import('./groqService');
-      const response = await groqService.generateResponse(prompt, {
-        model: 'llama3-70b-8192',
-        temperature: 0.3,
-        max_tokens: 1200
-      });
-      
-      return this.parseAIResponse(response, 'Groq');
-    } catch (error) {
-      console.error('Groq AI error:', error);
-      return this.getFallbackResponse('Groq');
-    }
   }
 }
 
