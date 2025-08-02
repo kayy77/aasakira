@@ -27,7 +27,7 @@ export class SignalFilterIntegration {
     
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        // Generate signal using elite engine - FIX: Use static method call
+        // Generate signal using elite engine - FIXED: Use static method call
         const signal = await EliteSignalEngine.generateEliteSignal(
           request.minConfidence,
           request.requiredFilters,
