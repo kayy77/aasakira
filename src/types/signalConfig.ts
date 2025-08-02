@@ -79,12 +79,40 @@ export interface UserSignalSettings {
   emergencyOverride: boolean;
 }
 
-// Add SavedPreset interface with description property
+// Enhanced signal config for tactical parameters
+export interface EnhancedSignalConfig {
+  strategyType: 'SMC' | 'ICT' | 'BREAK_RETEST' | 'LIQUIDITY_SWEEP';
+  confidenceThreshold: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  minFilters: number;
+  assetClass: 'FOREX' | 'CRYPTO' | 'STOCKS' | 'COMMODITIES';
+  pairFilter: string;
+  pair: string;
+  timeframe: string;
+  marketConditions: string[];
+  technicalIndicators: string[];
+  riskParameters: {
+    maxRisk: number;
+    riskRewardRatio: number;
+  };
+  riskReward: number;
+  pairFilters: string[];
+  minConfidence: number;
+  maxSignalsPerHour: number;
+  enabled: boolean;
+  stopLoss: number;
+  takeProfit: number;
+  entryType: 'market' | 'limit';
+  tradeType: 'SCALP' | 'SWING';
+}
+
+// Add SavedPreset interface with config property
 export interface SavedPreset {
   id: string;
   name: string;
-  description?: string;  // Add optional description property
-  settings: UserSignalSettings;
+  description?: string;
+  settings?: UserSignalSettings;
+  config?: EnhancedSignalConfig;
   createdAt: string;
 }
 

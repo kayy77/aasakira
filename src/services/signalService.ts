@@ -3,7 +3,7 @@ import { Signal } from '@/types/signalConfig';
 
 const MAJOR_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
 
-let refreshTimer: number | null = null;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 class SignalService {
   private signals: Signal[] = [];
