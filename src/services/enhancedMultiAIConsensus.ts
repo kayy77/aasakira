@@ -1,4 +1,3 @@
-
 export interface EnhancedAIModelResponse {
   entry: string;
   stop_loss: string;
@@ -98,10 +97,11 @@ Return ONLY valid JSON. No other text.`;
       }
     });
 
-    // Filter for high-quality signals
+    // Filter for high-quality signals that are not NO_TRADE
     const validSignals = aiResponses.filter(response => 
       response.valid && 
       response.confidence > 70 && 
+      response.direction !== 'NO_TRADE' &&
       (response.signal_strength === 'Strong' || response.signal_strength === 'Medium')
     );
 
@@ -134,7 +134,7 @@ Return ONLY valid JSON. No other text.`;
       signalStrength = 'STRONG';
     }
 
-    // Create final signal from best consensus
+    // Create final signal from best consensus (ensuring it's not NO_TRADE)
     const bestSignal = validSignals.reduce((best, current) => 
       current.confidence > best.confidence ? current : best
     );
@@ -156,7 +156,7 @@ Return ONLY valid JSON. No other text.`;
         confidence: Math.round(avgConfidence),
         strategies: bestSignal.strategies,
         analysis: `${consensusCount}/5 AI Consensus: ${bestSignal.analysis}`,
-        direction: bestSignal.direction
+        direction: bestSignal.direction as 'BUY' | 'SELL' // Safe cast since we filtered out NO_TRADE
       }
     };
   }
@@ -309,7 +309,7 @@ Return ONLY valid JSON. No other text.`;
       signal_strength: 'Weak',
       strategies: [`${modelName} Analysis`],
       analysis: `${modelName} model unavailable - fallback analysis`,
-      direction: 'BUY',
+      direction: 'NO_TRADE', // Use NO_TRADE for fallback so it gets filtered out
       valid: false // Mark as invalid so it won't count for consensus
     };
   }
