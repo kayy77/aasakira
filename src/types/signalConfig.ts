@@ -15,7 +15,7 @@ export interface Signal {
   livePrice?: number;
   spreadToMarket?: number;
   confluenceLevel?: number;
-  consensus?: ConsensusResult;
+  consensus?: SignalConsensusResult; // Use specific type for signals
   
   // Additional properties used by various components
   timeframe?: string;
@@ -127,8 +127,8 @@ export interface StrategyBreakdown {
   avgRiskReward: number;
 }
 
-// Add ConsensusResult interface with proper verdict types
-export interface ConsensusResult {
+// Signal-specific consensus result (different from betting consensus)
+export interface SignalConsensusResult {
   models: Array<{
     name: string;
     confidence: number;
@@ -137,4 +137,17 @@ export interface ConsensusResult {
   averageConfidence: number;
   verdict: 'APPROVED' | 'REJECTED' | 'LOW_CONSENSUS' | 'STRONG' | 'WEAK' | 'MEDIUM';
   summary: string;
+}
+
+// Betting consensus result (for betting AI engine)
+export interface ConsensusResult {
+  approved: boolean;
+  confidence_score: number;
+  ai_votes: any;
+  verdict: 'APPROVED' | 'REJECTED' | 'LOW_CONSENSUS';
+  label: string;
+  reasoning: string[];
+  final_rating: number;
+  consensus_strength: string;
+  multi_ai_verdict: string;
 }
