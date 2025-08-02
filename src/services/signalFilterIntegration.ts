@@ -1,5 +1,4 @@
-
-import { eliteSignalEngine } from './eliteSignalEngine';
+import { EliteSignalEngine } from './eliteSignalEngine';
 import { multiAIConsensusEngine } from './multiAIConsensusEngine';
 import { groqService } from './groqService';
 
@@ -28,8 +27,8 @@ export class SignalFilterIntegration {
     
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        // Generate signal using elite engine
-        const signal = await eliteSignalEngine.generateEliteSignal(
+        // Generate signal using elite engine - FIX: Use static method call
+        const signal = await EliteSignalEngine.generateEliteSignal(
           request.minConfidence,
           request.requiredFilters,
           ['SMC', 'Volume', 'Session', 'FVG', 'Liquidity', 'RSI']
