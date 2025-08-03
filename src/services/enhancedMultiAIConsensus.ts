@@ -1,4 +1,3 @@
-
 export interface EnhancedAIModelResponse {
   entry: string;
   stop_loss: string;
@@ -110,7 +109,6 @@ Return ONLY valid JSON.`;
       }
     });
 
-    // Filter for high-quality valid signals (not NO_TRADE)
     const validSignals = aiResponses.filter(response => 
       response.valid && 
       response.confidence > 70 && 
@@ -144,12 +142,10 @@ Return ONLY valid JSON.`;
       };
     }
 
-    // Calculate consensus metrics from valid signals
     const avgExpectedValue = validSignals.reduce((sum, s) => sum + s.expected_value, 0) / validSignals.length;
     const avgRiskReward = validSignals.reduce((sum, s) => sum + s.rr_ratio, 0) / validSignals.length;
     const avgConfidence = validSignals.reduce((sum, s) => sum + s.confidence, 0) / validSignals.length;
 
-    // Determine signal strength based on consensus quality
     let signalStrength: 'ELITE' | 'STRONG' | 'WEAK' = 'WEAK';
     if (consensusCount >= 4 && avgConfidence >= 85 && avgExpectedValue >= 1.5) {
       signalStrength = 'ELITE';
@@ -157,7 +153,6 @@ Return ONLY valid JSON.`;
       signalStrength = 'STRONG';
     }
 
-    // Create final signal from highest confidence valid response
     const bestSignal = validSignals.reduce((best, current) => 
       current.confidence > best.confidence ? current : best
     );
