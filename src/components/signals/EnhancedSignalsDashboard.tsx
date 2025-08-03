@@ -39,6 +39,7 @@ const EnhancedSignalsDashboard: React.FC = () => {
     consensusResult,
     scanCount,
     lastScanTime,
+    lastError,
     refreshScan
   } = useEnhancedConsensusScanner();
 
@@ -224,6 +225,7 @@ const EnhancedSignalsDashboard: React.FC = () => {
             isScanning={consensusScanning}
             scanCount={scanCount}
             lastScanTime={lastScanTime}
+            lastError={lastError}
             onRefresh={refreshScan}
           />
         </div>

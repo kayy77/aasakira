@@ -101,7 +101,9 @@ Return ONLY valid JSON.`;
         return result.value;
       } else {
         console.error(`${modelNames[index]} AI failed:`, result.reason);
-        failedModels.push(modelNames[index]);
+        if (!failedModels.includes(modelNames[index])) {
+          failedModels.push(modelNames[index]);
+        }
         return this.getFallbackResponse(modelNames[index]);
       }
     });
