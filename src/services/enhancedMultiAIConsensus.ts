@@ -121,31 +121,91 @@ Return ONLY valid JSON.`;
       }
     });
 
+    // FIXED: Only count Strong signals for consensus, not Medium/Weak
     const validSignals = aiResponses.filter(response => 
       response.valid && 
-      response.confidence > 70 && 
+      response.confidence >= 75 && 
       response.direction !== 'NO_TRADE' &&
-      (response.signal_strength === 'Strong' || response.signal_strength === 'Medium')
+      response.signal_strength === 'Strong' && // FIXED: Only Strong signals count
+      response.model !== 'FALLBACK' // Don't count fallback responses
     );
 
-    const totalModels = aiResponses.length;
-    const consensusCount = validSignals.length;
+    const totalModels = 5; // FIXED: Always 5 models max
+    const consensusCount = Math.min(validSignals.length, totalModels); // FIXED: Cap at 5
     const successfulModels = aiResponses.filter(r => r.model !== 'FALLBACK').length;
-    const hasConsensus = consensusCount >= 3; // Need at least 3/5 AIs to agree
 
-    console.log(`📊 AI Results: ${successfulModels}/${totalModels} responded, ${consensusCount} valid signals`);
+    console.log(`📊 AI Results: ${successfulModels}/${totalModels} responded, ${consensusCount} strong signals`);
 
-    if (!hasConsensus) {
-      console.log(`❌ No consensus: Only ${consensusCount}/5 AIs agreed (need 3+)`);
+    // FIXED: Updated consensus logic to match requirements
+    let hasConsensus = false;
+    let signalStrength: 'ELITE' | 'STRONG' | 'WEAK' | 'NO_CONSENSUS' = 'NO_CONSENSUS';
+    
+    if (consensusCount === 0) {
+      signalStrength = 'NO_CONSENSUS';
+      hasConsensus = false;
+    } else {
+      const avgExpectedValue = validSignals.reduce((sum, s) => sum + s.expected_value, 0) / validSignals.length;
+      const avgRiskReward = validSignals.reduce((sum, s) => sum + s.rr_ratio, 0) / validSignals.length;
+      const avgConfidence = validSignals.reduce((sum, s) => sum + s.confidence, 0) / validSignals.length;
+
+      // FIXED: Proper consensus determination logic
+      if (consensusCount >= 4 && avgConfidence >= 85 && avgExpectedValue >= 1.5) {
+        signalStrength = 'ELITE';
+        hasConsensus = true;
+      } else if (consensusCount >= 3 && avgConfidence >= 75 && avgExpectedValue >= 1.0) {
+        signalStrength = 'STRONG';
+        hasConsensus = true;
+      } else if (consensusCount >= 2) {
+        signalStrength = 'WEAK';
+        hasConsensus = false; // Weak signals don't count as consensus
+      } else {
+        signalStrength = 'NO_CONSENSUS';
+        hasConsensus = false;
+      }
+
+      console.log(`✅ Consensus evaluation: ${consensusCount}/${totalModels} strong AIs - ${signalStrength} signal`);
+      
+      if (!hasConsensus) {
+        console.log(`❌ No consensus: Only ${consensusCount} strong signals (need 3+ for STRONG, 4+ for ELITE)`);
+        return {
+          hasConsensus: false,
+          consensusCount,
+          totalModels,
+          avgExpectedValue: avgExpectedValue || 0,
+          avgRiskReward: avgRiskReward || 0,
+          avgConfidence: avgConfidence || 0,
+          signalStrength,
+          aiResponses,
+          scanDetails: {
+            successfulModels,
+            failedModels,
+            timestamp: new Date().toISOString()
+          }
+        };
+      }
+
+      const bestSignal = validSignals.reduce((best, current) => 
+        current.confidence > best.confidence ? current : best
+      );
+
       return {
-        hasConsensus: false,
+        hasConsensus: true,
         consensusCount,
         totalModels,
-        avgExpectedValue: 0,
-        avgRiskReward: 0,
-        avgConfidence: 0,
-        signalStrength: 'NO_CONSENSUS',
+        avgExpectedValue,
+        avgRiskReward,
+        avgConfidence,
+        signalStrength,
         aiResponses,
+        finalSignal: {
+          entry: bestSignal.entry,
+          stopLoss: bestSignal.stop_loss,
+          takeProfit: bestSignal.take_profit,
+          confidence: Math.round(avgConfidence),
+          strategies: bestSignal.strategies,
+          analysis: `${consensusCount}/${totalModels} Strong AI Consensus: ${bestSignal.analysis}`,
+          direction: bestSignal.direction as 'BUY' | 'SELL'
+        },
         scanDetails: {
           successfulModels,
           failedModels,
@@ -154,41 +214,15 @@ Return ONLY valid JSON.`;
       };
     }
 
-    const avgExpectedValue = validSignals.reduce((sum, s) => sum + s.expected_value, 0) / validSignals.length;
-    const avgRiskReward = validSignals.reduce((sum, s) => sum + s.rr_ratio, 0) / validSignals.length;
-    const avgConfidence = validSignals.reduce((sum, s) => sum + s.confidence, 0) / validSignals.length;
-
-    let signalStrength: 'ELITE' | 'STRONG' | 'WEAK' = 'WEAK';
-    if (consensusCount >= 4 && avgConfidence >= 85 && avgExpectedValue >= 1.5) {
-      signalStrength = 'ELITE';
-    } else if (consensusCount >= 3 && avgConfidence >= 75 && avgExpectedValue >= 1.0) {
-      signalStrength = 'STRONG';
-    }
-
-    const bestSignal = validSignals.reduce((best, current) => 
-      current.confidence > best.confidence ? current : best
-    );
-
-    console.log(`✅ Consensus achieved: ${consensusCount}/5 AIs - ${signalStrength} signal (${successfulModels} models responded)`);
-    
     return {
-      hasConsensus: true,
-      consensusCount,
+      hasConsensus: false,
+      consensusCount: 0,
       totalModels,
-      avgExpectedValue,
-      avgRiskReward,
-      avgConfidence,
-      signalStrength,
+      avgExpectedValue: 0,
+      avgRiskReward: 0,
+      avgConfidence: 0,
+      signalStrength: 'NO_CONSENSUS',
       aiResponses,
-      finalSignal: {
-        entry: bestSignal.entry,
-        stopLoss: bestSignal.stop_loss,
-        takeProfit: bestSignal.take_profit,
-        confidence: Math.round(avgConfidence),
-        strategies: bestSignal.strategies,
-        analysis: `${consensusCount}/${totalModels} AI Consensus (${successfulModels} responded): ${bestSignal.analysis}`,
-        direction: bestSignal.direction as 'BUY' | 'SELL'
-      },
       scanDetails: {
         successfulModels,
         failedModels,
