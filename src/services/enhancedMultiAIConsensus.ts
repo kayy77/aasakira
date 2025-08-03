@@ -1,4 +1,3 @@
-
 export interface EnhancedAIModelResponse {
   entry: string;
   stop_loss: string;
@@ -102,7 +101,17 @@ Return ONLY valid JSON.`;
       const modelName = modelNames[index];
       
       if (result.status === 'fulfilled' && result.value !== null && result.value !== undefined) {
-        return result.value;
+        // Additional validation to ensure result.value is a valid EnhancedAIModelResponse
+        const response = result.value;
+        if (this.isValidEnhancedAIModelResponse(response)) {
+          return response;
+        } else {
+          console.error(`${modelName} AI returned invalid response:`, response);
+          if (!failedModels.includes(modelName)) {
+            failedModels.push(modelName);
+          }
+          return this.getFallbackResponse(modelName);
+        }
       } else {
         console.error(`${modelName} AI failed:`, result.status === 'rejected' ? result.reason : 'No response');
         if (!failedModels.includes(modelName)) {
@@ -186,6 +195,23 @@ Return ONLY valid JSON.`;
         timestamp: new Date().toISOString()
       }
     };
+  }
+
+  private isValidEnhancedAIModelResponse(obj: any): obj is EnhancedAIModelResponse {
+    return obj && 
+           typeof obj === 'object' &&
+           typeof obj.entry === 'string' &&
+           typeof obj.stop_loss === 'string' &&
+           typeof obj.take_profit === 'string' &&
+           typeof obj.confidence === 'number' &&
+           typeof obj.expected_value === 'number' &&
+           typeof obj.rr_ratio === 'number' &&
+           typeof obj.signal_strength === 'string' &&
+           Array.isArray(obj.strategies) &&
+           typeof obj.analysis === 'string' &&
+           typeof obj.direction === 'string' &&
+           typeof obj.valid === 'boolean' &&
+           typeof obj.model === 'string';
   }
 
   private async callWithTimeout<T>(
