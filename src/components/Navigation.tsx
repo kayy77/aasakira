@@ -1,118 +1,63 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Brain, TrendingUp, Coins, Signal, User, Target, TrendingDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useAuth } from '@/contexts/AuthContext';
-import MobileNavigation from '@/components/mobile/MobileNavigation';
+import { Home, User, Settings } from 'lucide-react';
 
 const Navigation = () => {
   const location = useLocation();
-  const { user, logout } = useAuth();
 
-  const navigation = [
-    { name: 'Signals', href: '/signals', icon: Signal },
-    { name: 'Education', href: '/education', icon: Brain },
-    { name: 'Trading', href: '/trading', icon: TrendingUp },
-    { name: 'Meme Coins', href: '/memecoins', icon: Coins },
-    { name: 'AI Bet Scanner', href: '/bet-scanner', icon: Target },
-    { name: 'AI Investments', href: '/investment-scanner', icon: TrendingDown },
+  const navItems = [
+    { path: '/', icon: Home, label: 'Home' }
   ];
 
-  const isActive = (path: string) => location.pathname === path;
-
   return (
-    <>
-      {/* Mobile Navigation */}
-      <MobileNavigation />
-      
-      {/* Desktop Navigation */}
-      <nav className="hidden md:block fixed top-0 w-full z-50 bg-black/50 backdrop-blur-sm border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <span className="text-2xl font-bold gradient-text">Aasakira</span>
-            </Link>
-
-            {/* Navigation Links */}
-            <div className="flex items-center space-x-8">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive(item.href)
-                        ? 'text-primary bg-primary/10'
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              })}
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-purple-500/20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          <Link to="/" className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">A</span>
             </div>
+            <span className="text-white font-bold text-xl">Aasakira</span>
+          </Link>
 
-            {/* User Profile */}
-            <div className="flex items-center space-x-4">
-              {user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/20 text-primary border border-primary/30">
-                          {user.username?.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56 bg-black/90 backdrop-blur-sm border-white/20" align="end">
-                    <DropdownMenuItem className="flex-col items-start text-white hover:bg-white/10">
-                      <div className="font-medium">{user.username}</div>
-                      <div className="text-xs text-gray-400">{user.email}</div>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-white/20" />
-                    <DropdownMenuItem asChild>
-                      <Link to="/dashboard" className="w-full text-white hover:bg-white/10">
-                        <User className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-white/20" />
-                    <DropdownMenuItem 
-                      onClick={logout}
-                      className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
-                    >
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <Link to="/auth">
-                  <Button 
-                    variant="outline" 
-                    className="border-primary/30 text-primary hover:bg-primary/10"
-                  >
-                    Sign In
-                  </Button>
+          <div className="flex items-center space-x-6">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'text-purple-400 bg-purple-400/10'
+                      : 'text-gray-300 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.label}</span>
                 </Link>
-              )}
-            </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <Link
+              to="/profile"
+              className="p-2 text-gray-300 hover:text-white hover:bg-white/5 rounded-md transition-colors"
+            >
+              <User className="w-5 h-5" />
+            </Link>
+            <Link
+              to="/settings"
+              className="p-2 text-gray-300 hover:text-white hover:bg-white/5 rounded-md transition-colors"
+            >
+              <Settings className="w-5 h-5" />
+            </Link>
           </div>
         </div>
-      </nav>
-    </>
+      </div>
+    </nav>
   );
 };
 
