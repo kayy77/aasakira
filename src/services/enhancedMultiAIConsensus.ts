@@ -1,3 +1,4 @@
+
 export interface EnhancedAIModelResponse {
   entry: string;
   stop_loss: string;
