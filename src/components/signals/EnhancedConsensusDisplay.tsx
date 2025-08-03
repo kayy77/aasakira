@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, TrendingUp, Shield, Clock, RefreshCw } from 'lucide-react';
+import { Brain, TrendingUp, Shield, Clock, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { ConsensusSignalResult } from '@/services/enhancedMultiAIConsensus';
 
 interface EnhancedConsensusDisplayProps {
@@ -11,6 +11,7 @@ interface EnhancedConsensusDisplayProps {
   isScanning: boolean;
   scanCount: number;
   lastScanTime: string;
+  lastError: string | null;
   onRefresh: () => void;
 }
 
@@ -19,9 +20,11 @@ const EnhancedConsensusDisplay: React.FC<EnhancedConsensusDisplayProps> = ({
   isScanning,
   scanCount,
   lastScanTime,
+  lastError,
   onRefresh
 }) => {
   const getStatusColor = () => {
+    if (lastError) return 'border-red-500 bg-red-500/10';
     if (!consensusResult) return 'border-gray-600 bg-gray-900/50';
     if (consensusResult.signalStrength === 'ELITE') return 'border-green-500 bg-green-500/10';
     if (consensusResult.signalStrength === 'STRONG') return 'border-blue-500 bg-blue-500/10';
@@ -30,20 +33,23 @@ const EnhancedConsensusDisplay: React.FC<EnhancedConsensusDisplayProps> = ({
   };
 
   const getStatusIcon = () => {
+    if (lastError) return <AlertTriangle className="w-5 h-5 text-red-400" />;
     if (!consensusResult) return <Clock className="w-5 h-5 text-gray-400" />;
-    if (consensusResult.hasConsensus) return <Shield className="w-5 h-5 text-green-400" />;
+    if (consensusResult.hasConsensus) return <CheckCircle className="w-5 h-5 text-green-400" />;
     return <RefreshCw className={`w-5 h-5 text-yellow-400 ${isScanning ? 'animate-spin' : ''}`} />;
   };
 
   const getStatusText = () => {
-    if (!consensusResult) return 'Initializing AI Consensus...';
+    if (lastError) return `Scan Error: ${lastError}`;
+    if (!consensusResult) return 'Initializing AI Consensus Engine...';
     if (consensusResult.hasConsensus) {
       return `${consensusResult.signalStrength} Signal Detected`;
     }
-    return 'No High-Conviction Signal Yet — Still Scanning...';
+    return 'No High-Conviction Signal Yet — Continue Scanning...';
   };
 
   const getStatusBadge = () => {
+    if (lastError) return <Badge variant="destructive">Error</Badge>;
     if (!consensusResult) return <Badge variant="secondary">Pending</Badge>;
     if (consensusResult.hasConsensus) {
       const variant = consensusResult.signalStrength === 'ELITE' ? 'default' : 'secondary';
@@ -61,7 +67,7 @@ const EnhancedConsensusDisplay: React.FC<EnhancedConsensusDisplayProps> = ({
             <div className="flex items-center gap-2">
               {getStatusIcon()}
               <CardTitle className="text-lg font-semibold text-white">
-                AI Consensus Engine
+                Enhanced AI Consensus Engine
               </CardTitle>
             </div>
             {getStatusBadge()}
@@ -81,10 +87,10 @@ const EnhancedConsensusDisplay: React.FC<EnhancedConsensusDisplayProps> = ({
             </Button>
           </div>
 
-          {/* Scanning Stats */}
+          {/* Enhanced Scanning Stats */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-400">Scans:</span>
+              <span className="text-gray-400">Scans Completed:</span>
               <span className="text-white font-mono">{scanCount}</span>
             </div>
             <div className="flex justify-between">
@@ -93,15 +99,31 @@ const EnhancedConsensusDisplay: React.FC<EnhancedConsensusDisplayProps> = ({
             </div>
           </div>
 
-          {/* Consensus Details */}
+          {/* AI Response Details */}
           {consensusResult && (
-            <div className="border-t border-gray-700 pt-3 space-y-2">
+            <div className="border-t border-gray-700 pt-3 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-400">AI Agreement:</span>
+                <span className="text-gray-400">AI Models Responded:</span>
                 <span className="text-white font-bold">
-                  {consensusResult.consensusCount}/5 Models
+                  {consensusResult.scanDetails.successfulModels}/{consensusResult.totalModels}
                 </span>
               </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Valid Signals:</span>
+                <span className="text-white font-bold">
+                  {consensusResult.consensusCount}/{consensusResult.totalModels}
+                </span>
+              </div>
+              
+              {consensusResult.scanDetails.failedModels.length > 0 && (
+                <div>
+                  <span className="text-gray-400 text-xs">Failed Models: </span>
+                  <span className="text-red-400 text-xs">
+                    {consensusResult.scanDetails.failedModels.join(', ')}
+                  </span>
+                </div>
+              )}
               
               {consensusResult.hasConsensus && (
                 <>
@@ -195,7 +217,7 @@ const EnhancedConsensusDisplay: React.FC<EnhancedConsensusDisplayProps> = ({
         </Card>
       )}
 
-      {/* Pending Analysis Shimmer - Show when scanning without consensus */}
+      {/* Scanning Status - Show when actively scanning */}
       {isScanning && (!consensusResult || !consensusResult.hasConsensus) && (
         <Card className="border-gray-600 bg-gray-900/50">
           <CardContent className="p-6">
@@ -204,12 +226,18 @@ const EnhancedConsensusDisplay: React.FC<EnhancedConsensusDisplayProps> = ({
                 <Brain className="w-6 h-6 text-blue-400" />
               </div>
               <div className="space-y-2 flex-1">
-                <div className="h-4 bg-gray-700/50 rounded animate-pulse"></div>
-                <div className="h-3 bg-gray-700/30 rounded animate-pulse w-3/4"></div>
+                <div className="text-white font-medium">
+                  Scanning AI Models for High-Conviction Signals...
+                </div>
+                <div className="text-sm text-gray-400">
+                  Scan #{scanCount} • Looking for 3+ AI agreement with 75%+ confidence
+                </div>
+                {consensusResult && (
+                  <div className="text-xs text-gray-500">
+                    Last scan: {consensusResult.scanDetails.successfulModels}/{consensusResult.totalModels} AIs responded, {consensusResult.consensusCount} valid signals
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="mt-4 text-center text-sm text-gray-400">
-              Pending Analysis... {isScanning ? 'Scanning for high-conviction signals...' : ''}
             </div>
           </CardContent>
         </Card>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { enhancedMultiAIConsensus, ConsensusSignalResult } from '@/services/enhancedMultiAIConsensus';
 
 interface ScannerState {
@@ -7,6 +7,7 @@ interface ScannerState {
   consensusResult: ConsensusSignalResult | null;
   scanCount: number;
   lastScanTime: string;
+  lastError: string | null;
 }
 
 export const useEnhancedConsensusScanner = () => {
@@ -14,20 +15,22 @@ export const useEnhancedConsensusScanner = () => {
     isScanning: false,
     consensusResult: null,
     scanCount: 0,
-    lastScanTime: ''
+    lastScanTime: '',
+    lastError: null
   });
 
+  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCAD', 'AUDUSD'];
   const basePrices = { EURUSD: 1.0850, GBPUSD: 1.2650, USDJPY: 150.25, USDCAD: 1.3580, AUDUSD: 0.6596 };
 
   const performScan = async () => {
     try {
-      // Random pair for demo
+      // Random pair selection with realistic price variation
       const randomPair = pairs[Math.floor(Math.random() * pairs.length)];
       const basePrice = basePrices[randomPair as keyof typeof basePrices];
       const livePrice = basePrice + (Math.random() - 0.5) * 0.002; // ±0.2% variation
       
-      console.log(`🔍 Enhanced Consensus Scan: ${randomPair} at ${livePrice.toFixed(5)}`);
+      console.log(`🔍 Enhanced Consensus Scan #${state.scanCount + 1}: ${randomPair} at ${livePrice.toFixed(5)}`);
       
       const result = await enhancedMultiAIConsensus.scanForHighQualitySignals(randomPair, livePrice);
       
@@ -35,51 +38,90 @@ export const useEnhancedConsensusScanner = () => {
         ...prev,
         consensusResult: result,
         scanCount: prev.scanCount + 1,
-        lastScanTime: new Date().toLocaleTimeString()
+        lastScanTime: new Date().toLocaleTimeString(),
+        lastError: null
       }));
+      
+      // Log scan results
+      console.log(`📊 Scan Results: ${result.scanDetails.successfulModels}/${result.totalModels} AIs responded, ${result.consensusCount} valid signals`);
+      if (result.scanDetails.failedModels.length > 0) {
+        console.log(`⚠️ Failed models: ${result.scanDetails.failedModels.join(', ')}`);
+      }
       
       // Stop scanning if we get a strong consensus
       if (result.hasConsensus && (result.signalStrength === 'ELITE' || result.signalStrength === 'STRONG')) {
         setState(prev => ({ ...prev, isScanning: false }));
-        console.log(`✅ High-conviction signal found: ${result.signalStrength}`);
+        if (scanIntervalRef.current) {
+          clearInterval(scanIntervalRef.current);
+          scanIntervalRef.current = null;
+        }
+        console.log(`✅ High-conviction signal found: ${result.signalStrength} - stopping scan`);
       }
       
       return result;
     } catch (error) {
       console.error('❌ Enhanced scan failed:', error);
+      setState(prev => ({
+        ...prev,
+        lastError: error instanceof Error ? error.message : 'Unknown error',
+        scanCount: prev.scanCount + 1,
+        lastScanTime: new Date().toLocaleTimeString()
+      }));
       return null;
     }
   };
 
   const startScanning = () => {
     console.log('🚀 Starting enhanced consensus scanner...');
-    setState(prev => ({ ...prev, isScanning: true }));
+    setState(prev => ({ ...prev, isScanning: true, lastError: null }));
+    
+    // Clear any existing interval
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+    }
     
     // Initial scan
     performScan();
     
-    // Continue scanning every 30s until high-conviction signal found
-    const interval = setInterval(async () => {
+    // Set up interval scanning every 30 seconds
+    scanIntervalRef.current = setInterval(() => {
       if (state.isScanning) {
-        await performScan();
+        performScan();
       }
     }, 30000);
-    
-    return () => clearInterval(interval);
   };
 
   const stopScanning = () => {
     console.log('⏹️ Stopping enhanced consensus scanner');
     setState(prev => ({ ...prev, isScanning: false }));
+    
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
   };
 
-  const refreshScan = () => {
-    performScan();
+  const refreshScan = async () => {
+    console.log('🔄 Manual refresh requested');
+    await performScan();
   };
 
+  // Auto-start scanning on mount
   useEffect(() => {
-    const cleanup = startScanning();
-    return cleanup;
+    startScanning();
+    
+    return () => {
+      stopScanning();
+    };
+  }, []);
+
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => {
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current);
+      }
+    };
   }, []);
 
   return {

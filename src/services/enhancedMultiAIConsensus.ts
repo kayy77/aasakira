@@ -1,4 +1,3 @@
-
 export interface EnhancedAIModelResponse {
   entry: string;
   stop_loss: string;
@@ -11,11 +10,13 @@ export interface EnhancedAIModelResponse {
   analysis: string;
   direction: 'BUY' | 'SELL' | 'NO_TRADE';
   valid: boolean;
+  model: string;
 }
 
 export interface ConsensusSignalResult {
   hasConsensus: boolean;
   consensusCount: number;
+  totalModels: number;
   avgExpectedValue: number;
   avgRiskReward: number;
   avgConfidence: number;
@@ -30,6 +31,11 @@ export interface ConsensusSignalResult {
     analysis: string;
     direction: 'BUY' | 'SELL';
   };
+  scanDetails: {
+    successfulModels: number;
+    failedModels: string[];
+    timestamp: string;
+  };
 }
 
 class EnhancedMultiAIConsensus {
@@ -43,19 +49,19 @@ class EnhancedMultiAIConsensus {
   private buildInstitutionalPrompt(pair: string, livePrice: number): string {
     return `You are a top-level institutional-grade AI signal engine.
 
-You are analyzing ${pair}, using the latest live price data: ${livePrice}, and returning high-probability trade signals only.
+Analyzing ${pair} at live price: ${livePrice}
 
-Use the following strategies when relevant:
-- Smart Money Concepts (SMC): structure shifts, liquidity sweeps, FVGs, OBs
-- Volume Spike Confluence
-- RSI + Momentum Divergence
-- Time/Session Logic (NY open, London close, etc.)
-- Pattern Recognition (flags, wedges, reversals)
-- Price Action Levels (break/retest, SR zones)
+Use institutional strategies:
+- Smart Money Concepts (SMC): structure shifts, liquidity sweeps, FVGs
+- Volume Spike Analysis
+- RSI + Momentum Divergence  
+- Session Logic (NY/London/Asian)
+- Pattern Recognition
+- Price Action Levels
 
-CRITICAL: Only return a signal if at least 2 strategies align and confidence > 70%. If not, return: "No valid trade."
+CRITICAL: Only return valid signals if confidence > 70% AND at least 2 strategies align.
 
-Output format (JSON only):
+Required JSON format:
 {
   "entry": "${livePrice}",
   "stop_loss": "${(livePrice * (Math.random() > 0.5 ? 0.998 : 1.002)).toFixed(5)}",
@@ -64,41 +70,43 @@ Output format (JSON only):
   "expected_value": 1.45,
   "rr_ratio": 3.2,
   "signal_strength": "Strong",
-  "strategies": ["SMC", "Liquidity Sweep", "Session Filter"],
-  "analysis": "Based on the current price and structure shift, this trade shows confluence between SMC + OB rejection + liquidity sweep, with 3.2 R:R and expected value of +1.45.",
+  "strategies": ["SMC", "Volume Spike"],
+  "analysis": "Clear institutional setup with structure break + volume confirmation",
   "direction": "BUY",
   "valid": true
 }
 
-Return ONLY valid JSON. No other text.`;
+Return ONLY valid JSON.`;
   }
 
   async scanForHighQualitySignals(pair: string = 'EURUSD', livePrice: number = 1.0850): Promise<ConsensusSignalResult> {
     console.log(`🧠 Enhanced AI Consensus: Scanning ${pair} at ${livePrice}`);
     
     const prompt = this.buildInstitutionalPrompt(pair, livePrice);
+    const failedModels: string[] = [];
     
-    // Call all AI models in parallel
-    const aiPromises = [
-      this.callGroqAI(prompt),
-      this.callGeminiAI(prompt),
-      this.callCohereAI(prompt),
-      this.callOpenRouterAI(prompt),
-      this.callTogetherAI(prompt)
+    // Call all AI models with proper error handling
+    const aiCalls = [
+      this.callWithTimeout(this.callGroqAI.bind(this), prompt, 'Groq', failedModels),
+      this.callWithTimeout(this.callGeminiAI.bind(this), prompt, 'Gemini', failedModels),
+      this.callWithTimeout(this.callCohereAI.bind(this), prompt, 'Cohere', failedModels),
+      this.callWithTimeout(this.callOpenRouterAI.bind(this), prompt, 'OpenRouter', failedModels),
+      this.callWithTimeout(this.callTogetherAI.bind(this), prompt, 'Together', failedModels)
     ];
 
-    const results = await Promise.allSettled(aiPromises);
+    const results = await Promise.allSettled(aiCalls);
     const aiResponses: EnhancedAIModelResponse[] = results.map((result, index) => {
       const modelNames = ['Groq', 'Gemini', 'Cohere', 'OpenRouter', 'Together'];
       if (result.status === 'fulfilled') {
         return result.value;
       } else {
         console.error(`${modelNames[index]} AI failed:`, result.reason);
+        failedModels.push(modelNames[index]);
         return this.getFallbackResponse(modelNames[index]);
       }
     });
 
-    // Filter for high-quality signals that are not NO_TRADE
+    // Filter for high-quality valid signals (not NO_TRADE)
     const validSignals = aiResponses.filter(response => 
       response.valid && 
       response.confidence > 70 && 
@@ -106,28 +114,38 @@ Return ONLY valid JSON. No other text.`;
       (response.signal_strength === 'Strong' || response.signal_strength === 'Medium')
     );
 
+    const totalModels = aiResponses.length;
     const consensusCount = validSignals.length;
+    const successfulModels = aiResponses.filter(r => r.model !== 'FALLBACK').length;
     const hasConsensus = consensusCount >= 3; // Need at least 3/5 AIs to agree
 
+    console.log(`📊 AI Results: ${successfulModels}/${totalModels} responded, ${consensusCount} valid signals`);
+
     if (!hasConsensus) {
-      console.log(`❌ No consensus: Only ${consensusCount}/5 AIs agreed`);
+      console.log(`❌ No consensus: Only ${consensusCount}/5 AIs agreed (need 3+)`);
       return {
         hasConsensus: false,
         consensusCount,
+        totalModels,
         avgExpectedValue: 0,
         avgRiskReward: 0,
         avgConfidence: 0,
         signalStrength: 'NO_CONSENSUS',
-        aiResponses
+        aiResponses,
+        scanDetails: {
+          successfulModels,
+          failedModels,
+          timestamp: new Date().toISOString()
+        }
       };
     }
 
-    // Calculate consensus metrics
+    // Calculate consensus metrics from valid signals
     const avgExpectedValue = validSignals.reduce((sum, s) => sum + s.expected_value, 0) / validSignals.length;
     const avgRiskReward = validSignals.reduce((sum, s) => sum + s.rr_ratio, 0) / validSignals.length;
     const avgConfidence = validSignals.reduce((sum, s) => sum + s.confidence, 0) / validSignals.length;
 
-    // Determine signal strength
+    // Determine signal strength based on consensus quality
     let signalStrength: 'ELITE' | 'STRONG' | 'WEAK' = 'WEAK';
     if (consensusCount >= 4 && avgConfidence >= 85 && avgExpectedValue >= 1.5) {
       signalStrength = 'ELITE';
@@ -135,16 +153,17 @@ Return ONLY valid JSON. No other text.`;
       signalStrength = 'STRONG';
     }
 
-    // Create final signal from best consensus (ensuring it's not NO_TRADE)
+    // Create final signal from highest confidence valid response
     const bestSignal = validSignals.reduce((best, current) => 
       current.confidence > best.confidence ? current : best
     );
 
-    console.log(`✅ Consensus achieved: ${consensusCount}/5 AIs - ${signalStrength} signal`);
+    console.log(`✅ Consensus achieved: ${consensusCount}/5 AIs - ${signalStrength} signal (${successfulModels} models responded)`);
     
     return {
       hasConsensus: true,
       consensusCount,
+      totalModels,
       avgExpectedValue,
       avgRiskReward,
       avgConfidence,
@@ -156,10 +175,34 @@ Return ONLY valid JSON. No other text.`;
         takeProfit: bestSignal.take_profit,
         confidence: Math.round(avgConfidence),
         strategies: bestSignal.strategies,
-        analysis: `${consensusCount}/5 AI Consensus: ${bestSignal.analysis}`,
-        direction: bestSignal.direction as 'BUY' | 'SELL' // Safe cast since we filtered out NO_TRADE
+        analysis: `${consensusCount}/${totalModels} AI Consensus (${successfulModels} responded): ${bestSignal.analysis}`,
+        direction: bestSignal.direction as 'BUY' | 'SELL'
+      },
+      scanDetails: {
+        successfulModels,
+        failedModels,
+        timestamp: new Date().toISOString()
       }
     };
+  }
+
+  private async callWithTimeout<T>(
+    fn: (prompt: string) => Promise<T>, 
+    prompt: string, 
+    modelName: string, 
+    failedModels: string[]
+  ): Promise<T> {
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 15000)
+      );
+      
+      return await Promise.race([fn(prompt), timeoutPromise]);
+    } catch (error) {
+      console.error(`${modelName} timeout or error:`, error);
+      failedModels.push(modelName);
+      throw error;
+    }
   }
 
   private async callGroqAI(prompt: string): Promise<EnhancedAIModelResponse> {
@@ -174,13 +217,13 @@ Return ONLY valid JSON. No other text.`;
       return this.parseAIResponse(response, 'Groq');
     } catch (error) {
       console.error('Groq AI error:', error);
-      return this.getFallbackResponse('Groq');
+      throw error;
     }
   }
 
   private async callGeminiAI(prompt: string): Promise<EnhancedAIModelResponse> {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.API_KEYS.gemini}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.API_KEYS.gemini}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -189,12 +232,14 @@ Return ONLY valid JSON. No other text.`;
         })
       });
       
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
       return this.parseAIResponse(text, 'Gemini');
     } catch (error) {
       console.error('Gemini AI error:', error);
-      return this.getFallbackResponse('Gemini');
+      throw error;
     }
   }
 
@@ -214,12 +259,14 @@ Return ONLY valid JSON. No other text.`;
         })
       });
       
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
       const data = await response.json();
       const text = data.generations?.[0]?.text || '';
       return this.parseAIResponse(text, 'Cohere');
     } catch (error) {
       console.error('Cohere AI error:', error);
-      return this.getFallbackResponse('Cohere');
+      throw error;
     }
   }
 
@@ -232,19 +279,21 @@ Return ONLY valid JSON. No other text.`;
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-3-sonnet',
+          model: 'anthropic/claude-3.5-sonnet',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.3,
           max_tokens: 800
         })
       });
       
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
       const data = await response.json();
       const text = data.choices?.[0]?.message?.content || '';
       return this.parseAIResponse(text, 'Claude');
     } catch (error) {
       console.error('OpenRouter AI error:', error);
-      return this.getFallbackResponse('Claude');
+      throw error;
     }
   }
 
@@ -264,12 +313,14 @@ Return ONLY valid JSON. No other text.`;
         })
       });
       
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
       const data = await response.json();
       const text = data.choices?.[0]?.message?.content || '';
       return this.parseAIResponse(text, 'Mixtral');
     } catch (error) {
       console.error('Together AI error:', error);
-      return this.getFallbackResponse('Mixtral');
+      throw error;
     }
   }
 
@@ -289,7 +340,8 @@ Return ONLY valid JSON. No other text.`;
           strategies: parsed.strategies || ['Technical Analysis'],
           analysis: parsed.analysis || `${modelName} institutional analysis`,
           direction: parsed.direction || 'BUY',
-          valid: parsed.valid !== false && parsed.confidence > 70
+          valid: parsed.valid !== false && parsed.confidence > 70,
+          model: modelName
         };
       }
     } catch (error) {
@@ -304,14 +356,15 @@ Return ONLY valid JSON. No other text.`;
       entry: '1.0850',
       stop_loss: '1.0830',
       take_profit: '1.0890',
-      confidence: 60, // Below consensus threshold
+      confidence: 50, // Below consensus threshold
       expected_value: 0.5,
       rr_ratio: 2.0,
       signal_strength: 'Weak',
-      strategies: [`${modelName} Analysis`],
-      analysis: `${modelName} model unavailable - fallback analysis`,
-      direction: 'NO_TRADE', // Use NO_TRADE for fallback so it gets filtered out
-      valid: false // Mark as invalid so it won't count for consensus
+      strategies: [`${modelName} Fallback`],
+      analysis: `${modelName} unavailable - using fallback`,
+      direction: 'NO_TRADE',
+      valid: false,
+      model: 'FALLBACK'
     };
   }
 }
