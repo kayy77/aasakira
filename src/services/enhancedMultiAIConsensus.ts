@@ -1,3 +1,4 @@
+
 export interface EnhancedAIModelResponse {
   entry: string;
   stop_loss: string;
@@ -98,10 +99,10 @@ Return ONLY valid JSON.`;
     const modelNames = ['Groq', 'Gemini', 'Cohere', 'OpenRouter', 'Together'];
     
     const aiResponses: EnhancedAIModelResponse[] = results.map((result, index): EnhancedAIModelResponse => {
-      if (result.status === 'fulfilled') {
+      if (result.status === 'fulfilled' && result.value) {
         return result.value;
       } else {
-        console.error(`${modelNames[index]} AI failed:`, result.reason);
+        console.error(`${modelNames[index]} AI failed:`, result.status === 'rejected' ? result.reason : 'No response');
         if (!failedModels.includes(modelNames[index])) {
           failedModels.push(modelNames[index]);
         }
@@ -194,7 +195,7 @@ Return ONLY valid JSON.`;
     prompt: string, 
     modelName: string, 
     failedModels: string[]
-  ): Promise<T> {
+  ): Promise<T | null> {
     try {
       const timeoutPromise = new Promise<never>((_, reject) => 
         setTimeout(() => reject(new Error('Timeout')), 15000)
@@ -204,7 +205,7 @@ Return ONLY valid JSON.`;
     } catch (error) {
       console.error(`${modelName} timeout or error:`, error);
       failedModels.push(modelName);
-      throw error;
+      return null;
     }
   }
 
