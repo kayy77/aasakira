@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { Crown, LogOut, Zap } from 'lucide-react';
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { isPremium } = useSubscription();
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   if (!user) {
     return (
@@ -62,7 +63,13 @@ const Settings = () => {
               
               {!isPremium && (
                 <div className="pt-4 border-t border-gray-700">
-                  <PremiumUpgrade />
+                  <Button
+                    onClick={() => setShowUpgrade(true)}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  >
+                    <Crown className="w-4 h-4 mr-2" />
+                    Upgrade to Premium
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -101,6 +108,11 @@ const Settings = () => {
           </Card>
         </div>
       </div>
+
+      <PremiumUpgrade 
+        open={showUpgrade} 
+        onOpenChange={setShowUpgrade} 
+      />
     </div>
   );
 };
