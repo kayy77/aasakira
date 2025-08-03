@@ -95,8 +95,9 @@ Return ONLY valid JSON.`;
     ];
 
     const results = await Promise.allSettled(aiCalls);
-    const aiResponses: EnhancedAIModelResponse[] = results.map((result, index) => {
-      const modelNames = ['Groq', 'Gemini', 'Cohere', 'OpenRouter', 'Together'];
+    const modelNames = ['Groq', 'Gemini', 'Cohere', 'OpenRouter', 'Together'];
+    
+    const aiResponses: EnhancedAIModelResponse[] = results.map((result, index): EnhancedAIModelResponse => {
       if (result.status === 'fulfilled') {
         return result.value;
       } else {
