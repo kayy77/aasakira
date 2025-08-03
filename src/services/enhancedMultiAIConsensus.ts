@@ -1,3 +1,4 @@
+
 export interface EnhancedAIModelResponse {
   entry: string;
   stop_loss: string;
@@ -98,14 +99,16 @@ Return ONLY valid JSON.`;
     const modelNames = ['Groq', 'Gemini', 'Cohere', 'OpenRouter', 'Together'];
     
     const aiResponses: EnhancedAIModelResponse[] = results.map((result, index): EnhancedAIModelResponse => {
-      if (result.status === 'fulfilled' && result.value) {
+      const modelName = modelNames[index];
+      
+      if (result.status === 'fulfilled' && result.value !== null && result.value !== undefined) {
         return result.value;
       } else {
-        console.error(`${modelNames[index]} AI failed:`, result.status === 'rejected' ? result.reason : 'No response');
-        if (!failedModels.includes(modelNames[index])) {
-          failedModels.push(modelNames[index]);
+        console.error(`${modelName} AI failed:`, result.status === 'rejected' ? result.reason : 'No response');
+        if (!failedModels.includes(modelName)) {
+          failedModels.push(modelName);
         }
-        return this.getFallbackResponse(modelNames[index]);
+        return this.getFallbackResponse(modelName);
       }
     });
 
