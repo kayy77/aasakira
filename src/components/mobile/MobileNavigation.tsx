@@ -1,91 +1,131 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Menu, X, User, Settings } from 'lucide-react';
+import { Menu, X, Brain, TrendingUp, Coins, Signal, Home, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/contexts/AuthContext';
 
 const MobileNavigation = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user, logout } = useAuth();
 
-  const navItems = [
-    { path: '/', icon: Home, label: 'Home' }
+  const navigation = [
+    { name: 'Home', href: '/', icon: Home },
+    { name: 'Signals', href: '/signals', icon: Signal },
+    { name: 'Education', href: '/education', icon: Brain },
+    { name: 'Trading', href: '/trading', icon: TrendingUp },
+    { name: 'Meme Coins', href: '/memecoins', icon: Coins },
   ];
 
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  const isActive = (path: string) => location.pathname === path;
 
   return (
-    <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-md border-b border-purple-500/20 md:hidden">
-        <div className="px-4">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-7 h-7 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xs">A</span>
-              </div>
-              <span className="text-white font-bold text-lg">Aasakira</span>
-            </Link>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleMenu}
-              className="p-2 text-gray-300 hover:text-white"
-            >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="absolute top-16 left-0 right-0 bg-black/95 backdrop-blur-md border-b border-purple-500/20">
-            <div className="px-4 py-4 space-y-3">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setIsMenuOpen(false)}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-base font-medium transition-colors ${
-                      isActive
-                        ? 'text-purple-400 bg-purple-400/10'
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span>{item.label}</span>
+    <div className="md:hidden">
+      {/* Mobile Header */}
+      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm border-b border-white/10 sticky top-0 z-50">
+        <Link to="/" className="text-xl font-bold gradient-text">
+          Aasakira
+        </Link>
+        
+        <div className="flex items-center gap-3">
+          {/* User Profile Dropdown */}
+          {user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/20 text-primary border border-primary/30">
+                      {user.email?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 bg-black/95 backdrop-blur-sm border-white/20 z-50" align="end">
+                <DropdownMenuItem className="flex-col items-start text-white hover:bg-white/10">
+                  <div className="font-medium">{user.email}</div>
+                  <div className="text-xs text-gray-400">Free Plan</div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-white/20" />
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard" className="w-full text-white hover:bg-white/10">
+                    <User className="mr-2 h-4 w-4" />
+                    Dashboard
                   </Link>
-                );
-              })}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-white/20" />
+                <DropdownMenuItem 
+                  onClick={logout}
+                  className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
+                >
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          
+          {/* Hamburger Menu */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsOpen(!isOpen)}
+            className="text-white"
+          >
+            {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {isOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm">
+            <div className="flex flex-col h-full pt-20 px-4">
+              <div className="flex-1">
+                <nav className="space-y-3">
+                  {navigation.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={`flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium transition-all duration-200 ${
+                          isActive(item.href)
+                            ? 'bg-primary/20 text-primary border border-primary/30'
+                            : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <Icon className="h-6 w-6" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
               
-              <div className="border-t border-gray-700 pt-3 mt-3">
-                <Link
-                  to="/profile"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center space-x-3 px-4 py-3 rounded-lg text-base font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <User className="w-5 h-5" />
-                  <span>Profile</span>
-                </Link>
-                <Link
-                  to="/settings"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center space-x-3 px-4 py-3 rounded-lg text-base font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <Settings className="w-5 h-5" />
-                  <span>Settings</span>
-                </Link>
+              <div className="p-4 border-t border-white/10">
+                <div className="text-center text-gray-400 text-sm">
+                  Aasakira Trading Platform
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </nav>
-      
-      {/* Spacer for mobile */}
-      <div className="h-16 md:hidden" />
-    </>
+        </>
+      )}
+    </div>
   );
 };
 
