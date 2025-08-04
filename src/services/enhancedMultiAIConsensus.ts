@@ -101,7 +101,6 @@ Return ONLY valid JSON.`;
       const modelName = modelNames[index];
       
       if (result.status === 'fulfilled' && result.value !== null && result.value !== undefined) {
-        // Additional validation to ensure result.value is a valid EnhancedAIModelResponse
         const response = result.value;
         if (this.isValidEnhancedAIModelResponse(response)) {
           return response;
@@ -121,55 +120,57 @@ Return ONLY valid JSON.`;
       }
     });
 
-    // FIXED: Only count Strong signals for consensus, not Medium/Weak
-    const validSignals = aiResponses.filter(response => 
+    // FIXED: Only count Strong signals with proper thresholds
+    const strongSignals = aiResponses.filter(response => 
       response.valid && 
-      response.confidence >= 75 && 
+      response.confidence >= 60 && // Minimum professional threshold
+      response.expected_value >= 1.0 && // Minimum EV requirement
       response.direction !== 'NO_TRADE' &&
-      response.signal_strength === 'Strong' && // FIXED: Only Strong signals count
+      response.signal_strength === 'Strong' && // ONLY Strong signals count
       response.model !== 'FALLBACK' // Don't count fallback responses
     );
 
-    const totalModels = 5; // FIXED: Always 5 models max
-    const consensusCount = Math.min(validSignals.length, totalModels); // FIXED: Cap at 5
+    const totalModels = 5;
+    const strongVoteCount = strongSignals.length; // This is the real consensus count
     const successfulModels = aiResponses.filter(r => r.model !== 'FALLBACK').length;
 
-    console.log(`📊 AI Results: ${successfulModels}/${totalModels} responded, ${consensusCount} strong signals`);
+    console.log(`📊 AI Results: ${successfulModels}/${totalModels} responded, ${strongVoteCount} STRONG signals`);
 
-    // FIXED: Updated consensus logic to match requirements
+    // FIXED: Proper consensus logic based on strong votes only
     let hasConsensus = false;
     let signalStrength: 'ELITE' | 'STRONG' | 'WEAK' | 'NO_CONSENSUS' = 'NO_CONSENSUS';
     
-    if (consensusCount === 0) {
+    if (strongVoteCount === 0) {
       signalStrength = 'NO_CONSENSUS';
       hasConsensus = false;
+      console.log(`❌ No consensus: 0 strong signals - all responses were Medium/Weak/Failed`);
     } else {
-      const avgExpectedValue = validSignals.reduce((sum, s) => sum + s.expected_value, 0) / validSignals.length;
-      const avgRiskReward = validSignals.reduce((sum, s) => sum + s.rr_ratio, 0) / validSignals.length;
-      const avgConfidence = validSignals.reduce((sum, s) => sum + s.confidence, 0) / validSignals.length;
+      const avgExpectedValue = strongSignals.reduce((sum, s) => sum + s.expected_value, 0) / strongSignals.length;
+      const avgRiskReward = strongSignals.reduce((sum, s) => sum + s.rr_ratio, 0) / strongSignals.length;
+      const avgConfidence = strongSignals.reduce((sum, s) => sum + s.confidence, 0) / strongSignals.length;
 
-      // FIXED: Proper consensus determination logic
-      if (consensusCount >= 4 && avgConfidence >= 85 && avgExpectedValue >= 1.5) {
+      // FIXED: Institutional-grade consensus thresholds
+      if (strongVoteCount >= 4 && avgConfidence >= 85 && avgExpectedValue >= 1.5) {
         signalStrength = 'ELITE';
         hasConsensus = true;
-      } else if (consensusCount >= 3 && avgConfidence >= 75 && avgExpectedValue >= 1.0) {
+      } else if (strongVoteCount >= 3 && avgConfidence >= 75 && avgExpectedValue >= 1.0) {
         signalStrength = 'STRONG';
         hasConsensus = true;
-      } else if (consensusCount >= 2) {
+      } else if (strongVoteCount >= 2 && avgConfidence >= 65 && avgExpectedValue >= 0.8) {
         signalStrength = 'WEAK';
-        hasConsensus = false; // Weak signals don't count as consensus
+        hasConsensus = false; // Weak signals don't qualify as true consensus
       } else {
         signalStrength = 'NO_CONSENSUS';
         hasConsensus = false;
       }
 
-      console.log(`✅ Consensus evaluation: ${consensusCount}/${totalModels} strong AIs - ${signalStrength} signal`);
+      console.log(`✅ Consensus evaluation: ${strongVoteCount}/${totalModels} STRONG AIs - ${signalStrength} signal`);
       
       if (!hasConsensus) {
-        console.log(`❌ No consensus: Only ${consensusCount} strong signals (need 3+ for STRONG, 4+ for ELITE)`);
+        console.log(`❌ No institutional consensus: Only ${strongVoteCount} strong signals (need 3+ for STRONG, 4+ for ELITE)`);
         return {
           hasConsensus: false,
-          consensusCount,
+          consensusCount: strongVoteCount,
           totalModels,
           avgExpectedValue: avgExpectedValue || 0,
           avgRiskReward: avgRiskReward || 0,
@@ -184,13 +185,13 @@ Return ONLY valid JSON.`;
         };
       }
 
-      const bestSignal = validSignals.reduce((best, current) => 
+      const bestSignal = strongSignals.reduce((best, current) => 
         current.confidence > best.confidence ? current : best
       );
 
       return {
         hasConsensus: true,
-        consensusCount,
+        consensusCount: strongVoteCount,
         totalModels,
         avgExpectedValue,
         avgRiskReward,
@@ -203,7 +204,7 @@ Return ONLY valid JSON.`;
           takeProfit: bestSignal.take_profit,
           confidence: Math.round(avgConfidence),
           strategies: bestSignal.strategies,
-          analysis: `${consensusCount}/${totalModels} Strong AI Consensus: ${bestSignal.analysis}`,
+          analysis: `${strongVoteCount}/${totalModels} Strong AI Consensus: ${bestSignal.analysis}`,
           direction: bestSignal.direction as 'BUY' | 'SELL'
         },
         scanDetails: {
@@ -216,7 +217,7 @@ Return ONLY valid JSON.`;
 
     return {
       hasConsensus: false,
-      consensusCount: 0,
+      consensusCount: strongVoteCount,
       totalModels,
       avgExpectedValue: 0,
       avgRiskReward: 0,
@@ -391,18 +392,29 @@ Return ONLY valid JSON.`;
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
+        
+        // FIXED: Only mark as valid if meets minimum professional standards
+        const confidence = Math.min(100, Math.max(0, parsed.confidence || 50));
+        const expectedValue = parsed.expected_value || 0.5;
+        const signalStrength = parsed.signal_strength || 'Weak';
+        
+        const isValid = parsed.valid !== false && 
+                       confidence >= 60 && 
+                       expectedValue >= 1.0 && 
+                       signalStrength === 'Strong';
+
         return {
           entry: parsed.entry || '1.0850',
           stop_loss: parsed.stop_loss || '1.0830',
           take_profit: parsed.take_profit || '1.0890',
-          confidence: Math.min(100, Math.max(0, parsed.confidence || 75)),
-          expected_value: parsed.expected_value || 1.0,
+          confidence,
+          expected_value: expectedValue,
           rr_ratio: parsed.rr_ratio || 2.0,
-          signal_strength: parsed.signal_strength || 'Medium',
+          signal_strength: signalStrength,
           strategies: parsed.strategies || ['Technical Analysis'],
           analysis: parsed.analysis || `${modelName} institutional analysis`,
           direction: parsed.direction || 'BUY',
-          valid: parsed.valid !== false && parsed.confidence > 70,
+          valid: isValid,
           model: modelName
         };
       }
@@ -418,10 +430,10 @@ Return ONLY valid JSON.`;
       entry: '1.0850',
       stop_loss: '1.0830',
       take_profit: '1.0890',
-      confidence: 50, // Below consensus threshold
-      expected_value: 0.5,
+      confidence: 40, // Below threshold so it won't count
+      expected_value: 0.3, // Below threshold so it won't count
       rr_ratio: 2.0,
-      signal_strength: 'Weak',
+      signal_strength: 'Weak', // Won't count toward consensus
       strategies: [`${modelName} Fallback`],
       analysis: `${modelName} unavailable - using fallback`,
       direction: 'NO_TRADE',
