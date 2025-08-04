@@ -65,7 +65,7 @@ class StructuralIntelligenceScanner {
     // Enhanced SMC analysis with proper market structure logic
     const strength = 60 + Math.random() * 40;
     const breakDetected = Math.random() > 0.4;
-    const direction = Math.random() > 0.5 ? 'bullish' : 'bearish';
+    const direction: 'bullish' | 'bearish' = Math.random() > 0.5 ? 'bullish' : 'bearish';
     
     return {
       detected: breakDetected && strength > 70,
@@ -76,7 +76,7 @@ class StructuralIntelligenceScanner {
 
   private analyzeLiquiditySweep(currentPrice: number) {
     const sweepDetected = Math.random() > 0.5;
-    const type = Math.random() > 0.5 ? 'up' : 'down';
+    const type: 'up' | 'down' = Math.random() > 0.5 ? 'up' : 'down';
     const confirmed = sweepDetected && Math.random() > 0.3;
     
     return {
@@ -88,7 +88,7 @@ class StructuralIntelligenceScanner {
 
   private analyzeOrderBlock(currentPrice: number) {
     const detected = Math.random() > 0.4;
-    const type = Math.random() > 0.5 ? 'bullish' : 'bearish';
+    const type: 'bullish' | 'bearish' = Math.random() > 0.5 ? 'bullish' : 'bearish';
     const strength = detected ? 65 + Math.random() * 35 : 0;
     
     return {
@@ -101,7 +101,7 @@ class StructuralIntelligenceScanner {
 
   private analyzeFairValueGap(currentPrice: number) {
     const detected = Math.random() > 0.6;
-    const type = Math.random() > 0.5 ? 'bullish' : 'bearish';
+    const type: 'bullish' | 'bearish' = Math.random() > 0.5 ? 'bullish' : 'bearish';
     const strength = detected ? 60 + Math.random() * 40 : 0;
     
     return {
@@ -114,12 +114,12 @@ class StructuralIntelligenceScanner {
 
   private analyzeTrendAlignment() {
     const aligned = Math.random() > 0.3;
-    const direction = Math.random() > 0.5 ? 'up' : 'down';
+    const direction: 'up' | 'down' = Math.random() > 0.5 ? 'up' : 'down';
     const strength = aligned ? 70 + Math.random() * 30 : 40 + Math.random() * 30;
     
     return {
       htfAligned: aligned,
-      direction: direction as 'up' | 'down',
+      direction,
       strength
     };
   }
@@ -127,7 +127,7 @@ class StructuralIntelligenceScanner {
   private analyzeVolumeSpike() {
     const detected = Math.random() > 0.5;
     const strength = detected ? 70 + Math.random() * 30 : 30 + Math.random() * 40;
-    const flows = ['buying', 'selling', 'neutral'] as const;
+    const flows: Array<'buying' | 'selling' | 'neutral'> = ['buying', 'selling', 'neutral'];
     const institutionalFlow = flows[Math.floor(Math.random() * flows.length)];
     
     return {
