@@ -43,6 +43,15 @@ const EnhancedConsensusDisplay: React.FC<EnhancedConsensusDisplayProps> = ({
     if (lastError) return `Scan Error: ${lastError}`;
     if (!consensusResult) return 'Initializing AI Consensus Engine...';
     if (consensusResult.hasConsensus) {
+      // Check if it's a Groq exceptional signal
+      const hasGroqExceptional = consensusResult.aiResponses?.some(ai => 
+        ai.model === 'Groq' && ai.analysis?.toLowerCase().includes('exceptional')
+      );
+      
+      if (hasGroqExceptional) {
+        return `🔥 GROQ EXCEPTIONAL Signal Detected`;
+      }
+      
       return `${consensusResult.signalStrength} Signal Detected`;
     }
     return 'No High-Conviction Signal Yet — Continue Scanning...';
@@ -52,6 +61,15 @@ const EnhancedConsensusDisplay: React.FC<EnhancedConsensusDisplayProps> = ({
     if (lastError) return <Badge variant="destructive">Error</Badge>;
     if (!consensusResult) return <Badge variant="secondary">Pending</Badge>;
     if (consensusResult.hasConsensus) {
+      // Special handling for Groq exceptional signals
+      const hasGroqExceptional = consensusResult.aiResponses?.some(ai => 
+        ai.model === 'Groq' && ai.analysis?.toLowerCase().includes('exceptional')
+      );
+      
+      if (hasGroqExceptional) {
+        return <Badge className="bg-green-500 text-white border-green-400">🔥 EXCEPTIONAL</Badge>;
+      }
+      
       const variant = consensusResult.signalStrength === 'ELITE' ? 'default' : 'secondary';
       return <Badge variant={variant}>{consensusResult.signalStrength}</Badge>;
     }

@@ -340,11 +340,88 @@ Return ONLY valid JSON.`;
     };
   }
 
+  private parseAIResponse(text: string, modelName: string): EnhancedAIModelResponse {
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        // SPECIAL GROQ HANDLING - Much more lenient
+        if (modelName === 'Groq') {
+          const confidence = Math.min(100, Math.max(0, parsed.confidence || 60));
+          const expectedValue = parsed.expected_value || 0.8;
+          const signalStrength = parsed.signal_strength || 'Medium';
+          
+          // For Groq, accept almost any signal with basic metrics
+          const isValid = parsed.valid !== false && 
+                         confidence >= 50 && // Much lower for Groq
+                         expectedValue >= 0.5 && // Much lower for Groq
+                         (signalStrength === 'Strong' || signalStrength === 'Medium' || signalStrength === 'Weak');
+
+          return {
+            entry: parsed.entry || '1.0850',
+            stop_loss: parsed.stop_loss || '1.0830',
+            take_profit: parsed.take_profit || '1.0890',
+            confidence,
+            expected_value: expectedValue,
+            rr_ratio: parsed.rr_ratio || 2.0,
+            signal_strength: signalStrength,
+            strategies: parsed.strategies || ['SMC Analysis'],
+            analysis: parsed.analysis || `${modelName} institutional analysis`,
+            direction: parsed.direction || 'BUY',
+            valid: isValid,
+            model: modelName
+          };
+        }
+        
+        // Standard handling for other models
+        const confidence = Math.min(100, Math.max(0, parsed.confidence || 50));
+        const expectedValue = parsed.expected_value || 0.5;
+        const signalStrength = parsed.signal_strength || 'Weak';
+        
+        const isValid = parsed.valid !== false && 
+                       confidence >= 55 && // Lowered from 60
+                       expectedValue >= 0.7 && // Lowered from 1.0
+                       (signalStrength === 'Strong' || signalStrength === 'Medium');
+
+        return {
+          entry: parsed.entry || '1.0850',
+          stop_loss: parsed.stop_loss || '1.0830',
+          take_profit: parsed.take_profit || '1.0890',
+          confidence,
+          expected_value: expectedValue,
+          rr_ratio: parsed.rr_ratio || 2.0,
+          signal_strength: signalStrength,
+          strategies: parsed.strategies || ['Technical Analysis'],
+          analysis: parsed.analysis || `${modelName} institutional analysis`,
+          direction: parsed.direction || 'BUY',
+          valid: isValid,
+          model: modelName
+        };
+      }
+    } catch (error) {
+      console.error(`${modelName} JSON parsing error:`, error);
+    }
+    
+    return this.getFallbackResponse(modelName);
+  }
+
   private calculateFinalGrade(
-    structural: StructuralAnalysis,
+    structural: any,
     ai: WeightedAIAnalysis,
-    outcome: OutcomePrediction
+    outcome: any
   ): 'A' | 'B' | 'C' | 'F' {
+    // GROQ OVERRIDE - If Groq says exceptional, it's automatically Grade A
+    if (ai.groqOverride) {
+      const groqResponse = ai.reasoning?.toLowerCase();
+      if (groqResponse?.includes('exceptional') || groqResponse?.includes('elite')) {
+        console.log('🔥 GROQ EXCEPTIONAL - Automatic Grade A');
+        return 'A';
+      }
+      console.log('🔥 GROQ OVERRIDE - Automatic Grade B');
+      return 'B';
+    }
+
     // More lenient grading system
     
     // Grade A: Elite signals
@@ -557,42 +634,14 @@ Return ONLY valid JSON.`;
     }
   }
 
-  private parseAIResponse(text: string, modelName: string): EnhancedAIModelResponse {
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        
-        // MORE LENIENT: Lower standards for valid signals
-        const confidence = Math.min(100, Math.max(0, parsed.confidence || 50));
-        const expectedValue = parsed.expected_value || 0.5;
-        const signalStrength = parsed.signal_strength || 'Weak';
-        
-        const isValid = parsed.valid !== false && 
-                       confidence >= 55 && // Lowered from 60
-                       expectedValue >= 0.7 && // Lowered from 1.0
-                       (signalStrength === 'Strong' || signalStrength === 'Medium'); // Accept Medium signals
-
-        return {
-          entry: parsed.entry || '1.0850',
-          stop_loss: parsed.stop_loss || '1.0830',
-          take_profit: parsed.take_profit || '1.0890',
-          confidence,
-          expected_value: expectedValue,
-          rr_ratio: parsed.rr_ratio || 2.0,
-          signal_strength: signalStrength,
-          strategies: parsed.strategies || ['Technical Analysis'],
-          analysis: parsed.analysis || `${modelName} institutional analysis`,
-          direction: parsed.direction || 'BUY',
-          valid: isValid,
-          model: modelName
-        };
-      }
-    } catch (error) {
-      console.error(`${modelName} JSON parsing error:`, error);
-    }
-    
-    return this.getFallbackResponse(modelName);
+  private mapConsensusToSignalStrength(
+    aiStrength: string, 
+    finalGrade: string
+  ): 'ELITE' | 'STRONG' | 'WEAK' | 'NO_CONSENSUS' {
+    if (finalGrade === 'A' && aiStrength === 'STRONG') return 'ELITE';
+    if (finalGrade === 'B' && (aiStrength === 'STRONG' || aiStrength === 'MODERATE')) return 'STRONG';
+    if (finalGrade === 'C' || aiStrength === 'WEAK') return 'WEAK'; // Accept WEAK signals
+    return 'NO_CONSENSUS';
   }
 
   private getFallbackResponse(modelName: string): EnhancedAIModelResponse {

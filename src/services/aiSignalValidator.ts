@@ -43,19 +43,28 @@ class AISignalValidator {
 
     console.log(`✅ Valid AI responses: ${validResponses.length}/${aiResponses.length}`);
 
-    // Check for Groq override first
+    // ENHANCED GROQ OVERRIDE - Much more aggressive
     const groqResponse = validResponses.find(r => r.model === 'Groq');
-    const groqOverride = groqResponse && 
-      (groqResponse.signal_strength === 'Strong' || groqResponse.confidence >= 80) && 
-      groqResponse.expected_value >= 1.2;
+    
+    // Groq override conditions - MUCH MORE LENIENT
+    const groqOverride = groqResponse && (
+      // If Groq says "exceptional" or "elite" - ALWAYS override
+      groqResponse.analysis?.toLowerCase().includes('exceptional') ||
+      groqResponse.analysis?.toLowerCase().includes('elite') ||
+      groqResponse.signal_strength === 'Strong' ||
+      // Or if Groq has decent confidence and EV
+      (groqResponse.confidence >= 70 && groqResponse.expected_value >= 1.0) ||
+      // Or if Groq is just clearly bullish/bearish with reasonable metrics
+      (groqResponse.confidence >= 65 && groqResponse.expected_value >= 0.8)
+    );
 
     if (groqOverride) {
-      console.log(`🔥 GROQ OVERRIDE ACTIVATED: Elite signal detected`);
+      console.log(`🔥 GROQ OVERRIDE ACTIVATED: ${groqResponse.analysis?.includes('exceptional') ? 'EXCEPTIONAL' : 'ELITE'} signal detected`);
       return {
         direction: groqResponse.direction as 'BUY' | 'SELL',
-        weightedConfidence: Math.max(groqResponse.confidence, 75),
-        averageEV: Math.max(groqResponse.expected_value, 1.3),
-        averageRR: groqResponse.rr_ratio,
+        weightedConfidence: Math.max(groqResponse.confidence, 80), // Boost confidence
+        averageEV: Math.max(groqResponse.expected_value, 1.2), // Boost EV
+        averageRR: Math.max(groqResponse.rr_ratio, 2.5), // Boost R:R
         consensusStrength: 'STRONG',
         topModel: 'Groq',
         modelAgreement: 100,
@@ -244,9 +253,9 @@ class AISignalValidator {
 
   // UPDATED: More lenient validation with Groq priority
   resolveAIConflicts(analysis: WeightedAIAnalysis): boolean {
-    // Groq override always wins
+    // Groq override ALWAYS wins - no questions asked
     if (analysis.groqOverride) {
-      console.log('🔥 Groq override activated - signal approved');
+      console.log('🔥 Groq override activated - signal AUTOMATICALLY approved');
       return true;
     }
 
