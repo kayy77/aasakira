@@ -46,10 +46,128 @@ class EnhancedMultiAIConsensus {
     together: '8b0103657b0290f0a815723af49c8ed66af6f5df882de5acc1de32e02311bb79'
   };
 
+  // NEW: Session-aware confidence adjustments
+  private applySessionAdjustments(pair: string, confidence: number, session: string): number {
+    const currentHour = new Date().getUTCHours();
+    let adjustedConfidence = confidence;
+    
+    // USDCAD specific logic - reduce confidence in Asia session
+    if (pair === 'USDCAD' && session === 'Asia') {
+      adjustedConfidence = Math.max(confidence - 20, 40);
+      console.log(`🔄 ${pair} in Asia session: confidence reduced from ${confidence}% to ${adjustedConfidence}%`);
+    }
+    
+    // General session volatility adjustments
+    if (currentHour >= 0 && currentHour <= 6 && !['USDJPY', 'AUDUSD'].includes(pair)) {
+      adjustedConfidence = Math.max(confidence - 15, 45);
+      console.log(`🔄 Low volatility hours for ${pair}: confidence reduced to ${adjustedConfidence}%`);
+    }
+    
+    return adjustedConfidence;
+  }
+
+  // NEW: Weighted consensus with Groq override logic
+  private calculateWeightedConsensus(aiResponses: EnhancedAIModelResponse[], pair: string): {
+    consensusCount: number;
+    signalStrength: 'ELITE' | 'STRONG' | 'WEAK' | 'NO_CONSENSUS';
+    avgConfidence: number;
+    avgExpectedValue: number;
+    hasConsensus: boolean;
+  } {
+    // Filter only valid, strong responses
+    const strongSignals = aiResponses.filter(response => 
+      response.valid && 
+      response.confidence >= 60 && 
+      response.expected_value >= 0.8 && 
+      response.direction !== 'NO_TRADE' &&
+      response.model !== 'FALLBACK'
+    );
+
+    console.log(`📊 Strong signals found: ${strongSignals.length}/${aiResponses.length}`);
+
+    // Check for Groq "Exceptional" override
+    const groqResponse = aiResponses.find(r => r.model === 'Groq');
+    const hasGroqExceptional = groqResponse && 
+      groqResponse.signal_strength === 'Strong' && 
+      groqResponse.confidence >= 85 && 
+      groqResponse.expected_value >= 1.5;
+
+    // Apply weighted scoring
+    let weightedScore = 0;
+    let totalWeight = 0;
+    let confidenceSum = 0;
+    let expectedValueSum = 0;
+
+    strongSignals.forEach(signal => {
+      let weight = 1;
+      
+      // Groq gets higher weight
+      if (signal.model === 'Groq') weight = 2;
+      // Gemini and Claude get slightly higher weight
+      if (['Gemini', 'Claude'].includes(signal.model)) weight = 1.5;
+      
+      // Exceptional signals get bonus weight
+      if (signal.confidence >= 85 && signal.expected_value >= 1.5) weight *= 1.3;
+      
+      weightedScore += weight;
+      totalWeight += weight;
+      confidenceSum += signal.confidence;
+      expectedValueSum += signal.expected_value;
+    });
+
+    const avgConfidence = strongSignals.length > 0 ? confidenceSum / strongSignals.length : 0;
+    const avgExpectedValue = strongSignals.length > 0 ? expectedValueSum / strongSignals.length : 0;
+    const consensusStrength = totalWeight > 0 ? (weightedScore / totalWeight) : 0;
+
+    console.log(`🧮 Weighted consensus: ${consensusStrength.toFixed(2)}, Groq exceptional: ${hasGroqExceptional}`);
+
+    // GROQ OVERRIDE LOGIC: If Groq is exceptional + confluence is high, upgrade consensus
+    if (hasGroqExceptional && strongSignals.length >= 3) {
+      console.log(`🔥 GROQ OVERRIDE: Exceptional signal with ${strongSignals.length} supporting AIs - UPGRADED TO STRONG`);
+      return {
+        consensusCount: strongSignals.length,
+        signalStrength: 'STRONG',
+        avgConfidence: Math.max(avgConfidence, 75),
+        avgExpectedValue: Math.max(avgExpectedValue, 1.2),
+        hasConsensus: true
+      };
+    }
+
+    // Standard consensus logic with proper thresholds
+    let signalStrength: 'ELITE' | 'STRONG' | 'WEAK' | 'NO_CONSENSUS';
+    let hasConsensus = false;
+
+    if (strongSignals.length >= 4 && avgConfidence >= 85 && avgExpectedValue >= 1.5) {
+      signalStrength = 'ELITE';
+      hasConsensus = true;
+    } else if (strongSignals.length >= 3 && avgConfidence >= 75 && avgExpectedValue >= 1.0) {
+      signalStrength = 'STRONG';
+      hasConsensus = true;
+    } else if (strongSignals.length >= 2 && avgConfidence >= 65 && avgExpectedValue >= 0.8) {
+      signalStrength = 'WEAK';
+      hasConsensus = false; // Weak signals don't qualify as consensus
+    } else {
+      signalStrength = 'NO_CONSENSUS';
+      hasConsensus = false;
+    }
+
+    console.log(`📈 Final consensus: ${signalStrength} (${strongSignals.length} strong signals)`);
+
+    return {
+      consensusCount: strongSignals.length,
+      signalStrength,
+      avgConfidence,
+      avgExpectedValue,
+      hasConsensus
+    };
+  }
+
   private buildInstitutionalPrompt(pair: string, livePrice: number): string {
+    const currentSession = this.getCurrentSession();
+    
     return `You are a top-level institutional-grade AI signal engine.
 
-Analyzing ${pair} at live price: ${livePrice}
+Analyzing ${pair} at live price: ${livePrice} during ${currentSession} session
 
 Use institutional strategies:
 - Smart Money Concepts (SMC): structure shifts, liquidity sweeps, FVGs
@@ -60,6 +178,7 @@ Use institutional strategies:
 - Price Action Levels
 
 CRITICAL: Only return valid signals if confidence > 70% AND at least 2 strategies align.
+SESSION AWARENESS: Consider ${currentSession} session volatility for ${pair}
 
 Required JSON format:
 {
@@ -77,6 +196,14 @@ Required JSON format:
 }
 
 Return ONLY valid JSON.`;
+  }
+
+  private getCurrentSession(): string {
+    const hour = new Date().getUTCHours();
+    if (hour >= 0 && hour < 8) return 'Asia';
+    if (hour >= 8 && hour < 16) return 'London';
+    if (hour >= 16 && hour < 24) return 'New York';
+    return 'Asia';
   }
 
   async scanForHighQualitySignals(pair: string = 'EURUSD', livePrice: number = 1.0850): Promise<ConsensusSignalResult> {
@@ -103,6 +230,9 @@ Return ONLY valid JSON.`;
       if (result.status === 'fulfilled' && result.value !== null && result.value !== undefined) {
         const response = result.value;
         if (this.isValidEnhancedAIModelResponse(response)) {
+          // Apply session adjustments to confidence
+          const currentSession = this.getCurrentSession();
+          response.confidence = this.applySessionAdjustments(pair, response.confidence, currentSession);
           return response;
         } else {
           console.error(`${modelName} AI returned invalid response:`, response);
@@ -120,93 +250,24 @@ Return ONLY valid JSON.`;
       }
     });
 
-    // FIXED: Only count Strong signals with proper thresholds
-    const strongSignals = aiResponses.filter(response => 
-      response.valid && 
-      response.confidence >= 60 && // Minimum professional threshold
-      response.expected_value >= 1.0 && // Minimum EV requirement
-      response.direction !== 'NO_TRADE' &&
-      response.signal_strength === 'Strong' && // ONLY Strong signals count
-      response.model !== 'FALLBACK' // Don't count fallback responses
-    );
-
-    const totalModels = 5;
-    const strongVoteCount = strongSignals.length; // This is the real consensus count
     const successfulModels = aiResponses.filter(r => r.model !== 'FALLBACK').length;
-
-    console.log(`📊 AI Results: ${successfulModels}/${totalModels} responded, ${strongVoteCount} STRONG signals`);
-
-    // FIXED: Proper consensus logic based on strong votes only
-    let hasConsensus = false;
-    let signalStrength: 'ELITE' | 'STRONG' | 'WEAK' | 'NO_CONSENSUS' = 'NO_CONSENSUS';
     
-    if (strongVoteCount === 0) {
-      signalStrength = 'NO_CONSENSUS';
-      hasConsensus = false;
-      console.log(`❌ No consensus: 0 strong signals - all responses were Medium/Weak/Failed`);
-    } else {
-      const avgExpectedValue = strongSignals.reduce((sum, s) => sum + s.expected_value, 0) / strongSignals.length;
-      const avgRiskReward = strongSignals.reduce((sum, s) => sum + s.rr_ratio, 0) / strongSignals.length;
-      const avgConfidence = strongSignals.reduce((sum, s) => sum + s.confidence, 0) / strongSignals.length;
+    // Use NEW weighted consensus calculation
+    const consensus = this.calculateWeightedConsensus(aiResponses, pair);
 
-      // FIXED: Institutional-grade consensus thresholds
-      if (strongVoteCount >= 4 && avgConfidence >= 85 && avgExpectedValue >= 1.5) {
-        signalStrength = 'ELITE';
-        hasConsensus = true;
-      } else if (strongVoteCount >= 3 && avgConfidence >= 75 && avgExpectedValue >= 1.0) {
-        signalStrength = 'STRONG';
-        hasConsensus = true;
-      } else if (strongVoteCount >= 2 && avgConfidence >= 65 && avgExpectedValue >= 0.8) {
-        signalStrength = 'WEAK';
-        hasConsensus = false; // Weak signals don't qualify as true consensus
-      } else {
-        signalStrength = 'NO_CONSENSUS';
-        hasConsensus = false;
-      }
+    console.log(`📊 AI Results: ${successfulModels}/5 responded, ${consensus.consensusCount} strong signals`);
 
-      console.log(`✅ Consensus evaluation: ${strongVoteCount}/${totalModels} STRONG AIs - ${signalStrength} signal`);
-      
-      if (!hasConsensus) {
-        console.log(`❌ No institutional consensus: Only ${strongVoteCount} strong signals (need 3+ for STRONG, 4+ for ELITE)`);
-        return {
-          hasConsensus: false,
-          consensusCount: strongVoteCount,
-          totalModels,
-          avgExpectedValue: avgExpectedValue || 0,
-          avgRiskReward: avgRiskReward || 0,
-          avgConfidence: avgConfidence || 0,
-          signalStrength,
-          aiResponses,
-          scanDetails: {
-            successfulModels,
-            failedModels,
-            timestamp: new Date().toISOString()
-          }
-        };
-      }
-
-      const bestSignal = strongSignals.reduce((best, current) => 
-        current.confidence > best.confidence ? current : best
-      );
-
+    if (!consensus.hasConsensus) {
+      console.log(`❌ No institutional consensus: ${consensus.signalStrength} signal quality`);
       return {
-        hasConsensus: true,
-        consensusCount: strongVoteCount,
-        totalModels,
-        avgExpectedValue,
-        avgRiskReward,
-        avgConfidence,
-        signalStrength,
+        hasConsensus: false,
+        consensusCount: consensus.consensusCount,
+        totalModels: 5,
+        avgExpectedValue: consensus.avgExpectedValue,
+        avgRiskReward: aiResponses.filter(r => r.valid).reduce((sum, s) => sum + s.rr_ratio, 0) / Math.max(aiResponses.filter(r => r.valid).length, 1),
+        avgConfidence: consensus.avgConfidence,
+        signalStrength: consensus.signalStrength,
         aiResponses,
-        finalSignal: {
-          entry: bestSignal.entry,
-          stopLoss: bestSignal.stop_loss,
-          takeProfit: bestSignal.take_profit,
-          confidence: Math.round(avgConfidence),
-          strategies: bestSignal.strategies,
-          analysis: `${strongVoteCount}/${totalModels} Strong AI Consensus: ${bestSignal.analysis}`,
-          direction: bestSignal.direction as 'BUY' | 'SELL'
-        },
         scanDetails: {
           successfulModels,
           failedModels,
@@ -215,15 +276,33 @@ Return ONLY valid JSON.`;
       };
     }
 
+    const validSignals = aiResponses.filter(r => r.valid && r.model !== 'FALLBACK');
+    const bestSignal = validSignals.reduce((best, current) => 
+      current.confidence > best.confidence ? current : best
+    );
+
+    const avgRiskReward = validSignals.reduce((sum, s) => sum + s.rr_ratio, 0) / validSignals.length;
+
+    console.log(`✅ Consensus achieved: ${consensus.signalStrength} signal approved`);
+
     return {
-      hasConsensus: false,
-      consensusCount: strongVoteCount,
-      totalModels,
-      avgExpectedValue: 0,
-      avgRiskReward: 0,
-      avgConfidence: 0,
-      signalStrength: 'NO_CONSENSUS',
+      hasConsensus: true,
+      consensusCount: consensus.consensusCount,
+      totalModels: 5,
+      avgExpectedValue: consensus.avgExpectedValue,
+      avgRiskReward,
+      avgConfidence: consensus.avgConfidence,
+      signalStrength: consensus.signalStrength,
       aiResponses,
+      finalSignal: {
+        entry: bestSignal.entry,
+        stopLoss: bestSignal.stop_loss,
+        takeProfit: bestSignal.take_profit,
+        confidence: Math.round(consensus.avgConfidence),
+        strategies: bestSignal.strategies,
+        analysis: `${consensus.consensusCount}/5 Strong AI Consensus: ${bestSignal.analysis}`,
+        direction: bestSignal.direction as 'BUY' | 'SELL'
+      },
       scanDetails: {
         successfulModels,
         failedModels,
