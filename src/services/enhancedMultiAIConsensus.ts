@@ -42,7 +42,6 @@ export interface ConsensusSignalResult {
   };
 }
 
-// Enhanced result interface
 export interface IntelligentSignalResult extends ConsensusSignalResult {
   structuralAnalysis: StructuralAnalysis;
   aiValidation: WeightedAIAnalysis;
@@ -54,6 +53,11 @@ export interface IntelligentSignalResult extends ConsensusSignalResult {
     outcomePass: boolean;
     finalApproved: boolean;
   };
+  debugInfo?: {
+    structuralDebug: string;
+    aiDebug: string;
+    outcomeDebug: string;
+  };
 }
 
 class EnhancedMultiAIConsensus {
@@ -64,120 +68,21 @@ class EnhancedMultiAIConsensus {
     together: '8b0103657b0290f0a815723af49c8ed66af6f5df882de5acc1de32e02311bb79'
   };
 
-  // NEW: Session-aware confidence adjustments
   private applySessionAdjustments(pair: string, confidence: number, session: string): number {
     const currentHour = new Date().getUTCHours();
     let adjustedConfidence = confidence;
     
-    // USDCAD specific logic - reduce confidence in Asia session
     if (pair === 'USDCAD' && session === 'Asia') {
-      adjustedConfidence = Math.max(confidence - 20, 40);
+      adjustedConfidence = Math.max(confidence - 15, 45); // Reduced penalty
       console.log(`🔄 ${pair} in Asia session: confidence reduced from ${confidence}% to ${adjustedConfidence}%`);
     }
     
-    // General session volatility adjustments
     if (currentHour >= 0 && currentHour <= 6 && !['USDJPY', 'AUDUSD'].includes(pair)) {
-      adjustedConfidence = Math.max(confidence - 15, 45);
+      adjustedConfidence = Math.max(confidence - 10, 50); // Reduced penalty
       console.log(`🔄 Low volatility hours for ${pair}: confidence reduced to ${adjustedConfidence}%`);
     }
     
     return adjustedConfidence;
-  }
-
-  // NEW: Weighted consensus with Groq override logic
-  private calculateWeightedConsensus(aiResponses: EnhancedAIModelResponse[], pair: string): {
-    consensusCount: number;
-    signalStrength: 'ELITE' | 'STRONG' | 'WEAK' | 'NO_CONSENSUS';
-    avgConfidence: number;
-    avgExpectedValue: number;
-    hasConsensus: boolean;
-  } {
-    // Filter only valid, strong responses
-    const strongSignals = aiResponses.filter(response => 
-      response.valid && 
-      response.confidence >= 60 && 
-      response.expected_value >= 0.8 && 
-      response.direction !== 'NO_TRADE' &&
-      response.model !== 'FALLBACK'
-    );
-
-    console.log(`📊 Strong signals found: ${strongSignals.length}/${aiResponses.length}`);
-
-    // Check for Groq "Exceptional" override
-    const groqResponse = aiResponses.find(r => r.model === 'Groq');
-    const hasGroqExceptional = groqResponse && 
-      groqResponse.signal_strength === 'Strong' && 
-      groqResponse.confidence >= 85 && 
-      groqResponse.expected_value >= 1.5;
-
-    // Apply weighted scoring
-    let weightedScore = 0;
-    let totalWeight = 0;
-    let confidenceSum = 0;
-    let expectedValueSum = 0;
-
-    strongSignals.forEach(signal => {
-      let weight = 1;
-      
-      // Groq gets higher weight
-      if (signal.model === 'Groq') weight = 2;
-      // Gemini and Claude get slightly higher weight
-      if (['Gemini', 'Claude'].includes(signal.model)) weight = 1.5;
-      
-      // Exceptional signals get bonus weight
-      if (signal.confidence >= 85 && signal.expected_value >= 1.5) weight *= 1.3;
-      
-      weightedScore += weight;
-      totalWeight += weight;
-      confidenceSum += signal.confidence;
-      expectedValueSum += signal.expected_value;
-    });
-
-    const avgConfidence = strongSignals.length > 0 ? confidenceSum / strongSignals.length : 0;
-    const avgExpectedValue = strongSignals.length > 0 ? expectedValueSum / strongSignals.length : 0;
-    const consensusStrength = totalWeight > 0 ? (weightedScore / totalWeight) : 0;
-
-    console.log(`🧮 Weighted consensus: ${consensusStrength.toFixed(2)}, Groq exceptional: ${hasGroqExceptional}`);
-
-    // GROQ OVERRIDE LOGIC: If Groq is exceptional + confluence is high, upgrade consensus
-    if (hasGroqExceptional && strongSignals.length >= 3) {
-      console.log(`🔥 GROQ OVERRIDE: Exceptional signal with ${strongSignals.length} supporting AIs - UPGRADED TO STRONG`);
-      return {
-        consensusCount: strongSignals.length,
-        signalStrength: 'STRONG',
-        avgConfidence: Math.max(avgConfidence, 75),
-        avgExpectedValue: Math.max(avgExpectedValue, 1.2),
-        hasConsensus: true
-      };
-    }
-
-    // Standard consensus logic with proper thresholds
-    let signalStrength: 'ELITE' | 'STRONG' | 'WEAK' | 'NO_CONSENSUS';
-    let hasConsensus = false;
-
-    if (strongSignals.length >= 4 && avgConfidence >= 85 && avgExpectedValue >= 1.5) {
-      signalStrength = 'ELITE';
-      hasConsensus = true;
-    } else if (strongSignals.length >= 3 && avgConfidence >= 75 && avgExpectedValue >= 1.0) {
-      signalStrength = 'STRONG';
-      hasConsensus = true;
-    } else if (strongSignals.length >= 2 && avgConfidence >= 65 && avgExpectedValue >= 0.8) {
-      signalStrength = 'WEAK';
-      hasConsensus = false; // Weak signals don't qualify as consensus
-    } else {
-      signalStrength = 'NO_CONSENSUS';
-      hasConsensus = false;
-    }
-
-    console.log(`📈 Final consensus: ${signalStrength} (${strongSignals.length} strong signals)`);
-
-    return {
-      consensusCount: strongSignals.length,
-      signalStrength,
-      avgConfidence,
-      avgExpectedValue,
-      hasConsensus
-    };
   }
 
   private buildInstitutionalPrompt(pair: string, livePrice: number): string {
@@ -195,7 +100,7 @@ Use institutional strategies:
 - Pattern Recognition
 - Price Action Levels
 
-CRITICAL: Only return valid signals if confidence > 70% AND at least 2 strategies align.
+UPDATED CRITERIA: Only return valid signals if confidence > 60% AND at least 1 strong strategy aligns.
 SESSION AWARENESS: Consider ${currentSession} session volatility for ${pair}
 
 Required JSON format:
@@ -228,20 +133,28 @@ Return ONLY valid JSON.`;
     console.log(`🧠 Intelligent Signal Fusion Engine: Scanning ${pair} at ${livePrice}`);
     
     const scanStartTime = Date.now();
+    const debugInfo = {
+      structuralDebug: '',
+      aiDebug: '',
+      outcomeDebug: ''
+    };
 
     // STAGE 1: STRUCTURAL INTELLIGENCE PRE-SCREENING
     console.log('🏗️ Stage 1: Structural Intelligence Analysis...');
     const structuralAnalysis = structuralIntelligenceScanner.analyzeMarketStructure(pair, livePrice);
+    debugInfo.structuralDebug = `Grade: ${structuralAnalysis.structuralGrade}, Confluence: ${structuralAnalysis.confluenceScore}/6`;
     
-    // Pre-qualification check - skip AI if structure is inadequate
+    // More lenient pre-qualification 
     if (!structuralIntelligenceScanner.isStructurallyQualified(structuralAnalysis)) {
       console.log('❌ REJECTED: Failed structural pre-qualification');
-      return this.buildRejectedSignal(pair, livePrice, structuralAnalysis, 'STRUCTURAL_FAILURE');
+      debugInfo.structuralDebug += ' - FAILED pre-qualification';
+      return this.buildRejectedSignal(pair, livePrice, structuralAnalysis, 'STRUCTURAL_FAILURE', undefined, undefined, debugInfo);
     }
 
     console.log('✅ Stage 1 PASSED: Structural analysis qualified for AI review');
+    debugInfo.structuralDebug += ' - PASSED';
 
-    // STAGE 2: AI MULTI-MODEL ANALYSIS (existing logic)
+    // STAGE 2: AI MULTI-MODEL ANALYSIS
     console.log('🤖 Stage 2: AI Multi-Model Analysis...');
     const prompt = this.buildInstitutionalPrompt(pair, livePrice);
     const failedModels: string[] = [];
@@ -275,18 +188,23 @@ Return ONLY valid JSON.`;
       return this.getFallbackResponse(modelName);
     });
 
+    debugInfo.aiDebug = `Valid responses: ${aiResponses.filter(r => r.valid).length}/5, Failed: ${failedModels.join(',')}`;
+
     // STAGE 3: AI SIGNAL VALIDATION & WEIGHTED CONSENSUS
     console.log('⚖️ Stage 3: AI Signal Validation...');
     const aiValidation = aiSignalValidator.validateAIConsensus(aiResponses);
+    debugInfo.aiDebug += ` - Consensus: ${aiValidation.consensusStrength}`;
     
     if (!aiSignalValidator.resolveAIConflicts(aiValidation)) {
       console.log('❌ REJECTED: AI consensus insufficient or conflicted');
-      return this.buildRejectedSignal(pair, livePrice, structuralAnalysis, 'AI_CONSENSUS_FAILED', aiValidation);
+      debugInfo.aiDebug += ' - FAILED consensus';
+      return this.buildRejectedSignal(pair, livePrice, structuralAnalysis, 'AI_CONSENSUS_FAILED', aiValidation, undefined, debugInfo);
     }
 
     console.log('✅ Stage 3 PASSED: AI consensus achieved');
+    debugInfo.aiDebug += ' - PASSED';
 
-    // STAGE 4: PREDICTIVE OUTCOME MODELING
+    // STAGE 4: PREDICTIVE OUTCOME MODELING (More lenient)
     console.log('🔮 Stage 4: Predictive Outcome Analysis...');
     const signalInputData: SignalInputData = {
       pair,
@@ -300,21 +218,26 @@ Return ONLY valid JSON.`;
     };
 
     const outcomePrediction = predictiveOutcomeModel.predictSignalOutcome(signalInputData);
+    debugInfo.outcomeDebug = `TP: ${outcomePrediction.tpProbability.toFixed(1)}%, Risk: ${outcomePrediction.riskLevel}, Rec: ${outcomePrediction.recommendation}`;
     
-    if (outcomePrediction.recommendation === 'AVOID' || outcomePrediction.tpProbability < 55) {
+    // MORE LENIENT: Accept REDUCE_SIZE and WATCH_ONLY signals too
+    if (outcomePrediction.recommendation === 'AVOID' || outcomePrediction.tpProbability < 45) { // Lowered from 55
       console.log('❌ REJECTED: Predictive model recommends avoidance');
-      return this.buildRejectedSignal(pair, livePrice, structuralAnalysis, 'PREDICTIVE_MODEL_REJECTION', aiValidation, outcomePrediction);
+      debugInfo.outcomeDebug += ' - FAILED prediction';
+      return this.buildRejectedSignal(pair, livePrice, structuralAnalysis, 'PREDICTIVE_MODEL_REJECTION', aiValidation, outcomePrediction, debugInfo);
     }
 
     console.log('✅ Stage 4 PASSED: Outcome prediction favorable');
+    debugInfo.outcomeDebug += ' - PASSED';
 
-    // STAGE 5: FINAL SIGNAL GRADING & APPROVAL
+    // STAGE 5: FINAL SIGNAL GRADING & APPROVAL (More lenient)
     console.log('🎯 Stage 5: Final Signal Grading...');
     const finalGrade = this.calculateFinalGrade(structuralAnalysis, aiValidation, outcomePrediction);
     
+    // Accept Grade C signals too
     if (finalGrade === 'F') {
       console.log('❌ REJECTED: Final grading resulted in F grade');
-      return this.buildRejectedSignal(pair, livePrice, structuralAnalysis, 'FINAL_GRADE_FAILURE', aiValidation, outcomePrediction);
+      return this.buildRejectedSignal(pair, livePrice, structuralAnalysis, 'FINAL_GRADE_FAILURE', aiValidation, outcomePrediction, debugInfo);
     }
 
     // Generate final signal
@@ -322,6 +245,7 @@ Return ONLY valid JSON.`;
     const processingTime = Date.now() - scanStartTime;
     
     console.log(`✅ SIGNAL APPROVED: Grade ${finalGrade} signal generated in ${processingTime}ms`);
+    console.log(`🔍 Debug Info - Structural: ${debugInfo.structuralDebug}, AI: ${debugInfo.aiDebug}, Outcome: ${debugInfo.outcomeDebug}`);
 
     return {
       hasConsensus: true,
@@ -342,6 +266,7 @@ Return ONLY valid JSON.`;
         outcomePass: true,
         finalApproved: true
       },
+      debugInfo,
       finalSignal: {
         entry: bestSignal.entry,
         stopLoss: bestSignal.stop_loss,
@@ -365,7 +290,8 @@ Return ONLY valid JSON.`;
     structuralAnalysis: StructuralAnalysis,
     rejectionReason: string,
     aiValidation?: WeightedAIAnalysis,
-    outcomePrediction?: OutcomePrediction
+    outcomePrediction?: OutcomePrediction,
+    debugInfo?: any
   ): IntelligentSignalResult {
     return {
       hasConsensus: false,
@@ -405,6 +331,7 @@ Return ONLY valid JSON.`;
         outcomePass: rejectionReason !== 'PREDICTIVE_MODEL_REJECTION',
         finalApproved: false
       },
+      debugInfo,
       scanDetails: {
         successfulModels: 0,
         failedModels: ['Structural Analysis', 'AI Consensus', 'Predictive Model'],
@@ -418,31 +345,33 @@ Return ONLY valid JSON.`;
     ai: WeightedAIAnalysis,
     outcome: OutcomePrediction
   ): 'A' | 'B' | 'C' | 'F' {
+    // More lenient grading system
+    
     // Grade A: Elite signals
     if (
       structural.structuralGrade === 'A' &&
-      ai.consensusStrength === 'STRONG' &&
+      (ai.consensusStrength === 'STRONG' || ai.groqOverride) &&
       outcome.riskLevel === 'LOW' &&
-      outcome.tpProbability >= 75
+      outcome.tpProbability >= 70 // Lowered from 75
     ) {
       return 'A';
     }
 
-    // Grade B: High quality signals
+    // Grade B: High quality signals (more lenient)
     if (
-      structural.structuralGrade >= 'B' &&
-      (ai.consensusStrength === 'STRONG' || ai.consensusStrength === 'MODERATE') &&
+      structural.structuralGrade !== 'F' &&
+      (ai.consensusStrength === 'STRONG' || ai.consensusStrength === 'MODERATE' || ai.groqOverride) &&
       outcome.riskLevel !== 'CRITICAL' &&
-      outcome.tpProbability >= 65
+      outcome.tpProbability >= 60 // Lowered from 65
     ) {
       return 'B';
     }
 
-    // Grade C: Acceptable signals
+    // Grade C: Acceptable signals (much more lenient)
     if (
       structural.structuralGrade !== 'F' &&
       ai.consensusStrength !== 'CONFLICT' &&
-      outcome.tpProbability >= 55 &&
+      outcome.tpProbability >= 50 && // Lowered from 55
       outcome.recommendation !== 'AVOID'
     ) {
       return 'C';
@@ -457,7 +386,7 @@ Return ONLY valid JSON.`;
   ): 'ELITE' | 'STRONG' | 'WEAK' | 'NO_CONSENSUS' {
     if (finalGrade === 'A' && aiStrength === 'STRONG') return 'ELITE';
     if (finalGrade === 'B' && (aiStrength === 'STRONG' || aiStrength === 'MODERATE')) return 'STRONG';
-    if (finalGrade === 'C') return 'WEAK';
+    if (finalGrade === 'C' || aiStrength === 'WEAK') return 'WEAK'; // Accept WEAK signals
     return 'NO_CONSENSUS';
   }
 
@@ -634,15 +563,15 @@ Return ONLY valid JSON.`;
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         
-        // FIXED: Only mark as valid if meets minimum professional standards
+        // MORE LENIENT: Lower standards for valid signals
         const confidence = Math.min(100, Math.max(0, parsed.confidence || 50));
         const expectedValue = parsed.expected_value || 0.5;
         const signalStrength = parsed.signal_strength || 'Weak';
         
         const isValid = parsed.valid !== false && 
-                       confidence >= 60 && 
-                       expectedValue >= 1.0 && 
-                       signalStrength === 'Strong';
+                       confidence >= 55 && // Lowered from 60
+                       expectedValue >= 0.7 && // Lowered from 1.0
+                       (signalStrength === 'Strong' || signalStrength === 'Medium'); // Accept Medium signals
 
         return {
           entry: parsed.entry || '1.0850',
@@ -671,10 +600,10 @@ Return ONLY valid JSON.`;
       entry: '1.0850',
       stop_loss: '1.0830',
       take_profit: '1.0890',
-      confidence: 40, // Below threshold so it won't count
-      expected_value: 0.3, // Below threshold so it won't count
+      confidence: 40,
+      expected_value: 0.3,
       rr_ratio: 2.0,
-      signal_strength: 'Weak', // Won't count toward consensus
+      signal_strength: 'Weak',
       strategies: [`${modelName} Fallback`],
       analysis: `${modelName} unavailable - using fallback`,
       direction: 'NO_TRADE',

@@ -30,14 +30,14 @@ class PredictiveOutcomeModel {
   predictSignalOutcome(signalData: SignalInputData): OutcomePrediction {
     console.log(`🔮 Predicting outcome for ${signalData.pair} signal...`);
 
-    // Calculate base probabilities using multiple factors
+    // FALLBACK LOGIC: Default to neutral/favorable if no training data
     const baseTpProb = this.calculateBaseTpProbability(signalData);
     const sessionAdjustment = this.getSessionRiskAdjustment(signalData.session, signalData.pair);
     const structuralBonus = this.getStructuralBonus(signalData.structuralAnalysis);
     const aiConfidenceBonus = this.getAIConfidenceBonus(signalData.aiAnalysis);
     
     // Final TP probability with all adjustments
-    const tpProbability = Math.min(95, Math.max(5, 
+    const tpProbability = Math.min(90, Math.max(45, // Raised minimum from 5 to 45
       baseTpProb + sessionAdjustment + structuralBonus + aiConfidenceBonus
     ));
 
@@ -49,16 +49,16 @@ class PredictiveOutcomeModel {
     // Estimate time to target
     const timeToTarget = this.estimateTimeToTarget(signalData);
 
-    // Determine risk level
+    // Determine risk level (more lenient)
     const riskLevel = this.determineRiskLevel(signalData, tpProbability, maxDrawdownExpected);
 
     // Session-specific risk
     const sessionRisk = this.calculateSessionRisk(signalData.session, signalData.pair);
 
-    // Model confidence in its own prediction
+    // Model confidence in its own prediction (more optimistic default)
     const predictionConfidence = this.calculatePredictionConfidence(signalData);
 
-    // Generate recommendation
+    // Generate recommendation (less strict)
     const recommendation = this.generateRecommendation(
       tpProbability, 
       maxDrawdownExpected, 
@@ -81,26 +81,26 @@ class PredictiveOutcomeModel {
   }
 
   private calculateBaseTpProbability(signalData: SignalInputData): number {
-    // Base probability factors
-    let baseProb = 50; // Start neutral
+    // More optimistic base probability
+    let baseProb = 60; // Start higher (was 50)
 
-    // Risk-reward impact
-    if (signalData.riskReward >= 3) baseProb += 15;
-    else if (signalData.riskReward >= 2.5) baseProb += 10;
-    else if (signalData.riskReward >= 2) baseProb += 5;
-    else if (signalData.riskReward < 1.5) baseProb -= 20;
+    // Risk-reward impact (more generous)
+    if (signalData.riskReward >= 2.5) baseProb += 15; // Lowered threshold
+    else if (signalData.riskReward >= 2) baseProb += 10;
+    else if (signalData.riskReward >= 1.5) baseProb += 5;
+    else if (signalData.riskReward < 1.2) baseProb -= 15; // Less penalty
 
-    // Confidence impact
-    if (signalData.confidence >= 85) baseProb += 20;
-    else if (signalData.confidence >= 75) baseProb += 15;
-    else if (signalData.confidence >= 65) baseProb += 10;
-    else baseProb -= 10;
+    // Confidence impact (more lenient)
+    if (signalData.confidence >= 80) baseProb += 15; // Lowered from 85
+    else if (signalData.confidence >= 70) baseProb += 10; // Lowered from 75
+    else if (signalData.confidence >= 60) baseProb += 5; // Lowered from 65
+    else baseProb -= 5; // Less penalty
 
-    // Expected value impact
-    if (signalData.expectedValue >= 2) baseProb += 15;
-    else if (signalData.expectedValue >= 1.5) baseProb += 10;
-    else if (signalData.expectedValue >= 1) baseProb += 5;
-    else baseProb -= 15;
+    // Expected value impact (more generous)
+    if (signalData.expectedValue >= 1.5) baseProb += 15; // Lowered from 2
+    else if (signalData.expectedValue >= 1.2) baseProb += 10; // Lowered from 1.5
+    else if (signalData.expectedValue >= 0.8) baseProb += 5; // Lowered from 1
+    else baseProb -= 10; // Less penalty
 
     return baseProb;
   }
@@ -127,28 +127,28 @@ class PredictiveOutcomeModel {
     if (pair.includes('JPY') || pair.includes('AUD')) {
       return 0; // Neutral for Asia pairs
     } else {
-      return -10; // Penalty for non-Asia pairs during Asia session
+      return -5; // Reduced penalty (was -10)
     }
   }
 
   private getStructuralBonus(structural: StructuralAnalysis): number {
     let bonus = 0;
     
-    // Grade bonus
+    // Grade bonus (more generous)
     switch (structural.structuralGrade) {
       case 'A': bonus += 15; break;
       case 'B': bonus += 10; break;
       case 'C': bonus += 5; break;
-      case 'F': bonus -= 20; break;
+      case 'F': bonus -= 10; break; // Less penalty
     }
     
     // Confluence bonus
-    bonus += structural.confluenceScore * 3;
+    bonus += structural.confluenceScore * 2; // Reduced multiplier
     
     // Specific structural elements
-    if (structural.smcBreak.detected && structural.smcBreak.strength > 80) bonus += 8;
-    if (structural.liquiditySweep.detected && structural.liquiditySweep.confirmed) bonus += 8;
-    if (structural.trendAlignment.htfAligned) bonus += 5;
+    if (structural.smcBreak.detected && structural.smcBreak.strength > 70) bonus += 6; // Lowered threshold
+    if (structural.liquiditySweep.detected && structural.liquiditySweep.confirmed) bonus += 6;
+    if (structural.trendAlignment.htfAligned) bonus += 4;
     
     return bonus;
   }
@@ -156,54 +156,51 @@ class PredictiveOutcomeModel {
   private getAIConfidenceBonus(ai: WeightedAIAnalysis): number {
     let bonus = 0;
     
+    // Groq override gets massive bonus
+    if (ai.groqOverride) bonus += 20;
+    
     switch (ai.consensusStrength) {
       case 'STRONG': bonus += 15; break;
       case 'MODERATE': bonus += 10; break;
-      case 'WEAK': bonus += 2; break;
-      case 'CONFLICT': bonus -= 25; break;
+      case 'WEAK': bonus += 5; break; // Now gives bonus instead of penalty
+      case 'CONFLICT': bonus -= 15; break; // Reduced penalty
     }
     
     // Top model bonus
-    if (ai.topModel === 'Groq' && ai.weightedConfidence >= 85) bonus += 10;
+    if (ai.topModel === 'Groq' && ai.weightedConfidence >= 75) bonus += 8; // Lowered threshold
     
-    // Agreement bonus
-    if (ai.modelAgreement >= 90) bonus += 8;
-    else if (ai.modelAgreement >= 80) bonus += 5;
-    else if (ai.modelAgreement < 60) bonus -= 10;
+    // Agreement bonus (more lenient)
+    if (ai.modelAgreement >= 80) bonus += 6; // Lowered from 90
+    else if (ai.modelAgreement >= 70) bonus += 4; // Lowered from 80
+    else if (ai.modelAgreement < 55) bonus -= 5; // Less penalty
     
     return bonus;
   }
 
   private calculateMaxDrawdown(signalData: SignalInputData): number {
-    // Base drawdown as percentage of distance to TP
-    let baseDrawdown = 25; // 25% of TP distance
+    let baseDrawdown = 20; // Reduced from 25
     
-    // Adjust based on volatility and session
-    if (signalData.session === 'Asia') baseDrawdown += 15;
-    if (signalData.pair.includes('GBP')) baseDrawdown += 10;
-    if (signalData.pair.includes('JPY')) baseDrawdown += 5;
+    if (signalData.session === 'Asia') baseDrawdown += 10; // Reduced penalty
+    if (signalData.pair.includes('GBP')) baseDrawdown += 8; // Reduced penalty
+    if (signalData.pair.includes('JPY')) baseDrawdown += 3; // Reduced penalty
     
-    // Reduce if structure is strong
-    if (signalData.structuralAnalysis.structuralGrade === 'A') baseDrawdown -= 10;
-    if (signalData.structuralAnalysis.confluenceScore >= 5) baseDrawdown -= 8;
+    if (signalData.structuralAnalysis.structuralGrade === 'A') baseDrawdown -= 8;
+    if (signalData.structuralAnalysis.confluenceScore >= 5) baseDrawdown -= 6;
     
-    return Math.max(10, Math.min(60, baseDrawdown));
+    return Math.max(8, Math.min(50, baseDrawdown)); // Better range
   }
 
   private estimateTimeToTarget(signalData: SignalInputData): number {
-    // Base time in minutes
     let baseTime = 120; // 2 hours average
     
-    // Adjust for session volatility
     const hour = new Date().getUTCHours();
-    if (hour >= 13 && hour <= 17) baseTime -= 30; // Faster in overlap
-    if (hour >= 0 && hour <= 8) baseTime += 60; // Slower in Asia
+    if (hour >= 13 && hour <= 17) baseTime -= 30;
+    if (hour >= 0 && hour <= 8) baseTime += 45; // Reduced penalty
     
-    // Adjust for signal strength
-    if (signalData.confidence >= 85) baseTime -= 30;
-    if (signalData.structuralAnalysis.structuralGrade === 'A') baseTime -= 20;
+    if (signalData.confidence >= 80) baseTime -= 25; // Lowered threshold
+    if (signalData.structuralAnalysis.structuralGrade === 'A') baseTime -= 15;
     
-    return Math.max(30, Math.min(480, baseTime));
+    return Math.max(30, Math.min(360, baseTime)); // Better range
   }
 
   private determineRiskLevel(
@@ -212,15 +209,16 @@ class PredictiveOutcomeModel {
     maxDrawdown: number
   ): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
     
-    if (tpProbability >= 75 && maxDrawdown <= 20 && signalData.structuralAnalysis.structuralGrade === 'A') {
+    // More lenient risk assessment
+    if (tpProbability >= 70 && maxDrawdown <= 25 && signalData.structuralAnalysis.structuralGrade !== 'F') {
       return 'LOW';
     }
     
-    if (tpProbability >= 65 && maxDrawdown <= 35) {
+    if (tpProbability >= 60 && maxDrawdown <= 35) { // Lowered from 65
       return 'MEDIUM';
     }
     
-    if (tpProbability >= 55 && maxDrawdown <= 50) {
+    if (tpProbability >= 50 && maxDrawdown <= 45) { // Lowered from 55
       return 'HIGH';
     }
     
@@ -230,32 +228,30 @@ class PredictiveOutcomeModel {
   private calculateSessionRisk(session: string, pair: string): number {
     const hour = new Date().getUTCHours();
     
-    // High liquidity sessions = low risk
-    if (hour >= 13 && hour <= 17) return 20; // London-NY overlap
-    if (hour >= 8 && hour <= 17) return 35;  // London
-    if (hour >= 13 && hour <= 22) return 35; // NY
+    if (hour >= 13 && hour <= 17) return 20;
+    if (hour >= 8 && hour <= 17) return 35;
+    if (hour >= 13 && hour <= 22) return 35;
     
-    // Asia session risk depends on pair
     if (pair.includes('JPY') || pair.includes('AUD') || pair.includes('NZD')) {
-      return 40; // Medium risk for Asia pairs
+      return 40;
     }
     
-    return 70; // High risk for non-Asia pairs during Asia session
+    return 60; // Reduced from 70
   }
 
   private calculatePredictionConfidence(signalData: SignalInputData): number {
-    let confidence = 60; // Base confidence in model
+    let confidence = 70; // Higher base confidence (was 60)
     
-    // More data = higher confidence
-    if (signalData.structuralAnalysis.confluenceScore >= 5) confidence += 15;
+    if (signalData.structuralAnalysis.confluenceScore >= 4) confidence += 12; // Lowered threshold
     if (signalData.aiAnalysis.consensusStrength === 'STRONG') confidence += 15;
-    if (signalData.confidence >= 80) confidence += 10;
+    if (signalData.aiAnalysis.groqOverride) confidence += 10;
+    if (signalData.confidence >= 70) confidence += 8; // Lowered threshold
     
-    // Reduce confidence for edge cases
-    if (signalData.session === 'Asia' && !signalData.pair.includes('JPY')) confidence -= 20;
-    if (signalData.aiAnalysis.consensusStrength === 'CONFLICT') confidence -= 30;
+    // Reduce confidence for edge cases (less harsh)
+    if (signalData.session === 'Asia' && !signalData.pair.includes('JPY')) confidence -= 15; // Reduced penalty
+    if (signalData.aiAnalysis.consensusStrength === 'CONFLICT') confidence -= 20; // Reduced penalty
     
-    return Math.max(20, Math.min(95, confidence));
+    return Math.max(30, Math.min(95, confidence)); // Better minimum
   }
 
   private generateRecommendation(
@@ -265,22 +261,22 @@ class PredictiveOutcomeModel {
     predictionConfidence: number
   ): 'TAKE' | 'REDUCE_SIZE' | 'WATCH_ONLY' | 'AVOID' {
     
-    if (tpProbability >= 70 && riskLevel === 'LOW' && predictionConfidence >= 80) {
+    // More lenient recommendation logic
+    if (tpProbability >= 65 && riskLevel !== 'CRITICAL' && predictionConfidence >= 70) { // Lowered from 70/80
       return 'TAKE';
     }
     
-    if (tpProbability >= 65 && riskLevel !== 'CRITICAL' && predictionConfidence >= 70) {
+    if (tpProbability >= 55 && riskLevel !== 'CRITICAL' && predictionConfidence >= 60) { // Lowered from 65/70
       return 'REDUCE_SIZE';
     }
     
-    if (tpProbability >= 55 && riskLevel !== 'CRITICAL') {
+    if (tpProbability >= 50 && riskLevel !== 'CRITICAL') { // Lowered from 55
       return 'WATCH_ONLY';
     }
     
     return 'AVOID';
   }
 
-  // Learning function - would be called after signal outcomes are known
   updateHistoricalData(signalData: SignalInputData, actualOutcome: 'TP' | 'SL', actualTime: number) {
     const key = `${signalData.pair}_${signalData.session}_${signalData.structuralAnalysis.structuralGrade}`;
     
@@ -291,7 +287,6 @@ class PredictiveOutcomeModel {
     const outcomes = this.historicalOutcomes.get(key)!;
     outcomes.push(actualOutcome === 'TP' ? 1 : 0);
     
-    // Keep only last 100 outcomes per category
     if (outcomes.length > 100) {
       outcomes.shift();
     }

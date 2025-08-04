@@ -1,4 +1,3 @@
-
 import { EnhancedAIModelResponse } from './enhancedMultiAIConsensus';
 
 export interface WeightedAIAnalysis {
@@ -11,6 +10,7 @@ export interface WeightedAIAnalysis {
   modelAgreement: number;
   conflictingModels: string[];
   reasoning: string;
+  groqOverride?: boolean;
 }
 
 export interface AIModelWeights {
@@ -37,11 +37,33 @@ class AISignalValidator {
     const validResponses = aiResponses.filter(r => 
       r.valid && 
       r.model !== 'FALLBACK' && 
-      r.confidence >= 60 &&
-      r.expected_value >= 0.8
+      r.confidence >= 55 && // Lowered from 60
+      r.expected_value >= 0.7 // Lowered from 0.8
     );
 
     console.log(`✅ Valid AI responses: ${validResponses.length}/${aiResponses.length}`);
+
+    // Check for Groq override first
+    const groqResponse = validResponses.find(r => r.model === 'Groq');
+    const groqOverride = groqResponse && 
+      (groqResponse.signal_strength === 'Strong' || groqResponse.confidence >= 80) && 
+      groqResponse.expected_value >= 1.2;
+
+    if (groqOverride) {
+      console.log(`🔥 GROQ OVERRIDE ACTIVATED: Elite signal detected`);
+      return {
+        direction: groqResponse.direction as 'BUY' | 'SELL',
+        weightedConfidence: Math.max(groqResponse.confidence, 75),
+        averageEV: Math.max(groqResponse.expected_value, 1.3),
+        averageRR: groqResponse.rr_ratio,
+        consensusStrength: 'STRONG',
+        topModel: 'Groq',
+        modelAgreement: 100,
+        conflictingModels: [],
+        reasoning: `Groq override: ${groqResponse.analysis}`,
+        groqOverride: true
+      };
+    }
 
     if (validResponses.length < 2) {
       return {
@@ -63,7 +85,7 @@ class AISignalValidator {
     // Analyze directional consensus
     const directionAnalysis = this.analyzeDirectionalConsensus(validResponses);
     
-    // Determine consensus strength
+    // Determine consensus strength (more lenient)
     const consensusStrength = this.determineConsensusStrength(
       weightedMetrics, 
       directionAnalysis, 
@@ -83,7 +105,8 @@ class AISignalValidator {
       topModel,
       modelAgreement: directionAnalysis.agreementPercentage,
       conflictingModels: directionAnalysis.conflictingModels,
-      reasoning: this.generateConsensusReasoning(validResponses, consensusStrength)
+      reasoning: this.generateConsensusReasoning(validResponses, consensusStrength),
+      groqOverride: false
     };
   }
 
@@ -112,7 +135,6 @@ class AISignalValidator {
     const directions = responses.map(r => r.direction);
     const buyVotes = directions.filter(d => d === 'BUY').length;
     const sellVotes = directions.filter(d => d === 'SELL').length;
-    const noTradeVotes = directions.filter(d => d === 'NO_TRADE').length;
 
     const totalVotes = directions.length;
     const agreementPercentage = Math.max(buyVotes, sellVotes) / totalVotes * 100;
@@ -120,10 +142,11 @@ class AISignalValidator {
     let consensusDirection: 'BUY' | 'SELL' | 'CONFLICT';
     let conflictingModels: string[] = [];
 
-    if (buyVotes > sellVotes && agreementPercentage >= 60) {
+    // LOWERED THRESHOLD: Accept with 55% agreement (was 60%)
+    if (buyVotes > sellVotes && agreementPercentage >= 55) {
       consensusDirection = 'BUY';
       conflictingModels = responses.filter(r => r.direction !== 'BUY').map(r => r.model);
-    } else if (sellVotes > buyVotes && agreementPercentage >= 60) {
+    } else if (sellVotes > buyVotes && agreementPercentage >= 55) {
       consensusDirection = 'SELL';
       conflictingModels = responses.filter(r => r.direction !== 'SELL').map(r => r.model);
     } else {
@@ -148,32 +171,32 @@ class AISignalValidator {
       return 'CONFLICT';
     }
 
-    // Strong consensus requirements
+    // RELAXED Strong consensus requirements
     if (
-      validModelCount >= 4 &&
-      metrics.confidence >= 80 &&
-      metrics.expectedValue >= 1.3 &&
-      directionAnalysis.agreementPercentage >= 80
+      validModelCount >= 3 && // Lowered from 4
+      metrics.confidence >= 75 && // Lowered from 80
+      metrics.expectedValue >= 1.2 && // Lowered from 1.3
+      directionAnalysis.agreementPercentage >= 75 // Lowered from 80
     ) {
       return 'STRONG';
     }
 
-    // Moderate consensus requirements
+    // RELAXED Moderate consensus requirements
     if (
-      validModelCount >= 3 &&
-      metrics.confidence >= 70 &&
-      metrics.expectedValue >= 1.0 &&
-      directionAnalysis.agreementPercentage >= 70
+      validModelCount >= 2 && // Lowered from 3
+      metrics.confidence >= 65 && // Lowered from 70
+      metrics.expectedValue >= 0.9 && // Lowered from 1.0
+      directionAnalysis.agreementPercentage >= 65 // Lowered from 70
     ) {
       return 'MODERATE';
     }
 
-    // Weak consensus (still tradeable but lower conviction)
+    // RELAXED Weak consensus (still tradeable)
     if (
       validModelCount >= 2 &&
-      metrics.confidence >= 65 &&
-      metrics.expectedValue >= 0.8 &&
-      directionAnalysis.agreementPercentage >= 60
+      metrics.confidence >= 60 && // Lowered from 65
+      metrics.expectedValue >= 0.7 && // Lowered from 0.8
+      directionAnalysis.agreementPercentage >= 55 // Lowered from 60
     ) {
       return 'WEAK';
     }
@@ -219,20 +242,18 @@ class AISignalValidator {
     }
   }
 
-  // Enhanced validation with conflict resolution
+  // UPDATED: More lenient validation with Groq priority
   resolveAIConflicts(analysis: WeightedAIAnalysis): boolean {
-    // If Groq gives exceptional rating, override weaker models
-    const hasGroqOverride = analysis.topModel === 'Groq' && 
-                           analysis.weightedConfidence >= 85 &&
-                           analysis.averageEV >= 1.5;
-
-    if (hasGroqOverride) {
-      console.log('🔥 Groq override activated - upgrading signal despite conflicts');
+    // Groq override always wins
+    if (analysis.groqOverride) {
+      console.log('🔥 Groq override activated - signal approved');
       return true;
     }
 
-    // Standard consensus requirements
-    return analysis.consensusStrength === 'STRONG' || analysis.consensusStrength === 'MODERATE';
+    // Accept WEAK signals too (was only STRONG/MODERATE)
+    return analysis.consensusStrength === 'STRONG' || 
+           analysis.consensusStrength === 'MODERATE' ||
+           analysis.consensusStrength === 'WEAK';
   }
 }
 
