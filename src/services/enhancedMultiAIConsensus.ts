@@ -1,3 +1,4 @@
+
 import { structuralIntelligenceScanner, StructuralAnalysis } from './structuralIntelligenceScanner';
 import { aiSignalValidator, WeightedAIAnalysis } from './aiSignalValidator';
 import { predictiveOutcomeModel, OutcomePrediction, SignalInputData } from './predictiveOutcomeModel';
@@ -411,11 +412,17 @@ Return ONLY valid JSON.`;
     ai: WeightedAIAnalysis,
     outcome: any
   ): 'A' | 'B' | 'C' | 'F' {
-    // GROQ OVERRIDE - If Groq says exceptional, it's automatically Grade A
+    // GROQ EXCEPTIONAL OVERRIDE - Automatic Grade A
+    if (ai.groqOverride && ai.reasoning?.toLowerCase().includes('exceptional')) {
+      console.log('🔥 GROQ EXCEPTIONAL - Automatic Grade A');
+      return 'A';
+    }
+    
+    // GROQ OVERRIDE - If Groq says exceptional or elite, it's automatically Grade A
     if (ai.groqOverride) {
       const groqResponse = ai.reasoning?.toLowerCase();
       if (groqResponse?.includes('exceptional') || groqResponse?.includes('elite')) {
-        console.log('🔥 GROQ EXCEPTIONAL - Automatic Grade A');
+        console.log('🔥 GROQ EXCEPTIONAL/ELITE - Automatic Grade A');
         return 'A';
       }
       console.log('🔥 GROQ OVERRIDE - Automatic Grade B');
@@ -632,16 +639,6 @@ Return ONLY valid JSON.`;
       console.error('Together AI error:', error);
       throw error;
     }
-  }
-
-  private mapConsensusToSignalStrength(
-    aiStrength: string, 
-    finalGrade: string
-  ): 'ELITE' | 'STRONG' | 'WEAK' | 'NO_CONSENSUS' {
-    if (finalGrade === 'A' && aiStrength === 'STRONG') return 'ELITE';
-    if (finalGrade === 'B' && (aiStrength === 'STRONG' || aiStrength === 'MODERATE')) return 'STRONG';
-    if (finalGrade === 'C' || aiStrength === 'WEAK') return 'WEAK'; // Accept WEAK signals
-    return 'NO_CONSENSUS';
   }
 
   private getFallbackResponse(modelName: string): EnhancedAIModelResponse {
