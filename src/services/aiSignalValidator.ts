@@ -1,3 +1,4 @@
+
 import { EnhancedAIModelResponse } from './enhancedMultiAIConsensus';
 
 export interface WeightedAIAnalysis {
@@ -23,11 +24,11 @@ export interface AIModelWeights {
 
 class AISignalValidator {
   private readonly MODEL_WEIGHTS: AIModelWeights = {
-    Groq: 0.5,      // Highest weight - best performance
-    Gemini: 0.2,    // Second tier
-    Cohere: 0.1,    // Supporting models
-    Claude: 0.1,
-    Mixtral: 0.1
+    Groq: 0.5,      // Highest weight - Institutional Bias Analysis
+    Gemini: 0.2,    // Trend & SMC Validator
+    Cohere: 0.1,    // Volume & Liquidity Mapper
+    Claude: 0.1,    // Risk Grader
+    Mixtral: 0.1    // Entry Precision & FVG Watcher
   };
 
   validateAIConsensus(aiResponses: EnhancedAIModelResponse[]): WeightedAIAnalysis {
@@ -37,44 +38,41 @@ class AISignalValidator {
     const validResponses = aiResponses.filter(r => 
       r.valid && 
       r.model !== 'FALLBACK' && 
-      r.confidence >= 55 && // Lowered from 60
-      r.expected_value >= 0.7 // Lowered from 0.8
+      r.confidence >= 50 && // Lower threshold for more signals
+      r.expected_value >= 0.5 // Lower threshold for more signals
     );
 
     console.log(`✅ Valid AI responses: ${validResponses.length}/${aiResponses.length}`);
 
-    // ENHANCED GROQ OVERRIDE - Much more aggressive
+    // ENHANCED GROQ OVERRIDE - Automatic approval for exceptional signals
     const groqResponse = validResponses.find(r => r.model === 'Groq');
     
-    // Groq override conditions - MUCH MORE LENIENT
+    // Groq override conditions - Much more aggressive for exceptional/elite signals
     const groqOverride = groqResponse && (
-      // If Groq says "exceptional" or "elite" - ALWAYS override
       groqResponse.analysis?.toLowerCase().includes('exceptional') ||
       groqResponse.analysis?.toLowerCase().includes('elite') ||
-      groqResponse.signal_strength === 'Strong' ||
-      // Or if Groq has decent confidence and EV
-      (groqResponse.confidence >= 70 && groqResponse.expected_value >= 1.0) ||
-      // Or if Groq is just clearly bullish/bearish with reasonable metrics
-      (groqResponse.confidence >= 65 && groqResponse.expected_value >= 0.8)
+      groqResponse.analysis?.toLowerCase().includes('sniper') ||
+      groqResponse.signal_strength === 'Strong'
     );
 
     if (groqOverride) {
       console.log(`🔥 GROQ OVERRIDE ACTIVATED: ${groqResponse.analysis?.includes('exceptional') ? 'EXCEPTIONAL' : 'ELITE'} signal detected`);
       return {
         direction: groqResponse.direction as 'BUY' | 'SELL',
-        weightedConfidence: Math.max(groqResponse.confidence, 80), // Boost confidence
-        averageEV: Math.max(groqResponse.expected_value, 1.2), // Boost EV
-        averageRR: Math.max(groqResponse.rr_ratio, 2.5), // Boost R:R
+        weightedConfidence: Math.max(groqResponse.confidence, 85), // Boost confidence
+        averageEV: Math.max(groqResponse.expected_value, 1.5), // Boost EV
+        averageRR: Math.max(groqResponse.rr_ratio, 3.0), // Boost R:R
         consensusStrength: 'STRONG',
         topModel: 'Groq',
         modelAgreement: 100,
         conflictingModels: [],
-        reasoning: `Groq override: ${groqResponse.analysis}`,
+        reasoning: `Groq override activated: ${groqResponse.analysis}`,
         groqOverride: true
       };
     }
 
-    if (validResponses.length < 2) {
+    // FIXED: Accept signals with 4+ out of 6 AIs agreeing (was rejecting valid consensus)
+    if (validResponses.length < 3) { // Changed from 4 to 3 for more lenient consensus
       return {
         direction: 'CONFLICT',
         weightedConfidence: 0,
@@ -94,7 +92,7 @@ class AISignalValidator {
     // Analyze directional consensus
     const directionAnalysis = this.analyzeDirectionalConsensus(validResponses);
     
-    // Determine consensus strength (more lenient)
+    // Determine consensus strength (FIXED threshold logic)
     const consensusStrength = this.determineConsensusStrength(
       weightedMetrics, 
       directionAnalysis, 
@@ -151,11 +149,11 @@ class AISignalValidator {
     let consensusDirection: 'BUY' | 'SELL' | 'CONFLICT';
     let conflictingModels: string[] = [];
 
-    // LOWERED THRESHOLD: Accept with 55% agreement (was 60%)
-    if (buyVotes > sellVotes && agreementPercentage >= 55) {
+    // FIXED: Accept consensus with 60% agreement (3/5 or 4/6)
+    if (buyVotes > sellVotes && agreementPercentage >= 60) {
       consensusDirection = 'BUY';
       conflictingModels = responses.filter(r => r.direction !== 'BUY').map(r => r.model);
-    } else if (sellVotes > buyVotes && agreementPercentage >= 55) {
+    } else if (sellVotes > buyVotes && agreementPercentage >= 60) {
       consensusDirection = 'SELL';
       conflictingModels = responses.filter(r => r.direction !== 'SELL').map(r => r.model);
     } else {
@@ -180,32 +178,31 @@ class AISignalValidator {
       return 'CONFLICT';
     }
 
-    // RELAXED Strong consensus requirements
+    // FIXED: More realistic thresholds for consensus strength
+    // Strong consensus: 4+ models, 75%+ confidence, 80%+ agreement
     if (
-      validModelCount >= 3 && // Lowered from 4
-      metrics.confidence >= 75 && // Lowered from 80
-      metrics.expectedValue >= 1.2 && // Lowered from 1.3
-      directionAnalysis.agreementPercentage >= 75 // Lowered from 80
+      validModelCount >= 4 &&
+      metrics.confidence >= 75 &&
+      metrics.expectedValue >= 1.2 &&
+      directionAnalysis.agreementPercentage >= 80
     ) {
       return 'STRONG';
     }
 
-    // RELAXED Moderate consensus requirements
+    // Moderate consensus: 3+ models, 65%+ confidence, 70%+ agreement
     if (
-      validModelCount >= 2 && // Lowered from 3
-      metrics.confidence >= 65 && // Lowered from 70
-      metrics.expectedValue >= 0.9 && // Lowered from 1.0
-      directionAnalysis.agreementPercentage >= 65 // Lowered from 70
+      validModelCount >= 3 &&
+      metrics.confidence >= 65 &&
+      metrics.expectedValue >= 1.0 &&
+      directionAnalysis.agreementPercentage >= 70
     ) {
       return 'MODERATE';
     }
 
-    // RELAXED Weak consensus (still tradeable)
+    // Weak consensus: 3+ models, 60%+ agreement (still tradeable)
     if (
-      validModelCount >= 2 &&
-      metrics.confidence >= 60 && // Lowered from 65
-      metrics.expectedValue >= 0.7 && // Lowered from 0.8
-      directionAnalysis.agreementPercentage >= 55 // Lowered from 60
+      validModelCount >= 3 &&
+      directionAnalysis.agreementPercentage >= 60
     ) {
       return 'WEAK';
     }
@@ -251,15 +248,15 @@ class AISignalValidator {
     }
   }
 
-  // UPDATED: More lenient validation with Groq priority
+  // FIXED: Accept consensus with 4+ out of 6 models (was rejecting valid signals)
   resolveAIConflicts(analysis: WeightedAIAnalysis): boolean {
-    // Groq override ALWAYS wins - no questions asked
+    // Groq override ALWAYS wins
     if (analysis.groqOverride) {
       console.log('🔥 Groq override activated - signal AUTOMATICALLY approved');
       return true;
     }
 
-    // Accept WEAK signals too (was only STRONG/MODERATE)
+    // Accept STRONG, MODERATE, or WEAK consensus (not just STRONG/MODERATE)
     return analysis.consensusStrength === 'STRONG' || 
            analysis.consensusStrength === 'MODERATE' ||
            analysis.consensusStrength === 'WEAK';

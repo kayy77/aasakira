@@ -1,267 +1,208 @@
-
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Brain, TrendingUp, Shield, Clock, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
-import { ConsensusSignalResult } from '@/services/enhancedMultiAIConsensus';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 interface EnhancedConsensusDisplayProps {
-  consensusResult: ConsensusSignalResult | null;
-  isScanning: boolean;
-  scanCount: number;
-  lastScanTime: string;
-  lastError: string | null;
-  onRefresh: () => void;
+  aiAnalysis: {
+    direction: string;
+    weightedConfidence: number;
+    averageEV: number;
+    averageRR: number;
+    consensusStrength: string;
+    topModel: string;
+    modelAgreement: number;
+    conflictingModels: string[];
+    reasoning: string;
+    groqOverride?: boolean;
+  };
+  signalStrength: string;
+  finalGrade: string;
+  processingStages?: {
+    structuralPass: boolean;
+    aiConsensusPass: boolean;
+    outcomePass: boolean;
+    finalApproved: boolean;
+  };
+  debugInfo?: {
+    structuralDebug: string;
+    aiDebug: string;
+    outcomeDebug: string;
+  };
 }
 
-const EnhancedConsensusDisplay: React.FC<EnhancedConsensusDisplayProps> = ({
-  consensusResult,
-  isScanning,
-  scanCount,
-  lastScanTime,
-  lastError,
-  onRefresh
-}) => {
-  const getStatusColor = () => {
-    if (lastError) return 'border-red-500 bg-red-500/10';
-    if (!consensusResult) return 'border-gray-600 bg-gray-900/50';
-    if (consensusResult.signalStrength === 'ELITE') return 'border-green-500 bg-green-500/10';
-    if (consensusResult.signalStrength === 'STRONG') return 'border-blue-500 bg-blue-500/10';
-    if (consensusResult.signalStrength === 'WEAK') return 'border-yellow-500 bg-yellow-500/10';
-    return 'border-red-500 bg-red-500/10';
-  };
-
-  const getStatusIcon = () => {
-    if (lastError) return <AlertTriangle className="w-5 h-5 text-red-400" />;
-    if (!consensusResult) return <Clock className="w-5 h-5 text-gray-400" />;
-    if (consensusResult.hasConsensus) return <CheckCircle className="w-5 h-5 text-green-400" />;
-    return <RefreshCw className={`w-5 h-5 text-yellow-400 ${isScanning ? 'animate-spin' : ''}`} />;
-  };
-
-  const getStatusText = () => {
-    if (lastError) return `Scan Error: ${lastError}`;
-    if (!consensusResult) return 'Initializing AI Consensus Engine...';
-    if (consensusResult.hasConsensus) {
-      // Check if it's a Groq exceptional signal
-      const hasGroqExceptional = consensusResult.aiResponses?.some(ai => 
-        ai.model === 'Groq' && ai.analysis?.toLowerCase().includes('exceptional')
-      );
-      
-      if (hasGroqExceptional) {
-        return `🔥 GROQ EXCEPTIONAL Signal Detected`;
-      }
-      
-      return `${consensusResult.signalStrength} Signal Detected`;
-    }
-    return 'No High-Conviction Signal Yet — Continue Scanning...';
-  };
-
-  const getStatusBadge = () => {
-    if (lastError) return <Badge variant="destructive">Error</Badge>;
-    if (!consensusResult) return <Badge variant="secondary">Pending</Badge>;
-    if (consensusResult.hasConsensus) {
-      // Special handling for Groq exceptional signals
-      const hasGroqExceptional = consensusResult.aiResponses?.some(ai => 
-        ai.model === 'Groq' && ai.analysis?.toLowerCase().includes('exceptional')
-      );
-      
-      if (hasGroqExceptional) {
-        return <Badge className="bg-green-500 text-white border-green-400">🔥 EXCEPTIONAL</Badge>;
-      }
-      
-      const variant = consensusResult.signalStrength === 'ELITE' ? 'default' : 'secondary';
-      return <Badge variant={variant}>{consensusResult.signalStrength}</Badge>;
-    }
-    return <Badge variant="destructive">No Consensus</Badge>;
+export const EnhancedConsensusDisplay = ({ 
+  aiAnalysis, 
+  signalStrength,
+  finalGrade,
+  processingStages,
+  debugInfo 
+}: EnhancedConsensusDisplayProps) => {
+  // FIXED: Groq Override Display - Show exceptional signals in GREEN
+  const renderGroqOverride = () => {
+    if (!aiAnalysis.groqOverride) return null;
+    
+    const isExceptional = aiAnalysis.reasoning?.toLowerCase().includes('exceptional');
+    const isElite = aiAnalysis.reasoning?.toLowerCase().includes('elite');
+    
+    return (
+      <div className={`p-3 rounded-lg border-2 ${
+        isExceptional ? 'bg-green-50 border-green-300' : 
+        isElite ? 'bg-blue-50 border-blue-300' : 
+        'bg-yellow-50 border-yellow-300'
+      }`}>
+        <div className="flex items-center gap-2">
+          <Badge className={`${
+            isExceptional ? 'bg-green-500 text-white' : 
+            isElite ? 'bg-blue-500 text-white' : 
+            'bg-yellow-500 text-black'
+          }`}>
+            🔥 GROQ OVERRIDE
+          </Badge>
+          <Badge className={`${
+            isExceptional ? 'bg-green-600 text-white' : 
+            isElite ? 'bg-blue-600 text-white' : 
+            'bg-yellow-600 text-white'
+          }`}>
+            {isExceptional ? 'EXCEPTIONAL' : isElite ? 'ELITE' : 'STRONG'}
+          </Badge>
+        </div>
+        <p className={`text-sm mt-2 ${
+          isExceptional ? 'text-green-800' : 
+          isElite ? 'text-blue-800' : 
+          'text-yellow-800'
+        }`}>
+          {aiAnalysis.reasoning}
+        </p>
+      </div>
+    );
   };
 
   return (
-    <div className="space-y-4">
-      {/* Status Card */}
-      <Card className={`${getStatusColor()} border-2`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {getStatusIcon()}
-              <CardTitle className="text-lg font-semibold text-white">
-                Enhanced AI Consensus Engine
-              </CardTitle>
-            </div>
-            {getStatusBadge()}
+    <Card className="w-full border-amber-200">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">🧠 AI Multi-Model Consensus</CardTitle>
+          <div className="flex items-center gap-2">
+            {/* FIXED: Signal Grade Display */}
+            <Badge className={`${
+              finalGrade === 'A' ? 'bg-green-500 text-white' :
+              finalGrade === 'B' ? 'bg-blue-500 text-white' :
+              finalGrade === 'C' ? 'bg-yellow-500 text-black' :
+              'bg-red-500 text-white'
+            }`}>
+              Grade {finalGrade}
+            </Badge>
+            
+            {/* Consensus Strength Badge */}
+            <Badge className={`${
+              aiAnalysis.consensusStrength === 'STRONG' ? 'bg-green-500 text-white' :
+              aiAnalysis.consensusStrength === 'MODERATE' ? 'bg-yellow-500 text-black' :
+              aiAnalysis.consensusStrength === 'WEAK' ? 'bg-orange-500 text-white' :
+              'bg-red-500 text-white'
+            }`}>
+              {aiAnalysis.consensusStrength}
+            </Badge>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-300">{getStatusText()}</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onRefresh}
-              disabled={isScanning}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        {/* Groq Override Display */}
+        {renderGroqOverride()}
+        
+        {/* AI Consensus Summary */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Direction</div>
+            <Badge className={`${
+              aiAnalysis.direction === 'BUY' ? 'bg-green-500 text-white' :
+              aiAnalysis.direction === 'SELL' ? 'bg-red-500 text-white' :
+              'bg-gray-500 text-white'
+            }`}>
+              {aiAnalysis.direction}
+            </Badge>
           </div>
-
-          {/* Enhanced Scanning Stats */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Scans Completed:</span>
-              <span className="text-white font-mono">{scanCount}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Last Scan:</span>
-              <span className="text-white font-mono">{lastScanTime || 'N/A'}</span>
+          
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Agreement</div>
+            <div className="text-lg font-semibold">
+              {Math.round(aiAnalysis.modelAgreement)}%
             </div>
           </div>
+        </div>
 
-          {/* AI Response Details */}
-          {consensusResult && (
-            <div className="border-t border-gray-700 pt-3 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">AI Models Responded:</span>
-                <span className="text-white font-bold">
-                  {consensusResult.scanDetails.successfulModels}/{consensusResult.totalModels}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Valid Signals:</span>
-                <span className="text-white font-bold">
-                  {consensusResult.consensusCount}/{consensusResult.totalModels}
-                </span>
-              </div>
-              
-              {consensusResult.scanDetails.failedModels.length > 0 && (
-                <div>
-                  <span className="text-gray-400 text-xs">Failed Models: </span>
-                  <span className="text-red-400 text-xs">
-                    {consensusResult.scanDetails.failedModels.join(', ')}
-                  </span>
-                </div>
-              )}
-              
-              {consensusResult.hasConsensus && (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Avg Confidence:</span>
-                    <span className="text-green-400 font-bold">
-                      {Math.round(consensusResult.avgConfidence)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Expected Value:</span>
-                    <span className="text-blue-400 font-bold">
-                      +{consensusResult.avgExpectedValue.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Risk:Reward:</span>
-                    <span className="text-purple-400 font-bold">
-                      {consensusResult.avgRiskReward.toFixed(1)}:1
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Model Performance Metrics */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground">Confidence</div>
+            <div className="text-sm font-semibold">{Math.round(aiAnalysis.weightedConfidence)}%</div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground">Expected Value</div>
+            <div className="text-sm font-semibold">+{aiAnalysis.averageEV.toFixed(2)}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground">Risk:Reward</div>
+            <div className="text-sm font-semibold">{aiAnalysis.averageRR.toFixed(1)}:1</div>
+          </div>
+        </div>
 
-      {/* Signal Details Card - Only show if we have consensus */}
-      {consensusResult?.hasConsensus && consensusResult.finalSignal && (
-        <Card className="border-green-500/30 bg-green-500/5">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-400" />
-              <CardTitle className="text-lg text-green-400">
-                High-Conviction Signal
-              </CardTitle>
+        {/* Processing Stages Status */}
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Validation Stages</div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className={`flex items-center gap-1 ${
+              processingStages?.structuralPass ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {processingStages?.structuralPass ? '✅' : '❌'} Structural Analysis
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="text-sm text-gray-400">Direction</div>
-                <div className={`text-lg font-bold ${
-                  consensusResult.finalSignal.direction === 'BUY' ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {consensusResult.finalSignal.direction}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm text-gray-400">Entry</div>
-                <div className="text-lg font-bold text-white font-mono">
-                  {consensusResult.finalSignal.entry}
-                </div>
-              </div>
+            <div className={`flex items-center gap-1 ${
+              processingStages?.aiConsensusPass ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {processingStages?.aiConsensusPass ? '✅' : '❌'} AI Consensus
             </div>
+            <div className={`flex items-center gap-1 ${
+              processingStages?.outcomePass ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {processingStages?.outcomePass ? '✅' : '❌'} Outcome Prediction
+            </div>
+            <div className={`flex items-center gap-1 ${
+              processingStages?.finalApproved ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {processingStages?.finalApproved ? '✅' : '❌'} Final Approval
+            </div>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="text-sm text-gray-400">Stop Loss</div>
-                <div className="text-sm font-mono text-red-400">
-                  {consensusResult.finalSignal.stopLoss}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm text-gray-400">Take Profit</div>
-                <div className="text-sm font-mono text-green-400">
-                  {consensusResult.finalSignal.takeProfit}
-                </div>
-              </div>
-            </div>
+        {/* AI Reasoning */}
+        <div className="space-y-2">
+          <div className="text-sm font-medium">AI Analysis</div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {aiAnalysis.reasoning}
+          </p>
+        </div>
 
-            <div className="border-t border-gray-700 pt-3">
-              <div className="text-sm text-gray-400 mb-2">Strategies:</div>
-              <div className="flex flex-wrap gap-1">
-                {consensusResult.finalSignal.strategies.map((strategy, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {strategy}
-                  </Badge>
-                ))}
-              </div>
+        {/* Debug Information */}
+        {debugInfo && (
+          <details className="text-xs">
+            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+              Debug Information
+            </summary>
+            <div className="mt-2 space-y-1 text-muted-foreground">
+              <div>Structural: {debugInfo.structuralDebug}</div>
+              <div>AI: {debugInfo.aiDebug}</div>
+              <div>Outcome: {debugInfo.outcomeDebug}</div>
             </div>
-
-            <div className="border-t border-gray-700 pt-3">
-              <div className="text-sm text-gray-400 mb-2">AI Analysis:</div>
-              <div className="text-sm text-gray-300 italic">
-                "{consensusResult.finalSignal.analysis}"
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Scanning Status - Show when actively scanning */}
-      {isScanning && (!consensusResult || !consensusResult.hasConsensus) && (
-        <Card className="border-gray-600 bg-gray-900/50">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="animate-spin">
-                <Brain className="w-6 h-6 text-blue-400" />
-              </div>
-              <div className="space-y-2 flex-1">
-                <div className="text-white font-medium">
-                  Scanning AI Models for High-Conviction Signals...
-                </div>
-                <div className="text-sm text-gray-400">
-                  Scan #{scanCount} • Looking for 3+ AI agreement with 75%+ confidence
-                </div>
-                {consensusResult && (
-                  <div className="text-xs text-gray-500">
-                    Last scan: {consensusResult.scanDetails.successfulModels}/{consensusResult.totalModels} AIs responded, {consensusResult.consensusCount} valid signals
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </details>
+        )}
+      </CardContent>
+    </Card>
   );
 };
-
-export default EnhancedConsensusDisplay;
