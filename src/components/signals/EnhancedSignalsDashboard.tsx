@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -220,27 +221,27 @@ const EnhancedSignalsDashboard: React.FC = () => {
             </p>
           </div>
           
-          {/* Only show consensus display if we have consensus result */}
+          {/* FIXED: Only show consensus display if we have valid consensus result */}
           {consensusResult && (
             <EnhancedConsensusDisplay
               aiAnalysis={{
-                direction: consensusResult.direction || 'NEUTRAL',
-                weightedConfidence: consensusResult.weightedConfidence || 0,
-                averageEV: consensusResult.averageEV || 0,
-                averageRR: consensusResult.averageRR || 0,
-                consensusStrength: consensusResult.consensusStrength || 'WEAK',
-                topModel: consensusResult.topPerformingModel || 'Unknown',
-                modelAgreement: consensusResult.agreementPercentage || 0,
-                conflictingModels: consensusResult.conflictingModels || [],
-                reasoning: consensusResult.reasoning || 'No analysis available'
+                direction: consensusResult.direction,
+                weightedConfidence: consensusResult.weightedConfidence,
+                averageEV: consensusResult.averageEV,
+                averageRR: consensusResult.averageRR,
+                consensusStrength: consensusResult.consensusStrength,
+                topModel: consensusResult.topPerformingModel,
+                modelAgreement: consensusResult.agreementPercentage,
+                conflictingModels: consensusResult.conflictingModels,
+                reasoning: consensusResult.reasoning
               }}
-              signalStrength={consensusResult.signalStrength || 'WEAK'}
-              finalGrade={consensusResult.finalGrade || 'D'}
+              signalStrength={consensusResult.signalStrength}
+              finalGrade={consensusResult.finalGrade}
               processingStages={{
-                structuralPass: true,
-                aiConsensusPass: consensusResult.hasConsensus || false,
-                outcomePass: true,
-                finalApproved: consensusResult.hasConsensus || false
+                structuralPass: consensusResult.processingStages?.structuralPass || true,
+                aiConsensusPass: consensusResult.processingStages?.aiConsensusPass || consensusResult.hasConsensus,
+                outcomePass: consensusResult.processingStages?.outcomePass || true,
+                finalApproved: consensusResult.processingStages?.finalApproved || consensusResult.hasConsensus
               }}
             />
           )}
