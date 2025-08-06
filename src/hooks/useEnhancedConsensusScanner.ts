@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { enhancedMultiAIConsensus, ConsensusSignalResult } from '@/services/enhancedMultiAIConsensus';
+import { EnhancedMultiAIConsensusEngine, ConsensusSignalResult } from '@/services/enhancedMultiAIConsensus';
 
 interface ScannerState {
   isScanning: boolean;
@@ -32,7 +32,8 @@ export const useEnhancedConsensusScanner = () => {
       
       console.log(`🔍 Enhanced Consensus Scan #${state.scanCount + 1}: ${randomPair} at ${livePrice.toFixed(5)}`);
       
-      const result = await enhancedMultiAIConsensus.scanForHighQualitySignals(randomPair, livePrice);
+      const consensusEngine = EnhancedMultiAIConsensusEngine.getInstance();
+      const result = await consensusEngine.scanForHighQualitySignals(randomPair, livePrice);
       
       setState(prev => ({
         ...prev,

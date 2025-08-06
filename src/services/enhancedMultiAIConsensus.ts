@@ -1,6 +1,17 @@
 
 import { EnhancedSignal } from './enhancedEliteSignalEngine';
 
+export interface EnhancedAIModelResponse {
+  model: string;
+  direction: 'BUY' | 'SELL';
+  confidence: number;
+  expected_value: number;
+  rr_ratio: number;
+  analysis: string;
+  valid: boolean;
+  signal_strength: 'Weak' | 'Moderate' | 'Strong' | 'Exceptional';
+}
+
 export interface ConsensusSignalResult {
   direction: 'BULLISH' | 'BEARISH';
   weightedConfidence: number;
@@ -12,7 +23,7 @@ export interface ConsensusSignalResult {
   conflictingModels: string[];
   reasoning: string;
   hasConsensus: boolean;
-  signalStrength: 'WEAK' | 'MODERATE' | 'STRONG' | 'EXCEPTIONAL';
+  signalStrength: 'WEAK' | 'MODERATE' | 'STRONG' | 'EXCEPTIONAL' | 'ELITE';
   finalGrade: 'A+' | 'A' | 'B+' | 'B' | 'C+' | 'C' | 'D' | 'F';
   processingStages: {
     structuralPass: boolean;
@@ -21,6 +32,12 @@ export interface ConsensusSignalResult {
     finalApproved: boolean;
   };
   recommendation: 'AVOID' | 'WATCH_ONLY' | 'TAKE' | 'REDUCE_SIZE';
+  consensusCount: number;
+  totalModels: number;
+  scanDetails: {
+    successfulModels: number;
+    failedModels: string[];
+  };
 }
 
 const AI_MODELS = {
@@ -53,7 +70,7 @@ export class EnhancedMultiAIConsensusEngine {
     return EnhancedMultiAIConsensusEngine.instance;
   }
 
-  async scanForConsensus(): Promise<ConsensusSignalResult | null> {
+  async scanForHighQualitySignals(pair?: string, livePrice?: number): Promise<ConsensusSignalResult> {
     this.scanCount++;
     this.lastScanTime = new Date();
     
@@ -66,24 +83,30 @@ export class EnhancedMultiAIConsensusEngine {
       
       return consensus;
     } catch (error) {
-      console.error('Consensus scan failed:', error);
-      return null;
+      console.error('Enhanced consensus scan failed:', error);
+      return this.getFailedResult();
     }
   }
 
   private async generateAIResponses(): Promise<AIModelResponse[]> {
     const responses: AIModelResponse[] = [];
     
-    // Simulate different AI model responses
+    // Simulate different AI model responses with more realistic consensus
     const models = Object.entries(AI_MODELS);
+    const shouldHaveConsensus = Math.random() > 0.4; // 60% chance of consensus
+    const consensusDirection = Math.random() > 0.5 ? 'BULLISH' : 'BEARISH';
     
     for (const [modelName, config] of models) {
+      const direction = shouldHaveConsensus && Math.random() > 0.3 
+        ? consensusDirection 
+        : (Math.random() > 0.5 ? 'BULLISH' : 'BEARISH');
+      
       const response: AIModelResponse = {
         model: modelName,
-        direction: Math.random() > 0.5 ? 'BULLISH' : 'BEARISH',
+        direction,
         confidence: 60 + Math.random() * 35, // 60-95%
-        expectedValue: 0.5 + Math.random() * 2.5, // 0.5-3.0
-        riskReward: 1 + Math.random() * 3, // 1:1 to 1:4
+        expectedValue: 0.8 + Math.random() * 2.2, // 0.8-3.0
+        riskReward: 1.5 + Math.random() * 2.5, // 1.5:1 to 4:1
         reasoning: this.generateReasoning(modelName, config.role),
         weight: config.weight
       };
@@ -96,11 +119,11 @@ export class EnhancedMultiAIConsensusEngine {
 
   private generateReasoning(model: string, role: string): string {
     const reasoningMap = {
-      'structural_analysis': 'Strong institutional order block identified with valid FVG',
-      'trend_confirmation': 'Multi-timeframe alignment confirms directional bias',
-      'risk_assessment': 'Risk-reward ratio favorable with clear invalidation level',
-      'volume_analysis': 'Volume profile supports directional movement',
-      'entry_timing': 'Entry timing aligns with session open and volatility'
+      'structural_analysis': 'Strong institutional order block identified with valid FVG alignment',
+      'trend_confirmation': 'Multi-timeframe alignment confirms directional bias with BOS',
+      'risk_assessment': 'Risk-reward ratio favorable with clear invalidation level at liquidity',
+      'volume_analysis': 'Volume profile supports directional movement with smart money flow',
+      'entry_timing': 'Entry timing aligns with session open and optimal volatility window'
     };
     
     return reasoningMap[role as keyof typeof reasoningMap] || 'Standard analysis confirms signal validity';
@@ -129,7 +152,7 @@ export class EnhancedMultiAIConsensusEngine {
       .map(r => r.model);
     
     const consensusStrength = this.determineConsensusStrength(weightedConfidence, agreementPercentage);
-    const signalStrength = consensusStrength;
+    const signalStrength = consensusStrength === 'EXCEPTIONAL' ? 'ELITE' : consensusStrength;
     const hasConsensus = agreementPercentage >= 60 && weightedConfidence >= 70;
     
     const finalGrade = this.calculateGrade(weightedConfidence, averageEV, agreementPercentage);
@@ -157,7 +180,13 @@ export class EnhancedMultiAIConsensusEngine {
       signalStrength,
       finalGrade,
       processingStages,
-      recommendation
+      recommendation,
+      consensusCount: dominantVotes.length,
+      totalModels: responses.length,
+      scanDetails: {
+        successfulModels: responses.length,
+        failedModels: []
+      }
     };
   }
 
@@ -189,6 +218,36 @@ export class EnhancedMultiAIConsensusEngine {
     return 'WATCH_ONLY';
   }
 
+  private getFailedResult(): ConsensusSignalResult {
+    return {
+      direction: 'BULLISH',
+      weightedConfidence: 0,
+      averageEV: 0,
+      averageRR: 0,
+      consensusStrength: 'WEAK',
+      topPerformingModel: 'none',
+      agreementPercentage: 0,
+      conflictingModels: [],
+      reasoning: 'Scan failed - no AI models responded',
+      hasConsensus: false,
+      signalStrength: 'WEAK',
+      finalGrade: 'F',
+      processingStages: {
+        structuralPass: false,
+        aiConsensusPass: false,
+        outcomePass: false,
+        finalApproved: false
+      },
+      recommendation: 'AVOID',
+      consensusCount: 0,
+      totalModels: 5,
+      scanDetails: {
+        successfulModels: 0,
+        failedModels: ['groq', 'gemini', 'openai', 'cohere', 'together']
+      }
+    };
+  }
+
   getScanStats() {
     return {
       scanCount: this.scanCount,
@@ -196,3 +255,6 @@ export class EnhancedMultiAIConsensusEngine {
     };
   }
 }
+
+// Export singleton instance
+export const enhancedMultiAIConsensus = EnhancedMultiAIConsensusEngine.getInstance();

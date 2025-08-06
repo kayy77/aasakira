@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { enhancedMultiAIConsensus, ConsensusSignalResult } from '@/services/enhancedMultiAIConsensus';
+import { EnhancedMultiAIConsensusEngine, ConsensusSignalResult } from '@/services/enhancedMultiAIConsensus';
 
 export const useEnhancedSignalScanner = () => {
   const [consensusResult, setConsensusResult] = useState<ConsensusSignalResult | null>(null);
@@ -34,7 +34,8 @@ export const useEnhancedSignalScanner = () => {
   const performScan = async () => {
     try {
       console.log('🧠 Performing AI consensus scan...');
-      const result = await enhancedMultiAIConsensus.scanForHighQualitySignals();
+      const consensusEngine = EnhancedMultiAIConsensusEngine.getInstance();
+      const result = await consensusEngine.scanForHighQualitySignals();
       
       setConsensusResult(result);
       setScanCount(prev => prev + 1);
