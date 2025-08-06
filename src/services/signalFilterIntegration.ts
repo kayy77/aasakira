@@ -2,6 +2,7 @@ import { EliteSignalEngine } from './eliteSignalEngine';
 import { multiAIConsensusEngine } from './multiAIConsensusEngine';
 import { groqService } from './groqService';
 import { ictSniperValidator, ICTSniperSignal } from './ictSniperValidator';
+import { EnhancedSignalValidationEngine } from './enhancedSignalValidationEngine';
 
 interface FilteredSignalRequest {
   filterType: 'strong' | 'medium' | 'weak';
@@ -28,10 +29,10 @@ interface EnhancedSignalResult {
 export class SignalFilterIntegration {
   
   static async getFilteredSignals(request: FilteredSignalRequest): Promise<EnhancedSignalResult[]> {
-    console.log(`🎯 Generating ${request.filterType.toUpperCase()} signals with ICT/SMC validation`);
+    console.log(`🎯 Generating ${request.filterType.toUpperCase()} signals with enhanced validation`);
     
     const results: EnhancedSignalResult[] = [];
-    const maxAttempts = 5; // Increased attempts for better signal discovery
+    const maxAttempts = 5;
     
     for (let i = 0; i < maxAttempts; i++) {
       try {
@@ -44,13 +45,22 @@ export class SignalFilterIntegration {
         
         if (!signal) continue;
         
-        // Enhanced signal validation with ICT model
-        const validationResult = this.validateSignalWithICT(signal, request.filterType);
-        if (!validationResult.passed) {
-          console.log(`❌ Signal failed ICT validation: ${validationResult.reason}`);
+        // ENHANCED VALIDATION: Use new validation engine
+        const validationInput = this.buildValidationInput(signal);
+        const validationResult = await EnhancedSignalValidationEngine.validateSignal(validationInput);
+        
+        // Only accept APPROVED or WEAK_APPROVED signals
+        if (validationResult.status === 'REJECTED') {
+          console.log(`❌ Signal validation failed: ${validationResult.reason}`);
           continue;
         }
         
+        // Filter based on requested filter type
+        if (!this.meetsFilterRequirements(validationResult.grade, request.filterType)) {
+          console.log(`❌ Signal grade ${validationResult.grade} doesn't meet ${request.filterType} requirements`);
+          continue;
+        }
+
         // Get AI consensus analysis
         const aiAnalysis = await this.getAIConsensusForSignal(signal);
         
@@ -66,12 +76,6 @@ export class SignalFilterIntegration {
             confidence: sniperResult.confidence,
             verdict: sniperResult.finalVerdict
           };
-          
-          // Filter out non-sniper signals for strong filter
-          if (request.filterType === 'strong' && !sniperResult.isSniper) {
-            console.log(`❌ Strong filter requires sniper grade, got: ${sniperResult.grade}`);
-            continue;
-          }
         }
         
         // Generate Groq institutional justification
@@ -80,12 +84,15 @@ export class SignalFilterIntegration {
         const enhancedResult: EnhancedSignalResult = {
           signal: {
             ...signal,
-            grade: ictSniperValidator.gradeSignalConfidence(signal.confidence),
-            ictValidated: true
+            grade: validationResult.grade,
+            validationStatus: validationResult.status,
+            finalConfidence: validationResult.finalConfidence,
+            criticalIssues: validationResult.criticalIssues,
+            recommendations: validationResult.recommendations
           },
           aiAnalysis: aiAnalysis.reasoning.join(' | '),
-          institutionalGrade: aiAnalysis.institutional_grade,
-          confidenceScore: signal.confidence,
+          institutionalGrade: validationResult.grade,
+          confidenceScore: validationResult.finalConfidence,
           filterBreakdown: signal.filterBreakdown.passed,
           groqJustification,
           sniperValidation
@@ -98,11 +105,50 @@ export class SignalFilterIntegration {
       }
     }
     
-    console.log(`✅ Generated ${results.length} ICT-validated ${request.filterType} signals`);
+    console.log(`✅ Generated ${results.length} validated ${request.filterType} signals`);
     return results;
   }
-  
-  // ICT Model signal validation
+
+  private static buildValidationInput(signal: any) {
+    const aiVotes = {
+      groq: signal.aiAnalysis?.groq ? { vote: signal.aiAnalysis.groq.direction, confidence: signal.aiAnalysis.groq.confidence } : undefined,
+      gemini: signal.aiAnalysis?.gemini ? { vote: signal.aiAnalysis.gemini.direction, confidence: signal.aiAnalysis.gemini.confidence } : undefined,
+      cohere: signal.aiAnalysis?.cohere ? { vote: signal.aiAnalysis.cohere.direction, confidence: signal.aiAnalysis.cohere.confidence } : undefined,
+    };
+
+    return {
+      pair: signal.pair,
+      confidence: signal.confidence,
+      expectedValue: signal.expectedValue || 1.0,
+      confluenceScore: signal.filtersScore || signal.confluenceScore || 0,
+      maxConfluence: signal.maxFilters || 6,
+      strategies: signal.filterBreakdown?.passed || [],
+      aiVotes,
+      rsiDivergence: signal.filterBreakdown?.passed.some((f: string) => f.includes('RSI')) || false,
+      volumeSpike: signal.filterBreakdown?.passed.some((f: string) => f.includes('Volume')) || false,
+      session: this.getCurrentSession(),
+      hasOrderBlock: signal.filterBreakdown?.passed.some((f: string) => f.includes('Order Block')) || false,
+      hasFVG: signal.filterBreakdown?.passed.some((f: string) => f.includes('FVG') || f.includes('Fair Value Gap')) || false,
+      hasBOS: signal.filterBreakdown?.passed.some((f: string) => f.includes('BOS') || f.includes('Break of Structure')) || false,
+      entry: parseFloat(signal.entry),
+      stopLoss: parseFloat(signal.stopLoss),
+      takeProfit: parseFloat(signal.takeProfit)
+    };
+  }
+
+  private static meetsFilterRequirements(grade: string, filterType: string): boolean {
+    switch (filterType) {
+      case 'strong':
+        return ['A+', 'A'].includes(grade);
+      case 'medium':
+        return ['A+', 'A', 'B'].includes(grade);
+      case 'weak':
+        return ['A+', 'A', 'B', 'C'].includes(grade);
+      default:
+        return true;
+    }
+  }
+
   private static validateSignalWithICT(signal: any, filterType: string): { passed: boolean, reason: string } {
     
     // ATR-based SL/TP validation (simulated)

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,7 @@ import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import EnhancedSignalCard from './EnhancedSignalCard';
 import SignalQualityFilter from './SignalQualityFilter';
-import EnhancedConsensusDisplay from './EnhancedConsensusDisplay';
+import { EnhancedConsensusDisplay } from './EnhancedConsensusDisplay';
 import { useEnhancedConsensusScanner } from '@/hooks/useEnhancedConsensusScanner';
 
 const EnhancedSignalsDashboard: React.FC = () => {
