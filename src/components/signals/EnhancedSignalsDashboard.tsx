@@ -221,7 +221,7 @@ const EnhancedSignalsDashboard: React.FC = () => {
             </p>
           </div>
           
-          {/* FIXED: Only show consensus display if we have valid consensus result */}
+          {/* Only show consensus display if we have valid consensus result */}
           {consensusResult && (
             <EnhancedConsensusDisplay
               aiAnalysis={{
