@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -221,14 +220,67 @@ const EnhancedSignalsDashboard: React.FC = () => {
             </p>
           </div>
           
-          <EnhancedConsensusDisplay
-            consensusResult={consensusResult}
-            isScanning={consensusScanning}
-            scanCount={scanCount}
-            lastScanTime={lastScanTime}
-            lastError={lastError}
-            onRefresh={refreshScan}
-          />
+          {/* Only show consensus display if we have consensus result */}
+          {consensusResult && (
+            <EnhancedConsensusDisplay
+              aiAnalysis={{
+                direction: consensusResult.direction || 'NEUTRAL',
+                weightedConfidence: consensusResult.weightedConfidence || 0,
+                averageEV: consensusResult.averageEV || 0,
+                averageRR: consensusResult.averageRR || 0,
+                consensusStrength: consensusResult.consensusStrength || 'WEAK',
+                topModel: consensusResult.topPerformingModel || 'Unknown',
+                modelAgreement: consensusResult.agreementPercentage || 0,
+                conflictingModels: consensusResult.conflictingModels || [],
+                reasoning: consensusResult.reasoning || 'No analysis available'
+              }}
+              signalStrength={consensusResult.signalStrength || 'WEAK'}
+              finalGrade={consensusResult.finalGrade || 'D'}
+              processingStages={{
+                structuralPass: true,
+                aiConsensusPass: consensusResult.hasConsensus || false,
+                outcomePass: true,
+                finalApproved: consensusResult.hasConsensus || false
+              }}
+            />
+          )}
+          
+          {/* Scan Status Display */}
+          <Card className="glass-card border-blue-500/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {consensusScanning ? (
+                    <Loader className="w-4 h-4 animate-spin text-blue-400" />
+                  ) : (
+                    <Brain className="w-4 h-4 text-blue-400" />
+                  )}
+                  <span className="text-white">
+                    {consensusScanning ? 'Scanning for consensus...' : 'Consensus Engine Ready'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-400">
+                    Scans: {scanCount} | Last: {lastScanTime || 'Never'}
+                  </div>
+                  <Button
+                    onClick={refreshScan}
+                    variant="outline"
+                    size="sm"
+                    disabled={consensusScanning}
+                    className="border-blue-500/30 text-blue-400"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              {lastError && (
+                <div className="mt-2 text-red-400 text-sm">
+                  Error: {lastError}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Actions */}
