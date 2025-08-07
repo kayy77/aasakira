@@ -1,5 +1,5 @@
 
-import { EnhancedSignal } from './enhancedEliteSignalEngine';
+import { AITaskDelegationEngine, SignalContext } from './aiTaskDelegationEngine';
 
 export interface EnhancedAIModelResponse {
   model: string;
@@ -38,24 +38,11 @@ export interface ConsensusSignalResult {
     successfulModels: number;
     failedModels: string[];
   };
-}
-
-const AI_MODELS = {
-  groq: { weight: 0.30, role: 'structural_analysis' },
-  gemini: { weight: 0.25, role: 'trend_confirmation' },
-  openai: { weight: 0.20, role: 'risk_assessment' },
-  cohere: { weight: 0.15, role: 'volume_analysis' },
-  together: { weight: 0.10, role: 'entry_timing' }
-};
-
-interface AIModelResponse {
-  model: string;
-  direction: 'BULLISH' | 'BEARISH';
-  confidence: number;
-  expectedValue: number;
-  riskReward: number;
-  reasoning: string;
-  weight: number;
+  // New enhanced fields
+  aiTaskResults: any[];
+  overallVerdict: 'STRONG' | 'MEDIUM' | 'WEAK' | 'REJECTED';
+  institutionalGrade: string;
+  deepAnalysisReasoning: string;
 }
 
 export class EnhancedMultiAIConsensusEngine {
@@ -74,12 +61,19 @@ export class EnhancedMultiAIConsensusEngine {
     this.scanCount++;
     this.lastScanTime = new Date();
     
+    console.log('🔍 Enhanced AI Consensus Scan Starting...');
+    
     try {
-      // Simulate AI model responses
-      const aiResponses = await this.generateAIResponses();
+      // Generate realistic signal context
+      const signalContext = this.generateSignalContext(pair, livePrice);
       
-      // Calculate consensus
-      const consensus = this.calculateConsensus(aiResponses);
+      // Run deep AI task delegation analysis
+      const aiAnalysis = await AITaskDelegationEngine.analyzeSignal(signalContext);
+      
+      // Build enhanced consensus result
+      const consensus = this.buildEnhancedConsensusResult(signalContext, aiAnalysis);
+      
+      console.log(`📊 Scan Complete: ${consensus.overallVerdict} | Grade: ${consensus.finalGrade} | Consensus: ${consensus.consensusCount}/5`);
       
       return consensus;
     } catch (error) {
@@ -88,134 +82,147 @@ export class EnhancedMultiAIConsensusEngine {
     }
   }
 
-  private async generateAIResponses(): Promise<AIModelResponse[]> {
-    const responses: AIModelResponse[] = [];
+  private generateSignalContext(pair?: string, livePrice?: number): SignalContext {
+    const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCAD', 'AUDUSD'];
+    const basePrices = { EURUSD: 1.0850, GBPUSD: 1.2650, USDJPY: 150.25, USDCAD: 1.3580, AUDUSD: 0.6596 };
     
-    // Simulate different AI model responses with more realistic consensus
-    const models = Object.entries(AI_MODELS);
-    const shouldHaveConsensus = Math.random() > 0.4; // 60% chance of consensus
-    const consensusDirection = Math.random() > 0.5 ? 'BULLISH' : 'BEARISH';
+    const selectedPair = pair || pairs[Math.floor(Math.random() * pairs.length)];
+    const basePrice = livePrice || basePrices[selectedPair as keyof typeof basePrices] || 1.0000;
+    const direction = Math.random() > 0.5 ? 'BUY' : 'SELL';
     
-    for (const [modelName, config] of models) {
-      const direction = shouldHaveConsensus && Math.random() > 0.3 
-        ? consensusDirection 
-        : (Math.random() > 0.5 ? 'BULLISH' : 'BEARISH');
-      
-      const response: AIModelResponse = {
-        model: modelName,
-        direction,
-        confidence: 60 + Math.random() * 35, // 60-95%
-        expectedValue: 0.8 + Math.random() * 2.2, // 0.8-3.0
-        riskReward: 1.5 + Math.random() * 2.5, // 1.5:1 to 4:1
-        reasoning: this.generateReasoning(modelName, config.role),
-        weight: config.weight
-      };
-      
-      responses.push(response);
-    }
+    const pipValue = selectedPair.includes('JPY') ? 0.01 : 0.0001;
+    const stopDistance = (15 + Math.random() * 10) * pipValue;
+    const targetDistance = stopDistance * (2 + Math.random() * 1.5);
     
-    return responses;
-  }
-
-  private generateReasoning(model: string, role: string): string {
-    const reasoningMap = {
-      'structural_analysis': 'Strong institutional order block identified with valid FVG alignment',
-      'trend_confirmation': 'Multi-timeframe alignment confirms directional bias with BOS',
-      'risk_assessment': 'Risk-reward ratio favorable with clear invalidation level at liquidity',
-      'volume_analysis': 'Volume profile supports directional movement with smart money flow',
-      'entry_timing': 'Entry timing aligns with session open and optimal volatility window'
-    };
+    const entry = basePrice + (Math.random() - 0.5) * 0.001;
+    const stopLoss = direction === 'BUY' ? entry - stopDistance : entry + stopDistance;
+    const takeProfit = direction === 'BUY' ? entry + targetDistance : entry - targetDistance;
     
-    return reasoningMap[role as keyof typeof reasoningMap] || 'Standard analysis confirms signal validity';
-  }
-
-  private calculateConsensus(responses: AIModelResponse[]): ConsensusSignalResult {
-    const bullishVotes = responses.filter(r => r.direction === 'BULLISH');
-    const bearishVotes = responses.filter(r => r.direction === 'BEARISH');
-    
-    const weightedBullish = bullishVotes.reduce((sum, r) => sum + r.weight, 0);
-    const weightedBearish = bearishVotes.reduce((sum, r) => sum + r.weight, 0);
-    
-    const direction = weightedBullish > weightedBearish ? 'BULLISH' : 'BEARISH';
-    const dominantVotes = direction === 'BULLISH' ? bullishVotes : bearishVotes;
-    
-    const weightedConfidence = dominantVotes.reduce((sum, r) => sum + (r.confidence * r.weight), 0) / 
-                              dominantVotes.reduce((sum, r) => sum + r.weight, 0);
-    
-    const averageEV = dominantVotes.reduce((sum, r) => sum + r.expectedValue, 0) / dominantVotes.length;
-    const averageRR = dominantVotes.reduce((sum, r) => sum + r.riskReward, 0) / dominantVotes.length;
-    
-    const agreementPercentage = Math.max(weightedBullish, weightedBearish) * 100;
-    
-    const conflictingModels = responses
-      .filter(r => r.direction !== direction)
-      .map(r => r.model);
-    
-    const consensusStrength = this.determineConsensusStrength(weightedConfidence, agreementPercentage);
-    const signalStrength = consensusStrength === 'EXCEPTIONAL' ? 'ELITE' : consensusStrength;
-    const hasConsensus = agreementPercentage >= 60 && weightedConfidence >= 70;
-    
-    const finalGrade = this.calculateGrade(weightedConfidence, averageEV, agreementPercentage);
-    
-    const processingStages = {
-      structuralPass: true,
-      aiConsensusPass: hasConsensus,
-      outcomePass: averageEV > 1.0,
-      finalApproved: hasConsensus && averageEV > 1.0
-    };
-    
-    const recommendation = this.getRecommendation(consensusStrength, hasConsensus);
+    const hour = new Date().getUTCHours();
+    const session = hour >= 8 && hour <= 17 ? 'London' : 
+                   hour >= 13 && hour <= 22 ? 'New York' : 'Asian';
     
     return {
+      pair: selectedPair,
       direction,
-      weightedConfidence,
-      averageEV,
-      averageRR,
+      entry,
+      stopLoss,
+      takeProfit,
+      timeframe: '15m',
+      session
+    };
+  }
+
+  private buildEnhancedConsensusResult(context: SignalContext, aiAnalysis: any): ConsensusSignalResult {
+    const { results, overallVerdict, consensusScore, reasoning } = aiAnalysis;
+    
+    // Calculate metrics based on AI task results
+    const passCount = results.filter((r: any) => r.verdict === 'PASS').length;
+    const avgConfidence = results.reduce((sum: number, r: any) => sum + r.confidence, 0) / results.length;
+    const riskReward = Math.abs(context.takeProfit - context.entry) / Math.abs(context.entry - context.stopLoss);
+    
+    // Map overall verdict to consensus strength
+    const consensusStrength = this.mapVerdictToStrength(overallVerdict);
+    const signalStrength = consensusStrength === 'EXCEPTIONAL' ? 'ELITE' : consensusStrength;
+    const finalGrade = this.calculateEnhancedGrade(overallVerdict, passCount, avgConfidence, riskReward);
+    
+    const hasConsensus = overallVerdict !== 'REJECTED' && passCount >= 3;
+    const recommendation = this.getEnhancedRecommendation(overallVerdict, finalGrade);
+    
+    // Enhanced institutional grading
+    const institutionalGrade = this.getInstitutionalGrade(overallVerdict, passCount, results);
+    
+    const processingStages = {
+      structuralPass: results.find((r: any) => r.model === 'groq')?.verdict !== 'FAIL',
+      aiConsensusPass: hasConsensus,
+      outcomePass: riskReward >= 1.8,
+      finalApproved: overallVerdict === 'STRONG' || overallVerdict === 'MEDIUM'
+    };
+
+    return {
+      direction: context.direction === 'BUY' ? 'BULLISH' : 'BEARISH',
+      weightedConfidence: avgConfidence,
+      averageEV: this.calculateExpectedValue(overallVerdict, riskReward),
+      averageRR: riskReward,
       consensusStrength,
-      topPerformingModel: dominantVotes[0]?.model || 'groq',
-      agreementPercentage,
-      conflictingModels,
-      reasoning: dominantVotes.map(r => r.reasoning).join('; '),
+      topPerformingModel: this.findTopModel(results),
+      agreementPercentage: (passCount / results.length) * 100,
+      conflictingModels: results.filter((r: any) => r.verdict === 'FAIL').map((r: any) => r.model),
+      reasoning,
       hasConsensus,
       signalStrength,
       finalGrade,
       processingStages,
       recommendation,
-      consensusCount: dominantVotes.length,
-      totalModels: responses.length,
+      consensusCount: passCount,
+      totalModels: 5,
       scanDetails: {
-        successfulModels: responses.length,
-        failedModels: []
-      }
+        successfulModels: results.length,
+        failedModels: results.filter((r: any) => r.verdict === 'FAIL').map((r: any) => r.model)
+      },
+      aiTaskResults: results,
+      overallVerdict,
+      institutionalGrade,
+      deepAnalysisReasoning: reasoning
     };
   }
 
-  private determineConsensusStrength(confidence: number, agreement: number): 'WEAK' | 'MODERATE' | 'STRONG' | 'EXCEPTIONAL' {
-    if (confidence >= 85 && agreement >= 80) return 'EXCEPTIONAL';
-    if (confidence >= 75 && agreement >= 70) return 'STRONG';
-    if (confidence >= 65 && agreement >= 60) return 'MODERATE';
-    return 'WEAK';
+  private mapVerdictToStrength(verdict: string): 'WEAK' | 'MODERATE' | 'STRONG' | 'EXCEPTIONAL' {
+    switch (verdict) {
+      case 'STRONG': return 'EXCEPTIONAL';
+      case 'MEDIUM': return 'STRONG';
+      case 'WEAK': return 'MODERATE';
+      default: return 'WEAK';
+    }
   }
 
-  private calculateGrade(confidence: number, ev: number, agreement: number): 'A+' | 'A' | 'B+' | 'B' | 'C+' | 'C' | 'D' | 'F' {
-    const score = (confidence * 0.4) + (ev * 10 * 0.3) + (agreement * 0.3);
+  private calculateEnhancedGrade(verdict: string, passCount: number, confidence: number, rr: number): 'A+' | 'A' | 'B+' | 'B' | 'C+' | 'C' | 'D' | 'F' {
+    if (verdict === 'REJECTED') return 'F';
+    if (verdict === 'STRONG' && passCount >= 4 && confidence >= 85 && rr >= 2.5) return 'A+';
+    if (verdict === 'STRONG' && passCount >= 4 && confidence >= 80 && rr >= 2.0) return 'A';
+    if (verdict === 'MEDIUM' && passCount >= 3 && confidence >= 75 && rr >= 1.8) return 'B+';
+    if (verdict === 'MEDIUM' && passCount >= 3 && confidence >= 70) return 'B';
+    if (verdict === 'WEAK' && passCount >= 2 && confidence >= 65) return 'C+';
+    if (verdict === 'WEAK') return 'C';
+    return 'D';
+  }
+
+  private calculateExpectedValue(verdict: string, rr: number): number {
+    const baseEV = rr * 0.4; // Base expected value calculation
+    const multiplier = verdict === 'STRONG' ? 1.5 : verdict === 'MEDIUM' ? 1.2 : verdict === 'WEAK' ? 0.8 : 0.3;
+    return baseEV * multiplier;
+  }
+
+  private findTopModel(results: any[]): string {
+    const passedResults = results.filter(r => r.verdict === 'PASS');
+    if (passedResults.length === 0) return 'none';
     
-    if (score >= 90) return 'A+';
-    if (score >= 85) return 'A';
-    if (score >= 80) return 'B+';
-    if (score >= 75) return 'B';
-    if (score >= 70) return 'C+';
-    if (score >= 65) return 'C';
-    if (score >= 60) return 'D';
-    return 'F';
+    return passedResults.reduce((top, current) => 
+      current.confidence > top.confidence ? current : top
+    ).model;
   }
 
-  private getRecommendation(strength: string, hasConsensus: boolean): 'AVOID' | 'WATCH_ONLY' | 'TAKE' | 'REDUCE_SIZE' {
-    if (!hasConsensus) return 'AVOID';
-    if (strength === 'EXCEPTIONAL') return 'TAKE';
-    if (strength === 'STRONG') return 'TAKE';
-    if (strength === 'MODERATE') return 'REDUCE_SIZE';
+  private getEnhancedRecommendation(verdict: string, grade: string): 'AVOID' | 'WATCH_ONLY' | 'TAKE' | 'REDUCE_SIZE' {
+    if (verdict === 'REJECTED' || grade === 'F' || grade === 'D') return 'AVOID';
+    if (verdict === 'STRONG' && (grade === 'A+' || grade === 'A')) return 'TAKE';
+    if (verdict === 'MEDIUM' && (grade === 'B+' || grade === 'B')) return 'TAKE';
+    if (verdict === 'WEAK' || grade === 'C+' || grade === 'C') return 'REDUCE_SIZE';
     return 'WATCH_ONLY';
+  }
+
+  private getInstitutionalGrade(verdict: string, passCount: number, results: any[]): string {
+    const groqPassed = results.find(r => r.model === 'groq')?.verdict === 'PASS';
+    
+    if (verdict === 'STRONG' && passCount >= 4 && groqPassed) {
+      return 'Institutional Grade - Elite Setup';
+    }
+    if (verdict === 'MEDIUM' && passCount >= 3 && groqPassed) {
+      return 'Professional Grade - Strong Setup';
+    }
+    if (verdict === 'WEAK' && passCount >= 2) {
+      return 'Standard Grade - Acceptable Risk';
+    }
+    return 'Retail Grade - High Risk';
   }
 
   private getFailedResult(): ConsensusSignalResult {
@@ -227,8 +234,8 @@ export class EnhancedMultiAIConsensusEngine {
       consensusStrength: 'WEAK',
       topPerformingModel: 'none',
       agreementPercentage: 0,
-      conflictingModels: [],
-      reasoning: 'Scan failed - no AI models responded',
+      conflictingModels: ['groq', 'gemini', 'cohere', 'openrouter', 'together'],
+      reasoning: 'Deep AI analysis failed - system error',
       hasConsensus: false,
       signalStrength: 'WEAK',
       finalGrade: 'F',
@@ -243,8 +250,12 @@ export class EnhancedMultiAIConsensusEngine {
       totalModels: 5,
       scanDetails: {
         successfulModels: 0,
-        failedModels: ['groq', 'gemini', 'openai', 'cohere', 'together']
-      }
+        failedModels: ['groq', 'gemini', 'cohere', 'openrouter', 'together']
+      },
+      aiTaskResults: [],
+      overallVerdict: 'REJECTED',
+      institutionalGrade: 'System Error',
+      deepAnalysisReasoning: 'AI analysis engine encountered an error'
     };
   }
 
