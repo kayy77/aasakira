@@ -8,6 +8,8 @@ import SignalFilter from '@/components/signals/SignalFilter';
 import LiveSignalsDashboard from '@/components/signals/LiveSignalsDashboard';
 
 import EnhancedSignalsDashboard from '@/components/signals/EnhancedSignalsDashboard';
+import { SignalEngineDashboard } from '@/components/signals/SignalEngineDashboard';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Signals = () => {
   const isMobile = useIsMobile();
@@ -45,7 +47,18 @@ const Signals = () => {
           </div>
 
           <FeatureGate feature="signals" featureName="Enhanced Elite AI Signals">
-            <EnhancedSignalsDashboard />
+            <Tabs defaultValue="enhanced" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="enhanced">Enhanced Signals</TabsTrigger>
+                <TabsTrigger value="engine">Multi-AI Engine</TabsTrigger>
+              </TabsList>
+              <TabsContent value="enhanced" className="mt-6">
+                <EnhancedSignalsDashboard />
+              </TabsContent>
+              <TabsContent value="engine" className="mt-6">
+                <SignalEngineDashboard />
+              </TabsContent>
+            </Tabs>
           </FeatureGate>
         </div>
       </div>
