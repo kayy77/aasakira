@@ -1,4 +1,3 @@
-
 import { groqService } from './groqService';
 
 export interface AITaskResult {
@@ -360,7 +359,7 @@ CONFIDENCE: ${confidence}%`;
       return 'MEDIUM';
     }
     
-    if (passCount >= 2 && groqResult.verdict !== 'FAIL') {
+    if (passCount >= 2 && (groqResult.verdict === 'PASS' || groqResult.verdict === 'WEAK')) {
       return 'WEAK';
     }
     
