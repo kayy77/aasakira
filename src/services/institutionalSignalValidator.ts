@@ -1,266 +1,232 @@
 
-export interface MarketConditions {
-  sessionType: 'London' | 'NewYork' | 'Asian' | 'Sydney';
-  volumeProfile: 'HIGH' | 'MEDIUM' | 'LOW';
-  volatility: number;
-  isConsolidating: boolean;
-  trendStrength: number;
-  liquidityLevel: 'INSTITUTIONAL' | 'RETAIL' | 'DEAD';
+import { groqService } from './groqService';
+
+export interface StrategyFilter {
+  name: string;
+  passed: boolean;
+  score: number;
+  reasoning: string;
+  weight: number;
 }
 
-export interface SignalValidationResult {
-  isValid: boolean;
-  rejectionReason?: string;
-  confidenceAdjustment: number;
-  riskLevel: 'ULTRA_LOW' | 'LOW' | 'MEDIUM' | 'HIGH';
+export interface InstitutionalValidation {
+  filters: StrategyFilter[];
+  overallScore: number;
+  passedFilters: number;
+  totalFilters: number;
+  institutionalGrade: 'ELITE' | 'INSTITUTIONAL' | 'PROFESSIONAL' | 'STANDARD' | 'REJECTED';
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'EXTREME';
+  recommendation: 'TAKE_FULL' | 'TAKE_REDUCED' | 'WATCH_ONLY' | 'AVOID';
 }
 
-class InstitutionalSignalValidator {
-  private readonly MINIMUM_WIN_RATE = 78; // 78% minimum win rate requirement
-  private readonly MINIMUM_RR = 2.8; // 2.8:1 minimum risk reward
-  private readonly DEAD_SESSIONS = ['Asian', 'Sydney'];
-  
-  // 🏛️ BRUTAL INSTITUTIONAL VALIDATION - ZERO TOLERANCE
-  validateSignal(
-    signalData: any,
-    marketConditions: MarketConditions,
-    livePrice: number
-  ): SignalValidationResult {
+export class InstitutionalSignalValidator {
+  private static readonly STRATEGY_FILTERS = [
+    { name: 'SMC Structure', weight: 3.0, minScore: 70 },
+    { name: 'Liquidity Sweep', weight: 2.5, minScore: 65 },
+    { name: 'Fair Value Gap', weight: 2.5, minScore: 65 },
+    { name: 'Volume Analysis', weight: 2.0, minScore: 60 },
+    { name: 'Session Timing', weight: 1.5, minScore: 55 },
+    { name: 'RSI Divergence', weight: 2.0, minScore: 60 }
+  ];
+
+  static async validateInstitutionalSignal(
+    pair: string,
+    direction: 'BUY' | 'SELL',
+    entry: number,
+    stopLoss: number,
+    takeProfit: number,
+    confidence: number
+  ): Promise<InstitutionalValidation> {
+    console.log(`🏛️ Running institutional validation for ${pair} ${direction}`);
+
+    // Run all strategy filters in parallel
+    const filterPromises = this.STRATEGY_FILTERS.map(filterConfig => 
+      this.runStrategyFilter(pair, direction, entry, filterConfig)
+    );
+
+    const filters = await Promise.all(filterPromises);
     
-    // 💀 INSTANT REJECTION CONDITIONS
+    // Calculate institutional metrics
+    const passedFilters = filters.filter(f => f.passed).length;
+    const totalFilters = filters.length;
+    const overallScore = this.calculateOverallScore(filters);
     
-    // 1. Dead Session Filter - Only elite signals in low liquidity
-    if (this.DEAD_SESSIONS.includes(marketConditions.sessionType)) {
-      if (signalData.confluenceScore < 6 || signalData.confidence < 95) {
-        return {
-          isValid: false,
-          rejectionReason: `${marketConditions.sessionType} session requires ELITE confluence (6/6) and 95%+ confidence`,
-          confidenceAdjustment: 0,
-          riskLevel: 'HIGH'
-        };
-      }
-    }
+    // Determine institutional grade
+    const institutionalGrade = this.determineInstitutionalGrade(
+      overallScore, 
+      passedFilters, 
+      totalFilters, 
+      confidence
+    );
+    
+    // Assess risk and recommendation
+    const riskLevel = this.assessRiskLevel(institutionalGrade, overallScore);
+    const recommendation = this.generateRecommendation(institutionalGrade, riskLevel);
 
-    // 2. Consolidation Range Killer
-    if (marketConditions.isConsolidating && signalData.confluenceScore < 5) {
-      return {
-        isValid: false,
-        rejectionReason: 'Market consolidating - need 5+ filters to trade choppy conditions',
-        confidenceAdjustment: 0,
-        riskLevel: 'HIGH'
-      };
-    }
-
-    // 3. Volume Death Filter
-    if (marketConditions.volumeProfile === 'LOW' && !signalData.volumeSpike) {
-      return {
-        isValid: false,
-        rejectionReason: 'Low volume environment without institutional spike detected',
-        confidenceAdjustment: 0,
-        riskLevel: 'HIGH'
-      };
-    }
-
-    // 4. Trend Strength Validation
-    if (marketConditions.trendStrength < 0.6 && signalData.confluenceScore < 4) {
-      return {
-        isValid: false,
-        rejectionReason: 'Weak trend strength requires higher confluence for entry',
-        confidenceAdjustment: 0,
-        riskLevel: 'HIGH'
-      };
-    }
-
-    // 5. RSI Neutral Zone Death Trap
-    if (this.isRSINeutralZone(signalData.rsiValue) && !signalData.rsiDivergence) {
-      return {
-        isValid: false,
-        rejectionReason: 'RSI in neutral zone (45-55) without divergence confirmation',
-        confidenceAdjustment: 0,
-        riskLevel: 'HIGH'
-      };
-    }
-
-    // 6. Multi-Timeframe Alignment Check
-    if (!this.hasMultiTimeframeAlignment(signalData)) {
-      return {
-        isValid: false,
-        rejectionReason: 'Lower timeframe signal conflicts with higher timeframe structure',
-        confidenceAdjustment: 0,
-        riskLevel: 'HIGH'
-      };
-    }
-
-    // 7. Price Action Confirmation Required
-    if (!this.hasPriceActionConfirmation(signalData)) {
-      return {
-        isValid: false,
-        rejectionReason: 'No valid price action confirmation (engulfing, imbalance, rejection)',
-        confidenceAdjustment: 0,
-        riskLevel: 'HIGH'
-      };
-    }
-
-    // 8. Structure Break Validation
-    if (!signalData.structureBreak && signalData.confluenceScore < 5) {
-      return {
-        isValid: false,
-        rejectionReason: 'No structure break confirmed - trading against flow without elite confluence',
-        confidenceAdjustment: 0,
-        riskLevel: 'HIGH'
-      };
-    }
-
-    // 9. Liquidity Level Check
-    if (marketConditions.liquidityLevel === 'DEAD' && signalData.confidence < 90) {
-      return {
-        isValid: false,
-        rejectionReason: 'Dead liquidity environment requires 90%+ confidence signals only',
-        confidenceAdjustment: 0,
-        riskLevel: 'HIGH'
-      };
-    }
-
-    // 10. Risk Reward Validation
-    const riskReward = this.calculateRiskReward(signalData, livePrice);
-    if (riskReward < this.MINIMUM_RR) {
-      return {
-        isValid: false,
-        rejectionReason: `Risk:Reward ${riskReward.toFixed(1)}:1 below institutional minimum ${this.MINIMUM_RR}:1`,
-        confidenceAdjustment: 0,
-        riskLevel: 'HIGH'
-      };
-    }
-
-    // ✅ SIGNAL PASSES ALL BRUTAL FILTERS
-    const confidenceBonus = this.calculateConfidenceBonus(marketConditions, signalData);
-    const riskLevel = this.calculateRiskLevel(signalData, marketConditions);
+    console.log(`📊 Institutional validation complete: ${institutionalGrade} grade, ${passedFilters}/${totalFilters} filters`);
 
     return {
-      isValid: true,
-      confidenceAdjustment: confidenceBonus,
-      riskLevel
+      filters,
+      overallScore,
+      passedFilters,
+      totalFilters,
+      institutionalGrade,
+      riskLevel,
+      recommendation
     };
   }
 
-  private isRSINeutralZone(rsiValue: number): boolean {
-    return rsiValue >= 45 && rsiValue <= 55;
-  }
+  private static async runStrategyFilter(
+    pair: string,
+    direction: 'BUY' | 'SELL',
+    entry: number,
+    filterConfig: any
+  ): Promise<StrategyFilter> {
+    try {
+      const prompt = this.buildFilterPrompt(pair, direction, entry, filterConfig.name);
+      const response = await groqService.generateResponse(prompt, {
+        model: 'llama3-8b-8192',
+        temperature: 0.1,
+        max_tokens: 200
+      });
 
-  private hasMultiTimeframeAlignment(signalData: any): boolean {
-    // Check if M5 signal aligns with M15 and M30 structure
-    if (!signalData.chartAnalysis?.htfBias) return false;
-    
-    const { h4Direction, h1Direction, aligned } = signalData.chartAnalysis.htfBias;
-    
-    // Must have timeframe alignment or be an elite signal
-    return aligned || signalData.confluenceScore >= 5;
-  }
-
-  private hasPriceActionConfirmation(signalData: any): boolean {
-    // Check for engulfing patterns, imbalance corrections, or rejection wicks
-    const hasEngulfing = Math.random() > 0.4; // 60% pass rate
-    const hasImbalance = signalData.fairValueGap || false;
-    const hasRejection = Math.random() > 0.5; // 50% pass rate
-    
-    return hasEngulfing || hasImbalance || hasRejection;
-  }
-
-  private calculateRiskReward(signalData: any, livePrice: number): number {
-    const entry = livePrice;
-    const stopLoss = signalData.stopLoss || (signalData.type === 'BUY' ? entry * 0.998 : entry * 1.002);
-    const takeProfit = signalData.takeProfit || (signalData.type === 'BUY' ? entry * 1.006 : entry * 0.994);
-    
-    return Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
-  }
-
-  private calculateConfidenceBonus(marketConditions: MarketConditions, signalData: any): number {
-    let bonus = 0;
-
-    // Session bonus
-    if (marketConditions.sessionType === 'London' || marketConditions.sessionType === 'NewYork') {
-      bonus += 5;
+      const analysis = this.parseFilterResponse(response);
+      
+      return {
+        name: filterConfig.name,
+        passed: analysis.score >= filterConfig.minScore,
+        score: analysis.score,
+        reasoning: analysis.reasoning,
+        weight: filterConfig.weight
+      };
+    } catch (error) {
+      console.error(`Filter ${filterConfig.name} failed:`, error);
+      return {
+        name: filterConfig.name,
+        passed: false,
+        score: 0,
+        reasoning: 'Analysis failed - system error',
+        weight: filterConfig.weight
+      };
     }
-
-    // Volume bonus
-    if (marketConditions.volumeProfile === 'HIGH') {
-      bonus += 8;
-    }
-
-    // Liquidity bonus
-    if (marketConditions.liquidityLevel === 'INSTITUTIONAL') {
-      bonus += 10;
-    }
-
-    // Confluence bonus
-    if (signalData.confluenceScore >= 5) {
-      bonus += 12;
-    }
-
-    return Math.min(bonus, 25); // Cap at 25% bonus
   }
 
-  private calculateRiskLevel(signalData: any, marketConditions: MarketConditions): 'ULTRA_LOW' | 'LOW' | 'MEDIUM' | 'HIGH' {
-    let riskScore = 0;
-
-    // Session risk
-    if (this.DEAD_SESSIONS.includes(marketConditions.sessionType)) riskScore += 30;
-    else if (marketConditions.sessionType === 'London') riskScore -= 20;
-    else if (marketConditions.sessionType === 'NewYork') riskScore -= 15;
-
-    // Confluence risk
-    if (signalData.confluenceScore >= 5) riskScore -= 25;
-    else if (signalData.confluenceScore >= 4) riskScore -= 15;
-    else riskScore += 20;
-
-    // Volume risk
-    if (marketConditions.volumeProfile === 'HIGH') riskScore -= 15;
-    else if (marketConditions.volumeProfile === 'LOW') riskScore += 25;
-
-    // Market condition risk
-    if (marketConditions.isConsolidating) riskScore += 20;
-    if (marketConditions.trendStrength > 0.8) riskScore -= 20;
-
-    if (riskScore <= -30) return 'ULTRA_LOW';
-    if (riskScore <= -10) return 'LOW';
-    if (riskScore <= 20) return 'MEDIUM';
-    return 'HIGH';
+  private static buildFilterPrompt(pair: string, direction: 'BUY' | 'SELL', entry: number, filterName: string): string {
+    const baseContext = `Analyze ${pair} for ${direction} at ${entry} focusing on ${filterName}`;
+    
+    switch (filterName) {
+      case 'SMC Structure':
+        return `${baseContext}. Check for: Break of Structure, Order Blocks, Market Structure shifts. Score 0-100 based on structural integrity. Return: SCORE: X, REASONING: [brief explanation]`;
+      
+      case 'Liquidity Sweep':
+        return `${baseContext}. Analyze: Liquidity grabs above/below key levels, stop hunts, sweep patterns. Score 0-100. Return: SCORE: X, REASONING: [brief explanation]`;
+      
+      case 'Fair Value Gap':
+        return `${baseContext}. Identify: FVG presence, mitigation levels, imbalance zones. Score 0-100. Return: SCORE: X, REASONING: [brief explanation]`;
+      
+      case 'Volume Analysis':
+        return `${baseContext}. Examine: Volume spikes, institutional footprint, smart money flow. Score 0-100. Return: SCORE: X, REASONING: [brief explanation]`;
+      
+      case 'Session Timing':
+        return `${baseContext}. Assess: Current session volatility, optimal timing window, liquidity conditions. Score 0-100. Return: SCORE: X, REASONING: [brief explanation]`;
+      
+      case 'RSI Divergence':
+        return `${baseContext}. Check: RSI divergence patterns, momentum shifts, overbought/oversold levels. Score 0-100. Return: SCORE: X, REASONING: [brief explanation]`;
+      
+      default:
+        return `${baseContext}. Provide general analysis and score 0-100. Return: SCORE: X, REASONING: [brief explanation]`;
+    }
   }
 
-  // Market condition analyzer
-  analyzeMarketConditions(pair: string): MarketConditions {
-    const hour = new Date().getUTCHours();
+  private static parseFilterResponse(response: string): { score: number; reasoning: string } {
+    try {
+      const scoreMatch = response.match(/SCORE:\s*(\d+)/i);
+      const reasoningMatch = response.match(/REASONING:\s*(.+)/i);
+      
+      return {
+        score: scoreMatch ? parseInt(scoreMatch[1]) : 50,
+        reasoning: reasoningMatch ? reasoningMatch[1].trim() : 'No detailed reasoning provided'
+      };
+    } catch (error) {
+      return {
+        score: 0,
+        reasoning: 'Failed to parse analysis'
+      };
+    }
+  }
+
+  private static calculateOverallScore(filters: StrategyFilter[]): number {
+    let weightedScore = 0;
+    let totalWeight = 0;
     
-    // Session detection
-    let sessionType: MarketConditions['sessionType'];
-    if (hour >= 8 && hour <= 16) sessionType = 'London';
-    else if (hour >= 13 && hour <= 21) sessionType = 'NewYork';
-    else if (hour >= 22 || hour <= 7) sessionType = 'Asian';
-    else sessionType = 'Sydney';
-
-    // Volume profile (simulated - replace with real data)
-    const isActiveSession = sessionType === 'London' || sessionType === 'NewYork';
-    const volumeProfile: MarketConditions['volumeProfile'] = 
-      isActiveSession ? (Math.random() > 0.3 ? 'HIGH' : 'MEDIUM') : 'LOW';
-
-    // Market state analysis
-    const volatility = Math.random() * 100;
-    const isConsolidating = Math.random() > 0.7; // 30% chance of consolidation
-    const trendStrength = Math.random();
+    filters.forEach(filter => {
+      weightedScore += filter.score * filter.weight;
+      totalWeight += filter.weight;
+    });
     
-    const liquidityLevel: MarketConditions['liquidityLevel'] = 
-      isActiveSession && volumeProfile === 'HIGH' ? 'INSTITUTIONAL' :
-      isActiveSession ? 'RETAIL' : 'DEAD';
+    return totalWeight > 0 ? Math.round(weightedScore / totalWeight) : 0;
+  }
 
-    return {
-      sessionType,
-      volumeProfile,
-      volatility,
-      isConsolidating,
-      trendStrength,
-      liquidityLevel
-    };
+  private static determineInstitutionalGrade(
+    overallScore: number,
+    passedFilters: number,
+    totalFilters: number,
+    confidence: number
+  ): 'ELITE' | 'INSTITUTIONAL' | 'PROFESSIONAL' | 'STANDARD' | 'REJECTED' {
+    // Strict institutional requirements
+    if (overallScore >= 85 && passedFilters >= 5 && confidence >= 90) {
+      return 'ELITE';
+    }
+    
+    if (overallScore >= 75 && passedFilters >= 4 && confidence >= 80) {
+      return 'INSTITUTIONAL';
+    }
+    
+    if (overallScore >= 65 && passedFilters >= 3 && confidence >= 70) {
+      return 'PROFESSIONAL';
+    }
+    
+    if (overallScore >= 55 && passedFilters >= 2 && confidence >= 60) {
+      return 'STANDARD';
+    }
+    
+    return 'REJECTED';
+  }
+
+  private static assessRiskLevel(
+    grade: string,
+    score: number
+  ): 'LOW' | 'MEDIUM' | 'HIGH' | 'EXTREME' {
+    switch (grade) {
+      case 'ELITE':
+        return 'LOW';
+      case 'INSTITUTIONAL':
+        return 'LOW';
+      case 'PROFESSIONAL':
+        return 'MEDIUM';
+      case 'STANDARD':
+        return 'HIGH';
+      default:
+        return 'EXTREME';
+    }
+  }
+
+  private static generateRecommendation(
+    grade: string,
+    riskLevel: string
+  ): 'TAKE_FULL' | 'TAKE_REDUCED' | 'WATCH_ONLY' | 'AVOID' {
+    if (grade === 'ELITE' && riskLevel === 'LOW') {
+      return 'TAKE_FULL';
+    }
+    
+    if (grade === 'INSTITUTIONAL' || grade === 'PROFESSIONAL') {
+      return 'TAKE_REDUCED';
+    }
+    
+    if (grade === 'STANDARD') {
+      return 'WATCH_ONLY';
+    }
+    
+    return 'AVOID';
   }
 }
-
-export const institutionalSignalValidator = new InstitutionalSignalValidator();
