@@ -1,5 +1,5 @@
 import { trueLivePriceService } from './trueLivePriceService';
-import { institutionalSignalValidator } from './institutionalSignalValidator';
+import { InstitutionalSignalValidator } from './institutionalSignalValidator';
 
 export interface ChartAnalysis {
   htfBias: {
@@ -60,7 +60,7 @@ class EnhancedSignalAnalyzer {
     
     try {
       // Get market conditions first
-      const marketConditions = institutionalSignalValidator.analyzeMarketConditions(pair);
+      const marketConditions = this.analyzeMarketConditions(pair);
       console.log(`📊 Market Conditions: ${marketConditions.sessionType} session, ${marketConditions.volumeProfile} volume, Liquidity: ${marketConditions.liquidityLevel}`);
 
       // Simulate market data analysis with enhanced filters
@@ -97,29 +97,23 @@ class EnhancedSignalAnalyzer {
         marketData
       );
 
-      // 🏛️ BRUTAL INSTITUTIONAL VALIDATION
-      const validationResult = institutionalSignalValidator.validateSignal(
-        {
-          ...signal,
-          confluenceScore,
-          rsiValue: marketData.rsiValue,
-          volumeSpike: volumeAnalysis.confirmed,
-          structureBreak: structureAnalysis.confirmed,
-          fairValueGap: entryAnalysis.type === 'FVG',
-          rsiDivergence: momentumAnalysis.rsiDivergence,
-          chartAnalysis: signal.chartAnalysis
-        },
-        marketConditions,
-        marketData.currentPrice
+      // 🏛️ BRUTAL INSTITUTIONAL VALIDATION using the class method
+      const validationResult = await InstitutionalSignalValidator.validateInstitutionalSignal(
+        pair,
+        signal.type,
+        parseFloat(signal.entry),
+        parseFloat(signal.stopLoss),
+        parseFloat(signal.takeProfit),
+        signal.confidence
       );
 
-      if (!validationResult.isValid) {
-        console.log(`❌ INSTITUTIONAL REJECTION: ${validationResult.rejectionReason}`);
+      if (validationResult.institutionalGrade === 'REJECTED') {
+        console.log(`❌ INSTITUTIONAL REJECTION: ${validationResult.institutionalGrade}`);
         return null;
       }
 
       // Apply confidence adjustment from validation
-      const adjustedConfidence = Math.min(98, signal.confidence + validationResult.confidenceAdjustment);
+      const adjustedConfidence = Math.min(98, signal.confidence + (validationResult.overallScore - 70) * 0.3);
       
       // Historical win rate validation
       if (signal.historicalWinRate < this.MIN_WIN_RATE) {
@@ -133,7 +127,7 @@ class EnhancedSignalAnalyzer {
         return {
           ...signal,
           confidence: adjustedConfidence,
-          tags: [...signal.tags, validationResult.riskLevel, 'INSTITUTIONAL_GRADE']
+          tags: [...signal.tags, validationResult.riskLevel, validationResult.institutionalGrade]
         };
       }
 
@@ -143,6 +137,14 @@ class EnhancedSignalAnalyzer {
       console.error('Enhanced signal analysis error:', error);
       return null;
     }
+  }
+
+  private analyzeMarketConditions(pair: string) {
+    return {
+      sessionType: this.getCurrentSession(),
+      volumeProfile: Math.random() > 0.5 ? 'high' : 'medium',
+      liquidityLevel: Math.random() > 0.6 ? 'high' : 'medium'
+    };
   }
 
   private async getInstitutionalMarketData(pair: string) {
