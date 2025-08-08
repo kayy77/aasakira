@@ -204,9 +204,15 @@ export function SignalEngineDashboard() {
                   </Badge>
                 </h4>
                 
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Score:</span>
-                  <span className="ml-2 font-medium">{currentSignal.validation.score.toFixed(1)}%</span>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Confluence:</span>
+                    <span className="ml-2 font-medium">{(currentSignal.validation.confluence * 100).toFixed(1)}%</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Score:</span>
+                    <span className="ml-2 font-medium">{currentSignal.validation.score.toFixed(1)}%</span>
+                  </div>
                 </div>
 
                 {/* Passed Checks */}

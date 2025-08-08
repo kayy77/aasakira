@@ -34,19 +34,30 @@ export function useSignalEngine() {
 
   const [scanInterval, setScanInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // Generate mock market data
+  // Generate mock market data with enhanced MACD and realistic price data
   const generateMockMarketData = useCallback((): MarketData => {
     const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD'];
     const sessions: ('Asian' | 'London' | 'NewYork')[] = ['Asian', 'London', 'NewYork'];
     
+    // Generate realistic price history for MACD calculation
+    const basePrice = 1.0800 + (Math.random() * 0.2);
+    const candleData = Array.from({ length: 30 }, (_, i) => {
+      const volatility = 0.0002 + (Math.random() * 0.0003);
+      const change = (Math.random() - 0.5) * volatility;
+      return {
+        close: basePrice + change * (i + 1),
+        volume: 500 + Math.random() * 2000
+      };
+    });
+    
     return {
       pair: pairs[Math.floor(Math.random() * pairs.length)],
-      currentPrice: 1.0800 + (Math.random() * 0.2),
+      currentPrice: candleData[candleData.length - 1].close,
       timeframe: 'M15',
       rsi: Math.floor(Math.random() * 100),
       volume: Math.floor(Math.random() * 5000) + 500,
       session: sessions[Math.floor(Math.random() * sessions.length)],
-      candleData: [] // Mock empty for now
+      candleData
     };
   }, []);
 
