@@ -503,8 +503,8 @@ export class SignalEngine {
       'Entry Timing': StrategyValidators.entryTiming(marketData),
       'Trend Confirmation': StrategyValidators.trendConfirmation(marketData, consensus.direction),
       'Liquidity Sweep': StrategyValidators.liquiditySweep(marketData),
-      'FVG Alignment': StrategyValidators.fairValueGap(marketData),
-      'Order Block Structure': StrategyValidators.orderBlock(marketData, consensus.direction),
+      'Fair Value Gap': StrategyValidators.fairValueGap(marketData),
+      'Order Block': StrategyValidators.orderBlock(marketData, consensus.direction),
       'MACD Momentum': StrategyValidators.macdMomentum(marketData, consensus.direction),
       'AMD Phase': StrategyValidators.amdPhaseAlignment(marketData, consensus.direction)
     };
@@ -512,46 +512,45 @@ export class SignalEngine {
     const passedChecks: string[] = [];
     const failedChecks: string[] = [];
     const strategyWeights: { [key: string]: number } = {};
-    
-    let totalWeight = 0;
-    let passedWeight = 0;
+    let totalScore = 0;
+    let maxPossibleScore = 0;
 
+    // Calculate weighted scores
     Object.entries(strategies).forEach(([name, result]) => {
       strategyWeights[name] = result.weight;
-      totalWeight += result.weight;
+      maxPossibleScore += result.weight;
       
       if (result.valid) {
-        passedChecks.push(`${name} (${(result.weight * 100).toFixed(0)}%): ${result.reasoning}`);
-        passedWeight += result.weight;
+        passedChecks.push(name);
+        totalScore += result.weight;
       } else {
-        failedChecks.push(`${name} (${(result.weight * 100).toFixed(0)}%): ${result.reasoning}`);
+        failedChecks.push(name);
       }
     });
 
-    const confluence = totalWeight > 0 ? (passedWeight / totalWeight) : 0;
-    const score = confluence * 100;
+    const score = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0;
+    const confluence = totalScore; // Raw confluence score
+
+    // Enhanced grading with volatility and phase awareness
+    let finalGrade: 'A' | 'B' | 'F' = 'F';
+    const isHighVolatility = marketData.volume > 1200;
+    const isOptimalSession = marketData.session === 'London' || marketData.session === 'NewYork';
+    const isDistributionPhase = marketData.amdPhase?.phase === 'DISTRIBUTION';
     
-    // Enhanced grading logic based on weighted confluence
-    let finalGrade: 'A' | 'B' | 'F';
-    let valid: boolean;
-    
-    if (confluence >= 0.8) {
+    // A-grade: High score + optimal conditions
+    if (score >= 75 && isHighVolatility && isOptimalSession) {
       finalGrade = 'A';
-      valid = true;
-    } else if (confluence >= 0.6) {
+    }
+    // B-grade: Good score or good conditions
+    else if (score >= 60 || (score >= 50 && (isOptimalSession || isDistributionPhase))) {
       finalGrade = 'B';
-      valid = true;
-    } else {
-      finalGrade = 'F';
-      valid = false;
+    }
+    // Special case: Distribution phase with decent score
+    else if (score >= 45 && isDistributionPhase && consensus.confidence > 70) {
+      finalGrade = 'B';
     }
 
-    // Additional validation for manipulation phase
-    if (marketData.amdPhase?.phase === 'MANIPULATION' && marketData.amdPhase.confidence > 80) {
-      valid = false; // Override - too risky during high-confidence manipulation
-      finalGrade = 'F';
-      failedChecks.push('High-confidence manipulation phase detected - signal rejected for safety');
-    }
+    const valid = finalGrade !== 'F';
 
     return {
       valid,
@@ -566,76 +565,138 @@ export class SignalEngine {
 
   async generateSignal(marketData: MarketData): Promise<SignalResult> {
     try {
-      // Enhanced market data with MACD and AMD phase detection
-      const enhancedData = { ...marketData };
+      // Enhanced market data with MACD and AMD phase
+      const enrichedData = { ...marketData };
       
-      // Calculate MACD if price data available
+      // Calculate MACD if candleData is available
       if (marketData.candleData && marketData.candleData.length > 0) {
-        const closePrices = marketData.candleData.map(candle => candle.close || marketData.currentPrice);
-        enhancedData.macd = MACDCalculator.calculateMACD(closePrices);
+        const closePrices = marketData.candleData.map(candle => candle.close);
+        enrichedData.macd = MACDCalculator.calculateMACD(closePrices);
       }
       
       // Detect AMD phase
-      enhancedData.amdPhase = AMDPhaseDetector.detectPhase(enhancedData);
-      
-      // Get AI votes with enhanced data
-      const votes = await this.getModelVotes(enhancedData);
+      enrichedData.amdPhase = AMDPhaseDetector.detectPhase(enrichedData);
+
+      // Volatility Filter: Reject low-volatility periods during Asian session
+      if (enrichedData.session === 'Asian' && enrichedData.volume < 600) {
+        return {
+          status: 'rejected',
+          reason: 'Low volatility during Asian session - avoiding range-bound conditions',
+          pair: enrichedData.pair,
+          timeframe: enrichedData.timeframe,
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      // Manipulation Phase Filter: Extra caution during manipulation
+      if (enrichedData.amdPhase?.phase === 'MANIPULATION' && enrichedData.amdPhase.confidence > 80) {
+        // Only allow signals if we have extremely strong confluence
+        const votes = await this.getModelVotes(enrichedData);
+        const consensus = this.calculateConsensus(votes);
+        const validation = this.validateSignal(consensus, enrichedData);
+        
+        if (validation.score < 80) {
+          return {
+            status: 'rejected',
+            reason: 'High-confidence manipulation phase detected - waiting for clearer setup',
+            pair: enrichedData.pair,
+            timeframe: enrichedData.timeframe,
+            timestamp: new Date().toISOString()
+          };
+        }
+      }
+
+      // Multi-timeframe Context Check (simulated)
+      const htfBias = this.getHTFBias(enrichedData);
+      if (!htfBias.aligned) {
+        return {
+          status: 'rejected',
+          reason: `HTF bias misalignment: ${htfBias.reason}`,
+          pair: enrichedData.pair,
+          timeframe: enrichedData.timeframe,
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      // Get AI votes
+      const votes = await this.getModelVotes(enrichedData);
       
       if (votes.length === 0) {
         return {
           status: 'rejected',
-          reason: 'No confident AI votes received',
-          pair: marketData.pair,
-          timeframe: marketData.timeframe,
+          reason: 'No confident AI votes - market conditions unclear',
+          pair: enrichedData.pair,
+          timeframe: enrichedData.timeframe,
           timestamp: new Date().toISOString()
         };
       }
 
-      // Calculate consensus
       const consensus = this.calculateConsensus(votes);
       
-      // Enhanced agreement logic - consider low conviction vs rejection
+      // Consensus requirements
       if (consensus.agreement < this.MIN_AGREEMENT) {
-        const avgConfidence = consensus.confidence;
-        const reason = avgConfidence < 50 ? 
-          'Low AI confidence across all models' :
-          `Insufficient AI agreement: ${(consensus.agreement * 100).toFixed(1)}% (min: ${this.MIN_AGREEMENT * 100}%)`;
-          
+        return {
+          status: 'rejected',
+          reason: `Insufficient AI agreement: ${(consensus.agreement * 100).toFixed(1)}% (min: ${this.MIN_AGREEMENT * 100}%)`,
+          pair: enrichedData.pair,
+          timeframe: enrichedData.timeframe,
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      if (consensus.confidence < this.MIN_CONFIDENCE) {
+        return {
+          status: 'rejected',
+          reason: `Low consensus confidence: ${consensus.confidence.toFixed(1)}% (min: ${this.MIN_CONFIDENCE}%)`,
+          pair: enrichedData.pair,
+          timeframe: enrichedData.timeframe,
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      const validation = this.validateSignal(consensus, enrichedData);
+
+      // Enhanced rejection criteria
+      if (!validation.valid) {
+        const criticalFails = validation.failedChecks.filter(check => 
+          ['AMD Phase', 'MACD Momentum', 'Entry Timing'].includes(check)
+        ).length;
+        
+        const reason = criticalFails > 1 
+          ? `Critical strategy failures: ${validation.failedChecks.join(', ')}`
+          : `Strategy validation failed (${validation.score.toFixed(1)}% score): ${validation.failedChecks.join(', ')}`;
+
         return {
           status: 'rejected',
           reason,
           consensus,
-          pair: marketData.pair,
-          timeframe: marketData.timeframe,
+          validation,
+          pair: enrichedData.pair,
+          timeframe: enrichedData.timeframe,
           timestamp: new Date().toISOString()
         };
       }
 
-      // Validate signal using enhanced strategies
-      const validation = this.validateSignal(consensus, enhancedData);
-      
-      // Override for perfect AI agreement but low confidence
-      if (consensus.agreement === 1.0 && consensus.confidence < 70 && validation.confluence < 0.5) {
+      // Sniper Entry Logic Check
+      const sniperEntry = this.validateSniperEntry(enrichedData, consensus);
+      if (!sniperEntry.valid) {
         return {
           status: 'rejected',
-          reason: `Low conviction signal: Perfect AI agreement but confluence only ${(validation.confluence * 100).toFixed(1)}%`,
+          reason: `Sniper entry failed: ${sniperEntry.reason}`,
           consensus,
           validation,
-          pair: marketData.pair,
-          timeframe: marketData.timeframe,
+          pair: enrichedData.pair,
+          timeframe: enrichedData.timeframe,
           timestamp: new Date().toISOString()
         };
       }
 
       return {
-        status: validation.valid ? 'approved' : 'rejected',
-        reason: validation.valid ? 
-          `Signal approved: Grade ${validation.finalGrade}, Confluence ${(validation.confluence * 100).toFixed(1)}%` : 
-          `Strategy validation failed: Confluence ${(validation.confluence * 100).toFixed(1)}% insufficient`,
+        status: 'approved',
         consensus,
         validation,
-        pair: marketData.pair,
-        timeframe: marketData.timeframe,
+        pair: enrichedData.pair,
+        timeframe: enrichedData.timeframe,
         timestamp: new Date().toISOString()
       };
 
@@ -643,14 +704,82 @@ export class SignalEngine {
       console.error('Signal generation error:', error);
       return {
         status: 'rejected',
-        reason: `Error generating signal: ${error.message}`,
+        reason: `System error: ${error.message}`,
         pair: marketData.pair,
         timeframe: marketData.timeframe,
         timestamp: new Date().toISOString()
       };
     }
   }
+
+  private getHTFBias(data: MarketData): { aligned: boolean; reason: string } {
+    // Simulated HTF bias check
+    const { amdPhase, macd, session } = data;
+    
+    // During distribution phase, any direction is good
+    if (amdPhase?.phase === 'DISTRIBUTION') {
+      return { aligned: true, reason: 'Distribution phase supports trend following' };
+    }
+    
+    // MACD alignment with session timing
+    if (macd && session !== 'Asian') {
+      const momentumStrong = Math.abs(macd.histogram) > 0.001;
+      if (momentumStrong) {
+        return { aligned: true, reason: 'Strong MACD momentum during active session' };
+      }
+    }
+    
+    // Accumulation with session alignment
+    if (amdPhase?.phase === 'ACCUMULATION' && (session === 'London' || session === 'NewYork')) {
+      return { aligned: true, reason: 'Accumulation breakout potential during active session' };
+    }
+    
+    return { 
+      aligned: false, 
+      reason: `HTF misalignment: ${amdPhase?.phase || 'Unknown'} phase during ${session} session with weak momentum` 
+    };
+  }
+
+  private validateSniperEntry(data: MarketData, consensus: ConsensusResult): { valid: boolean; reason: string } {
+    const { volume, session, amdPhase, macd } = data;
+    
+    // Volume spike requirement
+    if (volume < 800) {
+      return { valid: false, reason: 'Insufficient volume for quality entry' };
+    }
+    
+    // Session timing for precision entries
+    if (session === 'Asian' && volume < 1000) {
+      return { valid: false, reason: 'Asian session requires higher volume confirmation' };
+    }
+    
+    // MACD confirmation for entry precision
+    if (macd && macd.trend !== consensus.direction) {
+      return { valid: false, reason: 'MACD trend misalignment with consensus direction' };
+    }
+    
+    // AMD phase sniper logic
+    if (amdPhase?.phase === 'MANIPULATION' && consensus.confidence < 75) {
+      return { valid: false, reason: 'Manipulation phase requires higher confidence for entry' };
+    }
+    
+    // Confluence requirement for sniper entries
+    const hasVolumeSpike = volume > 1200;
+    const hasOptimalTiming = session === 'London' || session === 'NewYork';
+    const hasMomentum = macd ? Math.abs(macd.histogram) > 0.0015 : false;
+    
+    const sniperConditions = [hasVolumeSpike, hasOptimalTiming, hasMomentum].filter(Boolean).length;
+    
+    if (sniperConditions < 2) {
+      return { 
+        valid: false, 
+        reason: `Sniper conditions insufficient: volume=${hasVolumeSpike}, timing=${hasOptimalTiming}, momentum=${hasMomentum}` 
+      };
+    }
+    
+    return { valid: true, reason: 'Sniper entry conditions satisfied' };
+  }
 }
 
-// Singleton instance
+// Export singleton instance
 export const signalEngine = new SignalEngine();
