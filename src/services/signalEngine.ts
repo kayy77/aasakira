@@ -21,11 +21,13 @@ export interface StrategyValidation {
   valid: boolean;
   passedChecks: string[];
   failedChecks: string[];
+  neutralChecks?: string[];
   finalGrade: 'A' | 'B' | 'F';
   score: number;
   confluence: number;
   strategyWeights: { [key: string]: number };
 }
+
 
 export interface MACDData {
   macd: number;
@@ -40,15 +42,24 @@ export interface AMDPhase {
   reasoning: string;
 }
 
+export interface PenaltyEntry {
+  name: string;
+  amount: number; // percentage points to subtract
+  reason: string;
+}
+
 export interface SignalResult {
   status: 'approved' | 'rejected';
   reason?: string;
   consensus?: ConsensusResult;
   validation?: StrategyValidation;
+  trustScore?: number;
+  penalties?: PenaltyEntry[];
   pair: string;
   timeframe: string;
   timestamp: string;
 }
+
 
 export interface MarketData {
   pair: string;
@@ -464,7 +475,7 @@ export class SignalEngine {
     return votes;
   }
 
-  calculateConsensus(votes: AIVote[]): ConsensusResult {
+  calculateConsensus(votes: AIVote[], marketData: MarketData): ConsensusResult {
     if (votes.length === 0) {
       return {
         direction: 'BULLISH',
@@ -475,25 +486,31 @@ export class SignalEngine {
       };
     }
 
-    const directionVotes = { BULLISH: 0, BEARISH: 0 };
-    let confidenceTotal = 0;
+    // Weighted by model, asset, and session
+    const weightOf = (model: string) => this.getModelWeight(marketData.pair, marketData.session, model);
+
+    let bullWeight = 0;
+    let bearWeight = 0;
+    let weightedConfidenceSum = 0;
+    let totalWeight = 0;
 
     votes.forEach(vote => {
-      directionVotes[vote.direction]++;
-      confidenceTotal += vote.confidence;
+      const w = weightOf(vote.model);
+      totalWeight += w;
+      weightedConfidenceSum += vote.confidence * w;
+      if (vote.direction === 'BULLISH') bullWeight += w; else bearWeight += w;
     });
 
-    const totalVotes = votes.length;
-    const direction = directionVotes.BULLISH >= directionVotes.BEARISH ? 'BULLISH' : 'BEARISH';
-    const agreement = directionVotes[direction] / totalVotes;
-    const confidence = confidenceTotal / totalVotes;
+    const direction = bullWeight >= bearWeight ? 'BULLISH' : 'BEARISH';
+    const agreement = (direction === 'BULLISH' ? bullWeight : bearWeight) / (totalWeight || 1);
+    const confidence = weightedConfidenceSum / (totalWeight || 1);
 
     return {
       direction,
       agreement,
       confidence,
       votes,
-      totalVotes
+      totalVotes: votes.length
     };
   }
 
@@ -511,6 +528,7 @@ export class SignalEngine {
 
     const passedChecks: string[] = [];
     const failedChecks: string[] = [];
+    const neutralChecks: string[] = [];
     const strategyWeights: { [key: string]: number } = {};
     let totalScore = 0;
     let maxPossibleScore = 0;
@@ -525,11 +543,15 @@ export class SignalEngine {
         totalScore += result.weight;
       } else {
         failedChecks.push(name);
+        if (result.weight >= 0.4 && result.weight < 0.7) {
+          neutralChecks.push(name);
+        }
       }
     });
 
+
     const score = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0;
-    const confluence = totalScore; // Raw confluence score
+    const confluence = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) : 0; // 0..1 for UI
 
     // Enhanced grading with volatility and phase awareness
     let finalGrade: 'A' | 'B' | 'F' = 'F';
@@ -577,50 +599,27 @@ export class SignalEngine {
       // Detect AMD phase
       enrichedData.amdPhase = AMDPhaseDetector.detectPhase(enrichedData);
 
-      // Volatility Filter: Reject low-volatility periods during Asian session
+      // Begin weighted scoring (no hard rejections except no-votes)
+      const penalties: PenaltyEntry[] = [];
+
+      // Session/volatility penalty
       if (enrichedData.session === 'Asian' && enrichedData.volume < 600) {
-        return {
-          status: 'rejected',
-          reason: 'Low volatility during Asian session - avoiding range-bound conditions',
-          pair: enrichedData.pair,
-          timeframe: enrichedData.timeframe,
-          timestamp: new Date().toISOString()
-        };
+        penalties.push({ name: 'Session Logic Mismatch', amount: 10, reason: 'Low volatility during Asian session' });
       }
 
-      // Manipulation Phase Filter: Extra caution during manipulation
+      // Manipulation risk penalty
       if (enrichedData.amdPhase?.phase === 'MANIPULATION' && enrichedData.amdPhase.confidence > 80) {
-        // Only allow signals if we have extremely strong confluence
-        const votes = await this.getModelVotes(enrichedData);
-        const consensus = this.calculateConsensus(votes);
-        const validation = this.validateSignal(consensus, enrichedData);
-        
-        if (validation.score < 80) {
-          return {
-            status: 'rejected',
-            reason: 'High-confidence manipulation phase detected - waiting for clearer setup',
-            pair: enrichedData.pair,
-            timeframe: enrichedData.timeframe,
-            timestamp: new Date().toISOString()
-          };
-        }
+        penalties.push({ name: 'Manipulation Risk', amount: 15, reason: 'High-confidence manipulation phase' });
       }
 
-      // Multi-timeframe Context Check (simulated)
+      // HTF bias penalty
       const htfBias = this.getHTFBias(enrichedData);
       if (!htfBias.aligned) {
-        return {
-          status: 'rejected',
-          reason: `HTF bias misalignment: ${htfBias.reason}`,
-          pair: enrichedData.pair,
-          timeframe: enrichedData.timeframe,
-          timestamp: new Date().toISOString()
-        };
+        penalties.push({ name: 'Conflicting HTF Bias', amount: 15, reason: htfBias.reason });
       }
 
       // Get AI votes
       const votes = await this.getModelVotes(enrichedData);
-      
       if (votes.length === 0) {
         return {
           status: 'rejected',
@@ -631,70 +630,75 @@ export class SignalEngine {
         };
       }
 
-      const consensus = this.calculateConsensus(votes);
-      
-      // Consensus requirements
+      const consensus = this.calculateConsensus(votes, enrichedData);
+
+      // Consensus quality penalties
       if (consensus.agreement < this.MIN_AGREEMENT) {
-        return {
-          status: 'rejected',
-          reason: `Insufficient AI agreement: ${(consensus.agreement * 100).toFixed(1)}% (min: ${this.MIN_AGREEMENT * 100}%)`,
-          pair: enrichedData.pair,
-          timeframe: enrichedData.timeframe,
-          timestamp: new Date().toISOString()
-        };
+        penalties.push({
+          name: 'Low Model Agreement',
+          amount: 10,
+          reason: `Agreement ${(consensus.agreement * 100).toFixed(1)}% < ${(this.MIN_AGREEMENT * 100)}%`
+        });
       }
-
       if (consensus.confidence < this.MIN_CONFIDENCE) {
-        return {
-          status: 'rejected',
-          reason: `Low consensus confidence: ${consensus.confidence.toFixed(1)}% (min: ${this.MIN_CONFIDENCE}%)`,
-          pair: enrichedData.pair,
-          timeframe: enrichedData.timeframe,
-          timestamp: new Date().toISOString()
-        };
+        penalties.push({
+          name: 'Low Model Confidence',
+          amount: 10,
+          reason: `Confidence ${consensus.confidence.toFixed(1)}% < ${this.MIN_CONFIDENCE}%`
+        });
       }
 
+      // Strategy validation
       const validation = this.validateSignal(consensus, enrichedData);
 
-      // Enhanced rejection criteria
-      if (!validation.valid) {
-        const criticalFails = validation.failedChecks.filter(check => 
-          ['AMD Phase', 'MACD Momentum', 'Entry Timing'].includes(check)
-        ).length;
-        
-        const reason = criticalFails > 1 
-          ? `Critical strategy failures: ${validation.failedChecks.join(', ')}`
-          : `Strategy validation failed (${validation.score.toFixed(1)}% score): ${validation.failedChecks.join(', ')}`;
+      // Penalties from failed checks
+      const penaltyMap: Record<string, number> = {
+        'Entry Timing': 10,
+        'Liquidity Sweep': 5,
+        'Trend Confirmation': 12,
+        'MACD Momentum': 8,
+        'Fair Value Gap': 5,
+        'Order Block': 8,
+        'AMD Phase': 10,
+        'RSI Divergence': 6
+      };
+      validation.failedChecks.forEach(name => {
+        const amt = penaltyMap[name] ?? 5;
+        penalties.push({ name, amount: amt, reason: `${name} failed` });
+      });
 
-        return {
-          status: 'rejected',
-          reason,
-          consensus,
-          validation,
-          pair: enrichedData.pair,
-          timeframe: enrichedData.timeframe,
-          timestamp: new Date().toISOString()
-        };
+      if (validation.finalGrade === 'F') {
+        penalties.push({ name: 'Strategy Grade F', amount: 20, reason: 'Overall confluence too weak' });
       }
 
-      // Sniper Entry Logic Check
+      // Sniper entry evaluation as penalty
       const sniperEntry = this.validateSniperEntry(enrichedData, consensus);
       if (!sniperEntry.valid) {
-        return {
-          status: 'rejected',
-          reason: `Sniper entry failed: ${sniperEntry.reason}`,
-          consensus,
-          validation,
-          pair: enrichedData.pair,
-          timeframe: enrichedData.timeframe,
-          timestamp: new Date().toISOString()
-        };
+        penalties.push({ name: 'Sniper Entry', amount: 12, reason: sniperEntry.reason });
       }
 
+      const totalPenalty = penalties.reduce((sum, p) => sum + p.amount, 0);
+      const trustScore = Math.max(0, Math.min(100, consensus.confidence - totalPenalty));
+
+      const status: 'approved' | 'rejected' = trustScore >= 60 ? 'approved' : 'rejected';
+
+      const topPenalties = [...penalties]
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 3)
+        .map(p => `${p.name} (-${p.amount})`)
+        .join(', ');
+
+      const reason = status === 'rejected'
+        ? `Final Trust Score ${trustScore.toFixed(1)}%. Penalties: ${topPenalties || 'None'}.`
+        : `Final Trust Score ${trustScore.toFixed(1)}%.`;
+
       return {
-        status: 'approved',
+        status,
+        reason,
         consensus,
         validation,
+        trustScore,
+        penalties,
         pair: enrichedData.pair,
         timeframe: enrichedData.timeframe,
         timestamp: new Date().toISOString()
@@ -738,6 +742,24 @@ export class SignalEngine {
       aligned: false, 
       reason: `HTF misalignment: ${amdPhase?.phase || 'Unknown'} phase during ${session} session with weak momentum` 
     };
+  }
+
+  // Simple, extensible model weighting by asset/session
+  private getModelWeight(pair: string, session: MarketData['session'], model: string): number {
+    // Baseline
+    let weight = 1.0;
+
+    // Session specialties (example heuristics)
+    if (session === 'Asian' && model === 'Cohere') weight *= 0.9;
+    if (session === 'London' && model === 'Groq') weight *= 1.3;
+    if (session === 'NewYork' && model === 'Gemini') weight *= 1.2;
+
+    // Asset preferences
+    if (/AUD|NZD/.test(pair) && model === 'OpenRouter') weight *= 1.1;
+    if (/GBP|EUR/.test(pair) && model === 'Groq') weight *= 1.2;
+
+    // Clamp
+    return Math.max(0.5, Math.min(1.5, weight));
   }
 
   private validateSniperEntry(data: MarketData, consensus: ConsensusResult): { valid: boolean; reason: string } {

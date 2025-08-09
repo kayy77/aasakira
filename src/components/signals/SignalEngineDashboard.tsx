@@ -193,6 +193,19 @@ export function SignalEngineDashboard() {
               </div>
             )}
 
+            {/* Trust Score */}
+            {typeof currentSignal.trustScore === 'number' && (
+              <div className="space-y-2">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  Final Trust Score
+                </h4>
+                <div className="text-2xl font-bold">
+                  {currentSignal.trustScore.toFixed(1)}%
+                </div>
+              </div>
+            )}
+
             {/* Strategy Validation */}
             {currentSignal.validation && (
               <div className="space-y-3">
