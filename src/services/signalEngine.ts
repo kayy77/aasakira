@@ -1,6 +1,7 @@
 // Enhanced Signal Engine with Multi-AI Consensus and Strategy Validation
 import { groqService } from './groqService';
 import { geminiService } from './geminiService';
+import { computeAIConsensus, defaultRRBySession, computeEV } from './canonicalConsensus';
 
 export interface AIVote {
   direction: 'BULLISH' | 'BEARISH';
@@ -630,26 +631,27 @@ export class SignalEngine {
         };
       }
 
-      const consensus = this.calculateConsensus(votes, enrichedData);
+      // Canonical AI consensus (tier-weighted)
+      const tierVotes = votes.map(v => ({
+        name: v.model,
+        tier: (v.confidence >= 85 ? 'elite' : v.confidence >= 70 ? 'moderate' : 'weak') as 'elite' | 'moderate' | 'weak',
+        direction: (v.direction === 'BULLISH' ? 'long' : 'short') as 'long' | 'short',
+        confidence: v.confidence / 100
+      }));
+      const aiCanon = computeAIConsensus(tierVotes);
 
-      // Consensus quality penalties
-      if (consensus.agreement < this.MIN_AGREEMENT) {
-        penalties.push({
-          name: 'Low Model Agreement',
-          amount: 10,
-          reason: `Agreement ${(consensus.agreement * 100).toFixed(1)}% < ${(this.MIN_AGREEMENT * 100)}%`
-        });
-      }
-      if (consensus.confidence < this.MIN_CONFIDENCE) {
-        penalties.push({
-          name: 'Low Model Confidence',
-          amount: 10,
-          reason: `Confidence ${consensus.confidence.toFixed(1)}% < ${this.MIN_CONFIDENCE}%`
-        });
-      }
+      // UI consensus derived from canonical object
+      const totalDir = aiCanon.directionCounts.long + aiCanon.directionCounts.short || 1;
+      const uiConsensus: ConsensusResult = {
+        direction: aiCanon.majorityDirection === 'long' ? 'BULLISH' : 'BEARISH',
+        agreement: (aiCanon.majorityDirection === 'long' ? aiCanon.directionCounts.long : aiCanon.directionCounts.short) / totalDir,
+        confidence: aiCanon.frac * 100,
+        votes,
+        totalVotes: votes.length,
+      };
 
-      // Strategy validation
-      const validation = this.validateSignal(consensus, enrichedData);
+      // Strategy validation (uses same direction as UI consensus)
+      const validation = this.validateSignal(uiConsensus, enrichedData);
 
       // Penalties from failed checks
       const penaltyMap: Record<string, number> = {
@@ -666,21 +668,37 @@ export class SignalEngine {
         const amt = penaltyMap[name] ?? 5;
         penalties.push({ name, amount: amt, reason: `${name} failed` });
       });
-
       if (validation.finalGrade === 'F') {
         penalties.push({ name: 'Strategy Grade F', amount: 20, reason: 'Overall confluence too weak' });
       }
 
-      // Sniper entry evaluation as penalty
-      const sniperEntry = this.validateSniperEntry(enrichedData, consensus);
+      // Sniper entry evaluation as penalty (aligned with UI consensus)
+      const sniperEntry = this.validateSniperEntry(enrichedData, uiConsensus);
       if (!sniperEntry.valid) {
         penalties.push({ name: 'Sniper Entry', amount: 12, reason: sniperEntry.reason });
       }
 
-      const totalPenalty = penalties.reduce((sum, p) => sum + p.amount, 0);
-      const trustScore = Math.max(0, Math.min(100, consensus.confidence - totalPenalty));
+      // Confluence bucket and strategy override
+      const confBucket = Math.round((validation.confluence || 0) * 6); // 0..6
+      const strongFilterCount = validation.passedChecks.filter(name => (validation.strategyWeights[name] ?? 0) >= 0.9).length;
+      const strategyOverride = validation.score >= 72 || strongFilterCount >= 3;
 
-      const status: 'approved' | 'rejected' = trustScore >= 60 ? 'approved' : 'rejected';
+      // Final gates
+      const minAiScore = Math.ceil(aiCanon.maxScore * 0.60);
+      const passesAi = aiCanon.rawScore >= minAiScore;
+
+      const totalPenalty = penalties.reduce((sum, p) => sum + p.amount, 0);
+      const penalizedConfidence = Math.max(0, Math.min(100, aiCanon.frac * 100 - totalPenalty));
+      const passesPenaltyGate = penalizedConfidence >= 60;
+
+      const passesConfluence = confBucket >= 3 || strategyOverride;
+
+      // EV and RR (informational, not sole gate)
+      const rr = defaultRRBySession(enrichedData.session);
+      const p = aiCanon.frac;
+      const ev = computeEV(p, rr);
+
+      const approved = passesAi && passesConfluence && passesPenaltyGate;
 
       const topPenalties = [...penalties]
         .sort((a, b) => b.amount - a.amount)
@@ -688,16 +706,17 @@ export class SignalEngine {
         .map(p => `${p.name} (-${p.amount})`)
         .join(', ');
 
-      const reason = status === 'rejected'
-        ? `Final Trust Score ${trustScore.toFixed(1)}%. Penalties: ${topPenalties || 'None'}.`
-        : `Final Trust Score ${trustScore.toFixed(1)}%.`;
+      const status: 'approved' | 'rejected' = approved ? 'approved' : 'rejected';
+      const reason = approved
+        ? `AI ${Math.round(aiCanon.frac * 100)}%, ConfBucket ${confBucket}/6, EV ${ev.toFixed(2)}. Final ${penalizedConfidence.toFixed(1)}%.`
+        : `Rejected: AI ${Math.round(aiCanon.frac * 100)}%, ConfBucket ${confBucket}/6, EV ${ev.toFixed(2)}. Penalties: ${topPenalties || 'None'}. Final ${penalizedConfidence.toFixed(1)}%.`;
 
       return {
         status,
         reason,
-        consensus,
+        consensus: uiConsensus,
         validation,
-        trustScore,
+        trustScore: penalizedConfidence,
         penalties,
         pair: enrichedData.pair,
         timeframe: enrichedData.timeframe,
