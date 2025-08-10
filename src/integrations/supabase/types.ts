@@ -47,6 +47,53 @@ export type Database = {
         }
         Relationships: []
       }
+      consensus_audit: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          latency_ms: number | null
+          parse_time_ms: number | null
+          provider_name: string | null
+          raw_response: Json | null
+          request_payload: Json
+          signal_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          parse_time_ms?: number | null
+          provider_name?: string | null
+          raw_response?: Json | null
+          request_payload: Json
+          signal_id?: string | null
+          status: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          parse_time_ms?: number | null
+          provider_name?: string | null
+          raw_response?: Json | null
+          request_payload?: Json
+          signal_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consensus_audit_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "signals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learning_sessions: {
         Row: {
           created_at: string
@@ -83,6 +130,90 @@ export type Database = {
           start_time?: string
           topics_covered?: string[] | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      signals: {
+        Row: {
+          ai_votes: Json | null
+          confidence: number | null
+          confluence_bucket: number | null
+          consensus: Json | null
+          created_at: string | null
+          decision: Json | null
+          direction: string
+          entry_price: number | null
+          expected_value: number | null
+          filters: Json | null
+          id: string
+          max_ai_score: number | null
+          pair: string
+          raw_ai_responses: Json | null
+          rejection_reasons: string[] | null
+          risk_reward_ratio: number | null
+          session_type: string | null
+          signal_type: string
+          status: string
+          stop_loss: number | null
+          strategy_results: Json | null
+          take_profit: number | null
+          ui_label: string | null
+          updated_at: string | null
+          weighted_ai_score: number | null
+        }
+        Insert: {
+          ai_votes?: Json | null
+          confidence?: number | null
+          confluence_bucket?: number | null
+          consensus?: Json | null
+          created_at?: string | null
+          decision?: Json | null
+          direction: string
+          entry_price?: number | null
+          expected_value?: number | null
+          filters?: Json | null
+          id?: string
+          max_ai_score?: number | null
+          pair: string
+          raw_ai_responses?: Json | null
+          rejection_reasons?: string[] | null
+          risk_reward_ratio?: number | null
+          session_type?: string | null
+          signal_type: string
+          status?: string
+          stop_loss?: number | null
+          strategy_results?: Json | null
+          take_profit?: number | null
+          ui_label?: string | null
+          updated_at?: string | null
+          weighted_ai_score?: number | null
+        }
+        Update: {
+          ai_votes?: Json | null
+          confidence?: number | null
+          confluence_bucket?: number | null
+          consensus?: Json | null
+          created_at?: string | null
+          decision?: Json | null
+          direction?: string
+          entry_price?: number | null
+          expected_value?: number | null
+          filters?: Json | null
+          id?: string
+          max_ai_score?: number | null
+          pair?: string
+          raw_ai_responses?: Json | null
+          rejection_reasons?: string[] | null
+          risk_reward_ratio?: number | null
+          session_type?: string | null
+          signal_type?: string
+          status?: string
+          stop_loss?: number | null
+          strategy_results?: Json | null
+          take_profit?: number | null
+          ui_label?: string | null
+          updated_at?: string | null
+          weighted_ai_score?: number | null
         }
         Relationships: []
       }
