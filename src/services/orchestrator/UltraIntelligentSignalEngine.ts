@@ -168,7 +168,8 @@ export class UltraIntelligentSignalEngine {
         }
 
         const score = this.calculateQualityScore(enriched, 1);
-        candidates.push({ signal: { ...enriched, qualityScore: score }, score });
+        const normalized = this.ensureFrontendCompatibility({ ...enriched, qualityScore: score } as UltraSignalResult);
+        candidates.push({ signal: normalized, score });
       } catch (err) {
         console.log(`⚠️ Error scanning ${pair}:`, (err as Error).message);
         continue;
@@ -181,8 +182,9 @@ export class UltraIntelligentSignalEngine {
       console.log('🚨 No candidates passed filters - creating live-price emergency signal');
       const emergency = await this.createEmergencySignal(priorityPairs[0] || 'EUR/USD', session, adaptiveWeights);
       emergency.qualityScore = this.calculateQualityScore(emergency, 3);
-      this.updateLastSignal(emergency);
-      return emergency;
+      const normalized = this.ensureFrontendCompatibility(emergency as UltraSignalResult);
+      this.updateLastSignal(normalized);
+      return normalized;
     }
 
     // Sort by score and choose the best
@@ -364,6 +366,53 @@ export class UltraIntelligentSignalEngine {
       case 'HIGH':
         return 'High risk setup. Proceed with extreme caution or wait for better conditions.';
     }
+  }
+
+  /**
+   * Ensure frontend compatibility by restoring consensus object and related fields
+   */
+  private ensureFrontendCompatibility(result: UltraSignalResult): UltraSignalResult {
+    const r: any = { ...result };
+
+    if (!r.consensus || typeof r.consensus.scoreFraction !== 'number') {
+      const frac =
+        typeof r.aiConfidence === 'number' ? Math.max(0, Math.min(1, r.aiConfidence / 100)) :
+        typeof r.score === 'number' ? Math.max(0, Math.min(1, r.score / 100)) :
+        typeof r.qualityScore === 'number' ? Math.max(0, Math.min(1, r.qualityScore / 100)) :
+        0.5;
+
+      r.consensus = {
+        weightedScore: Math.round(frac * 100),
+        maxScore: 100,
+        scoreFraction: frac,
+        majorityDirection: (r.direction === 'BUY' ? 'long' : 'short'),
+        conflictingModels: [],
+        consensus: frac >= 0.75,
+        confluenceBucket: r.filtersPassed ?? 0,
+        ...(r.consensus || {})
+      };
+    } else {
+      // Ensure required fields exist
+      r.consensus = {
+        weightedScore: r.consensus.weightedScore ?? Math.round(r.consensus.scoreFraction * 100),
+        maxScore: r.consensus.maxScore ?? 100,
+        scoreFraction: r.consensus.scoreFraction,
+        majorityDirection: r.consensus.majorityDirection ?? (r.direction === 'BUY' ? 'long' : 'short'),
+        conflictingModels: r.consensus.conflictingModels ?? [],
+        consensus: typeof r.consensus.consensus === 'boolean' ? r.consensus.consensus : r.consensus.scoreFraction >= 0.75,
+        confluenceBucket: r.consensus.confluenceBucket ?? (r.filtersPassed ?? 0)
+      };
+    }
+
+    // Backfill aiConfidence and filtersPassed if missing
+    if (typeof r.aiConfidence !== 'number' && r.consensus?.scoreFraction != null) {
+      r.aiConfidence = r.consensus.scoreFraction * 100;
+    }
+    if (r.filtersPassed == null && typeof r.consensus?.confluenceBucket === 'number') {
+      r.filtersPassed = r.consensus.confluenceBucket;
+    }
+
+    return r as UltraSignalResult;
   }
 
   /**
