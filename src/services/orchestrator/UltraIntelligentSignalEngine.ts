@@ -612,7 +612,10 @@ export class UltraIntelligentSignalEngine {
     let score = 0;
     
     // Base confluence score (0-40 points)
-    score += signal.consensus.scoreFraction * 40;
+    const frac = (signal.consensus?.scoreFraction != null)
+      ? signal.consensus.scoreFraction
+      : (typeof signal.aiConfidence === 'number' ? signal.aiConfidence / 100 : 0.5);
+    score += frac * 40;
     
     // Expected value bonus (0-25 points)
     score += Math.min(signal.decision.expectedValue * 50, 25);
@@ -918,7 +921,7 @@ export class UltraIntelligentSignalEngine {
     ];
     
     return {
-      ...baseResult,
+      ...safeBase,
       sessionContext,
       institutionalGrade: baseResult.decision.institutionalGrade as 'Elite' | 'Strong' | 'Decent' | 'Weak' | 'Rejected',
       adaptiveWeights,
@@ -930,7 +933,7 @@ export class UltraIntelligentSignalEngine {
       riskMessage: 'Standard setup - use normal risk management.',
       qualityScore: 50,
       filtersPassed: this.countPassedFilters(baseResult.smcFilters),
-      aiConfidence: (baseResult.consensus.scoreFraction * 100)
+      aiConfidence: (safeBase.consensus.scoreFraction * 100)
     };
   }
 
