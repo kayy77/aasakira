@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Brain, TrendingUp, Coins, Signal, User, Target, TrendingDown } from 'lucide-react';
+import { Signal, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -19,12 +19,7 @@ const Navigation = () => {
   const { user, logout } = useAuth();
 
   const navigation = [
-    { name: 'Signals', href: '/signals', icon: Signal },
-    { name: 'Education', href: '/education', icon: Brain },
-    { name: 'Trading', href: '/trading', icon: TrendingUp },
-    { name: 'Meme Coins', href: '/memecoins', icon: Coins },
-    { name: 'AI Bet Scanner', href: '/bet-scanner', icon: Target },
-    { name: 'AI Investments', href: '/investment-scanner', icon: TrendingDown },
+    { name: 'AI Signal Scanner', href: '/signals', icon: Signal },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -81,13 +76,6 @@ const Navigation = () => {
                     <DropdownMenuItem className="flex-col items-start text-white hover:bg-white/10">
                       <div className="font-medium">{user.username}</div>
                       <div className="text-xs text-gray-400">{user.email}</div>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-white/20" />
-                    <DropdownMenuItem asChild>
-                      <Link to="/dashboard" className="w-full text-white hover:bg-white/10">
-                        <User className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/20" />
                     <DropdownMenuItem 
