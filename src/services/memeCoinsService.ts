@@ -43,7 +43,7 @@ interface RiskProfile {
 class MemeCoinsService {
   private readonly DEXSCREENER_API = 'https://api.dexscreener.com/latest/dex';
   private readonly GECKOTERMINAL_API = 'https://api.geckoterminal.com/api/v2';
-  private debugMode = false;
+  private debugMode = false; // FORCE PRODUCTION MODE
   
   private readonly riskProfiles: RiskProfile[] = [
     {
