@@ -31,7 +31,7 @@ import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SignalValidationStatus } from './SignalValidationStatus';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { fetchLivePrice } from '@/utils/fetchLivePrice';
+import { trueLivePriceService } from '@/services/trueLivePriceService';
 
 interface EnhancedOrchestratorDashboardProps {
   className?: string;
@@ -109,20 +109,21 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
       setLastGenerationTime(new Date());
       setScanProgress(null);
       
-      if (result) {
-        console.log('✅ Ultra-signal generation completed:', result);
-        setSignals(prev => [result, ...prev.slice(0, 9)]);
+      if (result && typeof result === 'object' && (result as any).pair) {
+        const r = result as UltraSignalResult;
+        console.log('✅ Ultra-signal generation completed:', r);
+        setSignals(prev => [r, ...prev.filter(s => s.pair !== r.pair)].slice(0, 9));
         
         toast({
-          title: `🚀 ${result.riskClassification} Risk Signal Generated!`,
-          description: `${result.pair} ${result.direction} | ${result.riskMessage.slice(0, 50)}... | Score: ${result.qualityScore?.toFixed(0) || 'N/A'}`,
+          title: `🚀 ${r.riskClassification} Risk Signal Generated!`,
+          description: `${r.pair} ${r.direction} | ${r.riskMessage.slice(0, 50)}... | Score: ${r.qualityScore?.toFixed(0) || 'N/A'}`,
         });
       } else {
         console.log('❌ Ultra-signal generation returned null - creating emergency UI signal');
         // Create emergency signal display with LIVE price
         const symbol = 'EURUSD';
         let entryPrice = 1.1600;
-        try { entryPrice = await fetchLivePrice(symbol); } catch {}
+        try { entryPrice = (await trueLivePriceService.getTrueLivePrice(symbol)).price; } catch {}
         const pip = 0.0001;
         const stopLoss = entryPrice - 50 * pip; // 50 pips
         const takeProfit = entryPrice + 100 * pip; // 100 pips

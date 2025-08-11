@@ -4,7 +4,7 @@
 import { SignalOrchestrator, OrchestrationResult, AIVote, MarketSnapshot } from './SignalOrchestrator';
 import { InstitutionalKnowledgeBase } from './InstitutionalDoctrine';
 import { AdaptiveLearningEngine, SignalOutcome } from './AdaptiveLearningEngine';
-import { fetchLivePrice } from '@/utils/fetchLivePrice';
+import { trueLivePriceService } from '@/services/trueLivePriceService';
 
 
 export interface UltraSignalRequest {
@@ -393,7 +393,8 @@ export class UltraIntelligentSignalEngine {
     
     try {
       const symbol = pair.replace('/', '').toUpperCase();
-      currentPrice = await fetchLivePrice(symbol);
+      const live = await trueLivePriceService.getTrueLivePrice(symbol);
+      currentPrice = live.price;
       console.log(`📈 Emergency signal using LIVE price for ${pair} (${symbol}): ${currentPrice}`);
     } catch (error) {
       console.log(`⚠️ Emergency fallback price for ${pair}: ${currentPrice}`);
@@ -649,9 +650,9 @@ export class UltraIntelligentSignalEngine {
       let livePrice = 1.1000; // Default fallback
       
       try {
-        // Use the existing live price service with normalized symbol (e.g., EURUSD)
         const symbol = pair.replace('/', '').toUpperCase();
-        livePrice = await fetchLivePrice(symbol);
+        const live = await trueLivePriceService.getTrueLivePrice(symbol);
+        livePrice = live.price;
         console.log(`📈 LIVE PRICE for ${pair} (${symbol}): ${livePrice}`);
         const estimate = this.getRealisticPriceEstimate(pair);
         if (!this.isPriceSane(pair, livePrice, estimate)) {
