@@ -89,12 +89,12 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({ signal, onRemov
                 <Brain className="w-4 h-4 text-purple-400" />
                 <span className="text-sm font-semibold text-purple-300">Multi-AI Consensus</span>
               </div>
-              <Badge className={`${getConsensusColor(signal.aiConsensus.approved, signal.aiConsensus.confidence_score)} bg-transparent border`}>
-                {signal.consensusLabel}
+              <Badge className={`${getConsensusColor(signal.aiConsensus?.approved || false, signal.aiConsensus?.confidence_score || 0)} bg-transparent border`}>
+                {signal.consensusLabel || 'No Consensus'}
               </Badge>
             </div>
             <div className="text-xs text-gray-400">
-              {signal.aiConsensus.confidence_score}/5 AI models agree • Rating: {signal.aiConsensus.final_rating}/10
+              {signal.aiConsensus?.confidence_score || 0}/5 AI models agree • Rating: {signal.aiConsensus?.final_rating || 0}/10
             </div>
           </div>
         )}
@@ -130,8 +130,8 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({ signal, onRemov
 
         <div className="text-center">
           <div className="text-sm text-gray-400">Expected Value</div>
-          <div className={`font-bold ${signal.expectedValue > 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {signal.expectedValue > 0 ? '+' : ''}{signal.expectedValue.toFixed(2)}
+          <div className={`font-bold ${(signal.expectedValue || 0) > 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {(signal.expectedValue || 0) > 0 ? '+' : ''}{(signal.expectedValue || 0).toFixed(2)}
           </div>
         </div>
 
@@ -140,7 +140,7 @@ const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({ signal, onRemov
           <div className="space-y-2">
             <div className="text-sm font-semibold text-gray-300">AI Model Votes:</div>
             <div className="grid grid-cols-2 gap-1 text-xs">
-              {Object.entries(signal.aiConsensus.ai_votes).map(([model, vote]) => (
+              {Object.entries(signal.aiConsensus?.ai_votes || {}).map(([model, vote]) => (
                 <div key={model} className="flex items-center justify-between bg-gray-800/30 rounded p-1">
                   <span className="capitalize text-gray-400">{model}</span>
                   <Badge className={`text-xs ${

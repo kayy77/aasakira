@@ -142,25 +142,39 @@ export class EnhancedEliteSignalEngine {
       const signal: EnhancedSignal = {
         id: crypto.randomUUID(),
         symbol,
-        entry: priceData,
-        stopLoss,
-        takeProfit,
-        quality: enhancedQuality,
-        confidence: Math.max(confidence, aiConsensus.final_rating * 10),
-        expectedValue,
+        entry: priceData || 0,
+        stopLoss: stopLoss || 0,
+        takeProfit: takeProfit || 0,
+        quality: enhancedQuality || 'weak',
+        confidence: Math.max(confidence || 0, (aiConsensus?.final_rating || 0) * 10),
+        expectedValue: expectedValue || 0,
         createdAt: Date.now(),
-        groqAnalysis,
-        strategiesUsed: this.getActiveStrategies(indicators),
-        type: direction,
-        riskReward,
+        groqAnalysis: groqAnalysis || 'Analysis unavailable',
+        strategiesUsed: this.getActiveStrategies(indicators) || [],
+        type: direction || 'BUY',
+        riskReward: riskReward || 0,
         timestamp: new Date().toISOString(),
-        confluenceScore: indicators.confluenceScore,
-        riskRating: this.calculateRiskRating(confidence, indicators.confluenceScore),
-        signalLabel,
-        // New Multi-AI fields
-        aiConsensus,
-        multiAIVerified: aiConsensus.approved,
-        consensusLabel: aiConsensus.label
+        confluenceScore: indicators?.confluenceScore || 0,
+        riskRating: this.calculateRiskRating(confidence || 0, indicators?.confluenceScore || 0),
+        signalLabel: signalLabel || 'Standard Signal',
+        // New Multi-AI fields with safe defaults
+        aiConsensus: aiConsensus || {
+          approved: false,
+          confidence_score: 0,
+          final_rating: 0,
+          label: 'No Consensus',
+          ai_votes: {} as any,
+          reasoning: ['Consensus analysis unavailable'],
+          verdict: 'REJECTED' as const,
+          consensus_strength: 'Weak',
+          multi_ai_verdict: 'No Agreement',
+          expected_value: 0,
+          quality_tier: 'SPECULATIVE' as const,
+          ai_agreement_level: 'None',
+          institutional_grade: 'D'
+        },
+        multiAIVerified: aiConsensus?.approved || false,
+        consensusLabel: aiConsensus?.label || 'No Consensus'
       };
       
       console.log(`✅ Elite signal with AI consensus: ${symbol} ${direction} | ${enhancedQuality} | ${aiConsensus.label}`);
