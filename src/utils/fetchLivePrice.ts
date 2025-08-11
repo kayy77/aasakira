@@ -56,8 +56,8 @@ function extractPrice(apiName: string, data: any): number {
 
 function getFallbackPrice(symbol: string): number {
   const fallbackPrices: { [key: string]: number } = {
-    'EURUSD': 1.0850,
-    'GBPUSD': 1.2650,
+    'EURUSD': 1.1600,
+    'GBPUSD': 1.2700,
     'USDJPY': 150.25,
     'AUDUSD': 0.6650,
     'USDCAD': 1.3580

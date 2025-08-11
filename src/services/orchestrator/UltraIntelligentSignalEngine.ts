@@ -4,7 +4,7 @@
 import { SignalOrchestrator, OrchestrationResult, AIVote, MarketSnapshot } from './SignalOrchestrator';
 import { InstitutionalKnowledgeBase } from './InstitutionalDoctrine';
 import { AdaptiveLearningEngine, SignalOutcome } from './AdaptiveLearningEngine';
-import { useToast } from '@/hooks/use-toast';
+import { fetchLivePrice } from '@/utils/fetchLivePrice';
 
 
 export interface UltraSignalRequest {
@@ -392,9 +392,9 @@ export class UltraIntelligentSignalEngine {
     let currentPrice = this.getRealisticPriceEstimate(pair);
     
     try {
-      const { fetchLivePrice } = await import('@/utils/fetchLivePrice');
-      currentPrice = await fetchLivePrice(pair);
-      console.log(`📈 Emergency signal using LIVE price: ${currentPrice}`);
+      const symbol = pair.replace('/', '').toUpperCase();
+      currentPrice = await fetchLivePrice(symbol);
+      console.log(`📈 Emergency signal using LIVE price for ${pair} (${symbol}): ${currentPrice}`);
     } catch (error) {
       console.log(`⚠️ Emergency fallback price for ${pair}: ${currentPrice}`);
     }
@@ -454,7 +454,7 @@ export class UltraIntelligentSignalEngine {
       },
       aiVotes: [],
       smcFilters: {},
-      backtest: { winRate: 0.4, avgRiskReward: 1.5, sampleSize: 10 }
+      backtest: { winRate: 0.4, avgRiskReward: 1.5, sampleSize: 10, profitFactor: 1.1, maxDrawdown: 0.2 }
     };
     
     return emergencySignal as UltraSignalResult;
@@ -649,10 +649,10 @@ export class UltraIntelligentSignalEngine {
       let livePrice = 1.1000; // Default fallback
       
       try {
-        // Import and use the existing live price service
-        const { fetchLivePrice } = await import('@/utils/fetchLivePrice');
-        livePrice = await fetchLivePrice(pair);
-        console.log(`📈 LIVE PRICE for ${pair}: ${livePrice}`);
+        // Use the existing live price service with normalized symbol (e.g., EURUSD)
+        const symbol = pair.replace('/', '').toUpperCase();
+        livePrice = await fetchLivePrice(symbol);
+        console.log(`📈 LIVE PRICE for ${pair} (${symbol}): ${livePrice}`);
       } catch (error) {
         console.log(`⚠️ Live price fetch failed for ${pair}, using realistic estimate`);
         livePrice = this.getRealisticPriceEstimate(pair);
