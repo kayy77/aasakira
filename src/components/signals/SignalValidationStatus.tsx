@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle, XCircle, Eye } from 'lucide-react';
 
 interface SignalValidationStatusProps {
-  status: 'APPROVED' | 'REJECTED' | 'WEAK' | 'PENDING';
+  status: 'APPROVED' | 'REJECTED' | 'WEAK' | 'PENDING' | 'PENDING_QA';
   rejectionReasons?: string[];
   className?: string;
 }
