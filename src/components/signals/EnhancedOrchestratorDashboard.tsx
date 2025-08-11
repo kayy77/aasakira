@@ -492,14 +492,19 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
                   <div>
                     <div className="text-sm text-gray-400">AI Confidence</div>
                     <div className="font-bold text-white">
-                      {signal.aiConfidence ? `${signal.aiConfidence.toFixed(1)}%` : 
-                       `${(signal.consensus.scoreFraction * 100).toFixed(1)}%`}
+                      {typeof signal.aiConfidence === 'number'
+                        ? `${signal.aiConfidence.toFixed(1)}%`
+                        : (signal.consensus?.scoreFraction != null
+                            ? `${(signal.consensus.scoreFraction * 100).toFixed(1)}%`
+                            : (typeof (signal as any).score === 'number'
+                                ? `${(((signal as any).score) as number).toFixed(1)}%`
+                                : 'N/A%'))}
                     </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-400">Filters Passed</div>
                     <div className="font-bold text-white">
-                      {signal.filtersPassed || signal.consensus.confluenceBucket}/6
+                      {(signal.filtersPassed ?? signal.consensus?.confluenceBucket ?? 0)}/6
                     </div>
                   </div>
                   <div>
