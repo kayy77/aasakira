@@ -104,15 +104,15 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
         setSignals(prev => [result, ...prev.slice(0, 9)]);
         
         toast({
-          title: `🚀 ${result.institutionalGrade} Ultra-Signal Generated!`,
-          description: `${result.pair} ${result.direction} | ${result.learningInsights.sessionOptimality} | EV: ${result.decision.expectedValue.toFixed(2)}`,
+          title: `🚀 ${result.riskClassification} Risk Signal Generated!`,
+          description: `${result.pair} ${result.direction} | ${result.riskMessage.slice(0, 50)}... | Score: ${result.qualityScore?.toFixed(0) || 'N/A'}`,
         });
       } else {
         console.log('❌ Ultra-signal generation returned null (no quality signals found)');
         toast({
-          title: "Ultra-Intelligent Quality Gate",
-          description: "No signals meet ultra-institutional standards. Market conditions may not be optimal for high-quality setups.",
-          variant: "destructive",
+          title: "Scanning Complete",
+          description: "Best available signal generated. Check risk classification before trading.",
+          variant: "default",
         });
       }
       
@@ -360,8 +360,12 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
                   <div className="flex items-center gap-3">
                     <DirectionIcon className={`w-5 h-5 ${getDirectionColor(signal.direction)}`} />
                     <span className="font-bold text-white text-lg">{signal.pair}</span>
-                    <Badge className={getGradeColor(signal.decision.institutionalGrade)}>
-                      {signal.decision.institutionalGrade}
+                    <Badge className={`${
+                      signal.riskClassification === 'LOW' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                      signal.riskClassification === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                      'bg-red-500/20 text-red-400 border-red-500/30'
+                    }`}>
+                      {signal.riskClassification} RISK
                     </Badge>
                     <SignalValidationStatus 
                       status={signal.decision.status}
@@ -413,28 +417,48 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
                 {/* Key Metrics */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <div className="text-sm text-gray-400">AI Consensus</div>
+                    <div className="text-sm text-gray-400">AI Confidence</div>
                     <div className="font-bold text-white">
-                      {(signal.consensus.scoreFraction * 100).toFixed(1)}%
+                      {signal.aiConfidence ? `${signal.aiConfidence.toFixed(1)}%` : 
+                       `${(signal.consensus.scoreFraction * 100).toFixed(1)}%`}
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-400">Confluence</div>
-                    <div className="font-bold text-white">{signal.consensus.confluenceBucket}/6</div>
+                    <div className="text-sm text-gray-400">Filters Passed</div>
+                    <div className="font-bold text-white">
+                      {signal.filtersPassed || signal.consensus.confluenceBucket}/6
+                    </div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-400">Expected Value</div>
-                    <div className={`font-bold ${signal.decision.expectedValue > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {signal.decision.expectedValue.toFixed(2)}
+                    <div className="text-sm text-gray-400">Quality Score</div>
+                    <div className="font-bold text-blue-400">
+                      {signal.qualityScore ? signal.qualityScore.toFixed(0) : 
+                       (signal.decision.expectedValue * 100).toFixed(0)}
                     </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-400">Risk Level</div>
-                    <div className={`font-bold ${getRiskColor(signal.decision.riskLevel)}`}>
-                      {signal.decision.riskLevel}
+                    <div className={`font-bold ${
+                      signal.riskClassification === 'LOW' ? 'text-green-400' :
+                      signal.riskClassification === 'MEDIUM' ? 'text-yellow-400' :
+                      'text-red-400'
+                    }`}>
+                      {signal.riskClassification || 'MEDIUM'}
                     </div>
                   </div>
                 </div>
+
+                {/* Risk Message */}
+                {signal.riskMessage && (
+                  <div className={`p-3 rounded-lg border ${
+                    signal.riskClassification === 'LOW' ? 'bg-green-500/10 border-green-500/20 text-green-400' :
+                    signal.riskClassification === 'MEDIUM' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' :
+                    'bg-red-500/10 border-red-500/20 text-red-400'
+                  }`}>
+                    <div className="text-sm font-medium">Risk Assessment:</div>
+                    <div className="text-xs mt-1">{signal.riskMessage}</div>
+                  </div>
+                )}
 
                 {/* Expandable Details */}
                 <Collapsible open={isExpanded} onOpenChange={() => toggleSignalExpansion(signal.signalId)}>
