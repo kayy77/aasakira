@@ -63,73 +63,186 @@ export class UltraIntelligentSignalEngine {
   }
 
   /**
-   * Generate single ultra-premium signal with deep institutional analysis
+   * Generate single ultra-premium signal with persistent deep scanning
    */
   async generateUltraSignal(request: UltraSignalRequest = {}): Promise<UltraSignalResult | null> {
-    console.log('🚀 Ultra-Intelligent Signal Engine: Starting deep scan...');
+    console.log('🚀 Ultra-Intelligent Signal Engine: Starting persistent deep scan...');
     
     try {
       // Stage 1: Session Analysis & Pair Selection
-      this.updateProgress('session_analysis', 'Analyzing optimal session and pairs...', 10);
+      this.updateProgress('session_analysis', 'Analyzing optimal session and pairs...', 5);
       
       const optimalSession = this.getCurrentOptimalSession(request.sessionOverride);
       const priorityPairs = this.getSessionPriorityPairs(optimalSession);
-      const targetPair = request.pairOverride || this.selectOptimalPair(priorityPairs, optimalSession);
       
-      console.log(`🎯 Targeting: ${targetPair} in ${optimalSession} session`);
+      console.log(`🎯 Session: ${optimalSession}, Priority pairs: ${priorityPairs.slice(0, 3).join(', ')}`);
       
       // Stage 2: Adaptive Learning Integration
-      this.updateProgress('learning_analysis', 'Integrating adaptive learning insights...', 25);
+      this.updateProgress('learning_analysis', 'Integrating adaptive learning insights...', 10);
       
-      const adaptiveWeights = await this.learningEngine.getAdaptiveWeights(optimalSession, targetPair);
+      const adaptiveWeights = await this.learningEngine.getAdaptiveWeights(optimalSession, priorityPairs[0]);
       const optimalConfluenceThreshold = await this.learningEngine.getOptimalConfluenceThreshold(optimalSession, 1.0);
       
-      // Stage 3: Market Snapshot with Enhanced Context
-      this.updateProgress('market_analysis', 'Capturing enhanced market snapshot...', 40);
-      
-      const enhancedSnapshot = await this.createEnhancedMarketSnapshot(targetPair, optimalSession);
-      
-      // Stage 4: Deep Orchestrator Analysis
-      this.updateProgress('orchestrator_analysis', 'Running institutional-grade analysis...', 60);
-      
-      const baseResult = await this.orchestrator.generateSignal(enhancedSnapshot);
-      
-      if (!baseResult) {
-        // If no signal passes strict validation, try with secondary pairs
-        this.updateProgress('secondary_scan', 'Scanning secondary opportunities...', 75);
-        
-        const secondaryResult = await this.scanSecondaryOpportunities(priorityPairs, optimalSession);
-        if (!secondaryResult) {
-          console.log('❌ No signals meet ultra-intelligent standards');
-          return null;
-        }
-        return secondaryResult;
-      }
-      
-      // Stage 5: Ultra Enhancement
-      this.updateProgress('enhancement', 'Applying ultra-intelligent enhancements...', 85);
-      
-      const ultraResult = await this.enhanceSignalWithIntelligence(
-        baseResult, 
+      // Stage 3: Iterative Deep Scan Passes
+      const result = await this.performIterativeDeepScan(
+        priorityPairs, 
         optimalSession, 
         adaptiveWeights, 
-        optimalConfluenceThreshold
+        optimalConfluenceThreshold,
+        request.qualityThreshold || 'B+'
       );
+      
+      if (!result) {
+        console.log('❌ No signals meet ultra-intelligent standards after deep scan');
+        return null;
+      }
       
       // Stage 6: Learning Storage
       this.updateProgress('learning_storage', 'Storing signal for continuous learning...', 95);
       
-      await this.storeSignalForLearning(ultraResult);
+      await this.storeSignalForLearning(result);
       
-      this.updateProgress('complete', 'Ultra-signal generation complete!', 100);
+      this.updateProgress('complete', 'Elite signal generation complete!', 100);
       
-      console.log('✅ Ultra-Intelligent Signal Generated:', ultraResult.institutionalGrade);
-      return ultraResult;
+      console.log('✅ Elite Signal Generated:', result.institutionalGrade);
+      return result;
       
     } catch (error) {
-      console.error('❌ Ultra-signal generation failed:', error);
+      console.error('❌ Elite signal generation failed:', error);
       return null;
     }
+  }
+
+  /**
+   * Perform iterative deep scan with multiple passes until elite signal found
+   */
+  private async performIterativeDeepScan(
+    priorityPairs: string[],
+    session: 'London' | 'NewYork' | 'Asian',
+    adaptiveWeights: Record<string, number>,
+    confluenceThreshold: number,
+    qualityThreshold: 'A+' | 'A' | 'B+' | 'B'
+  ): Promise<UltraSignalResult | null> {
+    
+    const maxPasses = 3;
+    const candidates: Array<{ pair: string; result: any; score: number }> = [];
+    
+    for (let pass = 1; pass <= maxPasses; pass++) {
+      this.updateProgress(
+        `deep_scan_pass_${pass}`, 
+        `Deep Scan Pass ${pass}: ${pass === 1 ? 'Broad sweep' : pass === 2 ? 'Multi-timeframe analysis' : 'Final elite selection'}`, 
+        15 + (pass * 20)
+      );
+      
+      const pairsToScan = pass === 1 ? priorityPairs.slice(0, 3) : 
+                         pass === 2 ? priorityPairs.slice(0, 5) :
+                         priorityPairs; // Final pass scans all
+      
+      for (const pair of pairsToScan) {
+        try {
+          const enhancedSnapshot = await this.createEnhancedMarketSnapshot(pair, session);
+          const baseResult = await this.orchestrator.generateSignal(enhancedSnapshot);
+          
+          if (baseResult && baseResult.decision.status === 'APPROVED') {
+            const ultraResult = await this.enhanceSignalWithIntelligence(
+              baseResult, 
+              session, 
+              adaptiveWeights, 
+              confluenceThreshold
+            );
+            
+            const qualityScore = this.calculateQualityScore(ultraResult, pass);
+            
+            candidates.push({
+              pair,
+              result: ultraResult,
+              score: qualityScore
+            });
+            
+            console.log(`📊 Candidate found: ${pair} (Score: ${qualityScore.toFixed(2)}, Grade: ${ultraResult.institutionalGrade})`);
+          }
+        } catch (error) {
+          console.log(`⚠️ Error scanning ${pair}:`, error.message);
+        }
+      }
+      
+      // Check if we have elite candidates
+      const eliteCandidates = candidates.filter(c => 
+        this.meetsQualityThreshold(c.result.institutionalGrade, qualityThreshold)
+      );
+      
+      if (eliteCandidates.length > 0) {
+        // Return the highest scoring elite candidate
+        const winner = eliteCandidates.sort((a, b) => b.score - a.score)[0];
+        this.updateProgress('winner_selection', `Elite signal selected: ${winner.pair}`, 85);
+        return winner.result;
+      }
+      
+      // If no elite signals and this is the final pass, return best available
+      if (pass === maxPasses && candidates.length > 0) {
+        const bestAvailable = candidates.sort((a, b) => b.score - a.score)[0];
+        this.updateProgress('fallback_selection', `Best available signal: ${bestAvailable.pair}`, 85);
+        return bestAvailable.result;
+      }
+    }
+    
+    return null; // No viable signals found
+  }
+
+  /**
+   * Calculate comprehensive quality score for signal ranking
+   */
+  private calculateQualityScore(signal: UltraSignalResult, scanPass: number): number {
+    let score = 0;
+    
+    // Base confluence score (0-40 points)
+    score += signal.consensus.scoreFraction * 40;
+    
+    // Expected value bonus (0-25 points)
+    score += Math.min(signal.decision.expectedValue * 50, 25);
+    
+    // Institutional grade bonus (0-20 points)
+    const gradeBonus = {
+      'Elite': 20,
+      'Strong': 15,
+      'Decent': 10,
+      'Weak': 5,
+      'Rejected': 0
+    };
+    score += gradeBonus[signal.institutionalGrade] || 0;
+    
+    // Session optimality bonus (0-10 points)
+    score += this.isOptimalSessionTiming(signal.sessionContext, new Date().getUTCHours()) ? 10 : 5;
+    
+    // SMC filter bonus (0-5 points)
+    score += this.countPassedFilters(signal.smcFilters);
+    
+    // Early discovery bonus
+    score += (4 - scanPass) * 2; // Earlier discovery = higher score
+    
+    return score;
+  }
+
+  /**
+   * Check if signal meets minimum quality threshold
+   */
+  private meetsQualityThreshold(grade: string, threshold: 'A+' | 'A' | 'B+' | 'B'): boolean {
+    const gradeRanking = {
+      'Elite': 5,
+      'Strong': 4,
+      'Decent': 3,
+      'Weak': 2,
+      'Rejected': 1
+    };
+    
+    const thresholdRanking = {
+      'A+': 5, // Elite only
+      'A': 4,  // Strong+
+      'B+': 3, // Decent+
+      'B': 2   // Weak+
+    };
+    
+    return gradeRanking[grade] >= thresholdRanking[threshold];
   }
 
   /**

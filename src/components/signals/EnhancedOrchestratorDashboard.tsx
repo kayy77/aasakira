@@ -248,7 +248,12 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
           {scanProgress && (
             <div className="bg-gray-800/50 rounded-lg p-4 border border-blue-500/20">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-blue-400">{scanProgress.message}</span>
+                <span className="text-sm font-medium">
+                  {scanProgress.stage.includes('pass') ? '🔍 Deep Scanning' : 
+                   scanProgress.stage.includes('winner') ? '🎯 Elite Signal Found' :
+                   scanProgress.stage.includes('fallback') ? '⚡ Best Available' :
+                   'Signal Analysis'}
+                </span>
                 <span className="text-xs text-gray-400">{scanProgress.progress}%</span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2">
@@ -257,8 +262,15 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
                   style={{ width: `${scanProgress.progress}%` }}
                 />
               </div>
+              <p className="text-xs text-blue-400 mt-1">{scanProgress.message}</p>
               {scanProgress.details && (
-                <p className="text-xs text-gray-500 mt-1">{scanProgress.details}</p>
+                <p className="text-xs text-gray-500">{scanProgress.details}</p>
+              )}
+              {scanProgress.stage.includes('pass') && (
+                <div className="flex items-center gap-2 text-xs text-blue-400 mt-2">
+                  <Loader className="h-3 w-3 animate-spin" />
+                  <span>Scanning for institutional-grade setups...</span>
+                </div>
               )}
             </div>
           )}
