@@ -653,8 +653,12 @@ export class UltraIntelligentSignalEngine {
         const symbol = pair.replace('/', '').toUpperCase();
         livePrice = await fetchLivePrice(symbol);
         console.log(`📈 LIVE PRICE for ${pair} (${symbol}): ${livePrice}`);
+        const estimate = this.getRealisticPriceEstimate(pair);
+        if (!this.isPriceSane(pair, livePrice, estimate)) {
+          throw new Error('Price sanity check failed');
+        }
       } catch (error) {
-        console.log(`⚠️ Live price fetch failed for ${pair}, using realistic estimate`);
+        console.log(`⚠️ Live price fetch failed or sanity check failed for ${pair}, using realistic estimate`);
         livePrice = this.getRealisticPriceEstimate(pair);
       }
       
@@ -767,6 +771,17 @@ export class UltraIntelligentSignalEngine {
     };
     
     return priceEstimates[pair] || priceEstimates['EUR/USD'] || 1.0850;
+  }
+
+  private getPipSize(pair: string): number {
+    const normalized = pair.toUpperCase();
+    return normalized.includes('JPY') ? 0.01 : 0.0001;
+  }
+
+  private isPriceSane(pair: string, price: number, reference: number): boolean {
+    const pip = this.getPipSize(pair);
+    const maxDiff = 5 * pip; // 5 pips sanity threshold
+    return Math.abs(price - reference) <= maxDiff;
   }
 
   private async scanSecondaryOpportunities(

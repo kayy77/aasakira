@@ -2,10 +2,16 @@
 import axios from "axios";
 
 export async function fetchLivePrice(symbol: string): Promise<number> {
+  // Normalize symbol (accepts "EUR/USD" or "EURUSD")
+  const base = symbol.replace('/', '').toUpperCase();
+  const from = base.slice(0, 3);
+  const to = base.slice(3);
+  const twelveDataSymbol = `${from}/${to}`;
+
   const apis = [
-    { name: "TwelveData", url: `https://api.twelvedata.com/price?symbol=${symbol}&apikey=demo&_=${Date.now()}` },
-    { name: "AlphaVantage", url: `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${symbol.slice(0,3)}&to_currency=${symbol.slice(3)}&apikey=demo&_=${Date.now()}` },
-    { name: "Polygon", url: `https://api.polygon.io/v1/last/currencies/${symbol.slice(0,3)}/${symbol.slice(3)}?apikey=demo&_=${Date.now()}` },
+    { name: "TwelveData", url: `https://api.twelvedata.com/price?symbol=${twelveDataSymbol}&apikey=demo&_=${Date.now()}` },
+    { name: "AlphaVantage", url: `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${from}&to_currency=${to}&apikey=demo&_=${Date.now()}` },
+    { name: "Polygon", url: `https://api.polygon.io/v1/last/currencies/${from}/${to}?apikey=demo&_=${Date.now()}` },
     { name: "Fallback", url: "" }
   ];
 

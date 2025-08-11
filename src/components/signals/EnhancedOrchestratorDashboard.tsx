@@ -31,6 +31,7 @@ import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SignalValidationStatus } from './SignalValidationStatus';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { fetchLivePrice } from '@/utils/fetchLivePrice';
 
 interface EnhancedOrchestratorDashboardProps {
   className?: string;
@@ -118,15 +119,22 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
         });
       } else {
         console.log('❌ Ultra-signal generation returned null - creating emergency UI signal');
-        // Create emergency signal display
+        // Create emergency signal display with LIVE price
+        const symbol = 'EURUSD';
+        let entryPrice = 1.1600;
+        try { entryPrice = await fetchLivePrice(symbol); } catch {}
+        const pip = 0.0001;
+        const stopLoss = entryPrice - 50 * pip; // 50 pips
+        const takeProfit = entryPrice + 100 * pip; // 100 pips
+
         const emergencySignal = {
           signalId: `emergency_${Date.now()}`,
           pair: 'EUR/USD',
           direction: 'BUY' as const,
-          entry: 1.0850,
-          stopLoss: 1.0800,
-          takeProfit: 1.0950,
-          riskReward: 2.0,
+          entry: entryPrice,
+          stopLoss: stopLoss,
+          takeProfit: takeProfit,
+          riskReward: (takeProfit - entryPrice) / (entryPrice - stopLoss),
           riskClassification: 'HIGH' as const,
           riskMessage: 'Emergency signal - system fallback with live price estimates.',
           qualityScore: 35,
