@@ -91,11 +91,13 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
     
     try {
       console.log('🚀 Starting ultra-signal generation...');
+      console.log('📊 Ultra Engine Instance:', ultraEngine);
       
       const result = await ultraEngine.generateUltraSignal({
         qualityThreshold: 'A+'
       });
       
+      console.log('✅ Signal generation result:', result);
       setLastGenerationTime(new Date());
       setScanProgress(null);
       

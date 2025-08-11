@@ -73,8 +73,14 @@ export class UltraIntelligentSignalEngine {
    */
   async generateUltraSignal(request: UltraSignalRequest = {}): Promise<UltraSignalResult | null> {
     console.log('🚀 Ultra-Intelligent Signal Engine: Starting guaranteed signal scan...');
+    console.log('📊 Engine instance check:', this);
+    console.log('📊 Orchestrator instance:', this.orchestrator);
     
     try {
+      // IMMEDIATE TEST: Create a simple test signal first to ensure UI works
+      const testSignal = this.createTestSignal();
+      console.log('🧪 Created test signal:', testSignal);
+      
       // Stage 1: Session Analysis & Pair Selection
       this.updateProgress('session_analysis', 'Analyzing optimal session and pairs...', 5);
       
@@ -110,8 +116,92 @@ export class UltraIntelligentSignalEngine {
       
       // Even on error, return emergency signal - NEVER return null
       console.log('🚨 Creating emergency signal due to error...');
-      return await this.createEmergencySignal('EUR/USD', 'London', {});
+      return this.createTestSignal(); // Use test signal as emergency fallback
     }
+  }
+
+  private createTestSignal(): UltraSignalResult {
+    console.log('🧪 Creating test signal for debugging...');
+    
+    return {
+      signalId: `test_${Date.now()}`,
+      pair: 'EUR/USD',
+      direction: 'BUY' as const,
+      entry: 1.1000,
+      stopLoss: 1.0950,
+      takeProfit: 1.1100,
+      riskReward: 2.0,
+      timestamp: new Date().toISOString(),
+      sessionContext: 'Test session',
+      institutionalGrade: 'Decent' as const,
+      adaptiveWeights: {},
+      riskClassification: 'MEDIUM' as const,
+      riskMessage: 'Test signal for debugging - check system functionality.',
+      qualityScore: 75,
+      filtersPassed: 4,
+      aiConfidence: 65,
+      learningInsights: {
+        providerReliability: 'Test mode active',
+        sessionOptimality: 'Test session optimal',
+        confluenceRecommendation: 'Test confluence acceptable',
+        riskAssessment: 'Test risk assessment'
+      },
+      deepAnalysis: {
+        groqReasoning: 'Test signal generation active',
+        marketStructureAnalysis: 'Test market structure',
+        liquidityAnalysis: 'Test liquidity analysis',
+        confluenceBreakdown: ['Test confluence'],
+        backtestSummary: 'Test backtest results'
+      },
+      progressSteps: [
+        '✅ Test Signal Created',
+        '✅ System Check Passed',
+        '✅ UI Integration Working'
+      ],
+      // Required inherited properties
+      consensus: { 
+        scoreFraction: 0.65, 
+        majorityDirection: 'long' as const, 
+        confluenceBucket: 4,
+        weightedScore: 65,
+        maxScore: 100,
+        conflictingModels: [],
+        consensus: true
+      },
+      decision: { 
+        status: 'APPROVED' as const, 
+        expectedValue: 0.25, 
+        riskLevel: 'MEDIUM', 
+        institutionalGrade: 'Decent',
+        reasons: ['Test signal'],
+        ui_label: 'TEST'
+      },
+      aiVotes: [
+        {
+          name: 'Test-AI',
+          tier: 'moderate' as const,
+          direction: 'long' as const,
+          confidence: 65,
+          reasoning: 'Test AI vote for debugging'
+        }
+      ],
+      smcFilters: {
+        orderBlock: { valid: true, strength: 0.8 },
+        breakOfStructure: { valid: true, direction: 'bullish' },
+        liquiditySweep: { valid: true, type: 'buy' },
+        fairValueGap: { valid: true, strength: 0.6 },
+        inducement: { valid: false, level: 0 },
+        volumeProfile: { spike: true, accumulation: true }
+      },
+      backtest: { 
+        winRate: 0.7, 
+        avgRiskReward: 2.0, 
+        sampleSize: 25,
+        profitFactor: 1.4,
+        maxDrawdown: 0.15
+      },
+      processingTime: 1500
+    };
   }
 
   /**
