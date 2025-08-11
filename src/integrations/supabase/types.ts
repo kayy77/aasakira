@@ -94,6 +94,24 @@ export type Database = {
           },
         ]
       }
+      learning_metrics: {
+        Row: {
+          created_at: string
+          id: string
+          metrics: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metrics: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metrics?: Json
+        }
+        Relationships: []
+      }
       learning_sessions: {
         Row: {
           created_at: string
@@ -130,6 +148,78 @@ export type Database = {
           start_time?: string
           topics_covered?: string[] | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      signal_outcomes: {
+        Row: {
+          ai_votes: Json
+          confluence_score: number
+          created_at: string
+          direction: string
+          duration_hours: number | null
+          entry_price: number
+          entry_time: string
+          exit_price: number | null
+          exit_time: string | null
+          id: string
+          market_conditions: Json | null
+          outcome: string | null
+          pair: string
+          pips_gained: number | null
+          rr_achieved: number | null
+          session_type: string
+          signal_id: string
+          stop_loss: number
+          strategy_used: string[] | null
+          take_profit: number
+          updated_at: string
+        }
+        Insert: {
+          ai_votes?: Json
+          confluence_score: number
+          created_at?: string
+          direction: string
+          duration_hours?: number | null
+          entry_price: number
+          entry_time: string
+          exit_price?: number | null
+          exit_time?: string | null
+          id?: string
+          market_conditions?: Json | null
+          outcome?: string | null
+          pair: string
+          pips_gained?: number | null
+          rr_achieved?: number | null
+          session_type: string
+          signal_id: string
+          stop_loss: number
+          strategy_used?: string[] | null
+          take_profit: number
+          updated_at?: string
+        }
+        Update: {
+          ai_votes?: Json
+          confluence_score?: number
+          created_at?: string
+          direction?: string
+          duration_hours?: number | null
+          entry_price?: number
+          entry_time?: string
+          exit_price?: number | null
+          exit_time?: string | null
+          id?: string
+          market_conditions?: Json | null
+          outcome?: string | null
+          pair?: string
+          pips_gained?: number | null
+          rr_achieved?: number | null
+          session_type?: string
+          signal_id?: string
+          stop_loss?: number
+          strategy_used?: string[] | null
+          take_profit?: number
+          updated_at?: string
         }
         Relationships: []
       }

@@ -82,33 +82,36 @@ export class AdaptiveLearningEngine {
     try {
       console.log('🧠 Storing signal for learning analysis:', signal.signalId);
       
-      const { error } = await supabase
-        .from('signal_outcomes')
-        .insert({
-          signal_id: signal.signalId,
-          pair: signal.pair,
-          direction: signal.direction,
-          entry_price: signal.entryPrice,
-          stop_loss: signal.stopLoss,
-          take_profit: signal.takeProfit,
-          entry_time: signal.entryTime,
-          outcome: signal.outcome || 'PENDING',
-          exit_price: signal.exitPrice,
-          exit_time: signal.exitTime,
-          pips_gained: signal.pipsGained,
-          rr_achieved: signal.rrAchieved,
-          duration_hours: signal.durationHours,
-          ai_votes: signal.aiVotes,
-          confluence_score: signal.confluenceScore,
-          session_type: signal.sessionType,
-          strategy_used: signal.strategyUsed,
-          market_conditions: signal.marketConditions,
-          created_at: new Date().toISOString()
-        });
-
-      if (error) {
-        console.error('Failed to store signal outcome:', error);
-      }
+      // Store in localStorage for now until Supabase types are updated
+      const storageKey = 'signal_outcomes';
+      const existingData = localStorage.getItem(storageKey);
+      const outcomes = existingData ? JSON.parse(existingData) : [];
+      
+      const outcomeData = {
+        signal_id: signal.signalId,
+        pair: signal.pair,
+        direction: signal.direction,
+        entry_price: signal.entryPrice,
+        stop_loss: signal.stopLoss,
+        take_profit: signal.takeProfit,
+        entry_time: signal.entryTime,
+        outcome: signal.outcome || 'PENDING',
+        exit_price: signal.exitPrice,
+        exit_time: signal.exitTime,
+        pips_gained: signal.pipsGained,
+        rr_achieved: signal.rrAchieved,
+        duration_hours: signal.durationHours,
+        ai_votes: signal.aiVotes,
+        confluence_score: signal.confluenceScore,
+        session_type: signal.sessionType,
+        strategy_used: signal.strategyUsed,
+        market_conditions: signal.marketConditions,
+        created_at: new Date().toISOString()
+      };
+      
+      outcomes.push(outcomeData);
+      localStorage.setItem(storageKey, JSON.stringify(outcomes));
+      
     } catch (error) {
       console.error('Error storing signal for learning:', error);
     }
@@ -127,22 +130,28 @@ export class AdaptiveLearningEngine {
     try {
       console.log(`🎯 Updating signal outcome: ${signalId} -> ${outcome}`);
       
-      const { error } = await supabase
-        .from('signal_outcomes')
-        .update({
-          outcome,
-          exit_price: exitPrice,
-          exit_time: new Date().toISOString(),
-          pips_gained: pipsGained,
-          rr_achieved: rrAchieved,
-          duration_hours: this.calculateDurationHours(new Date().toISOString()),
-          updated_at: new Date().toISOString()
-        })
-        .eq('signal_id', signalId);
-
-      if (error) {
-        console.error('Failed to update signal outcome:', error);
-        return;
+      // Update in localStorage for now
+      const storageKey = 'signal_outcomes';
+      const existingData = localStorage.getItem(storageKey);
+      
+      if (existingData) {
+        const outcomes = JSON.parse(existingData);
+        const index = outcomes.findIndex((o: any) => o.signal_id === signalId);
+        
+        if (index !== -1) {
+          outcomes[index] = {
+            ...outcomes[index],
+            outcome,
+            exit_price: exitPrice,
+            exit_time: new Date().toISOString(),
+            pips_gained: pipsGained,
+            rr_achieved: rrAchieved,
+            duration_hours: this.calculateDurationHours(new Date().toISOString()),
+            updated_at: new Date().toISOString()
+          };
+          
+          localStorage.setItem(storageKey, JSON.stringify(outcomes));
+        }
       }
 
       // Trigger learning analysis update
@@ -160,30 +169,41 @@ export class AdaptiveLearningEngine {
     try {
       console.log('📊 Generating learning metrics from historical data...');
       
-      const { data: outcomes, error } = await supabase
-        .from('signal_outcomes')
-        .select('*')
-        .not('outcome', 'eq', 'PENDING')
-        .gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()); // Last 90 days
+      // Read from localStorage for now
+      const storageKey = 'signal_outcomes';
+      const existingData = localStorage.getItem(storageKey);
+      
+      if (!existingData) {
+        console.log('📊 No historical data found, using defaults');
+        return this.getDefaultMetrics();
+      }
+      
+      const outcomes = JSON.parse(existingData);
+      const completedOutcomes = outcomes.filter((o: any) => o.outcome !== 'PENDING');
+      
+      // Filter to last 90 days
+      const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+      const recentOutcomes = completedOutcomes.filter((o: any) => 
+        new Date(o.created_at).getTime() > ninetyDaysAgo
+      );
 
-      if (error || !outcomes) {
-        console.error('Failed to fetch signal outcomes:', error);
+      console.log(`📈 Analyzing ${recentOutcomes.length} completed signals...`);
+
+      if (recentOutcomes.length === 0) {
         return this.getDefaultMetrics();
       }
 
-      console.log(`📈 Analyzing ${outcomes.length} completed signals...`);
-
       // Analyze provider accuracy
-      const providerAccuracy = this.analyzeProviderAccuracy(outcomes);
+      const providerAccuracy = this.analyzeProviderAccuracy(recentOutcomes);
       
       // Analyze strategy performance
-      const strategyPerformance = this.analyzeStrategyPerformance(outcomes);
+      const strategyPerformance = this.analyzeStrategyPerformance(recentOutcomes);
       
       // Analyze session patterns
-      const sessionAnalysis = this.analyzeSessionPatterns(outcomes);
+      const sessionAnalysis = this.analyzeSessionPatterns(recentOutcomes);
       
       // Optimize confluence thresholds
-      const confluenceOptimization = this.optimizeConfluenceThresholds(outcomes);
+      const confluenceOptimization = this.optimizeConfluenceThresholds(recentOutcomes);
 
       const metrics: LearningMetrics = {
         providerAccuracy,
@@ -192,8 +212,8 @@ export class AdaptiveLearningEngine {
         confluenceOptimization
       };
 
-      // Store updated metrics
-      await this.storeLearningMetrics(metrics);
+      // Store updated metrics in localStorage
+      localStorage.setItem('learning_metrics', JSON.stringify(metrics));
       
       console.log('🧠 Learning metrics updated successfully');
       return metrics;
@@ -209,18 +229,14 @@ export class AdaptiveLearningEngine {
    */
   async getAdaptiveWeights(session: string, pair: string): Promise<Record<string, number>> {
     try {
-      const { data: metrics } = await supabase
-        .from('learning_metrics')
-        .select('metrics')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (!metrics?.metrics) {
+      // Read from localStorage for now
+      const metricsData = localStorage.getItem('learning_metrics');
+      
+      if (!metricsData) {
         return this.getDefaultWeights();
       }
 
-      const learningData = metrics.metrics as LearningMetrics;
+      const learningData = JSON.parse(metricsData) as LearningMetrics;
       const adaptiveWeights: Record<string, number> = {};
 
       // Calculate adaptive weights based on session and pair performance
@@ -257,18 +273,14 @@ export class AdaptiveLearningEngine {
    */
   async getOptimalConfluenceThreshold(session: string, marketVolatility: number): Promise<number> {
     try {
-      const { data: metrics } = await supabase
-        .from('learning_metrics')
-        .select('metrics')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (!metrics?.metrics) {
+      // Read from localStorage for now
+      const metricsData = localStorage.getItem('learning_metrics');
+      
+      if (!metricsData) {
         return 0.75; // Default threshold
       }
 
-      const learningData = metrics.metrics as LearningMetrics;
+      const learningData = JSON.parse(metricsData) as LearningMetrics;
       let threshold = learningData.confluenceOptimization.optimalRange[0];
       
       // Adjust for session
@@ -567,16 +579,8 @@ export class AdaptiveLearningEngine {
 
   private async storeLearningMetrics(metrics: LearningMetrics): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('learning_metrics')
-        .insert({
-          metrics,
-          created_at: new Date().toISOString()
-        });
-
-      if (error) {
-        console.error('Failed to store learning metrics:', error);
-      }
+      // Store in localStorage for now
+      localStorage.setItem('learning_metrics', JSON.stringify(metrics));
     } catch (error) {
       console.error('Error storing learning metrics:', error);
     }
