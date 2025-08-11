@@ -355,7 +355,7 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-400">
-                {signals.filter(s => s.decision.status === 'APPROVED').length}
+                {signals.filter(s => s.decision?.status === 'APPROVED').length}
               </div>
               <div className="text-sm text-gray-400">Approved</div>
             </div>
@@ -441,8 +441,8 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
                       {signal.riskClassification} RISK
                     </Badge>
                     <SignalValidationStatus 
-                      status={signal.decision.status}
-                      rejectionReasons={signal.decision.reasons}
+                      status={signal.decision?.status || 'PENDING'}
+                      rejectionReasons={signal.decision?.reasons || []}
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -511,7 +511,8 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
                     <div className="text-sm text-gray-400">Quality Score</div>
                     <div className="font-bold text-blue-400">
                       {signal.qualityScore ? signal.qualityScore.toFixed(0) : 
-                       (signal.decision.expectedValue * 100).toFixed(0)}
+                       (signal.decision?.expectedValue != null ? (signal.decision.expectedValue * 100).toFixed(0) : 
+                        (typeof (signal as any).score === 'number' ? (((signal as any).score) as number).toFixed(0) : 'N/A'))}
                     </div>
                   </div>
                   <div>
@@ -597,7 +598,7 @@ const EnhancedOrchestratorDashboard: React.FC<EnhancedOrchestratorDashboardProps
                     </div>
 
                     {/* Rejection Reasons (if any) */}
-                    {signal.decision.reasons.length > 0 && (
+                    {signal.decision?.reasons && signal.decision.reasons.length > 0 && (
                       <div className="space-y-2">
                         <div className="text-sm font-semibold text-gray-300">Decision Factors:</div>
                         <div className="text-xs text-gray-400">

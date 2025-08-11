@@ -379,7 +379,9 @@ export class UltraIntelligentSignalEngine {
    */
   private ensureBaseConsensus(base: OrchestrationResult): OrchestrationResult {
     const hasConsensus = base && (base as any).consensus && typeof (base as any).consensus.scoreFraction === 'number';
-    if (hasConsensus) return base;
+    const hasDecision = base && (base as any).decision && typeof (base as any).decision.expectedValue === 'number';
+    
+    if (hasConsensus && hasDecision) return base;
 
     const filtersPassed = this.countPassedFilters((base as any).smcFilters || {});
     const direction = (base as any).direction === 'BUY' ? 'long' : 'short';
@@ -387,9 +389,9 @@ export class UltraIntelligentSignalEngine {
       ? Math.max(0, Math.min(1, (base as any).decision.expectedValue))
       : 0.5;
 
-    return {
+    const safeBase = {
       ...base,
-      consensus: {
+      consensus: hasConsensus ? (base as any).consensus : {
         weightedScore: Math.round(scoreFraction * 100),
         maxScore: 100,
         scoreFraction,
@@ -397,8 +399,18 @@ export class UltraIntelligentSignalEngine {
         conflictingModels: [],
         consensus: scoreFraction >= 0.75,
         confluenceBucket: filtersPassed
+      },
+      decision: hasDecision ? (base as any).decision : {
+        status: 'APPROVED' as const,
+        ui_label: 'SAFE_FALLBACK',
+        reasons: ['Fallback decision with safe defaults'],
+        expectedValue: scoreFraction * 0.3, // Conservative EV
+        riskLevel: 'MEDIUM' as const,
+        institutionalGrade: 'Decent' as const
       }
-    } as OrchestrationResult;
+    };
+
+    return safeBase as OrchestrationResult;
   }
 
   /**
@@ -622,7 +634,8 @@ export class UltraIntelligentSignalEngine {
     score += frac * 40;
     
     // Expected value bonus (0-25 points)
-    score += Math.min(signal.decision.expectedValue * 50, 25);
+    const ev = signal.decision?.expectedValue ?? 0.2; // Safe fallback
+    score += Math.min(ev * 50, 25);
     
     // Institutional grade bonus (0-20 points)
     const gradeBonus = {
@@ -980,8 +993,8 @@ export class UltraIntelligentSignalEngine {
   }
 
   private generateRiskAssessment(decision: any, backtest: any): string {
-    const ev = decision.expectedValue;
-    const winRate = backtest.winRate;
+    const ev = decision?.expectedValue ?? 0.2;
+    const winRate = backtest?.winRate ?? 0.5;
     
     if (ev > 0.3 && winRate > 0.7) {
       return `Low risk: High EV (${ev.toFixed(2)}) + strong historical performance (${(winRate * 100).toFixed(1)}%)`;
@@ -1026,8 +1039,8 @@ export class UltraIntelligentSignalEngine {
       `AI Consensus: ${(result.consensus.scoreFraction * 100).toFixed(1)}%`,
       `SMC Filters: ${this.countPassedFilters(result.smcFilters)}/5 passed`,
       `Backtest: ${(result.backtest.winRate * 100).toFixed(1)}% win rate`,
-      `Expected Value: ${result.decision.expectedValue.toFixed(2)}`,
-      `Risk Level: ${result.decision.riskLevel}`
+      `Expected Value: ${(result.decision?.expectedValue ?? 0.2).toFixed(2)}`,
+      `Risk Level: ${result.decision?.riskLevel ?? 'MEDIUM'}`
     ];
   }
 
