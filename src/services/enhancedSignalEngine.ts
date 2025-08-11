@@ -71,6 +71,36 @@ export class EnhancedSignalEngine {
       // 5. Determine signal strength
       const strength = this.determineStrength(confidence, strategies);
       
+      // HOTFIX: Apply validation gate
+      const { SignalValidationGate } = await import('@/services/signalValidationGate');
+      
+      const passedCount = Object.values(strategies).filter((s: any) => s.passed).length;
+      const validationInput = {
+        pair,
+        direction: this.determineDirection(strategies),
+        confluence_bucket: passedCount,
+        confidence: confidence / 100,
+        ai_votes: [{
+          name: 'Enhanced',
+          tier: (confidence >= 80 ? 'elite' : confidence >= 65 ? 'moderate' : 'weak') as 'elite' | 'moderate' | 'weak',
+          direction: (this.determineDirection(strategies) === 'BUY' ? 'long' : 'short') as 'long' | 'short' | 'neutral',
+          confidence: confidence
+        }],
+        strategy_results: [{
+          strategyConfidence: confidence >= 70 ? 0.75 : 0.45,
+          passedFilters: passedCount
+        }]
+      };
+      
+      const validation = SignalValidationGate.validateSignal(validationInput);
+      console.log('🔍 Signal validation result:', validation);
+      
+      // Reject if validation fails
+      if (!validation.passed) {
+        console.log('❌ Signal rejected by validation gate:', validation.rejection_reasons);
+        return null;
+      }
+      
       // 6. Generate Groq analysis
       const groqAnalysis = await this.generateGroqAnalysis(pair, livePrice, strategies, confidence);
       

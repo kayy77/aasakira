@@ -588,6 +588,9 @@ export class SignalEngine {
 
   async generateSignal(marketData: MarketData): Promise<SignalResult> {
     try {
+      // HOTFIX: Import validation gate
+      const { SignalValidationGate } = await import('@/services/signalValidationGate');
+      
       // Enhanced market data with MACD and AMD phase
       const enrichedData = { ...marketData };
       

@@ -21,6 +21,7 @@ import EnhancedSignalCard from './EnhancedSignalCard';
 import SignalQualityFilter from './SignalQualityFilter';
 import { EnhancedConsensusDisplay } from './EnhancedConsensusDisplay';
 import { useEnhancedConsensusScanner } from '@/hooks/useEnhancedConsensusScanner';
+import { SignalValidationStatus } from './SignalValidationStatus';
 
 const EnhancedSignalsDashboard: React.FC = () => {
   const [signals, setSignals] = useState<EnhancedSignal[]>([]);
@@ -83,11 +84,25 @@ const EnhancedSignalsDashboard: React.FC = () => {
       
       if (signal) {
         console.log('✅ Enhanced signal generated successfully:', signal);
-        setSignals(prev => [signal, ...prev.slice(0, 9)]);
-        toast({
-          title: `🎯 ${signal.quality.toUpperCase()} Signal Generated!`,
-          description: `${signal.symbol} ${signal.type} | ${signal.confidence}% confidence | EV: ${signal.expectedValue.toFixed(2)}`,
-        });
+        
+        // HOTFIX: Apply validation gate to determine if signal should be shown
+        const { SignalValidationGate } = await import('@/services/signalValidationGate');
+        const shouldShow = SignalValidationGate.shouldShowToUsers(signal);
+        
+        if (shouldShow) {
+          setSignals(prev => [signal, ...prev.slice(0, 9)]);
+          toast({
+            title: `🎯 ${signal.quality.toUpperCase()} Signal Generated!`,
+            description: `${signal.symbol} ${signal.type} | ${signal.confidence}% confidence | EV: ${signal.expectedValue.toFixed(2)}`,
+          });
+        } else {
+          console.log('❌ Signal rejected for user display by validation gate');
+          toast({
+            title: "Signal Quality Check",
+            description: "Generated signal did not meet institutional quality standards. Please try again.",
+            variant: "destructive",
+          });
+        }
       } else {
         console.log('❌ Signal generation returned null');
         toast({

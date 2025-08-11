@@ -28,6 +28,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import SignalStrengthFilter from './SignalStrengthFilter';
+import { SignalValidationStatus } from './SignalValidationStatus';
 
 interface LiveSignalsDashboardProps {
   selectedStrength?: string;
@@ -94,11 +95,25 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
       
       if (signal) {
         console.log('✅ Signal generated successfully:', signal);
-        setSignals(prev => [signal, ...prev.slice(0, 9)]);
-        toast({
-          title: `🎯 ${signal.strength} Signal Generated!`,
-          description: `${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice.toFixed(5)}`,
-        });
+        
+        // HOTFIX: Apply validation gate to determine if signal should be shown
+        const { SignalValidationGate } = await import('@/services/signalValidationGate');
+        const shouldShow = SignalValidationGate.shouldShowToUsers(signal);
+        
+        if (shouldShow) {
+          setSignals(prev => [signal, ...prev.slice(0, 9)]);
+          toast({
+            title: `🎯 ${signal.strength} Signal Generated!`,
+            description: `${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice.toFixed(5)}`,
+          });
+        } else {
+          console.log('❌ Signal rejected for user display by validation gate');
+          toast({
+            title: "Signal Quality Check",
+            description: "Generated signal did not meet quality standards. Please try again.",
+            variant: "destructive",
+          });
+        }
       } else {
         console.log('❌ Signal generation returned null');
         toast({

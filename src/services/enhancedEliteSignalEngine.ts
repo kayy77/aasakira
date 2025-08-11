@@ -78,7 +78,38 @@ export class EnhancedEliteSignalEngine {
       const { stopLoss, takeProfit, riskReward } = this.calculatePrecisionTradeLevels(
         symbol, priceData, direction, quality, indicators.confluenceScore
       );
-      const signalLabel = this.generateSignalLabel(confidence, indicators.confluenceScore, quality);
+
+      // HOTFIX: Apply validation gate before proceeding
+      const { SignalValidationGate } = await import('@/services/signalValidationGate');
+      
+      const validationInput = {
+        pair: symbol,
+        direction: direction,
+        confluence_bucket: indicators.confluenceScore,
+        confidence: confidence / 100,
+        ai_votes: [{
+          name: 'EnhancedElite',
+          tier: (indicators.confluenceScore >= 5 ? 'elite' : 
+                indicators.confluenceScore >= 3 ? 'moderate' : 'weak') as 'elite' | 'moderate' | 'weak',
+          direction: (direction === 'BUY' ? 'long' : 'short') as 'long' | 'short' | 'neutral',
+          confidence: confidence
+        }],
+        strategy_results: [{
+          strategyConfidence: expectedValue > 0 ? 0.75 : 0.45,
+          passedFilters: Object.values(indicators).filter(val => typeof val === 'boolean' ? val : val?.valid || val?.passed).length
+        }]
+      };
+      
+      const validation = SignalValidationGate.validateSignal(validationInput);
+      console.log('🔍 Signal validation result:', validation);
+      
+      // Reject if validation fails
+      if (!validation.passed) {
+        console.log('❌ Signal rejected by validation gate:', validation.rejection_reasons);
+        return null;
+      }
+      
+      const signalLabel = validation.ui_label; // Use validation gate label
 
       // NEW: Multi-AI Consensus Analysis
       console.log('🧠 Running Multi-AI Consensus Analysis...');
