@@ -129,92 +129,67 @@ export class UltraIntelligentSignalEngine {
     session: 'London' | 'NewYork' | 'Asian',
     adaptiveWeights: Record<string, number>
   ): Promise<UltraSignalResult> {
-    
     console.log('🔍 Starting guaranteed scan with REAL market data...');
-    
-    // Stage 1: Try normal signal generation with real AI consensus
-    this.updateProgress('real_scan', 'Running AI consensus with live market data...', 20);
-    
-    for (const pair of priorityPairs.slice(0, 3)) {
-      try {
-        console.log(`📊 Analyzing ${pair} with full AI consensus...`);
-        
-        // Create snapshot with REAL live prices
-        const enhancedSnapshot = await this.createEnhancedMarketSnapshot(pair, session);
-        console.log(`📈 Using live price for ${pair}: ${enhancedSnapshot.price}`);
-        
-        // Try the REAL orchestrator with live data
-        const result = await this.orchestrator.generateSignal(enhancedSnapshot);
-        
-        if (result && result.decision.status === 'APPROVED') {
-          console.log(`✅ Real signal found for ${pair}!`);
-          
-          const ultraResult = await this.enhanceSignalWithIntelligence(
-            result, 
-            session, 
-            adaptiveWeights, 
-            0.3 // Lower threshold to accept more signals
-          );
-          
-          const candidate: UltraSignalResult = {
-            ...ultraResult,
-            riskClassification: this.classifyRisk(result.consensus.scoreFraction * 100, this.countPassedFilters(result.smcFilters)),
-            riskMessage: this.getRiskMessage(this.classifyRisk(result.consensus.scoreFraction * 100, this.countPassedFilters(result.smcFilters))),
-            qualityScore: (this.countPassedFilters(result.smcFilters) * 15) + (result.consensus.scoreFraction * 70),
-            filtersPassed: this.countPassedFilters(result.smcFilters),
-            aiConfidence: result.consensus.scoreFraction * 100
-          };
 
-          if (!this.passesCooldownOrReversal(candidate)) {
-            console.log(`⛔ Reversal/cooldown guard blocked ${pair} ${candidate.direction}`);
-            continue;
-          }
+    this.updateProgress('real_scan', 'Scanning full watchlist with live data...', 25);
 
-          this.updateLastSignal(candidate);
-          return candidate;
-        }
-      } catch (error) {
-        console.log(`⚠️ Error with ${pair}:`, error);
-      }
-    }
-    
-    // Stage 2: If no perfect signals, try with LOWERED thresholds but REAL data
-    this.updateProgress('relaxed_scan', 'Relaxing thresholds for real market signals...', 60);
-    
+    const candidates: Array<{ signal: UltraSignalResult; score: number }> = [];
+
     for (const pair of priorityPairs) {
       try {
-        const enhancedSnapshot = await this.createEnhancedMarketSnapshot(pair, session);
-        
-        // Force the orchestrator to be more permissive
-        const result = await this.orchestrator.generateSignal(enhancedSnapshot); // Remove permissive flag
-        
-        if (result) {
-          console.log(`📊 Relaxed threshold signal found for ${pair}`);
-          
-          const ultraResult = await this.enhanceSignalWithIntelligence(
-            result, 
-            session, 
-            adaptiveWeights, 
-            0.2 // Very low threshold
-          );
-          
-          return {
-            ...ultraResult,
-            riskClassification: 'MEDIUM' as const,
-            riskMessage: 'Relaxed criteria signal - real market data with lowered quality thresholds.',
-            qualityScore: 45,
-            filtersPassed: Math.max(1, this.countPassedFilters(result.smcFilters)),
-            aiConfidence: Math.max(40, result.consensus.scoreFraction * 100)
-          };
+        const snapshot = await this.createEnhancedMarketSnapshot(pair, session);
+        const result = await this.orchestrator.generateSignal(snapshot);
+        if (!result || result.decision.status !== 'APPROVED') continue;
+
+        const ultra = await this.enhanceSignalWithIntelligence(
+          result,
+          session,
+          adaptiveWeights,
+          0.3
+        );
+
+        // Enrich with risk + metrics
+        const filtersPassed = this.countPassedFilters(result.smcFilters);
+        const aiConfidence = result.consensus.scoreFraction * 100;
+        const risk = this.classifyRisk(aiConfidence, filtersPassed);
+        const enriched: UltraSignalResult = {
+          ...ultra,
+          riskClassification: risk,
+          riskMessage: this.getRiskMessage(risk),
+          filtersPassed,
+          aiConfidence,
+          qualityScore: 0 // temp, computed below
+        };
+
+        // Conflict/lockout guard
+        if (!this.passesCooldownOrReversal(enriched)) {
+          console.log(`⛔ Guard blocked ${pair} ${enriched.direction}`);
+          continue;
         }
-      } catch (error) {
-        console.log(`⚠️ Relaxed scan error for ${pair}:`, error);
+
+        const score = this.calculateQualityScore(enriched, 1);
+        candidates.push({ signal: { ...enriched, qualityScore: score }, score });
+      } catch (err) {
+        console.log(`⚠️ Error scanning ${pair}:`, (err as Error).message);
+        continue;
       }
     }
-    
-    // Stage 3: Absolute fallback with REAL live prices (not test data)
-    console.log('🚨 Creating fallback signal with REAL live market data...');
-    return await this.createEmergencySignal(priorityPairs[0], session, adaptiveWeights);
+
+    this.updateProgress('best_selection', 'Selecting top-ranked signal...', 85);
+
+    if (candidates.length === 0) {
+      console.log('🚨 No candidates passed filters - creating live-price emergency signal');
+      const emergency = await this.createEmergencySignal(priorityPairs[0] || 'EUR/USD', session, adaptiveWeights);
+      emergency.qualityScore = this.calculateQualityScore(emergency, 3);
+      this.updateLastSignal(emergency);
+      return emergency;
+    }
+
+    // Sort by score and choose the best
+    candidates.sort((a, b) => b.score - a.score);
+    const best = candidates[0].signal;
+    this.updateLastSignal(best);
+    return best;
   }
 
   /**
@@ -432,8 +407,9 @@ export class UltraIntelligentSignalEngine {
       institutionalGrade: 'Weak' as 'Elite' | 'Strong' | 'Decent' | 'Weak' | 'Rejected',
       adaptiveWeights,
       riskClassification: 'HIGH' as 'LOW' | 'MEDIUM' | 'HIGH',
-      riskMessage: 'Emergency signal with live market prices. Proceed with caution due to limited analysis.',
-      qualityScore: 25,
+      qualityScore: this.calculateQualityScore({
+        ...({} as UltraSignalResult), // placeholder to satisfy TS inlined call; will override post-create
+      } as any, 3), // will be recalculated by caller if needed
       filtersPassed: 1,
       aiConfidence: 45,
       learningInsights: {
