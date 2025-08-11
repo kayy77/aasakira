@@ -52,6 +52,11 @@ export class UltraIntelligentSignalEngine {
   private learningEngine: AdaptiveLearningEngine;
   private progressCallback?: (progress: ScanProgress) => void;
 
+  // Anti-conflict memory and timing guards
+  private lastSignals = new Map<string, { direction: 'BUY' | 'SELL'; timestamp: number }>();
+  private readonly REVERSAL_WINDOW_MS = 60 * 60 * 1000; // 60 minutes
+  private readonly SIGNAL_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes (approx candle close on M15)
+
   private constructor() {
     this.orchestrator = SignalOrchestrator.getInstance();
     this.learningEngine = AdaptiveLearningEngine.getInstance();
@@ -79,7 +84,8 @@ export class UltraIntelligentSignalEngine {
       this.updateProgress('session_analysis', 'Analyzing optimal session and pairs...', 5);
       
       const optimalSession = this.getCurrentOptimalSession(request.sessionOverride);
-      const priorityPairs = this.getSessionPriorityPairs(optimalSession);
+      const basePairs = this.getSessionPriorityPairs(optimalSession);
+      const priorityPairs = Array.from(new Set([...basePairs, ...this.getGlobalWatchlist()]));
       
       console.log(`🎯 Session: ${optimalSession}, Priority pairs: ${priorityPairs.slice(0, 5).join(', ')}`);
       
@@ -150,7 +156,7 @@ export class UltraIntelligentSignalEngine {
             0.3 // Lower threshold to accept more signals
           );
           
-          return {
+          const candidate: UltraSignalResult = {
             ...ultraResult,
             riskClassification: this.classifyRisk(result.consensus.scoreFraction * 100, this.countPassedFilters(result.smcFilters)),
             riskMessage: this.getRiskMessage(this.classifyRisk(result.consensus.scoreFraction * 100, this.countPassedFilters(result.smcFilters))),
@@ -158,6 +164,14 @@ export class UltraIntelligentSignalEngine {
             filtersPassed: this.countPassedFilters(result.smcFilters),
             aiConfidence: result.consensus.scoreFraction * 100
           };
+
+          if (!this.passesCooldownOrReversal(candidate)) {
+            console.log(`⛔ Reversal/cooldown guard blocked ${pair} ${candidate.direction}`);
+            continue;
+          }
+
+          this.updateLastSignal(candidate);
+          return candidate;
         }
       } catch (error) {
         console.log(`⚠️ Error with ${pair}:`, error);
@@ -996,5 +1010,34 @@ export class UltraIntelligentSignalEngine {
     if (this.progressCallback) {
       this.progressCallback({ stage, message, progress, details });
     }
+  }
+
+  // Global watchlist to ensure multi-pair coverage beyond session priority
+  private getGlobalWatchlist(): string[] {
+    return [
+      'EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','NZDUSD','USDCHF',
+      'EURGBP','EURJPY','GBPJPY','XAUUSD'
+    ];
+  }
+
+  // Prevent rapid flips and opposite signals within strict windows
+  private passesCooldownOrReversal(signal: UltraSignalResult): boolean {
+    const last = this.lastSignals.get(signal.pair);
+    const now = Date.now();
+    if (!last) return true;
+
+    // Block any repeat signals within cooldown window
+    if (now - last.timestamp < this.SIGNAL_COOLDOWN_MS) return false;
+
+    // Block opposite-direction reversals within the reversal window
+    if (signal.direction !== last.direction && (now - last.timestamp) < this.REVERSAL_WINDOW_MS) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private updateLastSignal(signal: UltraSignalResult): void {
+    this.lastSignals.set(signal.pair, { direction: signal.direction, timestamp: Date.now() });
   }
 }
