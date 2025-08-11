@@ -99,6 +99,10 @@ export abstract class BaseProviderAdapter {
   getStats(): ProviderStats {
     return { ...this.stats };
   }
+
+  getName(): string {
+    return this.config.name;
+  }
 }
 
 export class GroqAdapter extends BaseProviderAdapter {
@@ -348,8 +352,8 @@ export class ProviderManager {
   getProviderStats(): Record<string, ProviderStats> {
     const stats: Record<string, ProviderStats> = {};
     
-    this.adapters.forEach((adapter, name) => {
-      stats[name] = adapter.getStats();
+    this.adapters.forEach((adapter) => {
+      stats[adapter.getName()] = adapter.getStats();
     });
 
     return stats;

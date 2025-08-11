@@ -180,58 +180,19 @@ export class SignalOrchestrator {
   }
 
   private async gatherAIVotes(snapshot: MarketSnapshot): Promise<AIVote[]> {
-    const providers = this.REQUIRED_PROVIDERS;
-    const votes: AIVote[] = [];
+    // Import provider manager to get votes from all providers
+    const { providerManager } = await import('./ProviderAdapters');
     
-    // Run all providers in parallel with timeout
-    const votePromises = providers.map(provider => 
-      this.getAIVote(provider, snapshot).catch(error => {
-        console.warn(`AI provider ${provider} failed:`, error);
-        return null;
-      })
-    );
-    
-    const results = await Promise.allSettled(votePromises);
-    
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled' && result.value) {
-        votes.push(result.value);
-      } else {
-        console.warn(`Provider ${providers[index]} failed or timed out`);
-      }
-    });
-    
-    return votes;
+    try {
+      const votes = await providerManager.getAllVotes(snapshot);
+      console.log(`🧠 Collected ${votes.length} AI votes from providers`);
+      return votes;
+    } catch (error) {
+      console.error('Failed to gather AI votes:', error);
+      return [];
+    }
   }
 
-  private async getAIVote(provider: string, snapshot: MarketSnapshot): Promise<AIVote> {
-    // Mock AI responses - in production these would call real AI services
-    const mockResponses = {
-      'Groq': { tier: 'elite', confidence: 85, direction: 'long' },
-      'Gemini': { tier: 'elite', confidence: 78, direction: 'long' },
-      'Cohere': { tier: 'moderate', confidence: 72, direction: 'long' },
-      'OpenRouter': { tier: 'moderate', confidence: 68, direction: 'short' },
-      'Together': { tier: 'weak', confidence: 55, direction: 'neutral' }
-    };
-    
-    const response = mockResponses[provider as keyof typeof mockResponses];
-    
-    return {
-      name: provider,
-      tier: response.tier as 'elite' | 'moderate' | 'weak',
-      direction: response.direction as 'long' | 'short' | 'neutral',
-      confidence: response.confidence,
-      filters: {
-        smc: Math.random() > 0.4,
-        liquiditySweep: Math.random() > 0.6,
-        fvg: Math.random() > 0.5,
-        rsiDivergence: Math.random() > 0.7,
-        volumeSpike: Math.random() > 0.6,
-        sessionTiming: snapshot.session !== 'Asian'
-      },
-      reasoning: `${provider} analysis: ${response.direction} bias with ${response.confidence}% confidence`
-    };
-  }
 
   private async runSMCFilters(snapshot: MarketSnapshot): Promise<SMCFilters> {
     // Deterministic SMC analysis based on candle data
@@ -493,6 +454,7 @@ export class SignalOrchestrator {
   private async persistSignal(signal: OrchestrationResult): Promise<void> {
     try {
       const { error } = await supabase.from('signals').insert({
+        pair: signal.pair,
         signal_type: 'orchestrated',
         direction: signal.direction,
         entry_price: signal.entry,
@@ -540,6 +502,7 @@ export class SignalOrchestrator {
   ): Promise<void> {
     try {
       await supabase.from('signals').insert({
+        pair: snapshot.pair,
         signal_type: 'orchestrated',
         direction: consensus.majorityDirection === 'long' ? 'BUY' : 'SELL',
         entry_price: snapshot.price,

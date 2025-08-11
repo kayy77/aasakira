@@ -33,6 +33,12 @@ export function SignalValidationStatus({
           color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
           label: 'Weak (Admin Only)'
         };
+      case 'PENDING_QA':
+        return {
+          icon: AlertTriangle,
+          color: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+          label: 'Pending QA Review'
+        };
       default:
         return {
           icon: Eye,
