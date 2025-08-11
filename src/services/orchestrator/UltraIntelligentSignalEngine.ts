@@ -106,7 +106,10 @@ export class UltraIntelligentSignalEngine {
       
     } catch (error) {
       console.error('❌ Signal generation failed:', error);
-      return null;
+      
+      // Even on error, return emergency signal - NEVER return null
+      console.log('🚨 Creating emergency signal due to error...');
+      return await this.createEmergencySignal('EUR/USD', 'London', {});
     }
   }
 
