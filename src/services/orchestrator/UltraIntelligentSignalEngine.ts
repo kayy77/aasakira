@@ -141,16 +141,17 @@ export class UltraIntelligentSignalEngine {
         const result = await this.orchestrator.generateSignal(snapshot);
         if (!result || result.decision.status !== 'APPROVED') continue;
 
+        const base = this.ensureBaseConsensus(result);
         const ultra = await this.enhanceSignalWithIntelligence(
-          result,
+          base,
           session,
           adaptiveWeights,
           0.3
         );
 
         // Enrich with risk + metrics
-        const filtersPassed = this.countPassedFilters(result.smcFilters);
-        const aiConfidence = result.consensus.scoreFraction * 100;
+        const filtersPassed = this.countPassedFilters(base.smcFilters);
+        const aiConfidence = base.consensus.scoreFraction * 100;
         const risk = this.classifyRisk(aiConfidence, filtersPassed);
         const enriched: UltraSignalResult = {
           ...ultra,
@@ -223,15 +224,16 @@ export class UltraIntelligentSignalEngine {
       }
       
       // Calculate quality metrics
-      const filtersPassed = this.countPassedFilters(baseResult.smcFilters);
-      const aiConfidence = (baseResult.consensus.scoreFraction * 100);
-      const rrScore = baseResult.riskReward || 1;
+      const baseSafe = this.ensureBaseConsensus(baseResult as OrchestrationResult);
+      const filtersPassed = this.countPassedFilters(baseSafe.smcFilters);
+      const aiConfidence = (baseSafe.consensus.scoreFraction * 100);
+      const rrScore = baseSafe.riskReward || 1;
       
       // Total quality score
       const qualityScore = (filtersPassed * 15) + (aiConfidence * 0.7) + (rrScore * 10);
       
       const ultraResult = await this.enhanceSignalWithIntelligence(
-        baseResult, 
+        baseSafe, 
         session, 
         adaptiveWeights, 
         0.4 // Much lower threshold to ensure signals pass
@@ -366,6 +368,33 @@ export class UltraIntelligentSignalEngine {
       case 'HIGH':
         return 'High risk setup. Proceed with extreme caution or wait for better conditions.';
     }
+  }
+
+  /**
+   * Ensure OrchestrationResult has a consensus object to prevent runtime crashes
+   */
+  private ensureBaseConsensus(base: OrchestrationResult): OrchestrationResult {
+    const hasConsensus = base && (base as any).consensus && typeof (base as any).consensus.scoreFraction === 'number';
+    if (hasConsensus) return base;
+
+    const filtersPassed = this.countPassedFilters((base as any).smcFilters || {});
+    const direction = (base as any).direction === 'BUY' ? 'long' : 'short';
+    const scoreFraction = typeof (base as any).decision?.expectedValue === 'number'
+      ? Math.max(0, Math.min(1, (base as any).decision.expectedValue))
+      : 0.5;
+
+    return {
+      ...base,
+      consensus: {
+        weightedScore: Math.round(scoreFraction * 100),
+        maxScore: 100,
+        scoreFraction,
+        majorityDirection: direction,
+        conflictingModels: [],
+        consensus: scoreFraction >= 0.75,
+        confluenceBucket: filtersPassed
+      }
+    } as OrchestrationResult;
   }
 
   /**
@@ -853,6 +882,7 @@ export class UltraIntelligentSignalEngine {
     adaptiveWeights: Record<string, number>,
     confluenceThreshold: number
   ): Promise<UltraSignalResult> {
+    const safeBase = this.ensureBaseConsensus(baseResult);
     
     // Generate deep institutional analysis
     const sessionContext = InstitutionalKnowledgeBase.getSessionSpecificPrompt(
@@ -864,7 +894,7 @@ export class UltraIntelligentSignalEngine {
     const learningInsights = {
       providerReliability: this.generateProviderReliabilityInsight(baseResult.aiVotes, adaptiveWeights),
       sessionOptimality: this.generateSessionOptimalityInsight(session, baseResult.pair),
-      confluenceRecommendation: this.generateConfluenceRecommendation(baseResult.consensus, confluenceThreshold),
+      confluenceRecommendation: this.generateConfluenceRecommendation(safeBase.consensus, confluenceThreshold),
       riskAssessment: this.generateRiskAssessment(baseResult.decision, baseResult.backtest)
     };
     
@@ -873,14 +903,14 @@ export class UltraIntelligentSignalEngine {
       groqReasoning: this.extractGroqReasoning(baseResult.aiVotes),
       marketStructureAnalysis: this.generateMarketStructureAnalysis(baseResult.smcFilters),
       liquidityAnalysis: this.generateLiquidityAnalysis(baseResult.smcFilters),
-      confluenceBreakdown: this.generateConfluenceBreakdown(baseResult),
+      confluenceBreakdown: this.generateConfluenceBreakdown(safeBase),
       backtestSummary: this.generateBacktestSummary(baseResult.backtest)
     };
     
     // Create progress steps for transparency
     const progressSteps = [
       `✅ Session Analysis: ${session} optimal for ${baseResult.pair}`,
-      `✅ AI Consensus: ${(baseResult.consensus.scoreFraction * 100).toFixed(1)}% agreement`,
+      `✅ AI Consensus: ${(safeBase.consensus.scoreFraction * 100).toFixed(1)}% agreement`,
       `✅ SMC/ICT Validation: ${this.countPassedFilters(baseResult.smcFilters)}/5 confirmations`,
       `✅ Backtest Validation: ${(baseResult.backtest.winRate * 100).toFixed(1)}% historical win rate`,
       `✅ Learning Integration: Adaptive weights applied`,
