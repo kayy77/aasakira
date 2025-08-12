@@ -1,5 +1,6 @@
 import { groqService } from './groqService';
-import { enhancedLivePriceService } from './enhancedLivePriceService';
+import { webSocketPriceService } from './webSocketPriceService';
+import { trueLivePriceService } from './trueLivePriceService';
 
 export interface ProfessionalSignal {
   id: string;
@@ -111,8 +112,8 @@ class ProfessionalTradingEngine {
     
     console.log(`🌍 ${session} SESSION ANALYSIS - Focusing on ${selectedPair}`);
     
-    // 2. LIVE MARKET DATA - Real institutional pricing
-    const priceData = await enhancedLivePriceService.getFreshPriceForSignal(selectedPair);
+    // 2. LIVE MARKET DATA - Real institutional pricing via WebSocket & TrueLive APIs
+    const priceData = await trueLivePriceService.getTrueLivePrice(selectedPair);
     const livePrice = priceData.price;
     
     console.log(`💰 LIVE MARKET PRICE: ${selectedPair} = ${livePrice} (Source: ${priceData.source})`);
@@ -385,8 +386,8 @@ ASIAN SESSION PLAYBOOK (0-8 UTC):
     const pairs = this.getSessionOptimalPairs(session);
     const selectedPair = pairs[0];
     
-    const priceData = await enhancedLivePriceService.getFreshPriceForSignal(selectedPair)
-      .catch(() => ({ price: 1.0850, source: 'fallback', age: 0 }));
+    const priceData = await trueLivePriceService.getTrueLivePrice(selectedPair)
+      .catch(() => ({ price: 1.0850, source: 'fallback', age: 0, timestamp: Date.now() }));
     
     return {
       id: `institutional_fallback_${Date.now()}`,
