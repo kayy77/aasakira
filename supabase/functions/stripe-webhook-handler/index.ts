@@ -57,27 +57,46 @@ serve(async (req) => {
         if (customerEmail) {
           logStep("Processing checkout completion", { email: customerEmail });
           
-          // Update user to premium status
-          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-            session.metadata?.user_id || '',
-            { user_metadata: { role: 'premium' } }
-          );
-
-          if (updateError) {
-            logStep("Error updating user auth", { error: updateError });
+          // Find user by email and update to premium status
+          const { data: users, error: userFetchError } = await supabaseAdmin.auth.admin.listUsers();
+          
+          if (userFetchError) {
+            logStep("Error fetching users", { error: userFetchError });
+            return new Response(JSON.stringify({ error: "Failed to fetch users" }), { status: 500 });
           }
+          
+          const user = users.users.find(u => u.email === customerEmail);
+          
+          if (user) {
+            // Update user metadata to premium
+            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+              user.id,
+              { user_metadata: { ...user.user_metadata, role: 'premium', subscription_tier: 'premium' } }
+            );
 
-          // Also update any user profiles table if you have one
-          const { error: profileError } = await supabaseAdmin
-            .from('user_profiles')
-            .update({ role: 'premium' })
-            .eq('email', customerEmail);
+            if (updateError) {
+              logStep("Error updating user auth", { error: updateError });
+            }
 
-          if (profileError) {
-            logStep("No user_profiles table or update failed", { error: profileError });
+            // Update subscribers table
+            const { error: subscriberError } = await supabaseAdmin
+              .from('subscribers')
+              .upsert({
+                user_id: user.id,
+                email: customerEmail,
+                subscribed: true,
+                subscription_tier: 'premium',
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'email' });
+
+            if (subscriberError) {
+              logStep("Error updating subscribers table", { error: subscriberError });
+            }
+
+            logStep("User upgraded to premium", { email: customerEmail, userId: user.id });
+          } else {
+            logStep("User not found", { email: customerEmail });
           }
-
-          logStep("User upgraded to premium", { email: customerEmail });
         }
         break;
 
@@ -88,17 +107,29 @@ serve(async (req) => {
         if (customer && !customer.deleted && customer.email) {
           logStep("Processing subscription cancellation", { email: customer.email });
           
-          // Downgrade user from premium
-          const { error: downgradeError } = await supabaseAdmin
-            .from('user_profiles')
-            .update({ role: 'free' })
-            .eq('email', customer.email);
+          // Find user by email and downgrade
+          const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+          const user = users.users.find(u => u.email === customer.email);
+          
+          if (user) {
+            // Update user metadata to free
+            await supabaseAdmin.auth.admin.updateUserById(
+              user.id,
+              { user_metadata: { ...user.user_metadata, role: 'free', subscription_tier: 'free' } }
+            );
+            
+            // Update subscribers table
+            await supabaseAdmin
+              .from('subscribers')
+              .update({ 
+                subscribed: false, 
+                subscription_tier: 'free',
+                updated_at: new Date().toISOString() 
+              })
+              .eq('email', customer.email);
 
-          if (downgradeError) {
-            logStep("Error downgrading user", { error: downgradeError });
+            logStep("User downgraded to free", { email: customer.email });
           }
-
-          logStep("User downgraded to free", { email: customer.email });
         }
         break;
 

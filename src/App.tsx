@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Index from '@/pages/Index';
 import Signals from '@/pages/Signals';
+import Pricing from '@/pages/Pricing';
 import NotFound from '@/pages/NotFound';
 
 import { Toaster } from "@/components/ui/toaster"
@@ -21,6 +22,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/signals" element={<Signals />} />
+                <Route path="/pricing" element={<Pricing />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AuthGuard>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Signal, User, MessageCircle } from 'lucide-react';
+import { Signal, User, MessageCircle, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -19,6 +19,7 @@ const Navigation = () => {
   const { user, logout } = useAuth();
 
   const navigation = [
+    { name: 'Home', href: '/', icon: Home },
     { name: 'AI Signal Scanner', href: '/signals', icon: Signal },
   ];
 

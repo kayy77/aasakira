@@ -105,23 +105,9 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
             Cancel
           </Button>
           <Button
-            onClick={async () => {
-              try {
-                if (!user?.email) {
-                  console.error('No user email available');
-                  return;
-                }
-                
-                // Create checkout session
-                const checkoutUrl = await stripeService.createCheckoutSession('premium', user.email);
-                
-                // Open Stripe checkout in new tab
-                window.open(checkoutUrl, '_blank');
-                
-                setShowUpgradeDialog(false);
-              } catch (error) {
-                console.error('Upgrade error:', error);
-              }
+            onClick={() => {
+              // Redirect to pricing page
+              window.location.href = '/pricing';
             }}
             className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
           >
@@ -149,23 +135,9 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
             You've used all {dailyLimit} daily {displayName} for today.
           </p>
           <Button
-            onClick={async () => {
-              try {
-                if (!user?.email) {
-                  console.error('No user email available');
-                  return;
-                }
-                
-                // Create checkout session
-                const checkoutUrl = await stripeService.createCheckoutSession('premium', user.email);
-                
-                // Open Stripe checkout in new tab
-                window.open(checkoutUrl, '_blank');
-                
-                setShowUpgradeDialog(false);
-              } catch (error) {
-                console.error('Upgrade error:', error);
-              }
+            onClick={() => {
+              // Redirect to pricing page
+              window.location.href = '/pricing';
             }}
             className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
           >
