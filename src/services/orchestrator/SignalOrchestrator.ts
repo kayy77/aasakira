@@ -211,8 +211,16 @@ export class SignalOrchestrator {
   }
 
   private async getMarketSnapshot(): Promise<MarketSnapshot> {
-    // Session-aware pair selection with priority weighting
+    // Early market validation - exit quickly if conditions are poor
     const session = this.getCurrentSession();
+    const sessionMultiplier = this.getSessionMultiplier(session);
+    
+    // Skip processing if market conditions are weak (saves processing time)
+    if (sessionMultiplier < 0.4) {
+      console.log(`⏭️ Skipping scan - weak session conditions: ${session} (${sessionMultiplier})`);
+      throw new Error('Weak market conditions - skipping scan');
+    }
+
     const sessionWeights = this.SESSION_PAIR_WEIGHTS[session];
     
     // Get top 3 pairs for current session based on weights
@@ -239,20 +247,56 @@ export class SignalOrchestrator {
   }
 
   private async gatherAIVotes(snapshot: MarketSnapshot): Promise<AIVote[]> {
-    console.log('🧠 Starting weighted AI consensus with Groq priority...');
+    console.log('🧠 Starting parallel AI consensus with timeouts...');
     
-    // Step 1: Run Groq first as the primary reasoning AI
-    const groqVote = await this.getGroqPriorityVote(snapshot);
+    // Run all AI providers in parallel with 3s timeout each
+    const [groqVote, ...otherVotes] = await Promise.allSettled([
+      this.withTimeout(this.getGroqPriorityVote(snapshot), 3000),
+      this.withTimeout(this.getProviderVotes(snapshot), 4000)
+    ]);
+
+    const validGroqVote = groqVote.status === 'fulfilled' ? groqVote.value : this.getFallbackVote('Groq', snapshot);
+    const validOtherVotes = otherVotes[0]?.status === 'fulfilled' ? otherVotes[0].value : [];
     
-    // Step 2: Get votes from all other providers in parallel
-    const { providerManager } = await import('./ProviderAdapters');
-    const allVotes = await providerManager.getAllVotes(snapshot);
+    // Apply session/pair-based weighting to valid votes only
+    const allValidVotes = [validGroqVote, ...validOtherVotes];
+    const weightedVotes = this.applyHistoricalWeights(allValidVotes, snapshot);
     
-    // Step 3: Apply session/pair-based weighting
-    const weightedVotes = this.applyHistoricalWeights([groqVote, ...allVotes], snapshot);
-    
-    console.log(`🧠 Collected ${weightedVotes.length} weighted AI votes`);
+    console.log(`🧠 Collected ${weightedVotes.length} weighted AI votes (${allValidVotes.length - weightedVotes.length} failed)`);
     return weightedVotes;
+  }
+
+  // Timeout utility for orchestrator
+  private async withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => 
+        setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)
+      )
+    ]);
+  }
+
+  private async getProviderVotes(snapshot: MarketSnapshot): Promise<AIVote[]> {
+    const { providerManager } = await import('./ProviderAdapters');
+    return providerManager.getAllVotes(snapshot);
+  }
+
+  private getFallbackVote(provider: string, snapshot: MarketSnapshot): AIVote {
+    return {
+      name: provider,
+      tier: 'weak',
+      direction: 'neutral',
+      confidence: 25,
+      filters: {
+        smc: false,
+        liquiditySweep: false,
+        fvg: false,
+        rsiDivergence: false,
+        volumeSpike: false,
+        sessionTiming: false
+      },
+      reasoning: `${provider} timed out - using fallback neutral vote`
+    };
   }
 
   private async getGroqPriorityVote(snapshot: MarketSnapshot): Promise<AIVote> {

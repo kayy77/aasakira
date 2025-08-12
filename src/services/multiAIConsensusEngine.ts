@@ -334,6 +334,19 @@ Be brutally honest. If it's a weak setup, grade it accordingly. Focus on LOGIC o
     return this.getFallbackResponse(modelName);
   }
 
+  // Timeout utility for parallel processing with fallbacks
+  private async withTimeout<T>(promise: Promise<T>, ms: number, fallbackValue?: T): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => 
+        setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)
+      )
+    ]).catch(() => {
+      if (fallbackValue !== undefined) return fallbackValue;
+      throw new Error(`Operation timed out after ${ms}ms`);
+    });
+  }
+
   private getFallbackResponse(modelName: string): AIModelResponse {
     return {
       rating: 5,
@@ -391,8 +404,8 @@ Be brutally honest. If it's a weak setup, grade it accordingly. Focus on LOGIC o
   async analyzeSignalConsensus(context: SignalContext): Promise<ConsensusResult> {
     console.log('🧠 Enhanced Multi-AI Institutional Analysis Starting...');
     
-    // Get live news context
-    const liveNews = await this.getLiveNews(context.pair);
+    // Get live news context with timeout
+    const liveNews = await this.withTimeout(this.getLiveNews(context.pair), 2000, 'No major news events detected');
     const enhancedContext = {
       ...context,
       news_context: liveNews
@@ -405,13 +418,13 @@ Be brutally honest. If it's a weak setup, grade it accordingly. Focus on LOGIC o
     const patternPrompt = this.buildInstitutionalPrompt(enhancedContext, 'pattern');
     const contrarianPrompt = this.buildInstitutionalPrompt(enhancedContext, 'contrarian');
     
-    // Call all AI models with specialized prompts
+    // Call all AI models in parallel with hard timeouts (3s each)
     const [groqResponse, geminiResponse, cohereResponse, openrouterResponse, togetherResponse] = await Promise.allSettled([
-      this.callGroqAI(institutionalPrompt),
-      this.callGeminiAI(technicalPrompt),
-      this.callCohereAI(riskPrompt),
-      this.callOpenRouterAI(patternPrompt),
-      this.callTogetherAI(contrarianPrompt)
+      this.withTimeout(this.callGroqAI(institutionalPrompt), 3000),
+      this.withTimeout(this.callGeminiAI(technicalPrompt), 3000),
+      this.withTimeout(this.callCohereAI(riskPrompt), 3000),
+      this.withTimeout(this.callOpenRouterAI(patternPrompt), 3000),
+      this.withTimeout(this.callTogetherAI(contrarianPrompt), 3000)
     ]);
 
     const aiVotes: AIVotes = {
