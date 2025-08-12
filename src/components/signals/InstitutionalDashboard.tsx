@@ -241,7 +241,7 @@ export const InstitutionalDashboard = () => {
                       <div className="text-sm text-gray-400">
                         {signal.institutionalGrade} • 
                         {signal.confidence}% • 
-                        {signal.riskReward.riskRewardRatio}:1 R:R
+                        Kelly: {signal.advancedRiskReward.riskMetrics.kellyPercentage}%
                       </div>
                     </div>
                   </div>

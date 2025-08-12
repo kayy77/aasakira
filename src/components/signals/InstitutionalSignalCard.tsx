@@ -90,19 +90,19 @@ const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signa
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className="text-sm text-gray-400">Entry</div>
-              <div className="text-white font-mono text-lg">{formatPrice(signal.riskReward.entry)}</div>
+              <div className="text-white font-mono text-lg">{formatPrice(signal.advancedRiskReward.entry)}</div>
             </div>
             <div>
-              <div className="text-sm text-gray-400">Risk:Reward</div>
-              <div className="text-emerald-400 font-bold text-lg">1:{signal.riskReward.riskRewardRatio}</div>
+              <div className="text-sm text-gray-400">Kelly %</div>
+              <div className="text-emerald-400 font-bold text-lg">{signal.advancedRiskReward.riskMetrics.kellyPercentage}%</div>
             </div>
             <div>
               <div className="text-sm text-gray-400">Stop Loss</div>
-              <div className="text-red-400 font-mono">{formatPrice(signal.riskReward.stopLoss)}</div>
+              <div className="text-red-400 font-mono">{formatPrice(signal.advancedRiskReward.stopLoss)}</div>
             </div>
             <div>
               <div className="text-sm text-gray-400">Take Profit</div>
-              <div className="text-emerald-400 font-mono">{formatPrice(signal.riskReward.takeProfit1)}</div>
+              <div className="text-emerald-400 font-mono">{formatPrice(signal.advancedRiskReward.takeProfit1)}</div>
             </div>
           </div>
         </div>
