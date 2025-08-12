@@ -20,6 +20,55 @@ interface GroqStageResult {
   confidence: number;
 }
 
+interface AdvancedDataFeeds {
+  orderBookData: {
+    bids: Array<{price: number; volume: number; level: string}>;
+    asks: Array<{price: number; volume: number; level: string}>;
+    liquidityImbalance: number;
+    whaleWalls: boolean;
+  };
+  sentimentAnalysis: {
+    newsScore: number; // -100 to 100
+    socialSentiment: number; // -100 to 100
+    fearGreedIndex: number; // 0-100
+    riskAppetite: 'risk_on' | 'risk_off' | 'neutral';
+  };
+  economicCalendar: {
+    nextHighImpact: string;
+    minutesToEvent: number;
+    expectedVolatility: number;
+    tradingRecommendation: 'avoid' | 'reduce_size' | 'normal' | 'opportunity';
+  };
+  multiAssetCorrelation: {
+    dxyCorrelation: number;
+    equitiesCorrelation: number;
+    commoditiesCorrelation: number;
+    bondsCorrelation: number;
+    correlationStrength: 'strong' | 'moderate' | 'weak';
+  };
+}
+
+interface StrategyFramework {
+  name: string;
+  bias: 'bullish' | 'bearish' | 'neutral';
+  confidence: number;
+  entry: number;
+  stopLoss: number;
+  takeProfit: number;
+  reasoning: string;
+  timeframe: string;
+  conflictingSignals: string[];
+}
+
+interface MultiPassResult {
+  pass: number;
+  analysis: string;
+  modifications: string[];
+  confidence: number;
+  shouldContinue: boolean;
+  critiques: string[];
+}
+
 interface InstitutionalPlaybook {
   ictRules: string[];
   smcRules: string[];
@@ -27,19 +76,24 @@ interface InstitutionalPlaybook {
   vsaRules: string[];
   confluenceRules: string[];
   newsAvoidanceLogic: string[];
+  trendContinuationRules: string[];
+  breakoutRules: string[];
+  killzoneRules: string[];
 }
 
-class EnhancedGroqService {
+class UltraEnhancedGroqService {
   private readonly baseUrl = 'https://api.groq.com/openai/v1';
   private apiKey: string = '';
   private initialized = false;
   private institutionalPlaybook: InstitutionalPlaybook;
+  private strategyFrameworks: string[];
 
   constructor() {
     this.apiKey = import.meta.env.VITE_GROQ_API_KEY || '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';
     this.initialized = true;
     this.initializeInstitutionalPlaybook();
-    console.log('🧠 ENHANCED GROQ SERVICE INITIALIZED - Multi-stage hedge fund reasoning activated');
+    this.initializeStrategyFrameworks();
+    console.log('🚀 ULTRA-ENHANCED GROQ SERVICE INITIALIZED - Multi-pass reasoning with strategy stacking activated');
   }
 
   private initializeInstitutionalPlaybook(): void {
@@ -103,49 +157,100 @@ class EnhancedGroqService {
         "Economic calendar check is mandatory",
         "News-driven volatility invalidates technical analysis",
         "Wait for market to digest news before re-entering"
+      ],
+      trendContinuationRules: [
+        "Higher highs and higher lows on HTF = bullish continuation",
+        "Pullbacks to 38.2%-61.8% fib = ideal reentry zones",
+        "Volume expansion on continuation moves",
+        "Breaking previous swing high with conviction",
+        "Flag/pennant patterns after strong moves",
+        "Moving average support holding on pullbacks"
+      ],
+      breakoutRules: [
+        "Volume must be 150%+ of average on breakout",
+        "Clear close above/below key resistance/support", 
+        "Volatility expansion confirmation",
+        "No immediate retest of broken level",
+        "Higher timeframe alignment required",
+        "Stop hunt false breakout elimination"
+      ],
+      killzoneRules: [
+        "London Open: 8-9 AM GMT (European momentum)",
+        "New York Open: 1-2 PM GMT (US momentum)",
+        "London Close: 4-5 PM GMT (position adjustments)",
+        "Asian Session: 12-2 AM GMT (range trading only)",
+        "Overlap periods: Highest volatility and opportunity",
+        "Off-hours trading: Reduced position sizes"
       ]
     };
   }
 
+  private initializeStrategyFrameworks(): void {
+    this.strategyFrameworks = [
+      'Smart Money Concepts (SMC)',
+      'Inner Circle Trader (ICT)', 
+      'Wyckoff Accumulation/Distribution',
+      'Volume Spread Analysis (VSA)',
+      'Trend Continuation Strategy',
+      'Breakout with Volatility Confirmation',
+      'Session-Based Momentum Trading',
+      'Multi-Timeframe Confluence Trading'
+    ];
+  }
+
+  async generateUltraInstitutionalSignal(
+    symbol: string, 
+    livePrice: number, 
+    timeframe: string = '15m',
+    additionalData: any = {}
+  ): Promise<any> {
+    console.log('🚀 INITIATING ULTRA-INSTITUTIONAL MULTI-PASS REASONING SYSTEM...');
+
+    try {
+      // Import and use the ultra analyzer
+      const { ultraGroqAnalyzer } = await import('./ultraGroqAnalyzer');
+      
+      // STEP 1: Generate Advanced Data Feeds
+      const advancedFeeds = await ultraGroqAnalyzer.generateAdvancedDataFeeds(symbol, livePrice);
+      console.log('✅ Advanced Data Feeds Generated');
+
+      // STEP 2: Multi-Pass Groq Reasoning Loop (5 Passes)
+      const multiPassResults = await ultraGroqAnalyzer.executeMultiPassReasoning(symbol, livePrice, advancedFeeds, additionalData);
+      console.log('✅ Multi-Pass Reasoning Complete');
+
+      // STEP 3: Strategy Stacking Analysis
+      const strategyStack = await ultraGroqAnalyzer.executeStrategyStacking(symbol, livePrice, advancedFeeds, multiPassResults);
+      console.log('✅ Strategy Stacking Analysis Complete');
+
+      // STEP 4: Micro-Timeframe Confirmation
+      const microTimeframeConfirmation = await ultraGroqAnalyzer.executeMicroTimeframeConfirmation(symbol, livePrice, strategyStack);
+      console.log('✅ Micro-Timeframe Confirmation Complete');
+
+      // STEP 5: Signal Strength Grading
+      const signalGrade = await ultraGroqAnalyzer.executeSignalStrengthGrading(strategyStack, microTimeframeConfirmation, advancedFeeds);
+      console.log('✅ Signal Strength Grading Complete');
+
+      // STEP 6: Fail-Safe Signal Blocking
+      const finalSignal = await ultraGroqAnalyzer.executeFailSafeBlocking(signalGrade, advancedFeeds, multiPassResults);
+      console.log('✅ Fail-Safe Blocking Complete');
+
+      return finalSignal;
+
+    } catch (error) {
+      console.error('❌ Ultra-institutional analysis failed:', error);
+      return this.generateEmergencyFallback(symbol, livePrice);
+    }
+  }
+
+  // Keep the original method for backward compatibility
   async generateHedgeFundSignal(
     symbol: string, 
     livePrice: number, 
     timeframe: string = '15m',
     additionalData: any = {}
   ): Promise<any> {
-    console.log('🏛️ INITIATING HEDGE FUND MULTI-STAGE ANALYSIS...');
-
-    try {
-      // Stage 1: Market Context Scan
-      const marketContext = await this.stageOne_MarketContextScan(symbol, livePrice, additionalData);
-      console.log('✅ Stage 1 Complete: Market Context');
-
-      // Stage 2: Pattern Detection with Institutional Playbooks
-      const patternAnalysis = await this.stageTwo_PatternDetection(marketContext);
-      console.log('✅ Stage 2 Complete: Pattern Detection');
-
-      // Stage 3: Probability Weighting
-      const probabilityAnalysis = await this.stageThree_ProbabilityWeighting(marketContext, patternAnalysis);
-      console.log('✅ Stage 3 Complete: Probability Weighting');
-
-      // Stage 4: Signal Draft Generation
-      const signalDrafts = await this.stageFour_SignalDraftGeneration(marketContext, patternAnalysis, probabilityAnalysis);
-      console.log('✅ Stage 4 Complete: Signal Drafts');
-
-      // Stage 5: Self-Critique & Stress Test
-      const stressTestResults = await this.stageFive_SelfCritiqueStressTest(signalDrafts, marketContext);
-      console.log('✅ Stage 5 Complete: Stress Testing');
-
-      // Stage 6: Final Selection
-      const finalSignal = await this.stageSix_FinalSelection(stressTestResults, marketContext);
-      console.log('✅ Stage 6 Complete: Final Signal Selection');
-
-      return finalSignal;
-
-    } catch (error) {
-      console.error('❌ Hedge fund analysis failed:', error);
-      return this.generateEmergencyFallback(symbol, livePrice);
-    }
+    // Use the new ultra method
+    return this.generateUltraInstitutionalSignal(symbol, livePrice, timeframe, additionalData);
   }
 
   private async stageOne_MarketContextScan(symbol: string, livePrice: number, additionalData: any): Promise<MarketContext> {
@@ -653,4 +758,4 @@ VSA RULES: ${this.institutionalPlaybook.vsaRules.slice(0, 3).join('; ')}`;
   }
 }
 
-export const enhancedGroqService = new EnhancedGroqService();
+export const enhancedGroqService = new UltraEnhancedGroqService();
