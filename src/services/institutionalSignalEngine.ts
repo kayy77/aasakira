@@ -1,4 +1,4 @@
-import { groqService } from './groqService';
+import { enhancedGroqService } from './enhancedGroqService';
 
 export interface OrderFlowData {
   footprintAnalysis: {
@@ -900,26 +900,29 @@ export class InstitutionalSignalEngine {
     momentum: MomentumDivergenceAnalysis
   ): Promise<string> {
     try {
-      const prompt = `You are an institutional trading analyst. Provide a brutal, honest 2-sentence justification for this signal:
-
-${pair} ${type} Signal
-- Confluence Score: ${confluenceScore}/10 
-- MTF Alignment: ${deepMtf.alignment.grade} (${deepMtf.alignment.score}%)
-- Smart Money Flow: ${orderFlow.footprintAnalysis.smartMoneyFlow}
-- Whale Activity: ${orderFlow.institutionalFootprint.whaleActivity}%
-- RSI Divergence: ${momentum.rsi.divergence}
-- MACD Divergence: ${momentum.macd.divergence}
-
-Focus on institutional concepts: order flow, liquidity, structure, smart money. Be technical and specific.`;
-
-      const analysis = await groqService.generateResponse(prompt, {
-        model: 'llama3-8b-8192',
-        temperature: 0.2,
-        max_tokens: 120
-      });
-
-      return analysis || `INSTITUTIONAL ANALYSIS: ${confluenceScore}/10 confluence with ${deepMtf.alignment.grade} MTF alignment and ${orderFlow.institutionalFootprint.whaleActivity}% whale activity confirms ${type} bias. Smart money ${orderFlow.footprintAnalysis.smartMoneyFlow} supports directional move with institutional footprint validation.`;
+      console.log('🧠 Generating hedge fund institutional justification...');
+      
+      // Use the enhanced multi-stage Groq analysis
+      const hedgeFundSignal = await enhancedGroqService.generateHedgeFundSignal(
+        pair, 
+        Math.random() * 100 + 1.3300, // Simulated live price
+        'H1',
+        {
+          deepMtfConfluence: deepMtf,
+          orderFlow,
+          momentum,
+          confluenceScore
+        }
+      );
+      
+      if (hedgeFundSignal && hedgeFundSignal.justification) {
+        return hedgeFundSignal.justification;
+      }
+      
+      // Enhanced fallback with more detail
+      return `HEDGE FUND ANALYSIS: ${confluenceScore}/10 institutional confluence with ${deepMtf.stackedAnalysis.overallAlignment} stacked MTF alignment. Smart money ${orderFlow.footprintAnalysis.smartMoneyFlow} flow supporting ${type} bias. Whale activity at ${orderFlow.institutionalFootprint.whaleActivity}% confirms institutional participation. Pattern: ${deepMtf.stackedAnalysis.higherTfBias} higher TF bias with ${deepMtf.stackedAnalysis.lowerTfPrecision} precision timing.`;
     } catch (error) {
+      console.error('Enhanced Groq analysis failed:', error);
       return `INSTITUTIONAL SIGNAL: ${confluenceScore}/10 institutional filters passed with ${deepMtf.alignment.grade} multi-timeframe alignment supporting ${type} direction.`;
     }
   }
