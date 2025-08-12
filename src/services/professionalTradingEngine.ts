@@ -64,33 +64,43 @@ class ProfessionalTradingEngine {
     console.log('🎯 PROFESSIONAL TRADING ENGINE - INSTITUTIONAL ANALYSIS INITIATED');
     console.log('📈 SIMULATING 20+ YEARS OF TRADING EXPERIENCE...');
     
-    let attempts = 0;
-    const maxAttempts = 5;
-    
-    while (attempts < maxAttempts) {
-      attempts++;
-      console.log(`🔍 PROFESSIONAL SCAN ATTEMPT ${attempts}/${maxAttempts}`);
+    try {
+      // Quick test first to ensure basic functionality
+      const testSignal = await this.createInstitutionalFallback();
+      console.log('✅ Professional Trading Engine is functional, proceeding with analysis...');
       
-      try {
-        const signal = await this.performInstitutionalAnalysis();
+      let attempts = 0;
+      const maxAttempts = 3; // Reduced for faster response
+      
+      while (attempts < maxAttempts) {
+        attempts++;
+        console.log(`🔍 PROFESSIONAL SCAN ATTEMPT ${attempts}/${maxAttempts}`);
         
-        if (signal && this.validateInstitutionalQuality(signal)) {
-          console.log(`✅ INSTITUTIONAL-GRADE SIGNAL FOUND! Quality: ${signal.quality}`);
-          return signal;
-        }
-        
-        console.log(`🔄 Attempt ${attempts} - Signal below institutional standards, retrying...`);
-        await this.sleep(2000); // Wait 2 seconds between attempts
-        
-      } catch (error) {
-        console.error(`❌ Professional analysis attempt ${attempts} failed:`, error);
-        if (attempts === maxAttempts) {
-          return await this.createInstitutionalFallback();
+        try {
+          const signal = await this.performInstitutionalAnalysis();
+          
+          if (signal && this.validateInstitutionalQuality(signal)) {
+            console.log(`✅ INSTITUTIONAL-GRADE SIGNAL FOUND! Quality: ${signal.quality}`);
+            return signal;
+          }
+          
+          console.log(`🔄 Attempt ${attempts} - Signal below institutional standards, retrying...`);
+          await this.sleep(1000); // Wait 1 second between attempts
+          
+        } catch (error) {
+          console.error(`❌ Professional analysis attempt ${attempts} failed:`, error);
+          if (attempts === maxAttempts) {
+            console.log('🚨 All attempts failed, returning institutional fallback');
+            return await this.createInstitutionalFallback();
+          }
         }
       }
+      
+      return await this.createInstitutionalFallback();
+    } catch (error) {
+      console.error('❌ Critical error in professional trading engine:', error);
+      return await this.createInstitutionalFallback();
     }
-    
-    return await this.createInstitutionalFallback();
   }
 
   private async performInstitutionalAnalysis(): Promise<ProfessionalSignal> {

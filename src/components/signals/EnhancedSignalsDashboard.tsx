@@ -22,6 +22,7 @@ import ProfessionalSignalQualityFilter from './ProfessionalSignalQualityFilter';
 import { EnhancedConsensusDisplay } from './EnhancedConsensusDisplay';
 import { useEnhancedConsensusScanner } from '@/hooks/useEnhancedConsensusScanner';
 import { SignalValidationStatus } from './SignalValidationStatus';
+import AffiliateBrokerBanner from '@/components/common/AffiliateBrokerBanner';
 
 const EnhancedSignalsDashboard: React.FC = () => {
   const [signals, setSignals] = useState<ProfessionalSignal[]>([]);
@@ -66,7 +67,8 @@ const EnhancedSignalsDashboard: React.FC = () => {
   };
 
   const handleGenerateSignal = async () => {
-    console.log('🎯 Generate enhanced signal clicked - checking limits...');
+    console.log('🎯 Generate professional signal clicked - checking limits...');
+    console.log('🔍 Current state:', { isGenerating, isPremium, canGenerateSignal });
     
     // Check and increment usage first
     const canProceed = await checkAndIncrementSignal();
@@ -123,13 +125,16 @@ const EnhancedSignalsDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Affiliate Broker Banner */}
+        <AffiliateBrokerBanner />
+
         {/* Enhanced Signal Generator */}
         <Card className="glass-card border-purple-500/20">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Brain className="w-5 h-5 text-purple-400" />
-                Enhanced Elite Signal Engine
+                🏛️ Professional Trading Engine
               </div>
               <div className="flex items-center gap-2">
                 {connectionStatus === 'connected' ? (
@@ -138,7 +143,7 @@ const EnhancedSignalsDashboard: React.FC = () => {
                   <WifiOff className="w-4 h-4 text-gray-400" />
                 )}
                 <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-                  Multi-Strategy + EV Scoring
+                  20+ Years Experience AI
                 </Badge>
               </div>
             </CardTitle>
