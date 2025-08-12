@@ -1,10 +1,12 @@
 
 import React, { useState } from 'react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Lock, Zap, Star } from 'lucide-react';
+import { stripeService } from '@/services/stripeService';
 
 interface FeatureGateProps {
   feature: 'signals' | 'memeScans' | 'mentorMessages';
@@ -20,6 +22,7 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
   onFeatureUse 
 }) => {
   const { subscription, isPremium, usageStats, dailyLimits } = useSubscription();
+  const { user } = useAuth();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   // Feature limits for free users
@@ -102,10 +105,23 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
             Cancel
           </Button>
           <Button
-            onClick={() => {
-              // In real app, this would redirect to payment
-              console.log('Upgrade clicked');
-              setShowUpgradeDialog(false);
+            onClick={async () => {
+              try {
+                if (!user?.email) {
+                  console.error('No user email available');
+                  return;
+                }
+                
+                // Create checkout session
+                const checkoutUrl = await stripeService.createCheckoutSession('premium', user.email);
+                
+                // Open Stripe checkout in new tab
+                window.open(checkoutUrl, '_blank');
+                
+                setShowUpgradeDialog(false);
+              } catch (error) {
+                console.error('Upgrade error:', error);
+              }
             }}
             className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
           >
@@ -133,7 +149,24 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
             You've used all {dailyLimit} daily {displayName} for today.
           </p>
           <Button
-            onClick={() => setShowUpgradeDialog(true)}
+            onClick={async () => {
+              try {
+                if (!user?.email) {
+                  console.error('No user email available');
+                  return;
+                }
+                
+                // Create checkout session
+                const checkoutUrl = await stripeService.createCheckoutSession('premium', user.email);
+                
+                // Open Stripe checkout in new tab
+                window.open(checkoutUrl, '_blank');
+                
+                setShowUpgradeDialog(false);
+              } catch (error) {
+                console.error('Upgrade error:', error);
+              }
+            }}
             className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
           >
             <Crown className="w-4 h-4 mr-2" />

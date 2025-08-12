@@ -38,7 +38,7 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
       console.log('❌ Signal generation blocked - FREE USER DAILY LIMIT REACHED');
       toast({
         title: "🔒 Daily Signal Limit Reached",
-        description: `You've used your ${dailyLimit} free signal today. Upgrade to Premium for unlimited access!`,
+        description: `You've reached your daily limit for Enhanced Elite AI Signal Scanner. Upgrade to Premium for unlimited access!`,
         variant: "destructive"
       });
       return false;
@@ -49,14 +49,8 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
       await incrementUsage('signals');
       console.log('✅ Signal usage incremented successfully');
       
-      // Show upgrade prompt if this was their last free signal
-      if (signalsUsed + 1 >= dailyLimit) {
-        toast({
-          title: "✅ Signal Generated!",
-          description: "You've used your daily free signal. Upgrade to Premium for unlimited access!",
-          variant: "default"
-        });
-      }
+      // Don't show upgrade prompt after first signal - let them see it
+      // Upgrade prompt will show when they try to generate 2nd signal
       
       return true;
     } catch (error) {
