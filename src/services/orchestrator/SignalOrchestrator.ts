@@ -182,15 +182,17 @@ export class SignalOrchestrator {
       const backtest = await this.runBacktestSimulation(snapshot, consensus.majorityDirection);
       console.log(`📊 Backtest: ${(backtest.winRate * 100).toFixed(1)}% win rate`);
       
-      // 6. Make final decision
+      // 6. Make final decision (but always return best signal available)
       const decision = this.makeDecision(aiVotes, consensus, smcFilters, backtest);
       console.log(`⚖️ Decision: ${decision.status} (${decision.institutionalGrade})`);
       
-      // 7. Generate signal if approved
+      // 7. Always generate signal - even if weak (as requested by user)
       if (decision.status !== 'APPROVED') {
-        console.log(`❌ Signal rejected: ${decision.reasons.join(', ')}`);
-        await this.persistRejectedSignal(snapshot, aiVotes, consensus, decision);
-        return null;
+        console.log(`⚠️ Signal quality below normal thresholds but returning best available: ${decision.reasons.join(', ')}`);
+        // Override decision to approve weak signal
+        decision.status = 'APPROVED';
+        decision.institutionalGrade = 'Weak';
+        decision.reasons = [`Low quality but best available: ${decision.reasons.join(', ')}`];
       }
       
       // 8. Build signal object
