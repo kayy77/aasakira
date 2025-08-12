@@ -12,10 +12,10 @@ class StripeService {
       console.log('🔄 Creating Stripe checkout session...');
       console.log(`Plan: ${plan}, User Email: ${userEmail}`);
       
-      // Use your actual Stripe payment links for direct redirect
+      // Use the provided Stripe payment link for $25/month premium plan
       const paymentLinks = {
-        premium: 'https://buy.stripe.com/5kQ00k5Nud1G0AUaRS', // $25/month  
-        yearly: 'https://buy.stripe.com/3cIdRa8ZGe5Kabu9NO'   // $200/year
+        premium: 'https://buy.stripe.com/5kQ00k5Nud1G0AUaRSabK00', // $25/month  
+        yearly: 'https://buy.stripe.com/5kQ00k5Nud1G0AUaRSabK00'   // Use same link for yearly for now
       };
       
       const checkoutUrl = paymentLinks[plan];
