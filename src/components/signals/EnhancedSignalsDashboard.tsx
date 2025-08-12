@@ -14,18 +14,18 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { EnhancedSignal, EnhancedEliteSignalEngine } from '@/services/enhancedEliteSignalEngine';
+import { bulletproofSignalEngine, BulletproofSignal } from '@/services/bulletproofSignalEngine';
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import EnhancedSignalCard from './EnhancedSignalCard';
+import BulletproofSignalCard from './BulletproofSignalCard';
 import SignalQualityFilter from './SignalQualityFilter';
 import { EnhancedConsensusDisplay } from './EnhancedConsensusDisplay';
 import { useEnhancedConsensusScanner } from '@/hooks/useEnhancedConsensusScanner';
 import { SignalValidationStatus } from './SignalValidationStatus';
 
 const EnhancedSignalsDashboard: React.FC = () => {
-  const [signals, setSignals] = useState<EnhancedSignal[]>([]);
-  const [filteredSignals, setFilteredSignals] = useState<EnhancedSignal[]>([]);
+  const [signals, setSignals] = useState<BulletproofSignal[]>([]);
+  const [filteredSignals, setFilteredSignals] = useState<BulletproofSignal[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const [qualityFilter, setQualityFilter] = useState<'all' | 'weak' | 'medium' | 'strong'>('all');
@@ -78,39 +78,17 @@ const EnhancedSignalsDashboard: React.FC = () => {
     setConnectionStatus('connected');
     
     try {
-      console.log('🚀 Starting enhanced elite signal generation...');
+      console.log('🚀 Starting BULLETPROOF signal generation - NEVER GIVE UP MODE...');
       
-      const signal = await EnhancedEliteSignalEngine.generateSignal();
+      const signal = await bulletproofSignalEngine.generateBulletproofSignal();
       
-      if (signal) {
-        console.log('✅ Enhanced signal generated successfully:', signal);
-        
-        // HOTFIX: Apply validation gate to determine if signal should be shown
-        const { SignalValidationGate } = await import('@/services/signalValidationGate');
-        const shouldShow = SignalValidationGate.shouldShowToUsers(signal);
-        
-        if (shouldShow) {
-          setSignals(prev => [signal, ...prev.slice(0, 9)]);
-          toast({
-            title: `🎯 ${signal.quality.toUpperCase()} Signal Generated!`,
-            description: `${signal.symbol} ${signal.type} | ${signal.confidence}% confidence | EV: ${signal.expectedValue.toFixed(2)}`,
-          });
-        } else {
-          console.log('❌ Signal rejected for user display by validation gate');
-          toast({
-            title: "Signal Quality Check",
-            description: "Generated signal did not meet institutional quality standards. Please try again.",
-            variant: "destructive",
-          });
-        }
-      } else {
-        console.log('❌ Signal generation returned null');
-        toast({
-          title: "Generation Failed",
-          description: "Unable to generate enhanced signal. Please try again.",
-          variant: "destructive",
-        });
-      }
+      console.log('✅ BULLETPROOF signal generated successfully:', signal);
+      
+      setSignals(prev => [signal, ...prev.slice(0, 9)]);
+      toast({
+        title: `🎯 ${signal.quality.toUpperCase()} Signal Generated!`,
+        description: `${signal.symbol} ${signal.type} | ${signal.confidence}% confidence | ${signal.institutionalGrade} Grade`,
+      });
       
     } catch (error) {
       console.error('❌ Error generating enhanced signal:', error);
@@ -193,7 +171,7 @@ const EnhancedSignalsDashboard: React.FC = () => {
               ) : (
                 <>
                   <Brain className="w-4 h-4 mr-2" />
-                  Generate Enhanced Elite Signal
+                  🚀 Generate BULLETPROOF Signal
                 </>
               )}
             </Button>
@@ -320,7 +298,7 @@ const EnhancedSignalsDashboard: React.FC = () => {
         {/* Enhanced Signals List */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredSignals.map((signal) => (
-            <EnhancedSignalCard 
+            <BulletproofSignalCard 
               key={signal.id} 
               signal={signal} 
               onRemove={handleRemoveSignal}
