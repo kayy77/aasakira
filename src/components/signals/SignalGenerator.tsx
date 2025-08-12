@@ -14,8 +14,7 @@ import {
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import UpgradePrompt from '@/components/common/UpgradePrompt';
-import { enhancedPriceService } from '@/services/enhancedPriceService';
-import { EliteSignalEngine } from '@/services/eliteSignalEngine';
+import { institutionalSignalEngine } from '@/services/institutionalSignalEngine';
 import { useToast } from '@/hooks/use-toast';
 
 interface SignalGeneratorProps {
@@ -47,27 +46,34 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
     setIsGenerating(true);
     
     try {
-      // Get accurate live price first
-      const livePrice = await enhancedPriceService.getLivePrice('EURUSD');
-      console.log('Live price pulled:', livePrice);
+      console.log('🏛️ Generating institutional-grade signal...');
       
-      // Generate signal with elite engine
-      const signal = await EliteSignalEngine.generateEliteSignal(75, 2, ['SMC', 'Volume', 'Session']);
+      // Generate signal with new institutional engine
+      const signal = await institutionalSignalEngine.generateInstitutionalSignal();
       
-      console.log('Signal generated:', signal);
+      console.log('Institutional signal generated:', signal);
       
-      // Test signal quality
-      if (signal && signal.confidence >= 60 && signal.riskReward >= 1.5) {
+      // Test signal quality with institutional standards
+      if (signal && signal.confidence >= 85 && signal.confluenceScore >= 7) {
         onSignalGenerated?.(signal);
         
         toast({
-          title: "🎯 Elite Signal Generated",
-          description: `${signal.type} ${signal.pair} - RR: ${signal.riskReward}`,
+          title: `🏛️ ${signal.institutionalGrade} Institutional Signal`,
+          description: `${signal.type} ${signal.pair} - ${signal.confluenceScore}/10 confluence, ${signal.expectedWinRate}% win rate`,
+        });
+      } else if (signal) {
+        // Signal generated but below institutional standards
+        onSignalGenerated?.(signal);
+        
+        toast({
+          title: "⚠️ Signal Generated",
+          description: `${signal.type} ${signal.pair} - Grade: ${signal.institutionalGrade}. Monitor carefully.`,
+          variant: "destructive"
         });
       } else {
         toast({
-          title: "⚠️ Low Quality Signal",
-          description: "Market conditions don't meet elite standards. Try again later.",
+          title: "❌ No Institutional Signal",
+          description: "Market conditions don't meet institutional standards. All filters rejected.",
           variant: "destructive"
         });
       }
@@ -101,7 +107,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-purple-400" />
-            Elite Signal Generator
+            Institutional Signal Engine
           </div>
           
           <div className="flex items-center gap-2">
@@ -152,7 +158,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
           {isGenerating ? (
             <>
               <TrendingUp className="w-5 h-5 mr-2 animate-pulse" />
-              Generating Elite Signal...
+              Generating Institutional Signal...
             </>
           ) : !canGenerateSignal ? (
             <>
@@ -162,7 +168,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
           ) : (
             <>
               <Zap className="w-5 h-5 mr-2" />
-              Generate Elite Signal
+              Generate Institutional Signal
             </>
           )}
         </Button>
@@ -174,7 +180,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
               🚀 Want Unlimited Signals?
             </h4>
             <p className="text-gray-300 text-sm mb-3">
-              Get unlimited elite signals, premium strategies, and priority support.
+              Get unlimited institutional signals, order flow analysis, and advanced confluences.
             </p>
             <Button
               onClick={() => setShowUpgradePrompt(true)}

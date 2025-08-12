@@ -1,282 +1,188 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Brain, 
-  Shield, 
-  Target, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Target,
   Clock,
-  BarChart3,
   AlertTriangle,
-  CheckCircle,
-  XCircle
+  Activity,
+  Brain,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
-import { EnhancedConsensusResult } from '@/services/enhancedConsensusEngine';
+import type { InstitutionalSignal } from '@/services/institutionalSignalEngine';
 
 interface InstitutionalSignalCardProps {
-  signal: EnhancedConsensusResult;
-  onTakeSignal?: () => void;
-  onWatchSignal?: () => void;
+  signal: InstitutionalSignal;
 }
 
-export const InstitutionalSignalCard = ({ 
-  signal, 
-  onTakeSignal, 
-  onWatchSignal 
-}: InstitutionalSignalCardProps) => {
+const InstitutionalSignalCard: React.FC<InstitutionalSignalCardProps> = ({ signal }) => {
+  const [showDetails, setShowDetails] = useState(false);
+
   const getGradeColor = (grade: string) => {
     switch (grade) {
-      case 'A+': return 'bg-purple-500 text-white';
-      case 'A': return 'bg-green-500 text-white';
-      case 'B+': return 'bg-blue-500 text-white';
-      case 'B': return 'bg-blue-400 text-white';
-      case 'C+': return 'bg-yellow-500 text-black';
-      case 'C': return 'bg-yellow-400 text-black';
-      case 'D': return 'bg-orange-500 text-white';
-      case 'F': return 'bg-red-500 text-white';
-      default: return 'bg-gray-500 text-white';
+      case 'A+': return 'bg-gradient-to-r from-purple-600 to-pink-600 text-white';
+      case 'A': return 'bg-gradient-to-r from-blue-600 to-purple-600 text-white';
+      case 'B+': return 'bg-gradient-to-r from-emerald-600 to-blue-600 text-white';
+      case 'B': return 'bg-gradient-to-r from-yellow-600 to-emerald-600 text-white';
+      default: return 'bg-gray-600 text-gray-300';
     }
   };
 
-  const getRecommendationColor = (recommendation: string) => {
-    switch (recommendation) {
-      case 'TAKE': return 'bg-green-500 text-white';
-      case 'REDUCE_SIZE': return 'bg-yellow-500 text-black';
-      case 'WATCH': return 'bg-blue-500 text-white';
-      case 'AVOID': return 'bg-red-500 text-white';
-      default: return 'bg-gray-500 text-white';
-    }
-  };
-
-  const getConvictionIcon = (level: string) => {
-    switch (level) {
-      case 'ULTRA_HIGH': return '🔥';
-      case 'HIGH': return '⚡';
-      case 'MEDIUM': return '📊';
-      case 'LOW': return '⚠️';
-      default: return '📈';
-    }
+  const formatPrice = (price: number) => {
+    return signal.pair.includes('JPY') ? price.toFixed(3) : price.toFixed(5);
   };
 
   return (
-    <Card className="w-full bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700 text-white">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            {signal.direction === 'BUY' ? (
-              <TrendingUp className="w-5 h-5 text-green-400" />
-            ) : (
-              <TrendingDown className="w-5 h-5 text-red-400" />
-            )}
-            <span className="text-xl font-bold">{signal.pair}</span>
-            <Badge className={`text-lg px-3 py-1 ${getGradeColor(signal.finalGrade)}`}>
-              {signal.finalGrade}
-            </Badge>
-          </CardTitle>
-          
-          <div className="flex items-center gap-2">
-            <Badge className={getRecommendationColor(signal.recommendation)}>
-              {signal.recommendation}
-            </Badge>
-            <span className="text-2xl">{getConvictionIcon(signal.convictionLevel)}</span>
+    <Card className="bg-gradient-to-br from-gray-900/50 to-gray-800/50 border border-gray-700/50">
+      <CardHeader className="pb-4">
+        <div className="flex justify-between items-start">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${signal.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                {signal.type === 'BUY' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                <span className="font-bold">{signal.type}</span>
+              </div>
+              <span className="text-xl font-bold text-white">{signal.pair}</span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Badge className={getGradeColor(signal.institutionalGrade)}>
+                {signal.institutionalGrade}
+              </Badge>
+              <Badge variant="outline">
+                {signal.signalStrength}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 pt-4">
+          <div className="text-center">
+            <div className="text-sm text-gray-400">Confidence</div>
+            <div className="text-2xl font-bold text-purple-400">{signal.confidence}%</div>
+            <Progress value={signal.confidence} className="h-2 mt-1" />
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-gray-400">Confluence</div>
+            <div className="text-2xl font-bold text-blue-400">{signal.confluenceScore}/10</div>
+            <Progress value={(signal.confluenceScore / 10) * 100} className="h-2 mt-1" />
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-gray-400">Win Rate</div>
+            <div className="text-2xl font-bold text-emerald-400">{signal.expectedWinRate}%</div>
+            <Progress value={signal.expectedWinRate} className="h-2 mt-1" />
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
-        {/* Signal Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <h4 className="font-semibold text-white flex items-center gap-2">
-              <Target className="w-4 h-4" />
-              Trade Details
-            </h4>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Entry:</span>
-                <span className="font-mono">{signal.entry.toFixed(5)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Stop Loss:</span>
-                <span className="font-mono text-red-400">{signal.stopLoss.toFixed(5)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Take Profit:</span>
-                <span className="font-mono text-green-400">{signal.takeProfit.toFixed(5)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Risk:Reward:</span>
-                <span className="font-semibold text-blue-400">{signal.riskReward}:1</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-semibold text-white flex items-center gap-2">
-              <Brain className="w-4 h-4" />
-              AI Analysis
-            </h4>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Consensus:</span>
-                <Badge className={`text-xs ${
-                  signal.aiConsensus === 'STRONG' ? 'bg-green-500/20 text-green-400' :
-                  signal.aiConsensus === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
-                  'bg-red-500/20 text-red-400'
-                }`}>
-                  {signal.aiConsensus}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">AI Score:</span>
-                <span className="font-semibold">{signal.consensusScore}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Models:</span>
-                <span className="text-blue-400">{signal.aiResults.length}/5</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Expected Value:</span>
-                <span className={`font-semibold ${signal.expectedValue > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {signal.expectedValue > 0 ? '+' : ''}{signal.expectedValue}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-semibold text-white flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              Institutional Grade
-            </h4>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Grade:</span>
-                <Badge className="bg-purple-500/20 text-purple-400">
-                  {signal.institutionalValidation.institutionalGrade}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Filters:</span>
-                <span className="text-blue-400">
-                  {signal.institutionalValidation.passedFilters}/{signal.institutionalValidation.totalFilters}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Risk Level:</span>
-                <Badge className={`text-xs ${
-                  signal.institutionalValidation.riskLevel === 'LOW' ? 'bg-green-500/20 text-green-400' :
-                  signal.institutionalValidation.riskLevel === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
-                  'bg-red-500/20 text-red-400'
-                }`}>
-                  {signal.institutionalValidation.riskLevel}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Confidence:</span>
-                <span className="font-semibold text-blue-400">{signal.finalConfidence}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Strategy Filters Breakdown */}
-        <div className="space-y-3">
-          <h4 className="font-semibold text-white flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Strategy Analysis ({signal.institutionalValidation.passedFilters}/{signal.institutionalValidation.totalFilters} Passed)
+      <CardContent className="space-y-4">
+        <div className="bg-gray-800/30 rounded-lg p-4 space-y-3">
+          <h4 className="text-white font-semibold flex items-center gap-2">
+            <Target className="w-4 h-4 text-blue-400" />
+            Trading Levels
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {signal.institutionalValidation.filters.map((filter, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-gray-800/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  {filter.passed ? (
-                    <CheckCircle className="w-4 h-4 text-green-400" />
-                  ) : (
-                    <XCircle className="w-4 h-4 text-red-400" />
-                  )}
-                  <span className="text-sm font-medium">{filter.name}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Progress 
-                    value={filter.score} 
-                    className="w-16 h-2"
-                  />
-                  <span className="text-xs text-gray-400 w-8">{filter.score}%</span>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm text-gray-400">Entry</div>
+              <div className="text-white font-mono text-lg">{formatPrice(signal.riskReward.entry)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Risk:Reward</div>
+              <div className="text-emerald-400 font-bold text-lg">1:{signal.riskReward.riskRewardRatio}</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Stop Loss</div>
+              <div className="text-red-400 font-mono">{formatPrice(signal.riskReward.stopLoss)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Take Profit</div>
+              <div className="text-emerald-400 font-mono">{formatPrice(signal.riskReward.takeProfit1)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between bg-gray-800/30 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-yellow-400" />
+            <span className="text-sm text-gray-300">
+              {signal.sessionContext.currentSession.toUpperCase()} Session
+            </span>
+          </div>
+          <div className="text-sm text-gray-400">
+            Vol: {signal.sessionContext.volatilityScore}%
+          </div>
+        </div>
+
+        {signal.warnings.length > 0 && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-yellow-400 text-sm font-medium mb-2">
+              <AlertTriangle className="w-4 h-4" />
+              Warnings
+            </div>
+            <ul className="text-sm text-yellow-300 space-y-1">
+              {signal.warnings.map((warning, index) => (
+                <li key={index}>• {warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-blue-400 text-sm font-medium mb-2">
+            <Brain className="w-4 h-4" />
+            Institutional Analysis
+          </div>
+          <p className="text-sm text-blue-200 leading-relaxed">{signal.justification}</p>
+        </div>
+
+        <Button
+          variant="outline"
+          onClick={() => setShowDetails(!showDetails)}
+          className="w-full"
+        >
+          {showDetails ? (
+            <>
+              <ChevronUp className="w-4 h-4 mr-2" />
+              Hide Details
+            </>
+          ) : (
+            <>
+              <ChevronDown className="w-4 h-4 mr-2" />
+              Show Order Flow Analysis
+            </>
+          )}
+        </Button>
+
+        {showDetails && (
+          <div className="bg-gray-800/30 rounded-lg p-4">
+            <h5 className="text-white font-semibold flex items-center gap-2 mb-3">
+              <Activity className="w-4 h-4 text-purple-400" />
+              Order Flow & Smart Money
+            </h5>
+            
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <div className="text-gray-400">Smart Money Flow</div>
+                <div className="text-emerald-400 font-medium">
+                  {signal.orderFlow.footprintAnalysis.smartMoneyFlow.toUpperCase()}
                 </div>
               </div>
-            ))}
+              <div>
+                <div className="text-gray-400">Whale Activity</div>
+                <div className="text-white font-medium">{signal.orderFlow.institutionalFootprint.whaleActivity}%</div>
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* AI Reasoning */}
-        <div className="space-y-2">
-          <h4 className="font-semibold text-white">Institutional Analysis</h4>
-          <div className="p-3 bg-gray-800/30 rounded-lg border-l-4 border-blue-500">
-            <p className="text-sm text-gray-300 leading-relaxed">
-              {signal.aiReasoning}
-            </p>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-2">
-          {signal.recommendation === 'TAKE' && (
-            <Button 
-              onClick={onTakeSignal}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-            >
-              Take Full Position
-            </Button>
-          )}
-          
-          {signal.recommendation === 'REDUCE_SIZE' && (
-            <Button 
-              onClick={onTakeSignal}
-              className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white"
-            >
-              Take Reduced Size
-            </Button>
-          )}
-          
-          {signal.recommendation === 'WATCH' && (
-            <Button 
-              onClick={onWatchSignal}
-              variant="outline" 
-              className="flex-1 border-blue-500 text-blue-400 hover:bg-blue-500/10"
-            >
-              Add to Watchlist
-            </Button>
-          )}
-          
-          <Button 
-            variant="outline" 
-            className="px-6 border-gray-600 text-gray-300 hover:bg-gray-700"
-          >
-            View Details
-          </Button>
-        </div>
-
-        {/* Meta Information */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-700 text-xs text-gray-400">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {new Date(signal.timestamp).toLocaleTimeString()}
-            </span>
-            <span>Processing: {signal.processingTime}ms</span>
-            <span>ID: {signal.signalId.slice(-6)}</span>
-          </div>
-          <Badge className="bg-purple-500/20 text-purple-400">
-            {signal.signalStrength}
-          </Badge>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
 };
+
+export default InstitutionalSignalCard;
