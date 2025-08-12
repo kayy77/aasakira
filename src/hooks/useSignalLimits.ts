@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface SignalLimits {
   canGenerateSignal: boolean;
+  canViewSignals: boolean;
   signalsUsedToday: number;
   dailyLimit: number;
   upgradeRequired: boolean;
@@ -38,7 +39,7 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
       console.log('❌ Signal generation blocked - FREE USER DAILY LIMIT REACHED');
       toast({
         title: "🔒 Daily Signal Limit Reached",
-        description: `You've reached your daily limit for Enhanced Elite AI Signal Scanner. Upgrade to Premium for unlimited access!`,
+        description: `You can generate 1 signal every 24 hours. Your limit will reset tomorrow!`,
         variant: "destructive"
       });
       return false;
@@ -48,9 +49,6 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
     try {
       await incrementUsage('signals');
       console.log('✅ Signal usage incremented successfully');
-      
-      // Don't show upgrade prompt after first signal - let them see it
-      // Upgrade prompt will show when they try to generate 2nd signal
       
       return true;
     } catch (error) {
@@ -66,6 +64,7 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
 
   return {
     canGenerateSignal,
+    canViewSignals: true, // Users can always view their generated signals
     signalsUsedToday: signalsUsed,
     dailyLimit,
     upgradeRequired: !canGenerateSignal && !isPremium,
