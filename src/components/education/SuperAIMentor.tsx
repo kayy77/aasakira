@@ -55,10 +55,10 @@ export const SuperAIMentor: React.FC<SuperAIMentorProps> = ({ onFeatureUse }) =>
         console.log('🧠 AI MENTOR CONTEXT:', userContext);
         
         const response = await enhancedGroqService.generatePersonalizedResponse(
-          input,
-          user.id,
-          messages.map(msg => ({ role: msg.role, content: msg.content })),
-          userContext // Pass the rich context to AI
+          `${input}\n\nContext: ${JSON.stringify(userContext)}\n\nConversation History: ${messages.map(msg => `${msg.role}: ${msg.content}`).join('\n')}`,
+          {}, // userProfile 
+          'advanced', // learningLevel
+          userContext // context
         );
         
         if (response) {
