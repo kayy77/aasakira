@@ -15,48 +15,70 @@ class GroqService {
     console.log('🧠 GROQ SERVICE INITIALIZED with API key:', this.apiKey ? 'SET ✅' : 'MISSING ❌');
   }
 
-  async generateMultiStrategySignal(symbol: string, livePrice: number, timeframe: string = '15m'): Promise<any> {
+  async generateInstitutionalSignal(symbol: string, livePrice: number, timeframe: string = '15m', strategy: any = {}, multiTfData: any = {}): Promise<any> {
     const currentDateTime = new Date().toISOString();
+    const session = this.getCurrentTradingSession();
     
-    const groqPrompt = `
-You are a multi-strategy institutional AI analyst generating one best possible trade signal based on current price and recent market context.
+    const institutionalPrompt = `
+🏛️ INSTITUTIONAL TRADING DOCTRINE - ELITE SIGNAL ANALYSIS
 
-Strategies to scan for:
-- Smart Money Concepts (SMC)
-- Liquidity sweep traps
-- Fair Value Gap (FVG)
-- RSI divergence
-- Volume spike anomalies
-- Trend continuation or reversal based on market sessions
-- News impact if known (guess if urgent move)
+You are an elite institutional trader with 20+ years experience. Analyze this setup using professional trading doctrine:
 
-Instructions:
-1. Scan all strategies.
-2. Choose the strongest signal that exists NOW.
-3. Label the signal strength: "Strong", "Medium", or "Weak"
-4. If signal is weak, still generate it — say it's the best available but weak.
-5. Include exact entry price, SL, TP1, TP2, and reason.
-6. Include strategy used in generation and why it was chosen.
+MANDATORY ANALYSIS FRAMEWORK:
+1. SMART MONEY CONCEPTS (SMC):
+   - Break of Structure (BOS): Is there a clear break above/below previous high/low?
+   - Change of Character (CHoCH): Has market structure shifted from bullish to bearish or vice versa?
+   - Fair Value Gap (FVG): Are there price gaps from institutional moves?
+   - Order Blocks (OB): Identify zones where institutions placed large orders
+   - Liquidity Sweep: Check for stop hunts above/below key levels
+   - AMD (Accumulation, Manipulation, Distribution): What phase is market in?
 
-Market: ${symbol}
+2. ICT CONCEPTS:
+   - Killzones: London (8-10 UTC), NY (13-15 UTC), Asian (0-2 UTC)
+   - Judas Swing: False moves during session opens
+   - Silver Bullet: 10:00-11:00 & 14:00-15:00 UTC setups
+   - PD Arrays: Premium/Discount pricing relative to range
+
+3. SESSION ANALYSIS:
+   - Current Session: ${session}
+   - Session Bias: What's the expected direction for this session?
+   - Intermarket Analysis: How does this correlate with DXY, yields, risk sentiment?
+
+4. RISK MANAGEMENT:
+   - Position Size: Account for volatility and session
+   - R:R Ratio: Minimum 1:2, optimal 1:3+
+   - Confluence: Multiple factors aligning (minimum 3)
+
+MARKET DATA:
+Symbol: ${symbol}
 Live Price: ${livePrice}
-Time: ${currentDateTime}
 Timeframe: ${timeframe}
+DateTime: ${currentDateTime}
+Strategy Focus: ${strategy.focus || 'comprehensive'}
+Multi-TF Context: ${JSON.stringify(multiTfData).slice(0, 200)}
 
-Output Format (JSON only):
+INSTITUTIONAL VERDICT FORMAT (JSON ONLY):
 {
   "symbol": "${symbol}",
-  "strength": "Strong | Medium | Weak",
+  "institutional_grade": "Elite|Professional|Standard|Speculative|Reject",
+  "setup_type": "BOS Continuation|CHoCH Reversal|FVG Fill|Liquidity Sweep|Order Block",
   "entry": ${livePrice},
-  "sl": ${livePrice * 0.995},
-  "tp1": ${livePrice * 1.01},
-  "tp2": ${livePrice * 1.02},
-  "strategy": "SMC + RSI Divergence",
-  "reason": "Liquidity sweep + divergence at key zone"
-}`;
+  "stop_loss": ${livePrice * 0.995},
+  "take_profit_1": ${livePrice * 1.015},
+  "take_profit_2": ${livePrice * 1.03},
+  "risk_reward": "1:3.0",
+  "confluence_factors": ["factor1", "factor2", "factor3"],
+  "session_bias": "London Open Continuation|NY Reversal|Asian Range",
+  "smc_analysis": "Clear BOS + FVG confluence at institutional order block",
+  "conviction_score": 85,
+  "position_size_rec": "1.5%|1.0%|0.5%|0.25%",
+  "execution_notes": "Enter on pullback to 50% FVG level with tight stop"
+}
+
+CRITICAL: Must find the BEST available setup. If weak, still provide it but grade accordingly.`;
 
     try {
-      const response = await this.generateResponse(groqPrompt, {
+      const response = await this.generateResponse(institutionalPrompt, {
         model: 'llama3-8b-8192',
         temperature: 0.3,
         max_tokens: 800
@@ -154,6 +176,15 @@ Output Format (JSON only):
     if (!this.initialized) return 'Initializing...';
     if (!this.apiKey) return 'Not configured';
     return 'Ready';
+  }
+
+  private getCurrentTradingSession(): string {
+    const hour = new Date().getUTCHours();
+    
+    if (hour >= 0 && hour <= 8) return 'Asian';
+    if (hour >= 8 && hour <= 17) return 'London';
+    if (hour >= 13 && hour <= 22) return 'NY';
+    return 'Transition';
   }
 
   async testConnection(): Promise<boolean> {
