@@ -155,14 +155,20 @@ const ProfessionalSignalCard: React.FC<ProfessionalSignalCardProps> = ({
         <div className="space-y-2">
           <div className="text-sm font-medium text-gray-300">Smart Money Analysis</div>
           <div className="text-xs text-gray-400 space-y-1">
-            {signal.smcAnalysis.orderBlocks.map((ob, idx) => (
+            {signal.smcAnalysis?.orderBlocks?.map((ob, idx) => (
               <div key={idx}>• {ob}</div>
             ))}
-            {signal.smcAnalysis.fairValueGaps.map((fvg, idx) => (
+            {signal.smcAnalysis?.fairValueGaps?.map((fvg, idx) => (
               <div key={idx}>• {fvg}</div>
             ))}
-            {signal.smcAnalysis.changeOfCharacter && (
+            {signal.smcAnalysis?.liquiditySweeps?.map((sweep, idx) => (
+              <div key={idx}>• {sweep}</div>
+            ))}
+            {signal.smcAnalysis?.changeOfCharacter && (
               <div className="text-yellow-400">• Change of Character Confirmed</div>
+            )}
+            {signal.smcAnalysis?.breakOfStructure && (
+              <div className="text-green-400">• {signal.smcAnalysis.breakOfStructure}</div>
             )}
           </div>
         </div>

@@ -308,13 +308,13 @@ ASIAN SESSION PLAYBOOK (0-8 UTC):
         riskReward: analysis.risk_reward || '1:2.0',
         strategy: analysis.setup_type || 'Professional SMC Analysis',
         reasoning: analysis.professional_reasoning || 'Institutional-grade analysis with multiple confluences',
-        smcAnalysis: analysis.smc_analysis || {
-          orderBlocks: ['Professional order block identified'],
-          fairValueGaps: ['FVG analysis completed'],
-          liquiditySweeps: ['Liquidity levels mapped'],
-          changeOfCharacter: true,
-          breakOfStructure: 'Structure analysis complete',
-          accumulation: true
+        smcAnalysis: {
+          orderBlocks: analysis.smc_analysis?.order_blocks || ['Professional order block identified'],
+          fairValueGaps: analysis.smc_analysis?.fair_value_gaps || ['FVG analysis completed'],
+          liquiditySweeps: analysis.smc_analysis?.liquidity_sweeps || ['Liquidity levels mapped'],
+          changeOfCharacter: analysis.smc_analysis?.change_of_character ?? true,
+          breakOfStructure: analysis.smc_analysis?.break_of_structure || 'Structure analysis complete',
+          accumulation: analysis.smc_analysis?.accumulation ?? true
         },
         sessionBias: analysis.session_bias || `${session} Professional Analysis`,
         confluenceFactors: this.extractConfluenceFactors(analysis),
