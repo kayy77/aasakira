@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Signal, User } from 'lucide-react';
+import { Signal, User, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -58,6 +58,15 @@ const Navigation = () => {
                 );
               })}
             </div>
+
+            {/* Telegram Button */}
+            <Button
+              onClick={() => window.open('https://t.me/aasakirafree', '_blank')}
+              className="bg-blue-500 hover:bg-blue-600 text-white border-0 flex items-center gap-2"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span className="hidden lg:inline">Join Community</span>
+            </Button>
 
             {/* User Profile */}
             <div className="flex items-center space-x-4">
