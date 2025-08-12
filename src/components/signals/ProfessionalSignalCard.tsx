@@ -173,6 +173,41 @@ const ProfessionalSignalCard: React.FC<ProfessionalSignalCardProps> = ({
           </div>
         </div>
 
+        {/* IFVG Analysis Section */}
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-purple-300 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Institutional Fair Value Gaps (IFVG)
+          </div>
+          <div className="text-xs text-gray-400 space-y-1">
+            <div className="text-purple-400 font-medium">
+              Proximity Score: {signal.smcAnalysis?.institutionalFVG?.proximityScore || 'N/A'}/100
+            </div>
+            <div className="text-xs text-gray-500 mb-2">
+              {signal.smcAnalysis?.institutionalFVG?.layeredAnalysis || 'Multi-timeframe IFVG analysis'}
+            </div>
+            
+            {/* 1H IFVGs */}
+            {signal.smcAnalysis?.institutionalFVG?.ifvg1H?.map((ifvg, idx) => (
+              <div key={idx} className="text-blue-400">• {ifvg}</div>
+            ))}
+            
+            {/* 4H IFVGs */}
+            {signal.smcAnalysis?.institutionalFVG?.ifvg4H?.map((ifvg, idx) => (
+              <div key={idx} className="text-orange-400">• {ifvg}</div>
+            ))}
+            
+            {/* Daily IFVGs */}
+            {signal.smcAnalysis?.institutionalFVG?.ifvgDaily?.map((ifvg, idx) => (
+              <div key={idx} className="text-red-400">• {ifvg}</div>
+            ))}
+            
+            {signal.smcAnalysis?.institutionalFVG?.unfilleTd && (
+              <div className="text-purple-400 font-medium">• Unfilled IFVG Zones Present</div>
+            )}
+          </div>
+        </div>
+
         {/* Market Context */}
         <div className="space-y-2">
           <div className="text-sm font-medium text-gray-300">Market Context</div>

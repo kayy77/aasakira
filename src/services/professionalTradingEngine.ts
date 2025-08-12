@@ -19,6 +19,14 @@ export interface ProfessionalSignal {
   smcAnalysis: {
     orderBlocks: string[];
     fairValueGaps: string[];
+    institutionalFVG: {
+      ifvg1H: string[];
+      ifvg4H: string[];
+      ifvgDaily: string[];
+      proximityScore: number;
+      unfilleTd: boolean;
+      layeredAnalysis: string;
+    };
     liquiditySweeps: string[];
     changeOfCharacter: boolean;
     breakOfStructure: string;
@@ -312,6 +320,14 @@ ASIAN SESSION PLAYBOOK (0-8 UTC):
         smcAnalysis: {
           orderBlocks: analysis.smc_analysis?.order_blocks || ['Professional order block identified'],
           fairValueGaps: analysis.smc_analysis?.fair_value_gaps || ['FVG analysis completed'],
+          institutionalFVG: {
+            ifvg1H: ['1H IFVG: Professional level detected'],
+            ifvg4H: ['4H IFVG: Institutional zone mapped'],
+            ifvgDaily: ['Daily IFVG: Strategic level identified'],
+            proximityScore: 75,
+            unfilleTd: true,
+            layeredAnalysis: 'Professional IFVG confluence detected'
+          },
           liquiditySweeps: analysis.smc_analysis?.liquidity_sweeps || ['Liquidity levels mapped'],
           changeOfCharacter: analysis.smc_analysis?.change_of_character ?? true,
           breakOfStructure: analysis.smc_analysis?.break_of_structure || 'Structure analysis complete',
@@ -406,6 +422,14 @@ ASIAN SESSION PLAYBOOK (0-8 UTC):
       smcAnalysis: {
         orderBlocks: ['Conservative order block level identified'],
         fairValueGaps: ['Minimal gap structure present'],
+        institutionalFVG: {
+          ifvg1H: ['1H IFVG: Conservative zone identified'],
+          ifvg4H: ['4H IFVG: Basic institutional level'],
+          ifvgDaily: ['Daily IFVG: Long-term zone mapped'],
+          proximityScore: 60,
+          unfilleTd: false,
+          layeredAnalysis: 'Conservative IFVG approach during uncertain conditions'
+        },
         liquiditySweeps: ['Basic liquidity mapping complete'],
         changeOfCharacter: false,
         breakOfStructure: 'Awaiting clearer structure',
