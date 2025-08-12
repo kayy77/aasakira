@@ -187,8 +187,6 @@ export const InstitutionalDashboard = () => {
           </h2>
           <InstitutionalSignalCard
             signal={currentSignal}
-            onTakeSignal={() => console.log('Taking signal:', currentSignal.signalId)}
-            onWatchSignal={() => console.log('Watching signal:', currentSignal.signalId)}
           />
         </div>
       )}
@@ -201,12 +199,10 @@ export const InstitutionalDashboard = () => {
             Elite Signals ({eliteSignals.length})
           </h2>
           <div className="grid gap-4">
-            {eliteSignals.slice(0, 3).map((signal) => (
+            {eliteSignals.slice(0, 3).map((signal, index) => (
               <InstitutionalSignalCard
-                key={signal.signalId}
+                key={signal.id}
                 signal={signal}
-                onTakeSignal={() => console.log('Taking elite signal:', signal.signalId)}
-                onWatchSignal={() => console.log('Watching elite signal:', signal.signalId)}
               />
             ))}
           </div>
@@ -226,26 +222,26 @@ export const InstitutionalDashboard = () => {
             <div className="space-y-3">
               {signalHistory.slice(0, 10).map((signal, index) => (
                 <div
-                  key={signal.signalId}
+                  key={signal.id}
                   className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg border border-gray-700"
                 >
                   <div className="flex items-center gap-4">
                     <Badge className={`px-3 py-1 ${
-                      signal.finalGrade === 'A+' ? 'bg-purple-500 text-white' :
-                      signal.finalGrade === 'A' ? 'bg-green-500 text-white' :
-                      signal.finalGrade.startsWith('B') ? 'bg-blue-500 text-white' :
+                      signal.institutionalGrade === 'A+' ? 'bg-purple-500 text-white' :
+                      signal.institutionalGrade === 'A' ? 'bg-green-500 text-white' :
+                      signal.institutionalGrade.startsWith('B') ? 'bg-blue-500 text-white' :
                       'bg-yellow-500 text-black'
                     }`}>
-                      {signal.finalGrade}
+                      {signal.institutionalGrade}
                     </Badge>
                     <div>
                       <div className="font-semibold text-white">
-                        {signal.pair} {signal.direction}
+                        {signal.pair} {signal.type}
                       </div>
                       <div className="text-sm text-gray-400">
-                        {signal.institutionalValidation.institutionalGrade} • 
-                        {signal.finalConfidence}% • 
-                        {signal.riskReward}:1 R:R
+                        {signal.institutionalGrade} • 
+                        {signal.confidence}% • 
+                        {signal.riskReward.riskRewardRatio}:1 R:R
                       </div>
                     </div>
                   </div>

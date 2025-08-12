@@ -1,10 +1,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { enhancedConsensusEngine, EnhancedConsensusResult } from '@/services/enhancedConsensusEngine';
+import { institutionalSignalEngine, InstitutionalSignal } from '@/services/institutionalSignalEngine';
 
 interface InstitutionalSignalsState {
-  currentSignal: EnhancedConsensusResult | null;
-  signalHistory: EnhancedConsensusResult[];
+  currentSignal: InstitutionalSignal | null;
+  signalHistory: InstitutionalSignal[];
   isScanning: boolean;
   scanCount: number;
   lastScanTime: string;
@@ -37,21 +37,23 @@ export const useInstitutionalSignals = () => {
     try {
       console.log('🔍 Generating institutional-grade signal...');
       
-      const signal = await enhancedConsensusEngine.generateInstitutionalSignal();
+      const signal = await institutionalSignalEngine.generateInstitutionalSignal();
       
       setState(prev => {
         const newStats = { ...prev.scanningStats };
         
         if (signal) {
           // Update stats based on signal grade
-          switch (signal.institutionalValidation.institutionalGrade) {
-            case 'ELITE':
+          switch (signal.institutionalGrade) {
+            case 'A+':
+            case 'A':
               newStats.eliteCount++;
               break;
-            case 'INSTITUTIONAL':
+            case 'B+':
+            case 'B':
               newStats.institutionalCount++;
               break;
-            case 'PROFESSIONAL':
+            case 'C':
               newStats.professionalCount++;
               break;
             default:
@@ -80,7 +82,7 @@ export const useInstitutionalSignals = () => {
       });
       
       if (signal) {
-        console.log(`✅ Institutional signal generated: ${signal.finalGrade} grade`);
+        console.log(`✅ Institutional signal generated: ${signal.institutionalGrade} grade`);
       } else {
         console.log('❌ Signal rejected by institutional validation');
       }
@@ -156,7 +158,7 @@ export const useInstitutionalSignals = () => {
   // Filter signals by grade
   const getSignalsByGrade = useCallback((grades: string[]) => {
     return state.signalHistory.filter(signal => 
-      grades.includes(signal.finalGrade)
+      grades.includes(signal.institutionalGrade)
     );
   }, [state.signalHistory]);
 
@@ -190,7 +192,7 @@ export const useInstitutionalSignals = () => {
           'A+': 4.3, 'A': 4.0, 'B+': 3.3, 'B': 3.0, 
           'C+': 2.3, 'C': 2.0, 'D': 1.0, 'F': 0.0
         };
-        return sum + (gradePoints[signal.finalGrade] || 0);
+        return sum + (gradePoints[signal.institutionalGrade] || 0);
       }, 0) / state.signalHistory.length : 0
   };
 };
