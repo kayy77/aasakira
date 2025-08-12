@@ -93,10 +93,10 @@ export interface OrchestrationResult {
 export class SignalOrchestrator {
   private static instance: SignalOrchestrator;
   private readonly REQUIRED_PROVIDERS = ['Groq', 'Gemini', 'Cohere', 'OpenRouter', 'Together'];
-  private readonly MIN_AI_SCORE_FRACTION = 0.75; // Increased from 0.6 for stricter quality
-  private readonly MIN_CONFLUENCE_BUCKET = 4; // Increased from 3 for better setups
-  private readonly MIN_BACKTEST_WINRATE = 0.65; // Increased for better historical performance
-  private readonly STRATEGY_OVERRIDE_THRESHOLD = 0.80; // Increased for more confidence
+  private readonly MIN_AI_SCORE_FRACTION = 0.45; // Lowered to capture weaker signals
+  private readonly MIN_CONFLUENCE_BUCKET = 2; // Lowered to allow basic setups  
+  private readonly MIN_BACKTEST_WINRATE = 0.50; // Lowered for more permissive signals
+  private readonly STRATEGY_OVERRIDE_THRESHOLD = 0.60; // Lowered threshold
   private readonly SESSION_PAIR_WEIGHTS = this.initializeSessionWeights();
   private readonly AI_HISTORICAL_WEIGHTS = this.initializeAIWeights();
 

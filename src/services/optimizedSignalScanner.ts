@@ -166,11 +166,8 @@ export class OptimizedSignalScanner {
         results.failed++;
       }
 
-      // Quick break if we have a strong signal (optimization)
-      if (results.signals.length > 0 && results.signals[0].consensus?.scoreFraction > 0.8) {
-        console.log(`🎯 Strong signal found, stopping batch early`);
-        break;
-      }
+      // Continue processing all pairs to find best available signal
+      // No early break - we want to compare all signals and return the strongest
     }
 
     return results;
