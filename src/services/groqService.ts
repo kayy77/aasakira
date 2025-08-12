@@ -68,21 +68,35 @@ INSTITUTIONAL VERDICT FORMAT (JSON ONLY):
 {
   "symbol": "${symbol}",
   "institutional_grade": "Elite|Professional|Standard|Speculative|Reject",
-  "setup_type": "BOS Continuation|CHoCH Reversal|FVG Fill|Liquidity Sweep|Order Block",
+  "setup_type": "BOS_Continuation|CHoCH_Reversal|FVG_Fill|Liquidity_Sweep|Order_Block_Reaction|Range_Break|Trend_Continuation",
   "entry": ${livePrice},
-  "stop_loss": ${livePrice * 0.995},
-  "take_profit_1": ${livePrice * 1.015},
-  "take_profit_2": ${livePrice * 1.03},
-  "risk_reward": "1:3.0",
-  "confluence_factors": ["factor1", "factor2", "factor3"],
-  "session_bias": "London Open Continuation|NY Reversal|Asian Range",
-  "smc_analysis": "Clear BOS + FVG confluence at institutional order block",
-  "conviction_score": 85,
-  "position_size_rec": "1.5%|1.0%|0.5%|0.25%",
-  "execution_notes": "Enter on pullback to 50% FVG level with tight stop"
+  "stop_loss": ${livePrice * (Math.random() > 0.5 ? 0.992 : 1.008)},
+  "take_profit_1": ${livePrice * (Math.random() > 0.5 ? 1.012 : 0.988)},
+  "take_profit_2": ${livePrice * (Math.random() > 0.5 ? 1.025 : 0.975)},
+  "risk_reward": "CALCULATE_DYNAMICALLY",
+  "confluence_factors": "ANALYZE_REAL_CONFLUENCES",
+  "session_bias": "${session}_Analysis",
+  "smc_analysis": "PROVIDE_SPECIFIC_ANALYSIS_FOR_${symbol}",
+  "conviction_score": "CALCULATE_BASED_ON_ACTUAL_CONFLUENCES_35_TO_89",
+  "position_size_rec": "BASED_ON_CONVICTION_AND_RR",
+  "execution_notes": "SPECIFIC_TO_SETUP_TYPE_AND_MARKET_CONDITIONS",
+  "liquidity_analysis": "REAL_SWEPT_LEVELS_WITH_VOLUME_CONFIRMATION",
+  "structure_quality": "RATE_1_TO_10_BASED_ON_ACTUAL_STRUCTURE"
 }
 
-CRITICAL: Must find the BEST available setup. If weak, still provide it but grade accordingly.`;
+CRITICAL REQUIREMENTS:
+- NEVER use hardcoded conviction scores (like 85, 90, 95)
+- Calculate conviction based on actual confluence count and quality
+- Use REAL price levels that make sense for ${symbol}
+- Vary setup types - not everything is BOS Continuation
+- Grade signals honestly: Elite (80-89%), Professional (65-79%), Standard (45-64%), Speculative (35-44%)
+- Reject signals below 35% confluence
+- Match analysis to actual symbol pricing (JPY pairs vs major pairs)
+
+REALISTIC CONVICTION CALCULATION:
+Base: 40% + (Confluence Count × 8%) + (Structure Quality × 5%) + (Session Strength × 3%) + (Liquidity Quality × 4%)
+Maximum: 89% (reserve for perfect setups only)
+Minimum: 35% (anything lower gets rejected)`;
 
     try {
       const response = await this.generateResponse(institutionalPrompt, {
