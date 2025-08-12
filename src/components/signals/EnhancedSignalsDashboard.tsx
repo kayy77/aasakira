@@ -14,21 +14,21 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { bulletproofSignalEngine, BulletproofSignal } from '@/services/bulletproofSignalEngine';
+import { professionalTradingEngine, ProfessionalSignal } from '@/services/professionalTradingEngine';
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import BulletproofSignalCard from './BulletproofSignalCard';
-import SignalQualityFilter from './SignalQualityFilter';
+import ProfessionalSignalCard from './ProfessionalSignalCard';
+import ProfessionalSignalQualityFilter from './ProfessionalSignalQualityFilter';
 import { EnhancedConsensusDisplay } from './EnhancedConsensusDisplay';
 import { useEnhancedConsensusScanner } from '@/hooks/useEnhancedConsensusScanner';
 import { SignalValidationStatus } from './SignalValidationStatus';
 
 const EnhancedSignalsDashboard: React.FC = () => {
-  const [signals, setSignals] = useState<BulletproofSignal[]>([]);
-  const [filteredSignals, setFilteredSignals] = useState<BulletproofSignal[]>([]);
+  const [signals, setSignals] = useState<ProfessionalSignal[]>([]);
+  const [filteredSignals, setFilteredSignals] = useState<ProfessionalSignal[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
-  const [qualityFilter, setQualityFilter] = useState<'all' | 'weak' | 'medium' | 'strong'>('all');
+  const [qualityFilter, setQualityFilter] = useState<'all' | 'ELITE' | 'PROFESSIONAL' | 'INSTITUTIONAL' | 'STANDARD'>('all');
   
   const { toast } = useToast();
   const { canGenerateSignal, checkAndIncrementSignal, signalsUsedToday, dailyLimit } = useSignalLimits();
@@ -59,9 +59,10 @@ const EnhancedSignalsDashboard: React.FC = () => {
   // Calculate signal counts for filter
   const signalCounts = {
     all: signals.length,
-    weak: signals.filter(s => s.quality === 'weak').length,
-    medium: signals.filter(s => s.quality === 'medium').length,
-    strong: signals.filter(s => s.quality === 'strong').length
+    ELITE: signals.filter(s => s.quality === 'ELITE').length,
+    PROFESSIONAL: signals.filter(s => s.quality === 'PROFESSIONAL').length,
+    INSTITUTIONAL: signals.filter(s => s.quality === 'INSTITUTIONAL').length,
+    STANDARD: signals.filter(s => s.quality === 'STANDARD').length
   };
 
   const handleGenerateSignal = async () => {
@@ -78,16 +79,16 @@ const EnhancedSignalsDashboard: React.FC = () => {
     setConnectionStatus('connected');
     
     try {
-      console.log('🚀 Starting BULLETPROOF signal generation - NEVER GIVE UP MODE...');
+      console.log('🎯 Starting PROFESSIONAL TRADING ENGINE - 20+ Years Experience Mode...');
       
-      const signal = await bulletproofSignalEngine.generateBulletproofSignal();
+      const signal = await professionalTradingEngine.generateProfessionalSignal();
       
-      console.log('✅ BULLETPROOF signal generated successfully:', signal);
+      console.log('✅ PROFESSIONAL signal generated successfully:', signal);
       
       setSignals(prev => [signal, ...prev.slice(0, 9)]);
       toast({
-        title: `🎯 ${signal.quality.toUpperCase()} Signal Generated!`,
-        description: `${signal.symbol} ${signal.type} | ${signal.confidence}% confidence | ${signal.institutionalGrade} Grade`,
+        title: `🏛️ ${signal.quality} Signal Generated!`,
+        description: `${signal.symbol} ${signal.direction} | ${signal.confidence}% confidence | ${signal.institutionalGrade} Grade`,
       });
       
     } catch (error) {
@@ -145,16 +146,16 @@ const EnhancedSignalsDashboard: React.FC = () => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-400">{signalCounts.strong}</div>
-                <div className="text-sm text-gray-400">Strong Signals</div>
+                <div className="text-2xl font-bold text-green-400">{signals.filter(s => s.quality === 'ELITE' || s.quality === 'PROFESSIONAL').length}</div>
+                <div className="text-sm text-gray-400">Elite Signals</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-400">{signalCounts.medium}</div>
-                <div className="text-sm text-gray-400">Medium Signals</div>
+                <div className="text-2xl font-bold text-yellow-400">{signals.filter(s => s.quality === 'INSTITUTIONAL').length}</div>
+                <div className="text-sm text-gray-400">Institutional</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-400">{signalCounts.weak}</div>
-                <div className="text-sm text-gray-400">Weak Signals</div>
+                <div className="text-2xl font-bold text-red-400">{signals.filter(s => s.quality === 'STANDARD').length}</div>
+                <div className="text-sm text-gray-400">Standard</div>
               </div>
             </div>
 
@@ -171,7 +172,7 @@ const EnhancedSignalsDashboard: React.FC = () => {
               ) : (
                 <>
                   <Brain className="w-4 h-4 mr-2" />
-                  🚀 Generate BULLETPROOF Signal
+                  🏛️ Generate PROFESSIONAL Signal
                 </>
               )}
             </Button>
@@ -196,8 +197,8 @@ const EnhancedSignalsDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Signal Quality Filter */}
-        <SignalQualityFilter 
+        {/* Professional Signal Quality Filter */}
+        <ProfessionalSignalQualityFilter 
           selectedQuality={qualityFilter}
           onChange={setQualityFilter}
           signalCounts={signalCounts}
@@ -298,7 +299,7 @@ const EnhancedSignalsDashboard: React.FC = () => {
         {/* Enhanced Signals List */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredSignals.map((signal) => (
-            <BulletproofSignalCard 
+            <ProfessionalSignalCard 
               key={signal.id} 
               signal={signal} 
               onRemove={handleRemoveSignal}

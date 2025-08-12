@@ -4,7 +4,7 @@ import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
 import FeatureGate from '@/components/FeatureGate';
-import EnhancedOrchestratorDashboard from '@/components/signals/EnhancedOrchestratorDashboard';
+import EnhancedSignalsDashboard from '@/components/signals/EnhancedSignalsDashboard';
 
 const Signals = () => {
   const isMobile = useIsMobile();
@@ -42,7 +42,7 @@ const Signals = () => {
           </div>
 
           <FeatureGate feature="signals" featureName="Enhanced Elite AI Signal Scanner">
-            <EnhancedOrchestratorDashboard />
+            <EnhancedSignalsDashboard />
           </FeatureGate>
         </div>
       </div>
