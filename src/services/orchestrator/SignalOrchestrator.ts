@@ -432,15 +432,12 @@ export class SignalOrchestrator {
   }
 
   private async getMarketSnapshot(): Promise<MarketSnapshot> {
-    // Early market validation - exit quickly if conditions are poor
+    // Get session info but NEVER skip - always find best available signal
     const session = this.getCurrentSession();
     const sessionMultiplier = this.getSessionMultiplier(session);
     
-    // Skip processing if market conditions are weak (saves processing time)
-    if (sessionMultiplier < 0.4) {
-      console.log(`⏭️ Skipping scan - weak session conditions: ${session} (${sessionMultiplier})`);
-      throw new Error('Weak market conditions - skipping scan');
-    }
+    console.log(`📊 Market snapshot for ${session} session (multiplier: ${sessionMultiplier})`);
+    // Continue processing regardless of session strength
 
     const sessionWeights = this.SESSION_PAIR_WEIGHTS[session];
     
