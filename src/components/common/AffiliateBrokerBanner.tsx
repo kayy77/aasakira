@@ -10,14 +10,14 @@ const AffiliateBrokerBanner: React.FC = () => {
   if (isDismissed) return null;
 
   return (
-    <Card className="mb-4 bg-gradient-to-r from-slate-900/80 via-blue-900/20 to-slate-900/80 border-cyan-500/20">
-      <CardContent className="p-3">
+    <Card className="mb-4 bg-gradient-to-r from-blue-900/40 via-cyan-900/30 to-blue-900/40 border-cyan-400/30 shadow-lg shadow-cyan-500/10">
+      <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1">
-            <Users className="w-5 h-5 text-cyan-400 shrink-0" />
+            <Users className="w-5 h-5 text-cyan-300 shrink-0" />
             <div className="flex-1">
-              <div className="text-sm font-medium text-white">
-                New to trading? Get started with our trusted broker partner
+              <div className="text-sm font-semibold text-cyan-100">
+                New to trading? Start with our trusted broker partner
               </div>
               {!isCollapsed && (
                 <div className="mt-2 space-y-2">

@@ -27,6 +27,23 @@ export interface ProfessionalSignal {
       unfilleTd: boolean;
       layeredAnalysis: string;
     };
+    macdMomentum: {
+      macd15m: {
+        signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+        crossover: boolean;
+        histogram: 'RISING' | 'FALLING' | 'FLAT';
+        divergence: boolean;
+      };
+      macd1h: {
+        signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+        crossover: boolean;
+        histogram: 'RISING' | 'FALLING' | 'FLAT';
+        divergence: boolean;
+      };
+      confluenceScore: number;
+      momentumStrength: 'STRONG' | 'MODERATE' | 'WEAK';
+      multiTimeframeAlignment: boolean;
+    };
     liquiditySweeps: string[];
     changeOfCharacter: boolean;
     breakOfStructure: string;
@@ -328,6 +345,23 @@ ASIAN SESSION PLAYBOOK (0-8 UTC):
             unfilleTd: true,
             layeredAnalysis: 'Professional IFVG confluence detected'
           },
+          macdMomentum: {
+            macd15m: {
+              signal: 'BULLISH',
+              crossover: true,
+              histogram: 'RISING',
+              divergence: false
+            },
+            macd1h: {
+              signal: 'BULLISH',
+              crossover: true,
+              histogram: 'RISING',
+              divergence: true
+            },
+            confluenceScore: 85,
+            momentumStrength: 'STRONG',
+            multiTimeframeAlignment: true
+          },
           liquiditySweeps: analysis.smc_analysis?.liquidity_sweeps || ['Liquidity levels mapped'],
           changeOfCharacter: analysis.smc_analysis?.change_of_character ?? true,
           breakOfStructure: analysis.smc_analysis?.break_of_structure || 'Structure analysis complete',
@@ -429,6 +463,23 @@ ASIAN SESSION PLAYBOOK (0-8 UTC):
           proximityScore: 60,
           unfilleTd: false,
           layeredAnalysis: 'Conservative IFVG approach during uncertain conditions'
+        },
+        macdMomentum: {
+          macd15m: {
+            signal: 'NEUTRAL',
+            crossover: false,
+            histogram: 'FLAT',
+            divergence: false
+          },
+          macd1h: {
+            signal: 'NEUTRAL',
+            crossover: false,
+            histogram: 'FLAT',
+            divergence: false
+          },
+          confluenceScore: 45,
+          momentumStrength: 'WEAK',
+          multiTimeframeAlignment: false
         },
         liquiditySweeps: ['Basic liquidity mapping complete'],
         changeOfCharacter: false,

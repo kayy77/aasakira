@@ -208,6 +208,73 @@ const ProfessionalSignalCard: React.FC<ProfessionalSignalCardProps> = ({
           </div>
         </div>
 
+        {/* MACD Momentum Analysis Section */}
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-blue-300 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            MACD & Momentum Confluence
+          </div>
+          <div className="text-xs text-gray-400 space-y-1">
+            <div className="grid grid-cols-2 gap-3">
+              {/* 15m MACD */}
+              <div className="space-y-1">
+                <div className="text-blue-400 font-medium">15M MACD</div>
+                <div className={`text-xs ${
+                  signal.smcAnalysis?.macdMomentum?.macd15m?.signal === 'BULLISH' ? 'text-green-400' :
+                  signal.smcAnalysis?.macdMomentum?.macd15m?.signal === 'BEARISH' ? 'text-red-400' : 'text-gray-400'
+                }`}>
+                  Signal: {signal.smcAnalysis?.macdMomentum?.macd15m?.signal}
+                </div>
+                <div className={`text-xs ${signal.smcAnalysis?.macdMomentum?.macd15m?.crossover ? 'text-green-400' : 'text-gray-500'}`}>
+                  {signal.smcAnalysis?.macdMomentum?.macd15m?.crossover ? '✓ Crossover' : '✗ No Cross'}
+                </div>
+                <div className={`text-xs ${
+                  signal.smcAnalysis?.macdMomentum?.macd15m?.histogram === 'RISING' ? 'text-green-400' :
+                  signal.smcAnalysis?.macdMomentum?.macd15m?.histogram === 'FALLING' ? 'text-red-400' : 'text-gray-400'
+                }`}>
+                  Histogram: {signal.smcAnalysis?.macdMomentum?.macd15m?.histogram}
+                </div>
+              </div>
+              
+              {/* 1H MACD */}
+              <div className="space-y-1">
+                <div className="text-orange-400 font-medium">1H MACD</div>
+                <div className={`text-xs ${
+                  signal.smcAnalysis?.macdMomentum?.macd1h?.signal === 'BULLISH' ? 'text-green-400' :
+                  signal.smcAnalysis?.macdMomentum?.macd1h?.signal === 'BEARISH' ? 'text-red-400' : 'text-gray-400'
+                }`}>
+                  Signal: {signal.smcAnalysis?.macdMomentum?.macd1h?.signal}
+                </div>
+                <div className={`text-xs ${signal.smcAnalysis?.macdMomentum?.macd1h?.crossover ? 'text-green-400' : 'text-gray-500'}`}>
+                  {signal.smcAnalysis?.macdMomentum?.macd1h?.crossover ? '✓ Crossover' : '✗ No Cross'}
+                </div>
+                <div className={`text-xs ${signal.smcAnalysis?.macdMomentum?.macd1h?.divergence ? 'text-purple-400' : 'text-gray-500'}`}>
+                  {signal.smcAnalysis?.macdMomentum?.macd1h?.divergence ? '⚡ Divergence' : 'No Divergence'}
+                </div>
+              </div>
+            </div>
+            
+            {/* Momentum Summary */}
+            <div className="pt-2 border-t border-gray-700/50">
+              <div className="flex justify-between items-center">
+                <span className="text-purple-400 font-medium">
+                  Confluence Score: {signal.smcAnalysis?.macdMomentum?.confluenceScore || 0}/100
+                </span>
+                <span className={`text-xs px-2 py-1 rounded ${
+                  signal.smcAnalysis?.macdMomentum?.momentumStrength === 'STRONG' ? 'bg-green-500/20 text-green-400' :
+                  signal.smcAnalysis?.macdMomentum?.momentumStrength === 'MODERATE' ? 'bg-yellow-500/20 text-yellow-400' :
+                  'bg-red-500/20 text-red-400'
+                }`}>
+                  {signal.smcAnalysis?.macdMomentum?.momentumStrength} Momentum
+                </span>
+              </div>
+              {signal.smcAnalysis?.macdMomentum?.multiTimeframeAlignment && (
+                <div className="text-cyan-400 text-xs mt-1">🎯 Multi-Timeframe Alignment Confirmed</div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Market Context */}
         <div className="space-y-2">
           <div className="text-sm font-medium text-gray-300">Market Context</div>
