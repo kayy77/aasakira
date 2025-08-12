@@ -1,124 +1,119 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Users, Shield, DollarSign } from 'lucide-react';
+import { ExternalLink, Users, Shield, DollarSign, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 const AffiliateBrokerBanner: React.FC = () => {
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  if (isDismissed) return null;
+
   return (
-    <>
-      {/* Main Affiliate Banner */}
-      <Card className="mb-6 bg-gradient-to-r from-slate-900 via-blue-900/30 to-slate-900 border-cyan-500/30">
-        <CardContent className="p-6 text-center">
-          <div className="space-y-4">
-            <div className="flex items-center justify-center gap-2 text-xl font-bold text-white">
-              <Users className="w-6 h-6 text-cyan-400" />
-              <span>Don't know where to start?</span>
+    <Card className="mb-4 bg-gradient-to-r from-slate-900/80 via-blue-900/20 to-slate-900/80 border-cyan-500/20">
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 flex-1">
+            <Users className="w-5 h-5 text-cyan-400 shrink-0" />
+            <div className="flex-1">
+              <div className="text-sm font-medium text-white">
+                New to trading? Get started with our trusted broker partner
+              </div>
+              {!isCollapsed && (
+                <div className="mt-2 space-y-2">
+                  <p className="text-xs text-gray-400">
+                    <a 
+                      href="https://aff.fxlvls.com/registration?refAff=10812" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 underline"
+                    >
+                      Claim up to 100% deposit bonus
+                    </a>
+                    {' '}— trusted worldwide
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    *Not available for U.S. clients. 
+                    <button 
+                      onClick={() => document.getElementById('us-options')?.scrollIntoView()}
+                      className="text-cyan-400 hover:text-cyan-300 ml-1"
+                    >
+                      See U.S. options
+                    </button>
+                  </p>
+                </div>
+              )}
             </div>
-            
-            <p className="text-gray-300 text-lg">
-              We're partnered with{' '}
-              <a 
-                href="https://aff.fxlvls.com/registration?refAff=10812" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
-              >
-                our highly recommended broker
-              </a>
-              {' '}— trusted by our traders worldwide.
-            </p>
-            
-            <div className="flex items-center justify-center gap-2 text-gray-400">
-              <DollarSign className="w-5 h-5 text-green-400" />
-              <span>
-                Sign up today and claim up to a <strong className="text-white">100% deposit bonus</strong> to kickstart your trading journey.
-              </span>
-            </div>
-            
-            <div className="pt-4">
+          </div>
+          
+          <div className="flex items-center gap-2 shrink-0">
+            {!isCollapsed && (
               <a
                 href="https://aff.fxlvls.com/registration?refAff=10812"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-slate-900 px-8 py-3 rounded-lg font-bold transition-colors"
+                className="inline-flex items-center gap-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 px-3 py-1 rounded text-xs font-medium transition-colors"
               >
-                <ExternalLink className="w-5 h-5" />
-                Create Your Free Account
+                <ExternalLink className="w-3 h-3" />
+                Sign Up
               </a>
-            </div>
+            )}
             
-            <p className="text-sm text-gray-400 italic pt-2">
-              *Note: This broker does not accept U.S. clients. See our{' '}
-              <a href="#us-brokers" className="text-cyan-400 hover:text-cyan-300">
-                top U.S. broker picks
-              </a>
-              {' '}if you're in the U.S.
-            </p>
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-1 text-gray-400 hover:text-white transition-colors"
+            >
+              {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </button>
+            
+            <button
+              onClick={() => setIsDismissed(true)}
+              className="p-1 text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* U.S. Clients Fallback */}
-      <Card id="us-brokers" className="mb-6 bg-gradient-to-r from-slate-800 via-gray-800 to-slate-800 border-blue-500/30">
-        <CardContent className="p-6 text-center">
-          <div className="space-y-4">
-            <div className="flex items-center justify-center gap-2 text-xl font-bold text-white">
-              <Shield className="w-6 h-6 text-blue-400" />
-              <span>Trading from the U.S.?</span>
+        </div>
+        
+        {!isCollapsed && (
+          <div id="us-options" className="mt-4 pt-3 border-t border-gray-700/50">
+            <div className="text-xs font-medium text-blue-400 mb-2 flex items-center gap-1">
+              <Shield className="w-3 h-3" />
+              U.S. Regulated Options
             </div>
-            
-            <p className="text-gray-300">
-              Unfortunately our partner broker isn't available in your region.
-            </p>
-            
-            <p className="text-gray-400 text-sm">
-              Here are our top recommended U.S.-regulated brokers:
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+            <div className="grid grid-cols-3 gap-2">
               <a
                 href="https://www.forex.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-4 bg-slate-700/50 rounded-lg border border-blue-500/20 hover:border-blue-500/40 transition-colors group"
+                className="p-2 bg-slate-700/30 rounded border border-blue-500/10 hover:border-blue-500/30 transition-colors group text-center"
               >
-                <div className="flex items-center gap-2 text-cyan-400 group-hover:text-cyan-300">
-                  🇺🇸 <span className="font-semibold">FOREX.com</span>
-                  <ExternalLink className="w-4 h-4" />
-                </div>
-                <p className="text-xs text-gray-400 mt-1">CFTC Regulated</p>
+                <div className="text-xs text-cyan-400 group-hover:text-cyan-300 font-medium">FOREX.com</div>
+                <div className="text-xs text-gray-500">CFTC</div>
               </a>
-              
               <a
                 href="https://www.oanda.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-4 bg-slate-700/50 rounded-lg border border-blue-500/20 hover:border-blue-500/40 transition-colors group"
+                className="p-2 bg-slate-700/30 rounded border border-blue-500/10 hover:border-blue-500/30 transition-colors group text-center"
               >
-                <div className="flex items-center gap-2 text-cyan-400 group-hover:text-cyan-300">
-                  🇺🇸 <span className="font-semibold">OANDA</span>
-                  <ExternalLink className="w-4 h-4" />
-                </div>
-                <p className="text-xs text-gray-400 mt-1">NFA Regulated</p>
+                <div className="text-xs text-cyan-400 group-hover:text-cyan-300 font-medium">OANDA</div>
+                <div className="text-xs text-gray-500">NFA</div>
               </a>
-              
               <a
                 href="https://www.ig.com/us"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-4 bg-slate-700/50 rounded-lg border border-blue-500/20 hover:border-blue-500/40 transition-colors group"
+                className="p-2 bg-slate-700/30 rounded border border-blue-500/10 hover:border-blue-500/30 transition-colors group text-center"
               >
-                <div className="flex items-center gap-2 text-cyan-400 group-hover:text-cyan-300">
-                  🇺🇸 <span className="font-semibold">IG US</span>
-                  <ExternalLink className="w-4 h-4" />
-                </div>
-                <p className="text-xs text-gray-400 mt-1">CFTC/NFA Regulated</p>
+                <div className="text-xs text-cyan-400 group-hover:text-cyan-300 font-medium">IG US</div>
+                <div className="text-xs text-gray-500">CFTC/NFA</div>
               </a>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
