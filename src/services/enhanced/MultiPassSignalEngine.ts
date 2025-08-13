@@ -960,9 +960,9 @@ export class MultiPassSignalEngine {
       worstRR: 0.8,
       consecutiveWins: 5,
       consecutiveLosses: 2,
-      monthlyReturns: [8.5, 12.3, -2.1, 15.7],
-      volatility: 12.5,
-      maxDrawdownDate: new Date().toISOString()
+      patternMatches: [],
+      recommendation: 'NEUTRAL',
+      warnings: []
     };
   }
 
