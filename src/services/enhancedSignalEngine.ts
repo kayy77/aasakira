@@ -116,8 +116,8 @@ export class EnhancedSignalEngineCore {
         symbol: multiPassResult.finalSignal.symbol,
         direction: multiPassResult.finalSignal.direction,
         entry: multiPassResult.finalSignal.entry,
-        stopLoss: multiPassResult.finalSignal.sl,
-        takeProfit: multiPassResult.finalSignal.tp,
+        sl: multiPassResult.finalSignal.sl,
+        tp: multiPassResult.finalSignal.tp,
         riskReward: multiPassResult.finalSignal.riskReward,
         confidence: multiPassResult.finalSignal.confidence
       };
@@ -246,8 +246,8 @@ export class EnhancedSignalEngineCore {
     symbol: string;
     direction: 'BUY' | 'SELL';
     entry: number;
-    stopLoss: number;
-    takeProfit: number;
+    sl: number;
+    tp: number;
     riskReward: number;
     confidence: number;
   }): Promise<any> {
@@ -258,8 +258,8 @@ export class EnhancedSignalEngineCore {
     const validation = validateSignalWithTruth(
       signal.symbol,
       signal.entry,
-      signal.stopLoss,
-      signal.takeProfit,
+      signal.sl,
+      signal.tp,
       signal.direction,
       atrPips
     );
@@ -278,7 +278,14 @@ export class EnhancedSignalEngineCore {
 
     // Apply price adjustments if enabled and needed
     if (this.config.enablePriceAdjustment && validation.validation && !validation.validation.valid) {
-      const adjustment = adjustSignalPricesForTruth(signal, atrPips);
+      const signalForAdjustment = {
+        symbol: signal.symbol,
+        entry: signal.entry,
+        stopLoss: signal.sl,
+        takeProfit: signal.tp,
+        direction: signal.direction
+      };
+      const adjustment = adjustSignalPricesForTruth(signalForAdjustment, atrPips);
       
       if (adjustment.adjusted) {
         console.log(`🔧 Price adjustment applied: ${adjustment.adjustments.join(', ')}`);

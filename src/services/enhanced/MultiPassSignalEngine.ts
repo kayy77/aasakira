@@ -56,8 +56,8 @@ export interface MultiPassResult {
     symbol: string;
     direction: 'BUY' | 'SELL';
     entry: number;
-    stopLoss: number;
-    takeProfit: number;
+    sl: number;
+    tp: number;
     riskReward: number;
     confidence: number;
     riskProfile: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -332,8 +332,8 @@ export class MultiPassSignalEngine {
       symbol: signal.symbol,
       direction: signal.direction,
       entry: signal.entry,
-      stopLoss: signal.stopLoss,
-      takeProfit: signal.takeProfit,
+      sl: signal.stopLoss,
+      tp: signal.takeProfit,
       riskReward: signal.riskReward,
       confidence: signal.confidence,
       riskProfile,
