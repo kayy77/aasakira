@@ -23,8 +23,7 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import type { EnhancedSignal } from '@/services/enhancedSignalEngine';
-import { EnhancedSignalEngine } from '@/services/enhancedSignalEngine';
+import { EnhancedSignal, EnhancedSignalEngine } from '@/services/enhancedSignalEngine';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';

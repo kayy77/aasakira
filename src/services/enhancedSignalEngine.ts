@@ -1,8 +1,8 @@
 import { multiPassGroqAnalyzer, MultiPassResult, SessionContext, OrderFlowMetrics } from './multiPassGroqAnalyzer';
-import { InstitutionalValidator, RawSignal } from './validation/institutionalValidator';
+import { InstitutionalValidator, RawSignal, validateInstitutional } from './validation/institutionalValidator';
 import { SniperConfirmationEngine, analyzeSniperEntry } from './validation/sniperConfirmationEngine';
 import { OrderFlowAnalyzer, getInstitutionalFootprint } from './validation/orderFlowAnalyzer';
-import { MultiTimeframeConfirmation } from './validation/multiTimeframeConfirmation';
+import { MultiTimeframeConfirmation, analyzeAlignment } from './validation/multiTimeframeConfirmation';
 
 export interface EnhancedSignalConfig {
   symbols: string[];
@@ -197,7 +197,7 @@ export class EnhancedSignalEngineCore {
 
     try {
       // Layer 1: Institutional validation
-      const institutionalResult = InstitutionalValidator.validateInstitutional(rawSignal);
+      const institutionalResult = validateInstitutional(rawSignal);
       validationResults.institutional = institutionalResult.ok;
 
       // Layer 2: Sniper confirmation
@@ -218,7 +218,7 @@ export class EnhancedSignalEngineCore {
 
       // Layer 4: Multi-timeframe confirmation
       const mockTimeframeData = MultiTimeframeConfirmation.createMockTimeframeData(rawSignal.symbol);
-      const mtfResult = MultiTimeframeConfirmation.analyzeTimeframeAlignment(mockTimeframeData);
+      const mtfResult = analyzeAlignment(mockTimeframeData);
       validationResults.multiTimeframe = mtfResult.overallAlignment !== 'CONFLICTED' && mtfResult.confidence > 0.75;
 
     } catch (error) {
