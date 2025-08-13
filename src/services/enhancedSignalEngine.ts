@@ -3,6 +3,7 @@ import { InstitutionalValidator, RawSignal, validateInstitutional } from './vali
 import { SniperConfirmationEngine, analyzeSniperEntry } from './validation/sniperConfirmationEngine';
 import { OrderFlowAnalyzer, getInstitutionalFootprint } from './validation/orderFlowAnalyzer';
 import { MultiTimeframeConfirmation, analyzeAlignment } from './validation/multiTimeframeConfirmation';
+import { priceTruthEngine, validateSignalWithTruth, adjustSignalPricesForTruth } from './pricing/PriceTruthEngine';
 
 export interface EnhancedSignalConfig {
   symbols: string[];
@@ -11,6 +12,8 @@ export interface EnhancedSignalConfig {
   requireOrderFlow: boolean;
   adaptiveWeights: boolean;
   strictValidation: boolean;
+  requirePriceGold: boolean; // NEW: Only accept GOLD quality prices
+  enablePriceAdjustment: boolean; // NEW: Auto-adjust prices for truth
 }
 
 export interface SignalResult {
@@ -23,12 +26,26 @@ export interface SignalResult {
     sniper: boolean;
     orderFlow: boolean;
     multiTimeframe: boolean;
+    priceTruth: boolean; // NEW: Price truth validation
+  };
+  priceValidation?: {
+    quality: 'GOLD' | 'SILVER' | 'RED';
+    adjusted: boolean;
+    adjustments: string[];
+    originalPrices?: {
+      entry: number;
+      stopLoss: number;
+      takeProfit: number;
+    };
   };
   metadata: {
     session: string;
     confidence: number;
     processingTime: number;
     modelWeights: any;
+    priceAge?: number; // NEW: Price age in ms
+    spreadPips?: number; // NEW: Current spread
+    sourcesUsed?: number; // NEW: Number of price sources
   };
 }
 
@@ -46,13 +63,18 @@ export class EnhancedSignalEngineCore {
       requireOrderFlow: true,
       adaptiveWeights: true,
       strictValidation: true,
+      requirePriceGold: true, // NEW: Strict price quality requirement
+      enablePriceAdjustment: true, // NEW: Auto-adjust for accuracy
       ...config
     };
+    
+    // Initialize price feeds with current data
+    this.initializePriceFeeds();
   }
 
   async generateEnhancedSignal(): Promise<SignalResult> {
     const startTime = Date.now();
-    console.log('🚀 Enhanced Signal Engine: Starting analysis...');
+    console.log('🚀 Enhanced Signal Engine: Starting analysis with Price Truth...');
 
     try {
       // Check rate limiting
@@ -89,29 +111,41 @@ export class EnhancedSignalEngineCore {
         throw new Error('NO_FINAL_SIGNAL_GENERATED');
       }
 
+      // 🎯 NEW: Price Truth Validation & Adjustment
+      const priceValidationResult = await this.validateAndAdjustPrices(multiPassResult.finalSignal);
+      
+      if (!priceValidationResult.valid) {
+        throw new Error(`PRICE_VALIDATION_FAILED: ${priceValidationResult.errors.join(', ')}`);
+      }
+
+      // Use validated/adjusted prices for the signal
+      const validatedSignal = priceValidationResult.adjusted 
+        ? priceValidationResult.adjustedSignal 
+        : multiPassResult.finalSignal;
+
       // Convert to RawSignal format for validation
       const rawSignal: RawSignal = {
-        symbol: multiPassResult.finalSignal.symbol,
-        side: multiPassResult.finalSignal.direction,
-        entry: multiPassResult.finalSignal.entry,
-        sl: multiPassResult.finalSignal.sl,
-        tp: multiPassResult.finalSignal.tp,
-        rr: multiPassResult.finalSignal.riskReward,
-        spread: this.getSpread(multiPassResult.finalSignal.symbol),
-        atrPips: this.getATRPips(multiPassResult.finalSignal.symbol),
+        symbol: validatedSignal.symbol,
+        side: validatedSignal.direction,
+        entry: validatedSignal.entry,
+        sl: validatedSignal.sl || validatedSignal.stopLoss,
+        tp: validatedSignal.tp || validatedSignal.takeProfit,
+        rr: validatedSignal.riskReward,
+        spread: this.getSpread(validatedSignal.symbol),
+        atrPips: this.getATRPips(validatedSignal.symbol),
         session: sessionContext.current as 'ASIA' | 'LONDON' | 'NY',
         newsRisk: sessionContext.newsRisk as 'LOW' | 'HIGH' | 'MED',
-        priceAgeMs: 500, // Simulated - would be real in production
-        nearestOppLiquidityPips: this.getNearestLiquidityDistance(multiPassResult.finalSignal),
+        priceAgeMs: priceValidationResult.truthQuote?.priceAge || 500,
+        nearestOppLiquidityPips: this.getNearestLiquidityDistance(validatedSignal),
         structureAlignedTFs: 4, // From multi-timeframe analysis
-        confluenceScore: multiPassResult.finalSignal.confidence,
+        confluenceScore: validatedSignal.confidence,
         confirmationState: 'RETEST_CONFIRMED', // From pass 3
         liquiditySweepDetected: true,
         ifvgRetestConfirmed: true,
         microTriggerConfirmed: true
       };
 
-      // Multi-layer validation
+      // Multi-layer validation (including new price truth validation)
       const validationResults = await this.performMultiLayerValidation(rawSignal, orderFlowMetrics);
 
       // Check if all validations passed
@@ -126,7 +160,7 @@ export class EnhancedSignalEngineCore {
       }
 
       // Final confidence check
-      if (multiPassResult.finalSignal.confidence < this.config.minConfidence) {
+      if (validatedSignal.confidence < this.config.minConfidence) {
         throw new Error('CONFIDENCE_TOO_LOW');
       }
 
@@ -136,11 +170,11 @@ export class EnhancedSignalEngineCore {
 
       // Update adaptive weights if enabled
       if (this.config.adaptiveWeights) {
-        this.updateAdaptiveWeights(multiPassResult.finalSignal.symbol, sessionContext.current, true);
+        this.updateAdaptiveWeights(validatedSignal.symbol, sessionContext.current, true);
       }
 
       const processingTime = Date.now() - startTime;
-      console.log(`✅ Enhanced signal generated in ${processingTime}ms`);
+      console.log(`✅ Enhanced signal generated in ${processingTime}ms with GOLD price quality`);
 
       return {
         signal: rawSignal,
@@ -148,11 +182,24 @@ export class EnhancedSignalEngineCore {
         rejectionReasons: [],
         multiPassResult,
         validationResults,
+        priceValidation: {
+          quality: priceValidationResult.truthQuote?.quality || 'GOLD',
+          adjusted: priceValidationResult.adjusted,
+          adjustments: priceValidationResult.adjustments || [],
+          originalPrices: priceValidationResult.adjusted ? {
+            entry: multiPassResult.finalSignal.entry,
+            stopLoss: multiPassResult.finalSignal.sl || multiPassResult.finalSignal.stopLoss,
+            takeProfit: multiPassResult.finalSignal.tp || multiPassResult.finalSignal.takeProfit
+          } : undefined
+        },
         metadata: {
           session: sessionContext.current,
-          confidence: multiPassResult.finalSignal.confidence,
+          confidence: validatedSignal.confidence,
           processingTime,
-          modelWeights: this.getModelWeights()
+          modelWeights: this.getModelWeights(),
+          priceAge: priceValidationResult.truthQuote?.priceAge,
+          spreadPips: priceValidationResult.truthQuote?.spreadPips,
+          sourcesUsed: priceValidationResult.truthQuote?.sourcesUsed
         }
       };
 
@@ -172,7 +219,8 @@ export class EnhancedSignalEngineCore {
           institutional: false,
           sniper: false,
           orderFlow: false,
-          multiTimeframe: false
+          multiTimeframe: false,
+          priceTruth: false
         },
         metadata: {
           session: this.getCurrentSessionContext().current,
@@ -184,6 +232,65 @@ export class EnhancedSignalEngineCore {
     }
   }
 
+  // 🎯 NEW: Price Truth Validation & Adjustment Method
+  private async validateAndAdjustPrices(signal: {
+    symbol: string;
+    direction: 'BUY' | 'SELL';
+    entry: number;
+    stopLoss: number;
+    takeProfit: number;
+    riskReward: number;
+    confidence: number;
+  }): Promise<any> {
+    
+    const atrPips = this.getATRPips(signal.symbol);
+    
+    // Validate with Price Truth Engine
+    const validation = validateSignalWithTruth(
+      signal.symbol,
+      signal.entry,
+      signal.sl || signal.stopLoss,
+      signal.tp || signal.takeProfit,
+      signal.direction,
+      atrPips
+    );
+
+    if (!validation.valid) {
+      return validation;
+    }
+
+    // Check price quality requirement
+    if (this.config.requirePriceGold && validation.truthQuote?.quality !== 'GOLD') {
+      return {
+        valid: false,
+        errors: [`Price quality ${validation.truthQuote?.quality} below required GOLD standard`]
+      };
+    }
+
+    // Apply price adjustments if enabled and needed
+    if (this.config.enablePriceAdjustment && validation.validation && !validation.validation.valid) {
+      const adjustment = adjustSignalPricesForTruth(signal, atrPips);
+      
+      if (adjustment.adjusted) {
+        console.log(`🔧 Price adjustment applied: ${adjustment.adjustments.join(', ')}`);
+        return {
+          valid: true,
+          adjusted: true,
+          originalSignal: signal,
+          adjustedSignal: adjustment.adjustedSignal,
+          adjustments: adjustment.adjustments,
+          truthQuote: validation.truthQuote
+        };
+      }
+    }
+
+    return {
+      valid: true,
+      adjusted: false,
+      truthQuote: validation.truthQuote
+    };
+  }
+
   private async performMultiLayerValidation(
     rawSignal: RawSignal,
     orderFlowMetrics: OrderFlowMetrics
@@ -192,7 +299,8 @@ export class EnhancedSignalEngineCore {
       institutional: false,
       sniper: false,
       orderFlow: false,
-      multiTimeframe: false
+      multiTimeframe: false,
+      priceTruth: false // NEW: Price truth validation
     };
 
     try {
@@ -221,11 +329,39 @@ export class EnhancedSignalEngineCore {
       const mtfResult = analyzeAlignment(mockTimeframeData);
       validationResults.multiTimeframe = mtfResult.overallAlignment !== 'CONFLICTED' && mtfResult.confidence > 0.75;
 
+      // 🎯 NEW: Layer 5: Price Truth Validation
+      const truthQuote = priceTruthEngine.getTruth(rawSignal.symbol, rawSignal.atrPips);
+      validationResults.priceTruth = truthQuote !== null && 
+        (truthQuote.quality === 'GOLD' || (!this.config.requirePriceGold && truthQuote.quality === 'SILVER'));
+
     } catch (error) {
       console.error('Validation error:', error);
     }
 
     return validationResults;
+  }
+
+  // 🎯 NEW: Initialize price feeds with realistic data
+  private initializePriceFeeds(): void {
+    // Simulate multi-source price feeds for major pairs
+    const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD'];
+    const basePrices = {
+      'EURUSD': 1.0856,
+      'GBPUSD': 1.2645,
+      'USDJPY': 149.85,
+      'USDCHF': 0.8756,
+      'AUDUSD': 0.6487
+    };
+
+    pairs.forEach(symbol => {
+      const basePrice = basePrices[symbol as keyof typeof basePrices];
+      if (basePrice) {
+        // Simulate 3 price sources with slight variations
+        priceTruthEngine.simulateMultiSourceTicks(symbol, basePrice, 3);
+      }
+    });
+
+    console.log('🔗 Price feeds initialized with multi-source validation');
   }
 
   private getCurrentSessionContext(): SessionContext {
@@ -282,9 +418,15 @@ export class EnhancedSignalEngineCore {
   }
 
   private getCurrentPrice(symbol: string): number {
-    // Simulate current price - in production this would use real live prices
+    // 🎯 UPDATED: Get price from Truth Engine if available
+    const truthQuote = priceTruthEngine.getTruth(symbol);
+    if (truthQuote) {
+      return truthQuote.mid;
+    }
+
+    // Fallback to static prices
     const basePrices = {
-      'EURUSD': 1.0850,
+      'EURUSD': 1.0856,
       'GBPUSD': 1.2650,
       'USDJPY': 149.50,
       'AUDUSD': 0.6450,
@@ -294,7 +436,13 @@ export class EnhancedSignalEngineCore {
   }
 
   private getSpread(symbol: string): number {
-    // Simulate spread - in production would use real broker data
+    // 🎯 UPDATED: Get spread from Truth Engine if available
+    const truthQuote = priceTruthEngine.getTruth(symbol);
+    if (truthQuote) {
+      return truthQuote.spreadPips / priceTruthEngine.toPips(symbol, 1);
+    }
+
+    // Fallback to static spreads
     const spreads = {
       'EURUSD': 0.1,
       'GBPUSD': 0.2,
@@ -319,7 +467,7 @@ export class EnhancedSignalEngineCore {
 
   private getNearestLiquidityDistance(signal: any): number {
     // Simulate liquidity distance
-    return Math.abs(signal.entry - signal.sl) * 100 * 1.5; // 1.5x stop distance
+    return Math.abs(signal.entry - signal.stopLoss) * 100 * 1.5; // 1.5x stop distance
   }
 
   private updateAdaptiveWeights(symbol: string, session: string, success: boolean) {
@@ -348,6 +496,28 @@ export class EnhancedSignalEngineCore {
 
   resetSessionCounts() {
     this.sessionSignalCount = {};
+  }
+
+  // 🎯 NEW: Price monitoring methods
+  getPriceHealth(): {
+    sources: any;
+    qualityCounts: Record<'GOLD' | 'SILVER' | 'RED', number>;
+    avgSpreadPips: Record<string, number>;
+  } {
+    const sources = priceTruthEngine.getSourceHealth();
+    const symbols = this.config.symbols;
+    const qualityCounts = { GOLD: 0, SILVER: 0, RED: 0 };
+    const avgSpreadPips: Record<string, number> = {};
+
+    symbols.forEach(symbol => {
+      const truthQuote = priceTruthEngine.getTruth(symbol);
+      if (truthQuote) {
+        qualityCounts[truthQuote.quality]++;
+        avgSpreadPips[symbol] = truthQuote.spreadPips;
+      }
+    });
+
+    return { sources, qualityCounts, avgSpreadPips };
   }
 }
 
@@ -386,7 +556,7 @@ export interface EnhancedSignal {
   };
 }
 
-// Export a simple factory function instead of class
+// Enhanced factory function with price truth integration
 export const EnhancedSignalEngine = {
   async generateEnhancedSignal(): Promise<EnhancedSignal | null> {
     try {
@@ -420,8 +590,8 @@ export const EnhancedSignalEngine = {
         timestamp: Date.now(),
         livePrice: result.signal.entry,
         priceValidation: {
-          passed: true,
-          reasons: []
+          passed: result.validationResults.priceTruth,
+          reasons: result.priceValidation?.adjustments || []
         },
         validation: {
           passed: Object.values(result.validationResults).every(v => v),

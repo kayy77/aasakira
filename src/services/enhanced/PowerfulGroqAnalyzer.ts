@@ -431,7 +431,7 @@ Return analysis in JSON format:
       },
       liquiditySweep: {
         detected: Math.random() > 0.4,
-        sweepType: direction === 'BUY' ? 'SELLSIDE' : 'BUYSIDE',
+        sweepType: direction === 'BULLISH' ? 'SELLSIDE' : 'BUYSIDE',
         rejectionWick: Math.random() > 0.3,
         wickSize: 8 + Math.random() * 15
       },
@@ -681,7 +681,7 @@ Return analysis in JSON format:
     return {
       signal: {
         symbol,
-        direction: direction === 'BULLISH' ? 'BUY' : 'SELL',
+        direction,
         entry: price,
         stopLoss: direction === 'BUY' ? price - slDistance : price + slDistance,
         takeProfit: direction === 'BUY' ? price + tpDistance : price - tpDistance,
@@ -745,7 +745,7 @@ Return analysis in JSON format:
         institutionalFootprint: 'ABSENT'
       },
       microstructure: {
-        breakOfStructure: { occurred: false, direction: 'BUY', timeframe: 'M15', candleIndex: 0 },
+        breakOfStructure: { occurred: false, direction: 'BULLISH', timeframe: 'M15', candleIndex: 0 },
         retestEntry: { setup: false, quality: 'WEAK', entryPrice: 0, confirmationCandle: false },
         liquiditySweep: { detected: false, sweepType: 'BUYSIDE', rejectionWick: false, wickSize: 0 },
         microTiming: { m1Confirmed: false, m5Confirmed: false, entryMethod: 'WAIT', urgency: 'WAIT_RETEST' }
