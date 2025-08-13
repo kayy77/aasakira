@@ -60,6 +60,109 @@ export class UltraGroqAnalyzer {
   constructor() {
     this.apiKey = import.meta.env.VITE_GROQ_API_KEY || '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';
   }
+
+  async performInstitutionalAnalysis(params: {
+    symbol: string;
+    currentPrice: number;
+    spread: number;
+    timeframe: string;
+    session: string;
+    analysisDepth: 'DEEP' | 'ULTRA_DEEP';
+  }): Promise<any> {
+    console.log(`🏛️ ULTRA INSTITUTIONAL ANALYSIS: ${params.symbol} | Depth: ${params.analysisDepth}`);
+    
+    try {
+      // Generate advanced data feeds
+      const feeds = await this.generateAdvancedDataFeeds(params.symbol, params.currentPrice);
+      
+      // Execute multi-pass reasoning
+      const multiPassResults = await this.executeMultiPassReasoning(
+        params.symbol, 
+        params.currentPrice, 
+        feeds, 
+        { timeframe: params.timeframe, session: params.session }
+      );
+      
+      // Strategy stacking
+      const strategies = await this.executeStrategyStacking(
+        params.symbol, 
+        params.currentPrice, 
+        feeds, 
+        multiPassResults
+      );
+      
+      // Micro-timeframe confirmation
+      const microConfirmation = await this.executeMicroTimeframeConfirmation(
+        params.symbol, 
+        params.currentPrice, 
+        strategies
+      );
+      
+      // Signal grading
+      const signalGrade = await this.executeSignalStrengthGrading(
+        strategies, 
+        microConfirmation, 
+        feeds
+      );
+      
+      // Fail-safe blocking
+      const finalSignal = await this.executeFailSafeBlocking(
+        signalGrade, 
+        feeds, 
+        multiPassResults
+      );
+      
+      return {
+        signal: finalSignal,
+        marketData: {
+          atrPips: this.calculateATRPips(params.symbol, params.currentPrice),
+          volatility: feeds.economicCalendar.expectedVolatility,
+          nearestLiquidityDistance: this.calculateLiquidityDistance(feeds.orderBookData)
+        },
+        confluence: {
+          score: signalGrade?.confluenceScore || 0,
+          alignedTimeframes: this.countAlignedTimeframes(strategies),
+        },
+        confirmation: {
+          state: microConfirmation?.confirmationState || 'NONE',
+          liquiditySweep: microConfirmation?.liquiditySweep || false,
+          ifvgRetest: microConfirmation?.ifvgRetest || false,
+          microTrigger: microConfirmation?.microTrigger || false
+        },
+        riskAssessment: {
+          newsRisk: feeds.economicCalendar.tradingRecommendation === 'avoid' ? 'HIGH' : 'LOW'
+        },
+        depth: params.analysisDepth,
+        gates: multiPassResults.length
+      };
+      
+    } catch (error) {
+      console.error(`❌ Ultra institutional analysis failed: ${error}`);
+      return { signal: null };
+    }
+  }
+
+  private calculateATRPips(symbol: string, price: number): number {
+    // Simulate ATR calculation - in production, use real data
+    const baseATR = price * 0.0008; // 0.08% of price
+    const pipFactor = symbol.includes('JPY') ? 100 : 10000;
+    return baseATR * pipFactor;
+  }
+
+  private calculateLiquidityDistance(orderBook: any): number {
+    // Calculate distance to nearest significant liquidity
+    return Math.random() * 15 + 5; // 5-20 pips simulation
+  }
+
+  private countAlignedTimeframes(strategies: StrategyFramework[]): number {
+    // Count how many strategies agree on direction
+    if (!strategies.length) return 0;
+    
+    const bullishCount = strategies.filter(s => s.bias === 'bullish').length;
+    const bearishCount = strategies.filter(s => s.bias === 'bearish').length;
+    
+    return Math.max(bullishCount, bearishCount);
+  }
   
   async generateAdvancedDataFeeds(symbol: string, livePrice: number): Promise<AdvancedDataFeeds> {
     // Simulate advanced data feeds - in production, connect to real APIs
