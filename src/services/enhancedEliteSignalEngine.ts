@@ -1,6 +1,11 @@
 import { livePriceService } from './livePriceWebSocket';
 import { groqService } from './groqService';
 import { multiAIConsensusEngine, type ConsensusResult } from './multiAIConsensusEngine';
+import { 
+  SniperConfirmationEngine, 
+  OrderFlowAnalyzer, 
+  MultiTimeframeConfirmation
+} from './validation';
 
 export interface EnhancedSignal {
   id: string;
@@ -58,6 +63,35 @@ export class EnhancedEliteSignalEngine {
   private static readonly MAJOR_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
   
   static async generateSignal(): Promise<EnhancedSignal | null> {
+    // Add sniper-grade validation before signal generation
+    const symbol = this.MAJOR_PAIRS[Math.floor(Math.random() * this.MAJOR_PAIRS.length)];
+    
+    // Get live price first
+    const livePrice = await livePriceService.getLivePrice(symbol);
+    if (!livePrice) return null;
+
+    // Sniper confirmation layer
+    const microData = SniperConfirmationEngine.createMockData(symbol);
+    const sniperResult = SniperConfirmationEngine.analyzeSniperEntry(microData);
+    
+    if (!sniperResult.confirmed) {
+      console.log(`🚫 Sniper validation failed: ${sniperResult.rejectionReasons.join(', ')}`);
+      return null;
+    }
+
+    // Order flow validation
+    const orderFlowData = OrderFlowAnalyzer.generateMockOrderFlow(symbol, 30);
+    const orderFlowSignal = OrderFlowAnalyzer.analyzeOrderFlow(orderFlowData);
+    
+    if (!orderFlowSignal.bigMoneyActive || orderFlowSignal.strength < 70) {
+      console.log(`🚫 Order flow insufficient: ${orderFlowSignal.reasoning.join(', ')}`);
+      return null;
+    }
+
+    console.log(`✅ Sniper validation passed with ${sniperResult.confidenceScore}% confidence`);
+    console.log(`✅ Order flow confirmed: ${orderFlowSignal.direction} (${orderFlowSignal.strength}%)`);
+    
+    // Continue with enhanced signal generation...
     console.log('🏛️ Enhanced Elite Signal Engine: Starting institutional-grade analysis...');
     
     try {
