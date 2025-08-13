@@ -284,6 +284,53 @@ export class InstitutionalSignalEngine {
       // 10. Advanced Risk-Reward Calculation
       const advancedRiskReward = await this.calculateAdvancedRiskReward(pair, deepMtfConfluence, sessionContext, smartVolatilityLiquidity);
       
+      // 10.5. BULLETPROOF VALIDATION BEFORE PROCEEDING
+      const { BulletproofSignalValidator } = await import('./bulletproofSignalValidator');
+      const bulletValidationInput = {
+        pair,
+        entry: advancedRiskReward.entry,
+        stopLoss: advancedRiskReward.stopLoss,
+        takeProfit: advancedRiskReward.takeProfit1,
+        tradeType: this.determineSignalDirection(deepMtfConfluence, orderFlow, liquiditySweep),
+        confidence: this.calculateInstitutionalConfidence(confluenceScore, deepMtfConfluence, orderFlow, sessionContext),
+        timeframe: 'H1',
+        session: sessionContext.currentSession,
+        confluenceScore
+      };
+      
+      const validationResult = BulletproofSignalValidator.validateSignal(bulletValidationInput);
+      
+      if (!validationResult.isValid) {
+        console.log('❌ Institutional signal rejected by bulletproof validation:', validationResult.errors);
+        
+        // Attempt auto-adjustment for institutional signals
+        if (validationResult.adjustedSignal) {
+          console.log('🔧 Auto-adjusting institutional signal parameters...');
+          const adjusted = validationResult.adjustedSignal;
+          advancedRiskReward.entry = adjusted.entry;
+          advancedRiskReward.stopLoss = adjusted.stopLoss;
+          advancedRiskReward.takeProfit1 = adjusted.takeProfit;
+          advancedRiskReward.takeProfit2 = adjusted.takeProfit + (Math.abs(adjusted.takeProfit - adjusted.entry) * 0.5);
+          advancedRiskReward.takeProfit3 = adjusted.takeProfit + (Math.abs(adjusted.takeProfit - adjusted.entry) * 1.0);
+        } else {
+          // Attempt rescan for institutional-grade alternative
+          const rescannedSignal = await BulletproofSignalValidator.postValidationRescan(bulletValidationInput, 2);
+          if (rescannedSignal) {
+            console.log('✅ Institutional rescan successful - using alternative parameters');
+            advancedRiskReward.entry = rescannedSignal.entry;
+            advancedRiskReward.stopLoss = rescannedSignal.stopLoss;
+            advancedRiskReward.takeProfit1 = rescannedSignal.takeProfit;
+            advancedRiskReward.takeProfit2 = rescannedSignal.takeProfit + (Math.abs(rescannedSignal.takeProfit - rescannedSignal.entry) * 0.5);
+            advancedRiskReward.takeProfit3 = rescannedSignal.takeProfit + (Math.abs(rescannedSignal.takeProfit - rescannedSignal.entry) * 1.0);
+          } else {
+            console.log('❌ REJECTED: Institutional signal failed bulletproof validation and rescan');
+            return null;
+          }
+        }
+      }
+      
+      console.log('✅ Institutional signal passed bulletproof validation');
+      
       // 11. Calculate institutional confidence
       const confidence = this.calculateInstitutionalConfidence(confluenceScore, deepMtfConfluence, orderFlow, sessionContext);
       

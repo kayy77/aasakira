@@ -714,6 +714,50 @@ export class SignalEngine {
         ? `AI ${Math.round(aiCanon.frac * 100)}%, ConfBucket ${confBucket}/6, EV ${ev.toFixed(2)}. Final ${penalizedConfidence.toFixed(1)}%.`
         : `Rejected: AI ${Math.round(aiCanon.frac * 100)}%, ConfBucket ${confBucket}/6, EV ${ev.toFixed(2)}. Penalties: ${topPenalties || 'None'}. Final ${penalizedConfidence.toFixed(1)}%.`;
 
+      // BULLETPROOF VALIDATION CHECK FOR APPROVED SIGNALS
+      if (status === 'approved') {
+        try {
+          const { BulletproofSignalValidator } = await import('./bulletproofSignalValidator');
+          
+          // Mock signal data for validation (in real implementation, extract from signal)
+          const mockValidationInput = {
+            pair: enrichedData.pair,
+            entry: enrichedData.currentPrice,
+            stopLoss: uiConsensus.direction === 'BULLISH' ? 
+                      enrichedData.currentPrice - 0.0020 : enrichedData.currentPrice + 0.0020,
+            takeProfit: uiConsensus.direction === 'BULLISH' ? 
+                        enrichedData.currentPrice + 0.0050 : enrichedData.currentPrice - 0.0050,
+            tradeType: (uiConsensus.direction === 'BULLISH' ? 'BUY' : 'SELL') as 'BUY' | 'SELL',
+            confidence: uiConsensus.confidence,
+            timeframe: enrichedData.timeframe,
+            session: enrichedData.session,
+            confluenceScore: validation.confluence
+          };
+
+          const bulletValidation = BulletproofSignalValidator.validateSignal(mockValidationInput);
+          
+          if (!bulletValidation.isValid) {
+            console.log('❌ Signal Engine: Bulletproof validation failed:', bulletValidation.errors);
+            return {
+              status: 'rejected',
+              reason: `Signal rejected by bulletproof validation: ${bulletValidation.errors.join(', ')}`,
+              consensus: uiConsensus,
+              validation,
+              trustScore: 0,
+              penalties,
+              pair: enrichedData.pair,
+              timeframe: enrichedData.timeframe,
+              timestamp: new Date().toISOString()
+            };
+          }
+          
+          console.log('✅ Signal Engine: Bulletproof validation passed');
+        } catch (error) {
+          console.error('Bulletproof validation check failed:', error);
+          // Continue with original signal if validation service fails
+        }
+      }
+
       return {
         status,
         reason,

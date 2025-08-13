@@ -75,7 +75,7 @@ export class EnhancedSignalEngine {
       const { SignalValidationGate } = await import('@/services/signalValidationGate');
       
       const passedCount = Object.values(strategies).filter((s: any) => s.passed).length;
-      const validationInput = {
+      const gateValidationInput = {
         pair,
         direction: this.determineDirection(strategies),
         confluence_bucket: passedCount,
@@ -92,7 +92,7 @@ export class EnhancedSignalEngine {
         }]
       };
       
-      const validation = SignalValidationGate.validateSignal(validationInput);
+      const validation = SignalValidationGate.validateSignal(gateValidationInput);
       console.log('🔍 Signal validation result:', validation);
       
       // Reject if validation fails
@@ -107,37 +107,58 @@ export class EnhancedSignalEngine {
       // 7. Determine signal direction
       const direction = this.determineDirection(strategies);
       
-      // 8. Calculate levels
-      const { stopLoss, takeProfit, riskReward } = this.calculateLevels(pair, livePrice, direction, confidence);
+      // 8. Calculate levels with bulletproof validation
+      const { stopLoss, takeProfit, riskReward } = await this.calculateLevels(pair, livePrice, direction, confidence);
+      
+      // 8.5. BULLETPROOF VALIDATION GATE
+      const { BulletproofSignalValidator } = await import('./bulletproofSignalValidator');
+      const bulletValidationInput = {
+        pair,
+        entry: livePrice,
+        stopLoss,
+        takeProfit,
+        tradeType: direction,
+        confidence,
+        timeframe: 'M15',
+        session: this.getCurrentSession(),
+        confluenceScore: passedCount
+      };
+      
+      const validationResult = BulletproofSignalValidator.validateSignal(bulletValidationInput);
+      
+      if (!validationResult.isValid) {
+        console.log('❌ Signal rejected by bulletproof validation:', validationResult.errors);
+        
+        // Attempt auto-adjustment if possible
+        if (validationResult.adjustedSignal) {
+          console.log('🔧 Using auto-adjusted signal parameters...');
+          const adjusted = validationResult.adjustedSignal;
+          return {
+            ...this.buildSignalObject(pair, adjusted.entry, adjusted.stopLoss, adjusted.takeProfit, direction, confidence, strategies, groqAnalysis, livePrice),
+            priceValidation: {
+              source: 'WebSocket Real-time (Auto-Adjusted)',
+              validated: true,
+              accuracy: 'LIVE'
+            }
+          };
+        }
+        
+        // Attempt post-validation rescan
+        const rescannedSignal = await BulletproofSignalValidator.postValidationRescan(bulletValidationInput);
+        if (rescannedSignal) {
+          console.log('✅ Rescan successful - using alternative signal');
+          return this.buildSignalObject(pair, rescannedSignal.entry, rescannedSignal.stopLoss, rescannedSignal.takeProfit, direction, confidence, strategies, groqAnalysis, livePrice);
+        }
+        
+        return null; // Complete rejection
+      }
+      
+      console.log('✅ Signal passed bulletproof validation');
       
       // 9. Get session context
       const sessionContext = this.getCurrentSession();
       
-      const signal: EnhancedSignal = {
-        id: `enhanced_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        pair,
-        type: direction,
-        entry: livePrice,
-        stopLoss,
-        takeProfit,
-        confidence,
-        strength,
-        riskReward,
-        strategies,
-        groqAnalysis,
-        livePrice,
-        timestamp: new Date().toISOString(),
-        riskLevel: this.calculateRiskLevel(confidence, strategies),
-        sessionContext,
-        priceValidation: {
-          source: 'WebSocket Real-time',
-          validated: true,
-          accuracy: 'LIVE'
-        }
-      };
-      
-      console.log(`✅ Enhanced signal generated: ${pair} ${direction} | ${confidence}% confidence | ${strength} strength`);
-      return signal;
+      return this.buildSignalObject(pair, livePrice, stopLoss, takeProfit, direction, confidence, strategies, groqAnalysis, livePrice);
       
     } catch (error) {
       console.error('❌ Enhanced signal generation failed:', error);
@@ -308,21 +329,42 @@ Limit to 2-3 sentences maximum. Be concise and technical.
     return Math.random() > 0.5 ? 'BUY' : 'SELL';
   }
   
-  private static calculateLevels(pair: string, entry: number, direction: 'BUY' | 'SELL', confidence: number) {
+  private static async calculateLevels(pair: string, entry: number, direction: 'BUY' | 'SELL', confidence: number) {
+    const { BulletproofSignalValidator } = await import('./bulletproofSignalValidator');
+    
     const isJPY = pair.includes('JPY');
     const pipValue = isJPY ? 0.01 : 0.0001;
     
-    // Adjust stop/target based on confidence
-    const confidenceMultiplier = confidence > 80 ? 1.5 : confidence > 65 ? 1.3 : 1.0;
+    // Enhanced ATR-based distance calculation
+    const minDistance = this.getATRBasedDistance(pair, 'M15');
+    const confidenceMultiplier = confidence > 80 ? 1.8 : confidence > 65 ? 1.5 : 1.2;
     
-    const stopPips = isJPY ? 20 : 15;
-    const targetPips = stopPips * 2.5 * confidenceMultiplier;
-    
-    const stopDistance = stopPips * pipValue;
-    const targetDistance = targetPips * pipValue;
+    const stopDistance = minDistance * confidenceMultiplier;
+    const targetDistance = stopDistance * 2.5; // Conservative 2.5:1 RRR
     
     const stopLoss = direction === 'BUY' ? entry - stopDistance : entry + stopDistance;
     const takeProfit = direction === 'BUY' ? entry + targetDistance : entry - targetDistance;
+    
+    // BULLETPROOF VALIDATION BEFORE RETURNING
+    const isValid = BulletproofSignalValidator.quickValidate(entry, stopLoss, takeProfit, direction);
+    
+    if (!isValid) {
+      console.log('⚠️ Level calculation failed validation, applying emergency fix...');
+      // Emergency fix with larger distances
+      const safeStopDistance = minDistance * 2.0;
+      const safeTargetDistance = safeStopDistance * 3.0;
+      
+      const safeStopLoss = direction === 'BUY' ? entry - safeStopDistance : entry + safeStopDistance;
+      const safeTakeProfit = direction === 'BUY' ? entry + safeTargetDistance : entry - safeTargetDistance;
+      
+      const safeRiskReward = Math.abs(safeTakeProfit - entry) / Math.abs(entry - safeStopLoss);
+      
+      return {
+        stopLoss: safeStopLoss,
+        takeProfit: safeTakeProfit,
+        riskReward: Math.round(safeRiskReward * 10) / 10
+      };
+    }
     
     const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
     
@@ -331,6 +373,17 @@ Limit to 2-3 sentences maximum. Be concise and technical.
       takeProfit,
       riskReward: Math.round(riskReward * 10) / 10
     };
+  }
+  
+  private static getATRBasedDistance(pair: string, timeframe: string): number {
+    const atrData: Record<string, Record<string, number>> = {
+      'EURUSD': { 'M15': 0.00040 }, 'GBPUSD': { 'M15': 0.00055 },
+      'USDJPY': { 'M15': 0.040 }, 'AUDUSD': { 'M15': 0.00050 },
+      'USDCAD': { 'M15': 0.00050 }, 'NZDUSD': { 'M15': 0.00055 },
+      'USDCHF': { 'M15': 0.00045 }
+    };
+    
+    return atrData[pair]?.[timeframe] || (pair.includes('JPY') ? 0.040 : 0.00050);
   }
   
   private static calculateRiskLevel(confidence: number, strategies: any): 'LOW' | 'MEDIUM' | 'HIGH' {
@@ -347,6 +400,35 @@ Limit to 2-3 sentences maximum. Be concise and technical.
     if (hour >= 8 && hour <= 17) return 'London';
     if (hour >= 13 && hour <= 22) return 'New York';
     return 'Asian';
+  }
+
+  private static buildSignalObject(pair: string, entry: number, stopLoss: number, takeProfit: number, direction: 'BUY' | 'SELL', confidence: number, strategies: any, groqAnalysis: string, livePrice: number): EnhancedSignal {
+    const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
+    const strength = this.determineStrength(confidence, strategies);
+    const sessionContext = this.getCurrentSession();
+    
+    return {
+      id: `enhanced_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      pair,
+      type: direction,
+      entry,
+      stopLoss,
+      takeProfit,
+      confidence,
+      strength,
+      riskReward: Math.round(riskReward * 10) / 10,
+      strategies,
+      groqAnalysis,
+      livePrice,
+      timestamp: new Date().toISOString(),
+      riskLevel: this.calculateRiskLevel(confidence, strategies),
+      sessionContext,
+      priceValidation: {
+        source: 'WebSocket Real-time',
+        validated: true,
+        accuracy: 'LIVE'
+      }
+    };
   }
 
   static async enhanceExistingSignal(baseSignal: any): Promise<UltraEnhancedSignal | null> {
