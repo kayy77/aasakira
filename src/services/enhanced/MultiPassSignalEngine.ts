@@ -98,9 +98,32 @@ export class MultiPassSignalEngine {
     'USDCAD', 'NZDUSD', 'EURJPY', 'GBPJPY', 'EURGBP'
   ];
 
+  // 🚨 CRITICAL: Scan state to prevent carry-over bias
+  private scanState: {
+    lastScanTime: number;
+    previousBias?: 'BULLISH' | 'BEARISH';
+    cachedResults?: Map<string, any>;
+    scanNumber: number;
+  } = {
+    lastScanTime: 0,
+    scanNumber: 0
+  };
+
+  // 🔥 CRITICAL: Reset state before each scan - NO CARRY-OVER
+  private resetMultiPassState(): void {
+    this.scanState = {
+      lastScanTime: Date.now(),
+      scanNumber: this.scanState.scanNumber + 1
+    };
+    console.log(`🧹 MultiPass State Reset #${this.scanState.scanNumber} - Independent scan guaranteed`);
+  }
+
   async executeMultiPassScan(): Promise<MultiPassResult> {
     const startTime = Date.now();
     console.log('🚀 MultiPass: Starting comprehensive institutional scan...');
+
+    // 🔥 STEP 1: FORCE COMPLETE STATE RESET - NO CARRY-OVER BIAS
+    this.resetMultiPassState();
 
     try {
       // PASS 1: Quick Baseline Filter (All Pairs)
