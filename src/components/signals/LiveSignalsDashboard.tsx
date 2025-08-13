@@ -337,14 +337,14 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
               <div className="space-y-2">
                 <div className="text-sm font-semibold text-gray-300">Strategy Analysis:</div>
                 <div className="grid grid-cols-2 gap-1 text-xs">
-                  {Object.entries(signal.strategies).map(([key, strategy]) => (
+                  {Object.entries(signal.strategies || {}).map(([key, strategy]) => (
                     <div key={key} className="flex items-center gap-1">
-                      {strategy ? (
+                      {(strategy as boolean) ? (
                         <CheckCircle2 className="w-3 h-3 text-green-400" />
                       ) : (
                         <XCircle className="w-3 h-3 text-red-400" />
                       )}
-                      <span className={strategy ? 'text-green-400' : 'text-red-400'}>
+                      <span className={(strategy as boolean) ? 'text-green-400' : 'text-red-400'}>
                         {key.replace(/([A-Z])/g, ' $1').trim()}
                       </span>
                     </div>
