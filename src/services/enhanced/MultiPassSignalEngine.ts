@@ -553,7 +553,7 @@ export class MultiPassSignalEngine {
         institutionalFootprint: 'ABSENT'
       },
       microstructure: {
-        breakOfStructure: { occurred: false, direction: 'BUY', timeframe: 'M15', candleIndex: 0 },
+        breakOfStructure: { occurred: false, direction: 'BULLISH', timeframe: 'M15', candleIndex: 0 },
         retestEntry: { setup: false, quality: 'WEAK', entryPrice: 0, confirmationCandle: false },
         liquiditySweep: { detected: false, sweepType: 'BUYSIDE', rejectionWick: false, wickSize: 0 },
         microTiming: { m1Confirmed: false, m5Confirmed: false, entryMethod: 'WAIT', urgency: 'WAIT_RETEST' }

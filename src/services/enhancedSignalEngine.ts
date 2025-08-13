@@ -112,7 +112,16 @@ export class EnhancedSignalEngineCore {
       }
 
       // 🎯 NEW: Price Truth Validation & Adjustment
-      const priceValidationResult = await this.validateAndAdjustPrices(multiPassResult.finalSignal);
+      const signalForValidation = {
+        symbol: multiPassResult.finalSignal.symbol,
+        direction: multiPassResult.finalSignal.direction,
+        entry: multiPassResult.finalSignal.entry,
+        stopLoss: multiPassResult.finalSignal.sl,
+        takeProfit: multiPassResult.finalSignal.tp,
+        riskReward: multiPassResult.finalSignal.riskReward,
+        confidence: multiPassResult.finalSignal.confidence
+      };
+      const priceValidationResult = await this.validateAndAdjustPrices(signalForValidation);
       
       if (!priceValidationResult.valid) {
         throw new Error(`PRICE_VALIDATION_FAILED: ${priceValidationResult.errors.join(', ')}`);
@@ -188,8 +197,8 @@ export class EnhancedSignalEngineCore {
           adjustments: priceValidationResult.adjustments || [],
           originalPrices: priceValidationResult.adjusted ? {
             entry: multiPassResult.finalSignal.entry,
-            stopLoss: multiPassResult.finalSignal.sl || multiPassResult.finalSignal.stopLoss,
-            takeProfit: multiPassResult.finalSignal.tp || multiPassResult.finalSignal.takeProfit
+            stopLoss: multiPassResult.finalSignal.sl,
+            takeProfit: multiPassResult.finalSignal.tp
           } : undefined
         },
         metadata: {
@@ -249,8 +258,8 @@ export class EnhancedSignalEngineCore {
     const validation = validateSignalWithTruth(
       signal.symbol,
       signal.entry,
-      signal.sl || signal.stopLoss,
-      signal.tp || signal.takeProfit,
+      signal.stopLoss,
+      signal.takeProfit,
       signal.direction,
       atrPips
     );
