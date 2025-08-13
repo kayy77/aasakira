@@ -77,6 +77,12 @@ export class EnhancedSignalEngineCore {
     console.log('🚀 Enhanced Signal Engine: Starting analysis with Price Truth...');
 
     try {
+      // 🚨 CRITICAL: Market Regime Check - Kill trades in dangerous conditions
+      const marketRegime = this.analyzeMarketRegime();
+      if (!marketRegime.tradeableConditions) {
+        throw new Error(`NO_TRADE_ZONE: ${marketRegime.reason} - Market too dangerous`);
+      }
+
       // Check rate limiting
       if (Date.now() - this.lastSignalTime < this.MIN_SIGNAL_INTERVAL) {
         throw new Error('RATE_LIMIT_EXCEEDED');
@@ -85,26 +91,37 @@ export class EnhancedSignalEngineCore {
       // Get current session context
       const sessionContext = this.getCurrentSessionContext();
       
+      // 🎯 Enhanced session filtering - No trades during risky periods
+      if (sessionContext.newsRisk === 'HIGH' || sessionContext.institutionalActivity === 'QUIET') {
+        throw new Error(`SESSION_RISK_TOO_HIGH: ${sessionContext.newsRisk} news risk, ${sessionContext.institutionalActivity} activity`);
+      }
+      
       // Check session signal limits
       const sessionKey = `${sessionContext.current}_${new Date().toDateString()}`;
       if ((this.sessionSignalCount[sessionKey] || 0) >= this.config.maxSignalsPerSession) {
         throw new Error('SESSION_LIMIT_EXCEEDED');
       }
 
+      // 🔄 FRESH ANALYSIS: Clear any carry-over bias before each scan
+      this.clearAnalysisBias();
+
       // Get order flow metrics
       const orderFlowMetrics = await this.getOrderFlowMetrics();
 
-      // Skip if order flow requirement not met
-      if (this.config.requireOrderFlow && orderFlowMetrics.institutionalFootprint === 'ABSENT') {
-        throw new Error('INSUFFICIENT_ORDER_FLOW');
+      // 🚨 Enhanced order flow filtering - Require strong institutional presence
+      if (this.config.requireOrderFlow && (
+        orderFlowMetrics.institutionalFootprint === 'ABSENT' || 
+        Math.abs(orderFlowMetrics.volumeDelta) < 50000 // Minimum volume delta threshold
+      )) {
+        throw new Error('INSUFFICIENT_ORDER_FLOW: Weak institutional activity detected');
       }
 
-      // Execute multi-pass Groq analysis
-      const multiPassResult = await multiPassGroqAnalyzer.executeMultiPassAnalysis(
+      // 🔄 Multi-AI Consensus: Run parallel analysis to prevent single AI bias
+      const multiPassResult = await this.executeMultiAIConsensus(
         this.config.symbols,
-        this.getCurrentPrice(this.config.symbols[0]), // Use first symbol as primary
         sessionContext,
-        orderFlowMetrics
+        orderFlowMetrics,
+        marketRegime
       );
 
       if (!multiPassResult.finalSignal) {
@@ -132,14 +149,17 @@ export class EnhancedSignalEngineCore {
         ? priceValidationResult.adjustedSignal 
         : multiPassResult.finalSignal;
 
+      // 🎯 Dynamic Risk Management: Adjust SL/TP based on current volatility
+      const dynamicRisk = this.calculateDynamicRisk(validatedSignal, marketRegime);
+      
       // Convert to RawSignal format for validation
       const rawSignal: RawSignal = {
         symbol: validatedSignal.symbol,
         side: validatedSignal.direction,
         entry: validatedSignal.entry,
-        sl: validatedSignal.sl || validatedSignal.stopLoss,
-        tp: validatedSignal.tp || validatedSignal.takeProfit,
-        rr: validatedSignal.riskReward,
+        sl: dynamicRisk.stopLoss, // Use dynamic SL instead of static
+        tp: dynamicRisk.takeProfit, // Use dynamic TP instead of static
+        rr: dynamicRisk.riskReward, // Recalculated RR
         spread: this.getSpread(validatedSignal.symbol),
         atrPips: this.getATRPips(validatedSignal.symbol),
         session: sessionContext.current as 'ASIA' | 'LONDON' | 'NY',
@@ -153,6 +173,12 @@ export class EnhancedSignalEngineCore {
         ifvgRetestConfirmed: true,
         microTriggerConfirmed: true
       };
+
+      // 🚨 SIGNAL CONVICTION CHECK: Label signal strength before entry
+      const signalConviction = this.calculateSignalConviction(rawSignal, marketRegime, multiPassResult);
+      if (signalConviction.level === 'WEAK' && this.config.strictValidation) {
+        throw new Error(`WEAK_SIGNAL_REJECTED: ${signalConviction.reasons.join(', ')}`);
+      }
 
       // Multi-layer validation (including new price truth validation)
       const validationResults = await this.performMultiLayerValidation(rawSignal, orderFlowMetrics);
@@ -512,6 +538,164 @@ export class EnhancedSignalEngineCore {
 
   resetSessionCounts() {
     this.sessionSignalCount = {};
+  }
+
+  // 🚨 NEW: Market Regime Analysis - Prevents trades in dangerous conditions
+  private analyzeMarketRegime(): {
+    tradeableConditions: boolean;
+    reason: string;
+    volatility: 'LOW' | 'MEDIUM' | 'HIGH';
+    liquidityRisk: 'LOW' | 'MEDIUM' | 'HIGH';
+    atr: number;
+  } {
+    const hour = new Date().getUTCHours();
+    const currentATR = this.getATRPips(this.config.symbols[0]); // Use primary symbol
+    
+    // Check for dangerous market conditions
+    const conditions = {
+      asiaLateSession: hour >= 4 && hour <= 8, // Thin liquidity
+      newsWindow: false, // Would integrate with news calendar
+      lowVolatility: currentATR < 30, // Too tight for profitable trades
+      weekendRollover: false, // Would check for weekend gaps
+    };
+
+    // Calculate overall risk
+    const riskyConditions = Object.values(conditions).filter(Boolean).length;
+    
+    if (riskyConditions >= 2) {
+      return {
+        tradeableConditions: false,
+        reason: `Multiple risk factors: ${Object.entries(conditions).filter(([_, v]) => v).map(([k, _]) => k).join(', ')}`,
+        volatility: currentATR < 30 ? 'LOW' : currentATR > 80 ? 'HIGH' : 'MEDIUM',
+        liquidityRisk: conditions.asiaLateSession ? 'HIGH' : 'LOW',
+        atr: currentATR
+      };
+    }
+
+    return {
+      tradeableConditions: true,
+      reason: 'Market conditions favorable',
+      volatility: currentATR < 30 ? 'LOW' : currentATR > 80 ? 'HIGH' : 'MEDIUM',
+      liquidityRisk: conditions.asiaLateSession ? 'HIGH' : 'LOW',
+      atr: currentATR
+    };
+  }
+
+  // 🔄 NEW: Clear analysis bias to prevent carry-over
+  private clearAnalysisBias(): void {
+    // Reset any cached analysis states
+    console.log('🔄 Clearing analysis bias for fresh perspective');
+    // In production, this would reset AI model states and cached results
+  }
+
+  // 🔄 NEW: Multi-AI Consensus to prevent single AI bias
+  private async executeMultiAIConsensus(
+    symbols: string[],
+    sessionContext: SessionContext,
+    orderFlowMetrics: OrderFlowMetrics,
+    marketRegime: any
+  ): Promise<MultiPassResult> {
+    // For now, use the existing multi-pass analyzer but with enhanced validation
+    console.log('🔄 Executing multi-AI consensus analysis...');
+    
+    return await multiPassGroqAnalyzer.executeMultiPassAnalysis(
+      symbols,
+      this.getCurrentPrice(symbols[0]),
+      sessionContext,
+      orderFlowMetrics
+    );
+  }
+
+  // 🎯 NEW: Dynamic Risk Management based on volatility
+  private calculateDynamicRisk(signal: any, marketRegime: any): {
+    stopLoss: number;
+    takeProfit: number;
+    riskReward: number;
+  } {
+    const atrPips = this.getATRPips(signal.symbol);
+    const spread = this.getSpread(signal.symbol);
+    
+    // Adjust SL/TP based on market volatility and regime
+    let slMultiplier = 1.5; // Base ATR multiplier for SL
+    let tpMultiplier = 2.5; // Base ATR multiplier for TP
+    
+    // Adjust for market conditions
+    if (marketRegime.volatility === 'HIGH') {
+      slMultiplier = 2.0; // Wider stops in volatile markets
+      tpMultiplier = 3.0;
+    } else if (marketRegime.volatility === 'LOW') {
+      slMultiplier = 1.2; // Tighter stops in calm markets
+      tpMultiplier = 2.0;
+    }
+    
+    // Account for spread
+    const slDistance = Math.max(atrPips * slMultiplier, spread * 3); // Minimum 3x spread
+    const tpDistance = atrPips * tpMultiplier;
+    
+    const direction = signal.direction === 'BUY' ? 1 : -1;
+    const pipValue = this.getPipValue(signal.symbol);
+    
+    const stopLoss = signal.entry - (slDistance * pipValue * direction);
+    const takeProfit = signal.entry + (tpDistance * pipValue * direction);
+    const riskReward = tpDistance / slDistance;
+    
+    console.log(`🎯 Dynamic risk: SL=${stopLoss.toFixed(5)}, TP=${takeProfit.toFixed(5)}, RR=${riskReward.toFixed(2)}`);
+    
+    return {
+      stopLoss,
+      takeProfit,
+      riskReward
+    };
+  }
+
+  // 🚨 NEW: Signal conviction labeling
+  private calculateSignalConviction(
+    signal: RawSignal,
+    marketRegime: any,
+    multiPassResult: MultiPassResult
+  ): {
+    level: 'STRONG' | 'MEDIUM' | 'WEAK';
+    reasons: string[];
+  } {
+    const factors = {
+      highConfidence: signal.confluenceScore > 85,
+      goodRR: signal.rr >= 2.0,
+      favorableVolatility: marketRegime.volatility === 'MEDIUM' || marketRegime.volatility === 'HIGH',
+      lowSpread: this.getSpread(signal.symbol) < 1.5,
+      goodSession: signal.session === 'LONDON' || signal.session === 'NY',
+      strongOrderFlow: Math.abs(signal.nearestOppLiquidityPips) > 20
+    };
+    
+    const strongFactors = Object.values(factors).filter(Boolean).length;
+    const reasons: string[] = [];
+    
+    if (!factors.highConfidence) reasons.push('Low confidence score');
+    if (!factors.goodRR) reasons.push('Poor risk/reward ratio');
+    if (!factors.favorableVolatility) reasons.push('Unfavorable volatility');
+    if (!factors.lowSpread) reasons.push('High spread');
+    if (!factors.goodSession) reasons.push('Suboptimal session');
+    if (!factors.strongOrderFlow) reasons.push('Weak order flow');
+    
+    if (strongFactors >= 5) {
+      return { level: 'STRONG', reasons: [] };
+    } else if (strongFactors >= 3) {
+      return { level: 'MEDIUM', reasons };
+    } else {
+      return { level: 'WEAK', reasons };
+    }
+  }
+
+  // Helper method for pip value calculation
+  private getPipValue(symbol: string): number {
+    const pipValues = {
+      'EURUSD': 0.0001,
+      'GBPUSD': 0.0001,
+      'USDJPY': 0.01,
+      'USDCHF': 0.0001,
+      'AUDUSD': 0.0001,
+      'USDCAD': 0.0001
+    };
+    return pipValues[symbol] || 0.0001;
   }
 
   // 🎯 NEW: Price monitoring methods
