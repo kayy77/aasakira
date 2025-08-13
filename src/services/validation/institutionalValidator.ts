@@ -273,3 +273,4 @@ export class InstitutionalValidator {
 }
 
 export const institutionalValidator = InstitutionalValidator;
+export const validateInstitutional = InstitutionalValidator.validateInstitutional;

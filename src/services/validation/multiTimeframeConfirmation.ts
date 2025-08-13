@@ -363,3 +363,6 @@ export class MultiTimeframeConfirmation {
 }
 
 export const multiTimeframeConfirmation = new MultiTimeframeConfirmation();
+
+// Export static methods for direct access  
+export const analyzeAlignment = MultiTimeframeConfirmation.analyzeTimeframeAlignment;

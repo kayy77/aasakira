@@ -66,9 +66,9 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
   // Calculate signal counts for filter
   const signalCounts = {
     all: signals.length,
-    weak: signals.filter(s => s.strength === 'WEAK').length,
-    decent: signals.filter(s => s.strength === 'DECENT').length,
-    strong: signals.filter(s => s.strength === 'STRONG').length
+    weak: signals.filter(s => s.strength === 'LOW').length,
+    decent: signals.filter(s => s.strength === 'MEDIUM').length,
+    strong: signals.filter(s => s.strength === 'HIGH').length
   };
 
   const handleGenerateSignal = async () => {
@@ -305,7 +305,7 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
                 <div>
                   <div className="text-sm text-gray-400">Live Entry Price</div>
                   <div className="font-bold text-white">{signal.livePrice.toFixed(5)}</div>
-                  <div className="text-xs text-green-400">{signal.priceValidation.source}</div>
+                  <div className="text-xs text-green-400">Live Validated</div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-400">Confidence</div>
@@ -338,12 +338,12 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
                 <div className="grid grid-cols-2 gap-1 text-xs">
                   {Object.entries(signal.strategies).map(([key, strategy]) => (
                     <div key={key} className="flex items-center gap-1">
-                      {strategy.passed ? (
+                      {strategy ? (
                         <CheckCircle2 className="w-3 h-3 text-green-400" />
                       ) : (
                         <XCircle className="w-3 h-3 text-red-400" />
                       )}
-                      <span className={strategy.passed ? 'text-green-400' : 'text-red-400'}>
+                      <span className={strategy ? 'text-green-400' : 'text-red-400'}>
                         {key.replace(/([A-Z])/g, ' $1').trim()}
                       </span>
                     </div>

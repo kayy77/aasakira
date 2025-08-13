@@ -384,3 +384,7 @@ export class SniperConfirmationEngine {
 }
 
 export const sniperConfirmationEngine = new SniperConfirmationEngine();
+
+// Export static methods for direct access
+export const analyzeSniperEntry = SniperConfirmationEngine.analyzeSniperEntry;
+export const analyzeSniperStructure = SniperConfirmationEngine.analyzeSniperEntry;

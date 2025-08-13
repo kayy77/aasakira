@@ -326,3 +326,6 @@ export class OrderFlowAnalyzer {
 }
 
 export const orderFlowAnalyzer = new OrderFlowAnalyzer();
+
+// Export static methods for direct access
+export const getInstitutionalFootprint = OrderFlowAnalyzer.getInstitutionalFootprint;
