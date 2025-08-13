@@ -23,7 +23,8 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { EnhancedSignal, EnhancedSignalEngine } from '@/services/enhancedSignalEngine';
+import type { EnhancedSignal } from '@/services/enhancedSignalEngine';
+import { EnhancedSignalEngine } from '@/services/enhancedSignalEngine';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -91,7 +92,7 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
     try {
       console.log('🚀 Starting enhanced signal generation...');
       
-      const signal = await EnhancedSignalEngine.generateEnhancedSignal();
+          const signal = await EnhancedSignalEngine.generateEnhancedSignal();
       
       if (signal) {
         console.log('✅ Signal generated successfully:', signal);

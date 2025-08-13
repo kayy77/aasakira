@@ -1,8 +1,8 @@
 import { multiPassGroqAnalyzer, MultiPassResult, SessionContext, OrderFlowMetrics } from './multiPassGroqAnalyzer';
-import { InstitutionalValidator, RawSignal, validateInstitutional } from './validation/institutionalValidator';
-import { SniperConfirmationEngine, analyzeSniperStructure } from './validation/sniperConfirmationEngine';
+import { InstitutionalValidator, RawSignal } from './validation/institutionalValidator';
+import { SniperConfirmationEngine, analyzeSniperEntry } from './validation/sniperConfirmationEngine';
 import { OrderFlowAnalyzer, getInstitutionalFootprint } from './validation/orderFlowAnalyzer';
-import { MultiTimeframeConfirmation, analyzeAlignment } from './validation/multiTimeframeConfirmation';
+import { MultiTimeframeConfirmation } from './validation/multiTimeframeConfirmation';
 
 export interface EnhancedSignalConfig {
   symbols: string[];
@@ -197,11 +197,11 @@ export class EnhancedSignalEngineCore {
 
     try {
       // Layer 1: Institutional validation
-      const institutionalResult = validateInstitutional(rawSignal);
+      const institutionalResult = InstitutionalValidator.validateInstitutional(rawSignal);
       validationResults.institutional = institutionalResult.ok;
 
       // Layer 2: Sniper confirmation
-      const sniperResult = await analyzeSniperStructure({
+      const sniperResult = analyzeSniperEntry({
         symbol: rawSignal.symbol,
         m1Candles: [],
         m5Candles: [],
