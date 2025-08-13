@@ -6,11 +6,7 @@ export { LiquidityAwareStops, liquidityAwareStops } from './liquidityAwareStops'
 export type { 
   RawSignal, 
   ValidationResult,
-  ConfirmationData,
-  ConfirmationResult,
-  LiquidityLevel,
-  StopPlacementData,
-  StopPlacementResult
+  Side
 } from './institutionalValidator';
 export type { ConfirmationData, ConfirmationResult } from './confirmationEngine';
 export type { LiquidityLevel, StopPlacementData, StopPlacementResult } from './liquidityAwareStops';
