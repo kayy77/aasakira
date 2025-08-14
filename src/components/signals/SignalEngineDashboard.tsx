@@ -19,7 +19,7 @@ export function SignalEngineDashboard() {
     stopScanning,
     clearHistory,
     successRate,
-    averageConfluence
+    averageGrade
   } = useSignalEngine();
 
   const getGradeBadgeVariant = (grade: string) => {
@@ -229,27 +229,31 @@ export function SignalEngineDashboard() {
                 </div>
 
                 {/* Passed Checks */}
-                {currentSignal.validation.passedChecks > 0 && (
+                {currentSignal.validation.passedChecks.length > 0 && (
                   <div>
                     <span className="text-sm text-muted-foreground">Passed Checks:</span>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                        {currentSignal.validation.passedChecks} factors
-                      </Badge>
+                      {currentSignal.validation.passedChecks.map((check, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                          {check}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                 )}
 
                 {/* Failed Checks */}
-                {currentSignal.validation.failedChecks > 0 && (
+                {currentSignal.validation.failedChecks.length > 0 && (
                   <div>
                     <span className="text-sm text-muted-foreground">Failed Checks:</span>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      <Badge variant="destructive" className="text-xs">
-                        <XCircle className="h-3 w-3 mr-1" />
-                        {currentSignal.validation.failedChecks} factors
-                      </Badge>
+                      {currentSignal.validation.failedChecks.map((check, index) => (
+                        <Badge key={index} variant="destructive" className="text-xs">
+                          <XCircle className="h-3 w-3 mr-1" />
+                          {check}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                 )}

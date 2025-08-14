@@ -23,7 +23,7 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { EnhancedSignalResult, enhancedSignalEngine } from '@/services/enhancedSignalEngine';
+import { EnhancedSignal, EnhancedSignalEngine } from '@/services/enhancedSignalEngine';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -39,8 +39,8 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
   selectedStrength = 'all',
   onFeatureUse
 }) => {
-  const [signals, setSignals] = useState<EnhancedSignalResult[]>([]);
-  const [filteredSignals, setFilteredSignals] = useState<EnhancedSignalResult[]>([]);
+  const [signals, setSignals] = useState<EnhancedSignal[]>([]);
+  const [filteredSignals, setFilteredSignals] = useState<EnhancedSignal[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const [filterStrength, setFilterStrength] = useState(selectedStrength);
@@ -91,22 +91,7 @@ const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({
     try {
       console.log('🚀 Starting enhanced signal generation...');
       
-      const signal = await enhancedSignalEngine.generateSignal({
-        pair: 'EURUSD',
-        currentPrice: 1.0850,
-        timeframe: 'M15',
-        rsi: 45,
-        volume: 2500,
-        session: 'London',
-        candleData: Array.from({ length: 30 }, (_, i) => ({
-          close: 1.0850 + (Math.random() - 0.5) * 0.01,
-          volume: 1000 + Math.random() * 2000,
-          high: 1.0850 + Math.random() * 0.005,
-          low: 1.0850 - Math.random() * 0.005
-        })),
-        atr: 0.0015,
-        spread: 0.0002
-      });
+          const signal = await EnhancedSignalEngine.generateEnhancedSignal();
       
       if (signal) {
         console.log('✅ Signal generated successfully:', signal);
