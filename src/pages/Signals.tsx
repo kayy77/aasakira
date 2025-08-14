@@ -4,7 +4,7 @@ import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
 import FeatureGate from '@/components/FeatureGate';
-import EnhancedSignalsDashboard from '@/components/signals/EnhancedSignalsDashboard';
+import StateMachineSignalsDashboard from '@/components/signals/StateMachineSignalsDashboard';
 
 const Signals = () => {
   const isMobile = useIsMobile();
@@ -18,31 +18,35 @@ const Signals = () => {
         <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8">
           <div className="text-center mb-4 md:mb-6 lg:mb-8">
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold gradient-text mb-2 md:mb-3 lg:mb-4">
-              Enhanced Elite AI Signal Scanner
+              ICT/SMC State Machine Signal Engine
             </h1>
             <p className="text-gray-300 text-xs sm:text-sm md:text-base lg:text-lg max-w-3xl mx-auto px-2 md:px-4">
-              Single authoritative scanner with multi-AI consensus, SMC/ICT filters, and institutional validation
+              Bulletproof state machine with evidence scoring, shadow mode validation, and price integrity gates
             </p>
             <div className={`flex justify-center gap-1 sm:gap-2 md:gap-4 mt-2 md:mt-3 lg:mt-4 ${
               isMobile ? 'flex-wrap px-2' : ''
             }`}>
               <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400">
                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className={isMobile ? 'text-xs' : ''}>Multi-AI Consensus</span>
+                <span className={isMobile ? 'text-xs' : ''}>State Machine</span>
               </div>
               <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400">
                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                <span className={isMobile ? 'text-xs' : ''}>SMC/ICT Filters</span>
+                <span className={isMobile ? 'text-xs' : ''}>Evidence Scoring</span>
               </div>
               <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400">
                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                <span className={isMobile ? 'text-xs' : ''}>Validation Gate</span>
+                <span className={isMobile ? 'text-xs' : ''}>Shadow Mode</span>
+              </div>
+              <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400">
+                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-red-400 rounded-full animate-pulse"></div>
+                <span className={isMobile ? 'text-xs' : ''}>Price Integrity</span>
               </div>
             </div>
           </div>
 
-          <FeatureGate feature="signals" featureName="Enhanced Elite AI Signal Scanner">
-            <EnhancedSignalsDashboard />
+          <FeatureGate feature="signals" featureName="ICT/SMC State Machine Signal Engine">
+            <StateMachineSignalsDashboard />
           </FeatureGate>
         </div>
       </div>
