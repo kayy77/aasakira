@@ -288,17 +288,42 @@ class StateMachineSignalEngine {
 
   private buildSignal(ctx: MarketContext, direction: Direction, evidenceScore: number): BaseSignal {
     const entry = ctx.currentPrice;
-    const atrBuffer = ctx.atr * 0.3;
+    const isJPY = ctx.symbol.includes('JPY');
+    const pipValue = isJPY ? 0.01 : 0.0001;
+    
+    // Proper ATR-based stop loss calculation
+    const atrMultiplier = 2.0; // 2x ATR for institutional-grade stops
+    const minStopPips = isJPY ? 8 : 5; // Minimum stop distance in pips
+    const minStopDistance = minStopPips * pipValue;
+    
+    // Calculate ATR-based stop with minimum distance enforcement
+    const atrStopDistance = ctx.atr * atrMultiplier;
+    const stopDistance = Math.max(atrStopDistance, minStopDistance) + (this.SL_BUFFER_PIPS * pipValue);
     
     let stopLoss: number;
     let takeProfit: number;
     
     if (direction === 'BUY') {
-      stopLoss = entry - atrBuffer - (this.SL_BUFFER_PIPS * 0.0001);
-      takeProfit = entry + (Math.abs(entry - stopLoss) * 2.5); // 2.5:1 RR minimum
+      stopLoss = entry - stopDistance;
+      takeProfit = entry + (stopDistance * 2.5); // 2.5:1 RR minimum
     } else {
-      stopLoss = entry + atrBuffer + (this.SL_BUFFER_PIPS * 0.0001);
-      takeProfit = entry - (Math.abs(stopLoss - entry) * 2.5);
+      stopLoss = entry + stopDistance;
+      takeProfit = entry - (stopDistance * 2.5);
+    }
+
+    // Ensure we never have tiny stops that get hit by spread/noise
+    const actualStopDistance = Math.abs(entry - stopLoss);
+    const actualPipDistance = actualStopDistance / pipValue;
+    
+    if (actualPipDistance < minStopPips) {
+      console.log(`🚫 Stop too tight: ${actualPipDistance} pips, adjusting to minimum ${minStopPips} pips`);
+      if (direction === 'BUY') {
+        stopLoss = entry - (minStopPips * pipValue);
+        takeProfit = entry + (minStopPips * pipValue * 2.5);
+      } else {
+        stopLoss = entry + (minStopPips * pipValue);
+        takeProfit = entry - (minStopPips * pipValue * 2.5);
+      }
     }
 
     const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
@@ -311,6 +336,8 @@ class StateMachineSignalEngine {
     } else {
       quality = 'STANDARD';
     }
+
+    console.log(`📊 Signal built: ${ctx.symbol} ${direction} | Entry: ${entry} | SL: ${stopLoss} | TP: ${takeProfit} | RR: ${riskReward.toFixed(2)} | Stop pips: ${(Math.abs(entry - stopLoss) / pipValue).toFixed(1)}`);
 
     return {
       id: `robust_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -330,7 +357,9 @@ class StateMachineSignalEngine {
       meta: {
         priceIntegrity: ctx.priceIntegrityOK,
         poiQuality: ctx.poiQuality,
-        ltfConfirm: ctx.ltfConfirmScore
+        ltfConfirm: ctx.ltfConfirmScore,
+        stopPips: Math.abs(entry - stopLoss) / pipValue,
+        atrUsed: ctx.atr
       }
     };
   }
