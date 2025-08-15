@@ -19,28 +19,21 @@ export function SignalEngineDashboard() {
     stopScanning,
     clearHistory,
     successRate,
-    averageGrade
+    averageEvidence
   } = useSignalEngine();
 
-  const getGradeBadgeVariant = (grade: string) => {
-    switch (grade) {
-      case 'A': return 'default';
-      case 'B': return 'secondary';
-      case 'F': return 'destructive';
-      default: return 'outline';
+  const getQualityBadgeVariant = (quality: string) => {
+    switch (quality) {
+      case 'ELITE': return 'default';
+      case 'PROFESSIONAL': return 'secondary';
+      case 'INSTITUTIONAL': return 'outline';
+      case 'STANDARD': return 'outline';
+      default: return 'destructive';
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    return status === 'approved' ? (
-      <CheckCircle className="h-4 w-4 text-green-500" />
-    ) : (
-      <XCircle className="h-4 w-4 text-red-500" />
-    );
-  };
-
-  const getDirectionIcon = (direction: 'BULLISH' | 'BEARISH') => {
-    return direction === 'BULLISH' ? (
+  const getDirectionIcon = (direction: 'BUY' | 'SELL') => {
+    return direction === 'BUY' ? (
       <TrendingUp className="h-4 w-4 text-green-500" />
     ) : (
       <TrendingDown className="h-4 w-4 text-red-500" />
@@ -116,8 +109,8 @@ export function SignalEngineDashboard() {
               <div className="text-sm text-muted-foreground">Approved</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-              <div className="text-sm text-muted-foreground">Rejected</div>
+              <div className="text-2xl font-bold text-orange-600">{averageEvidence.toFixed(1)}</div>
+              <div className="text-sm text-muted-foreground">Avg Evidence</div>
             </div>
           </div>
 
@@ -135,128 +128,91 @@ export function SignalEngineDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
-                {getStatusIcon(currentSignal.status)}
-                Current Signal: {currentSignal.pair}
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Current Signal: {currentSignal.symbol}
               </span>
-              <Badge variant={currentSignal.status === 'approved' ? 'default' : 'destructive'}>
-                {currentSignal.status.toUpperCase()}
+              <Badge variant={getQualityBadgeVariant(currentSignal.quality)}>
+                {currentSignal.quality}
               </Badge>
             </CardTitle>
             <CardDescription>
-              {new Date(currentSignal.timestamp).toLocaleString()}
+              {new Date(currentSignal.createdAt).toLocaleString()}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {currentSignal.reason && (
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm">{currentSignal.reason}</p>
+            {/* Signal Details */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Direction</div>
+                <div className="flex items-center gap-2 font-medium">
+                  {getDirectionIcon(currentSignal.direction)}
+                  {currentSignal.direction}
+                </div>
               </div>
-            )}
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Entry</div>
+                <div className="font-medium">{currentSignal.entry.toFixed(5)}</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Risk:Reward</div>
+                <div className="font-medium">{currentSignal.riskReward.toFixed(1)}:1</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Confidence</div>
+                <div className="font-medium">{currentSignal.confidence.toFixed(1)}%</div>
+              </div>
+            </div>
 
-            {/* Consensus Details */}
-            {currentSignal.consensus && (
-              <div className="space-y-3">
-                <h4 className="font-semibold flex items-center gap-2">
-                  {getDirectionIcon(currentSignal.consensus.direction)}
-                  AI Consensus
-                </h4>
+            {/* Evidence Score */}
+            <div className="space-y-2">
+              <h4 className="font-semibold flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                Evidence Score
+              </h4>
+              <div className="flex items-center gap-2">
+                <div className="text-2xl font-bold text-blue-600">
+                  {currentSignal.evidenceScore}/100
+                </div>
+                <Badge variant={currentSignal.evidenceScore >= 85 ? 'default' : currentSignal.evidenceScore >= 80 ? 'secondary' : 'outline'}>
+                  {currentSignal.evidenceScore >= 85 ? 'Elite' : currentSignal.evidenceScore >= 80 ? 'Strong' : 'Standard'}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Setup State */}
+            <div className="space-y-2">
+              <h4 className="font-semibold flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Setup State & Session
+              </h4>
+              <div className="flex items-center gap-4">
+                <Badge variant="outline">
+                  State: {currentSignal.setupState}
+                </Badge>
+                <Badge variant="outline">
+                  Session: {currentSignal.session}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Meta Information */}
+            {currentSignal.meta && (
+              <div className="space-y-2">
+                <h4 className="font-semibold">Technical Details</h4>
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Direction:</span>
-                    <div className="font-medium">{currentSignal.consensus.direction}</div>
+                    <span className="text-muted-foreground">Price Integrity:</span>
+                    <div className="font-medium">{currentSignal.meta.priceIntegrity ? '✅' : '❌'}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Agreement:</span>
-                    <div className="font-medium">{(currentSignal.consensus.agreement * 100).toFixed(1)}%</div>
+                    <span className="text-muted-foreground">POI Quality:</span>
+                    <div className="font-medium">{String(currentSignal.meta.poiQuality)}/20</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Confidence:</span>
-                    <div className="font-medium">{currentSignal.consensus.confidence.toFixed(1)}%</div>
+                    <span className="text-muted-foreground">LTF Confirm:</span>
+                    <div className="font-medium">{String(currentSignal.meta.ltfConfirm)}/20</div>
                   </div>
                 </div>
-
-                {/* AI Votes */}
-                <div className="space-y-2">
-                  <span className="text-sm text-muted-foreground">AI Model Votes ({currentSignal.consensus.totalVotes})</span>
-                  <div className="space-y-1">
-                    {currentSignal.consensus.votes.map((vote, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded text-sm">
-                        <span className="font-medium">{vote.model}</span>
-                        <div className="flex items-center gap-2">
-                          {getDirectionIcon(vote.direction)}
-                          <span>{vote.confidence}%</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Trust Score */}
-            {typeof currentSignal.trustScore === 'number' && (
-              <div className="space-y-2">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <Brain className="h-4 w-4" />
-                  Final Trust Score
-                </h4>
-                <div className="text-2xl font-bold">
-                  {currentSignal.trustScore.toFixed(1)}%
-                </div>
-              </div>
-            )}
-
-            {/* Strategy Validation */}
-            {currentSignal.validation && (
-              <div className="space-y-3">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <Activity className="h-4 w-4" />
-                  Strategy Validation
-                  <Badge variant={getGradeBadgeVariant(currentSignal.validation.finalGrade)}>
-                    Grade {currentSignal.validation.finalGrade}
-                  </Badge>
-                </h4>
-                
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Confluence:</span>
-                    <span className="ml-2 font-medium">{(currentSignal.validation.confluence * 100).toFixed(1)}%</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Score:</span>
-                    <span className="ml-2 font-medium">{currentSignal.validation.score.toFixed(1)}%</span>
-                  </div>
-                </div>
-
-                {/* Passed Checks */}
-                {currentSignal.validation.passedChecks.length > 0 && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">Passed Checks:</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {currentSignal.validation.passedChecks.map((check, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                          {check}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Failed Checks */}
-                {currentSignal.validation.failedChecks.length > 0 && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">Failed Checks:</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {currentSignal.validation.failedChecks.map((check, index) => (
-                        <Badge key={index} variant="destructive" className="text-xs">
-                          <XCircle className="h-3 w-3 mr-1" />
-                          {check}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </CardContent>
@@ -282,27 +238,23 @@ export function SignalEngineDashboard() {
               signalHistory.slice(0, 10).map((signal, index) => (
                 <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
-                    {getStatusIcon(signal.status)}
+                    <CheckCircle className="h-4 w-4 text-green-500" />
                     <div>
-                      <div className="font-medium">{signal.pair}</div>
+                      <div className="font-medium">{signal.symbol}</div>
                       <div className="text-sm text-muted-foreground">
-                        {new Date(signal.timestamp).toLocaleTimeString()}
+                        {new Date(signal.createdAt).toLocaleTimeString()}
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    {signal.consensus && getDirectionIcon(signal.consensus.direction)}
-                    {signal.validation && (
-                      <Badge variant={getGradeBadgeVariant(signal.validation.finalGrade)}>
-                        {signal.validation.finalGrade}
-                      </Badge>
-                    )}
-                    {signal.consensus && (
-                      <span className="text-sm text-muted-foreground">
-                        {signal.consensus.confidence.toFixed(0)}%
-                      </span>
-                    )}
+                    {getDirectionIcon(signal.direction)}
+                    <Badge variant={getQualityBadgeVariant(signal.quality)}>
+                      {signal.quality}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {signal.evidenceScore}/100
+                    </span>
                   </div>
                 </div>
               ))

@@ -1,18 +1,20 @@
 import { useState, useCallback, useEffect } from 'react';
-import { signalEngine, SignalResult, MarketData } from '@/services/signalEngine';
+import { stateMachineEngine } from '@/services/stateMachineEngine';
+import { BaseSignal, safeMarketContext } from '@/types/signalTypes';
 
 interface SignalEngineState {
-  currentSignal: SignalResult | null;
-  signalHistory: SignalResult[];
+  currentSignal: BaseSignal | null;
+  signalHistory: BaseSignal[];
   isScanning: boolean;
   scanCount: number;
   lastScanTime: string | null;
+  rejectionHistory: Array<{ reason: string; gate: string; timestamp: number }>;
   stats: {
     approved: number;
     rejected: number;
-    gradeA: number;
-    gradeB: number;
-    gradeF: number;
+    elite: number;
+    professional: number;
+    standard: number;
   };
 }
 
@@ -23,41 +25,92 @@ export function useSignalEngine() {
     isScanning: false,
     scanCount: 0,
     lastScanTime: null,
+    rejectionHistory: [],
     stats: {
       approved: 0,
       rejected: 0,
-      gradeA: 0,
-      gradeB: 0,
-      gradeF: 0
+      elite: 0,
+      professional: 0,
+      standard: 0
     }
   });
 
   const [scanInterval, setScanInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // Generate mock market data with enhanced MACD and realistic price data
-  const generateMockMarketData = useCallback((): MarketData => {
+  // Generate enhanced mock market data for state machine engine
+  const generateMockMarketData = useCallback(() => {
     const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD'];
-    const sessions: ('Asian' | 'London' | 'NewYork')[] = ['Asian', 'London', 'NewYork'];
+    const sessions = ['ASIAN', 'LONDON', 'NEWYORK', 'SYDNEY'];
     
-    // Generate realistic price history for MACD calculation
     const basePrice = 1.0800 + (Math.random() * 0.2);
-    const candleData = Array.from({ length: 30 }, (_, i) => {
-      const volatility = 0.0002 + (Math.random() * 0.0003);
-      const change = (Math.random() - 0.5) * volatility;
-      return {
-        close: basePrice + change * (i + 1),
-        volume: 500 + Math.random() * 2000
-      };
-    });
+    const spread = 0.0001 + (Math.random() * 0.0003);
+    const atr = 0.0010 + (Math.random() * 0.0020);
     
+    // Simulate ICT/SMC setup progression
+    const setupProgression = Math.random();
+    let setupState = 'IDLE';
+    let hasLiquiditySweep = false;
+    let hasDisplacement = false;
+    let taggedPOI = false;
+    let ltfBOSConfirm = false;
+    let inEntryZone = false;
+    
+    if (setupProgression > 0.8) {
+      setupState = 'READY';
+      hasLiquiditySweep = true;
+      hasDisplacement = true;
+      taggedPOI = true;
+      ltfBOSConfirm = true;
+      inEntryZone = true;
+    } else if (setupProgression > 0.6) {
+      setupState = 'CONFIRM';
+      hasLiquiditySweep = true;
+      hasDisplacement = true;
+      taggedPOI = true;
+      ltfBOSConfirm = true;
+    } else if (setupProgression > 0.4) {
+      setupState = 'RETRACE';
+      hasLiquiditySweep = true;
+      hasDisplacement = true;
+      taggedPOI = true;
+    } else if (setupProgression > 0.2) {
+      setupState = 'DISPLACE';
+      hasLiquiditySweep = true;
+      hasDisplacement = true;
+    } else if (setupProgression > 0.1) {
+      setupState = 'SWEEP';
+      hasLiquiditySweep = true;
+    }
+
     return {
-      pair: pairs[Math.floor(Math.random() * pairs.length)],
-      currentPrice: candleData[candleData.length - 1].close,
-      timeframe: 'M15',
-      rsi: Math.floor(Math.random() * 100),
-      volume: Math.floor(Math.random() * 5000) + 500,
+      symbol: pairs[Math.floor(Math.random() * pairs.length)],
+      currentPrice: basePrice,
+      spread,
+      atr,
       session: sessions[Math.floor(Math.random() * sessions.length)],
-      candleData
+      primary: {
+        bid: basePrice - spread/2,
+        ask: basePrice + spread/2,
+        ts: Date.now(),
+        source: 'primary'
+      },
+      secondary: {
+        bid: basePrice - spread/2 + (Math.random() - 0.5) * 0.00005,
+        ask: basePrice + spread/2 + (Math.random() - 0.5) * 0.00005,
+        ts: Date.now() - Math.random() * 500,
+        source: 'secondary'
+      },
+      setupState,
+      hasLiquiditySweep,
+      hasDisplacement,
+      taggedPOI,
+      ltfBOSConfirm,
+      inEntryZone,
+      poiQuality: Math.floor(Math.random() * 21),
+      ltfConfirmScore: Math.floor(Math.random() * 21),
+      liquidityMapAlign: Math.floor(Math.random() * 16),
+      regimeFit: Math.floor(Math.random() * 11),
+      priceIntegrityOK: Math.random() > 0.1 // 90% chance of good price integrity
     };
   }, []);
 
@@ -70,47 +123,64 @@ export function useSignalEngine() {
       }));
 
       const marketData = generateMockMarketData();
-      const signal = await signalEngine.generateSignal(marketData);
+      const signal = await stateMachineEngine.generateRobustSignal(marketData);
 
       setState(prev => {
-        const newHistory = [signal, ...prev.signalHistory].slice(0, 50); // Keep last 50
-        
-        // Update stats
-        const newStats = { ...prev.stats };
-        if (signal.status === 'approved') {
+        if (signal) {
+          // Signal approved
+          const newHistory = [signal, ...prev.signalHistory].slice(0, 50);
+          const newStats = { ...prev.stats };
           newStats.approved++;
-          if (signal.validation?.finalGrade === 'A') newStats.gradeA++;
-          else if (signal.validation?.finalGrade === 'B') newStats.gradeB++;
-        } else {
-          newStats.rejected++;
-          if (signal.validation?.finalGrade === 'F') newStats.gradeF++;
-        }
+          
+          if (signal.quality === 'ELITE') newStats.elite++;
+          else if (signal.quality === 'PROFESSIONAL') newStats.professional++;
+          else if (signal.quality === 'STANDARD') newStats.standard++;
 
-        return {
-          ...prev,
-          currentSignal: signal,
-          signalHistory: newHistory,
-          stats: newStats
-        };
+          return {
+            ...prev,
+            currentSignal: signal,
+            signalHistory: newHistory,
+            stats: newStats
+          };
+        } else {
+          // Signal rejected - log but don't add to history
+          const rejection = {
+            reason: 'Setup not ready or validation failed',
+            gate: 'SYSTEM',
+            timestamp: Date.now()
+          };
+          
+          const newRejectionHistory = [rejection, ...prev.rejectionHistory].slice(0, 100);
+          const newStats = { ...prev.stats };
+          newStats.rejected++;
+
+          return {
+            ...prev,
+            rejectionHistory: newRejectionHistory,
+            stats: newStats
+          };
+        }
       });
 
       return signal;
     } catch (error) {
-      console.error('Error generating signal:', error);
-      const errorSignal: SignalResult = {
-        status: 'rejected',
-        reason: `Error: ${error.message}`,
-        pair: 'ERROR',
-        timeframe: 'M15',
-        timestamp: new Date().toISOString()
-      };
+      console.error('Error generating robust signal:', error);
       
-      setState(prev => ({
-        ...prev,
-        currentSignal: errorSignal
-      }));
+      setState(prev => {
+        const rejection = {
+          reason: `TIMEOUT or ERROR: ${error.message}`,
+          gate: 'SYSTEM_ERROR',
+          timestamp: Date.now()
+        };
+        
+        return {
+          ...prev,
+          rejectionHistory: [rejection, ...prev.rejectionHistory].slice(0, 100),
+          stats: { ...prev.stats, rejected: prev.stats.rejected + 1 }
+        };
+      });
       
-      return errorSignal;
+      return null;
     }
   }, [generateMockMarketData]);
 
@@ -144,15 +214,17 @@ export function useSignalEngine() {
     setState(prev => ({
       ...prev,
       signalHistory: [],
+      rejectionHistory: [],
       scanCount: 0,
       stats: {
         approved: 0,
         rejected: 0,
-        gradeA: 0,
-        gradeB: 0,
-        gradeF: 0
+        elite: 0,
+        professional: 0,
+        standard: 0
       }
     }));
+    stateMachineEngine.resetDailyStats();
   }, []);
 
   // Cleanup on unmount
@@ -166,31 +238,28 @@ export function useSignalEngine() {
 
   // Filter functions
   const getApprovedSignals = useCallback(() => {
-    return state.signalHistory.filter(signal => signal.status === 'approved');
+    return state.signalHistory; // All signals in history are approved
   }, [state.signalHistory]);
 
-  const getSignalsByGrade = useCallback((grades: string[]) => {
+  const getSignalsByQuality = useCallback((qualities: string[]) => {
     return state.signalHistory.filter(signal => 
-      signal.validation?.finalGrade && grades.includes(signal.validation.finalGrade)
+      qualities.includes(signal.quality)
     );
   }, [state.signalHistory]);
 
   const getEliteSignals = useCallback(() => {
-    return getSignalsByGrade(['A']);
-  }, [getSignalsByGrade]);
+    return getSignalsByQuality(['ELITE']);
+  }, [getSignalsByQuality]);
 
   const getProfessionalSignals = useCallback(() => {
-    return getSignalsByGrade(['B']);
-  }, [getSignalsByGrade]);
+    return getSignalsByQuality(['PROFESSIONAL', 'ELITE']);
+  }, [getSignalsByQuality]);
 
   // Computed values
   const totalScans = state.scanCount;
   const successRate = totalScans > 0 ? (state.stats.approved / totalScans) * 100 : 0;
-  const averageGrade = state.signalHistory.length > 0 ? 
-    state.signalHistory
-      .filter(s => s.validation?.finalGrade)
-      .map(s => s.validation!.finalGrade === 'A' ? 4 : s.validation!.finalGrade === 'B' ? 3 : 0)
-      .reduce((sum, grade) => sum + grade, 0) / state.signalHistory.filter(s => s.validation?.finalGrade).length : 0;
+  const averageEvidence = state.signalHistory.length > 0 ? 
+    state.signalHistory.reduce((sum, signal) => sum + signal.evidenceScore, 0) / state.signalHistory.length : 0;
 
   return {
     // State
@@ -200,6 +269,7 @@ export function useSignalEngine() {
     scanCount: state.scanCount,
     lastScanTime: state.lastScanTime,
     stats: state.stats,
+    rejectionHistory: state.rejectionHistory,
     
     // Actions
     generateSignal,
@@ -209,13 +279,13 @@ export function useSignalEngine() {
     
     // Filters
     getApprovedSignals,
-    getSignalsByGrade,
+    getSignalsByQuality,
     getEliteSignals,
     getProfessionalSignals,
     
     // Computed
     totalScans,
     successRate,
-    averageGrade
+    averageEvidence
   };
 }
