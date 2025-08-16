@@ -24,8 +24,8 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, tag: string): Pro
 class StateMachineSignalEngine {
   private readonly MIN_CONFLUENCE = 3;
   private readonly HIGH_CONFLUENCE = 4;
-  private readonly MIN_RR = 2.2;
-  private readonly ELITE_RR = 3.0;
+  private readonly MIN_RR = 1.0;
+  private readonly ELITE_RR = 2.0;
   private readonly SL_BUFFER_PIPS = 3;
   private readonly MAX_SPREAD_PIPS = 2.5;
   private readonly MIN_EVIDENCE_SCORE = 80;
@@ -291,24 +291,29 @@ class StateMachineSignalEngine {
     const isJPY = ctx.symbol.includes('JPY');
     const pipValue = isJPY ? 0.01 : 0.0001;
     
-    // Proper ATR-based stop loss calculation
-    const atrMultiplier = 2.0; // 2x ATR for institutional-grade stops
-    const minStopPips = isJPY ? 8 : 5; // Minimum stop distance in pips
+    // Structure-based stop loss calculation with proper ATR validation
+    const atrMultiplier = 1.5; // More conservative 1.5x ATR
+    const minStopPips = isJPY ? 12 : 8; // Increased minimum stop distance to avoid noise
+    const bufferPips = isJPY ? 4 : 3; // Larger buffer to avoid stop hunts
     const minStopDistance = minStopPips * pipValue;
     
     // Calculate ATR-based stop with minimum distance enforcement
     const atrStopDistance = ctx.atr * atrMultiplier;
-    const stopDistance = Math.max(atrStopDistance, minStopDistance) + (this.SL_BUFFER_PIPS * pipValue);
+    const baseStopDistance = Math.max(atrStopDistance, minStopDistance);
+    const stopDistance = baseStopDistance + (bufferPips * pipValue);
+    
+    // Determine R:R based on evidence score (conservative approach)
+    const rrMultiplier = evidenceScore >= this.ELITE_EVIDENCE_SCORE ? 2.0 : 1.5;
     
     let stopLoss: number;
     let takeProfit: number;
     
     if (direction === 'BUY') {
       stopLoss = entry - stopDistance;
-      takeProfit = entry + (stopDistance * 2.5); // 2.5:1 RR minimum
+      takeProfit = entry + (stopDistance * rrMultiplier); // Dynamic R:R based on conviction
     } else {
       stopLoss = entry + stopDistance;
-      takeProfit = entry - (stopDistance * 2.5);
+      takeProfit = entry - (stopDistance * rrMultiplier);
     }
 
     // Ensure we never have tiny stops that get hit by spread/noise
@@ -319,10 +324,10 @@ class StateMachineSignalEngine {
       console.log(`🚫 Stop too tight: ${actualPipDistance} pips, adjusting to minimum ${minStopPips} pips`);
       if (direction === 'BUY') {
         stopLoss = entry - (minStopPips * pipValue);
-        takeProfit = entry + (minStopPips * pipValue * 2.5);
+        takeProfit = entry + (minStopPips * pipValue * rrMultiplier);
       } else {
         stopLoss = entry + (minStopPips * pipValue);
-        takeProfit = entry - (minStopPips * pipValue * 2.5);
+        takeProfit = entry - (minStopPips * pipValue * rrMultiplier);
       }
     }
 

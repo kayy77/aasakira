@@ -46,9 +46,9 @@ MANDATORY INSTITUTIONAL FILTERS:
    - Must be placed beyond nearest structure level
 
 3. RISK:REWARD ENFORCEMENT:
-   - Minimum R:R = 1:2.5 (anything lower = REJECT)
-   - TP1 = 1.5×SL distance, TP2 = 2.5×SL distance
-   - Must have clear path to TP without major resistance
+   - Minimum R:R = 1:1.5 (anything lower = REJECT)
+   - TP1 = 1.0×SL distance, TP2 = 1.5-2.0×SL distance max
+   - Conservative R:R for consistent wins over lottery tickets
 
 4. MICRO BACKTEST REQUIREMENT:
    - This exact setup on last 200 candles must have >65% TP1 hit rate
@@ -83,8 +83,8 @@ If ALL conditions met, respond with JSON:
   "direction": "BUY|SELL",
   "entry": ${livePrice},
   "stop_loss": [CALCULATED_USING_ATR_RULES],
-  "take_profit_1": [1.5x_STOP_DISTANCE],
-  "take_profit_2": [2.5x_STOP_DISTANCE],
+  "take_profit_1": [1.0x_STOP_DISTANCE],
+  "take_profit_2": [1.5-2.0x_STOP_DISTANCE],
   "risk_reward": [CALCULATED_TP2_TO_SL_RATIO],
   "setup_type": "SPECIFIC_ICT_SMC_SETUP",
   "confluence_score": [35-89_BASED_ON_ACTUAL_FACTORS],
