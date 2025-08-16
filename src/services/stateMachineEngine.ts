@@ -10,6 +10,7 @@ import {
   Direction,
   SignalQuality
 } from '@/types/signalTypes';
+import { signalPersistenceService } from './signalPersistenceService';
 
 // Hard timeout wrapper
 async function withTimeout<T>(promise: Promise<T>, ms: number, tag: string): Promise<T> {
@@ -219,7 +220,7 @@ class StateMachineSignalEngine {
   }
 
   // MAIN ENGINE METHOD
-  async generateRobustSignal(rawMarketData: any): Promise<BaseSignal | null> {
+  async generateRobustSignal(rawMarketData: any, userId?: string): Promise<BaseSignal | null> {
     try {
       // Daily loss breaker first
       if (!this.checkDailyLossBreaker()) {
@@ -278,6 +279,12 @@ class StateMachineSignalEngine {
       }
 
       console.log('✅ ROBUST SIGNAL APPROVED:', signal.symbol, signal.direction, `Evidence:${signal.evidenceScore}`);
+      
+      // Save signal to database for persistence
+      if (userId) {
+        await signalPersistenceService.saveSignal(signal, userId);
+      }
+      
       return signal;
 
     } catch (error) {

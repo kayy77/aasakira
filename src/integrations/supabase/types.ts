@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -237,10 +237,15 @@ export type Database = {
           filters: Json | null
           id: string
           max_ai_score: number | null
+          outcome: string | null
+          outcome_price: number | null
+          outcome_time: string | null
           pair: string
+          pips_result: number | null
           raw_ai_responses: Json | null
           rejection_reasons: string[] | null
           risk_reward_ratio: number | null
+          rr_achieved: number | null
           session_type: string | null
           signal_type: string
           status: string
@@ -249,6 +254,7 @@ export type Database = {
           take_profit: number | null
           ui_label: string | null
           updated_at: string | null
+          user_id: string | null
           weighted_ai_score: number | null
         }
         Insert: {
@@ -264,10 +270,15 @@ export type Database = {
           filters?: Json | null
           id?: string
           max_ai_score?: number | null
+          outcome?: string | null
+          outcome_price?: number | null
+          outcome_time?: string | null
           pair: string
+          pips_result?: number | null
           raw_ai_responses?: Json | null
           rejection_reasons?: string[] | null
           risk_reward_ratio?: number | null
+          rr_achieved?: number | null
           session_type?: string | null
           signal_type: string
           status?: string
@@ -276,6 +287,7 @@ export type Database = {
           take_profit?: number | null
           ui_label?: string | null
           updated_at?: string | null
+          user_id?: string | null
           weighted_ai_score?: number | null
         }
         Update: {
@@ -291,10 +303,15 @@ export type Database = {
           filters?: Json | null
           id?: string
           max_ai_score?: number | null
+          outcome?: string | null
+          outcome_price?: number | null
+          outcome_time?: string | null
           pair?: string
+          pips_result?: number | null
           raw_ai_responses?: Json | null
           rejection_reasons?: string[] | null
           risk_reward_ratio?: number | null
+          rr_achieved?: number | null
           session_type?: string | null
           signal_type?: string
           status?: string
@@ -303,6 +320,7 @@ export type Database = {
           take_profit?: number | null
           ui_label?: string | null
           updated_at?: string | null
+          user_id?: string | null
           weighted_ai_score?: number | null
         }
         Relationships: []
@@ -479,10 +497,10 @@ export type Database = {
     Functions: {
       update_user_progress: {
         Args: {
-          p_user_id: string
           p_activity_type: string
-          p_performance_score?: number
           p_duration_minutes?: number
+          p_performance_score?: number
+          p_user_id: string
         }
         Returns: undefined
       }
