@@ -36,30 +36,39 @@ export function pips(symbol: string, priceDiff: number): number {
   return Math.abs(priceDiff) * pipFactor;
 }
 
-// Minimum stop loss distance calculator - BULLETPROOF VERSION
+// Minimum stop loss distance calculator - BROKER REALITY VERSION
 export function minSLPipsFor(symbol: string, atrPipsM5: number, spreadPips: number): number {
-  const base = pairMinSL(symbol); // Use hardened minimums
-  const atrBased = Math.round(0.5 * atrPipsM5); // Increased from 35% to 50% of M5 ATR
-  const spreadBased = Math.ceil(2.0 * spreadPips); // Increased from 1.2x to 2x spread
-  const brokerBuffer = 3; // Always add 3 pip broker protection buffer
+  const config = SYMBOL_CONFIG[symbol as keyof typeof SYMBOL_CONFIG] || { minSL: 12 };
+  const base = config.minSL; // Use broker-tested minimums
+  const atrBased = Math.round(0.25 * atrPipsM5); // 25% of M5 ATR for structure buffer
+  const spreadBased = Math.ceil(spreadPips + (0.1 * atrPipsM5)); // Spread + 10% ATR buffer
+  const brokerBuffer = Math.ceil(base * 0.2); // 20% buffer on top of minimum
   
   return Math.max(base, atrBased, spreadBased) + brokerBuffer;
 }
 
-// Get pair-specific minimum SL distance - HARDENED RULES
+// Broker-first symbol mapping and pip tables
+export const SYMBOL_CONFIG = {
+  'USDJPY': { broker_symbol: 'USDJPY.pro', pip: 0.01, digits: 3, minSL: 15, spreadThreshold: 1.2 },
+  'EURUSD': { broker_symbol: 'EURUSD.ecn', pip: 0.0001, digits: 5, minSL: 8, spreadThreshold: 1.0 },
+  'GBPUSD': { broker_symbol: 'GBPUSD.ecn', pip: 0.0001, digits: 5, minSL: 10, spreadThreshold: 1.5 },
+  'AUDUSD': { broker_symbol: 'AUDUSD.ecn', pip: 0.0001, digits: 5, minSL: 8, spreadThreshold: 1.2 },
+  'NZDUSD': { broker_symbol: 'NZDUSD.ecn', pip: 0.0001, digits: 5, minSL: 10, spreadThreshold: 1.5 },
+  'USDCAD': { broker_symbol: 'USDCAD.ecn', pip: 0.0001, digits: 5, minSL: 8, spreadThreshold: 1.2 },
+  'USDCHF': { broker_symbol: 'USDCHF.ecn', pip: 0.0001, digits: 5, minSL: 8, spreadThreshold: 1.2 },
+  'XAUUSD': { broker_symbol: 'XAUUSD.m', pip: 0.10, digits: 2, minSL: 150, spreadThreshold: 30 }
+};
+
+// Session volatility requirements (ATR M5 baselines in pips)
+export const ATR_BASELINES = {
+  'EURUSD': 5, 'GBPUSD': 7, 'USDJPY': 6, 'AUDUSD': 5,
+  'NZDUSD': 6, 'USDCAD': 5, 'USDCHF': 4, 'XAUUSD': 150
+};
+
+// Get pair-specific minimum SL distance - BULLETPROOF VERSION
 export function pairMinSL(symbol: string): number {
-  const majors = ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'];
-  const jpyPairs = ['USDJPY', 'EURJPY', 'GBPJPY', 'AUDJPY', 'NZDJPY', 'CADJPY', 'CHFJPY'];
-  
-  if (jpyPairs.some(pair => symbol.includes(pair.slice(0, 6)))) {
-    return 15; // JPY pairs - increased from 10 to 15 pips minimum
-  }
-  
-  if (majors.includes(symbol)) {
-    return 10; // Major pairs - increased from 6 to 10 pips minimum (AUDUSD fix)
-  }
-  
-  return 12; // Minor pairs and exotics - increased from 8 to 12 pips
+  const config = SYMBOL_CONFIG[symbol as keyof typeof SYMBOL_CONFIG];
+  return config ? config.minSL : 12; // Default for unlisted pairs
 }
 
 // Comprehensive signal validation
@@ -82,14 +91,14 @@ export function validateSignalRobustness(ctx: ValidationContext): ValidationErro
     });
   }
   
-  // 2. Risk-to-Reward Bounds Check
+  // 2. Risk-to-Reward Bounds Check - CONSERVATIVE WINS-FIRST
   const rr = Math.abs((ctx.takeProfit - ctx.entry) / (ctx.entry - ctx.stopLoss));
-  if (rr < 1 || rr > 3) {
+  if (rr < 1 || rr > 2) { // Capped at 1:2 for higher win rate
     errors.push({
       code: 'RR_OUT_OF_BOUNDS',
-      message: `Risk-to-reward ${rr.toFixed(2)} outside acceptable range (1:1 to 1:3)`,
-      severity: 'HIGH',
-      details: { actualRR: rr, minRR: 1, maxRR: 3 }
+      message: `Risk-to-reward ${rr.toFixed(2)} outside conservative range (1:1 to 1:2)`,
+      severity: 'CRITICAL', // Upgraded to CRITICAL for strict enforcement
+      details: { actualRR: rr, minRR: 1, maxRR: 2 }
     });
   }
   
@@ -136,13 +145,13 @@ export function validateSignalRobustness(ctx: ValidationContext): ValidationErro
     }
   }
   
-  // 4. Evidence Score Check - STRICTER REQUIREMENTS
-  if (ctx.evidenceScore < 80) {
+  // 4. Evidence Score Check - WINS-FIRST REQUIREMENTS  
+  if (ctx.evidenceScore < 85) { // Raised to 85 for higher win rate
     errors.push({
       code: 'LOW_CONFLUENCE',
-      message: `Evidence score ${ctx.evidenceScore} below minimum threshold of 80`,
-      severity: 'CRITICAL', // Upgraded from HIGH to CRITICAL
-      details: { evidenceScore: ctx.evidenceScore, minRequired: 80 }
+      message: `Evidence score ${ctx.evidenceScore} below minimum threshold of 85`,
+      severity: 'CRITICAL',
+      details: { evidenceScore: ctx.evidenceScore, minRequired: 85 }
     });
   }
   
@@ -161,14 +170,43 @@ export function validateSignalRobustness(ctx: ValidationContext): ValidationErro
     }
   }
   
-  // 6. Session and Volatility Check
-  if (ctx.session === 'ASIAN' && rr > 2) {
-    errors.push({
-      code: 'ASIAN_SESSION_HIGH_RR',
-      message: `Asian session detected with aggressive R:R ${rr.toFixed(2)}, reducing to max 1:2`,
-      severity: 'MEDIUM',
-      details: { session: ctx.session, currentRR: rr, maxAsianRR: 2 }
-    });
+  // 6. Session and Volatility Check - ENHANCED REGIME FILTERING
+  if (ctx.session === 'ASIAN') {
+    const atrPips = ctx.atrM5 ? pips(ctx.symbol, ctx.atrM5) : 0;
+    const baseline = ATR_BASELINES[ctx.symbol as keyof typeof ATR_BASELINES] || 8;
+    
+    if (atrPips < baseline) {
+      errors.push({
+        code: 'ASIAN_LOW_VOLATILITY',
+        message: `Asian session with low volatility: ${atrPips.toFixed(1)} < ${baseline} pips`,
+        severity: 'CRITICAL',
+        details: { session: ctx.session, atrPips, baseline }
+      });
+    }
+    
+    if (rr > 1.5) { // Asian session max 1:1.5
+      errors.push({
+        code: 'ASIAN_SESSION_HIGH_RR',
+        message: `Asian session R:R ${rr.toFixed(2)} exceeds 1:1.5 limit`,
+        severity: 'CRITICAL',
+        details: { session: ctx.session, currentRR: rr, maxAsianRR: 1.5 }
+      });
+    }
+  }
+
+  // 7. Spread Check for Execution
+  if (ctx.spread && ctx.priceQuote?.spreadPips) {
+    const config = SYMBOL_CONFIG[ctx.symbol as keyof typeof SYMBOL_CONFIG];
+    const threshold = config?.spreadThreshold || 2.0;
+    
+    if (ctx.priceQuote.spreadPips > threshold) {
+      errors.push({
+        code: 'SPREAD_TOO_WIDE',
+        message: `Spread ${ctx.priceQuote.spreadPips.toFixed(1)} pips exceeds ${threshold} pip threshold`,
+        severity: 'CRITICAL',
+        details: { spreadPips: ctx.priceQuote.spreadPips, threshold }
+      });
+    }
   }
   
   return errors;
@@ -208,14 +246,16 @@ export function autoAdjustSignal(ctx: ValidationContext): ValidationContext | nu
     }
   }
   
-  // Fix R:R bounds
+  // Fix R:R bounds - CONSERVATIVE WINS-FIRST  
   const rrError = errors.find(e => e.code === 'RR_OUT_OF_BOUNDS');
   if (rrError) {
     const stopDistance = Math.abs(adjusted.entry - adjusted.stopLoss);
+    const conservativeRR = ctx.session === 'ASIAN' ? 1.5 : 2.0; // Cap based on session
+    
     if (ctx.direction === 'BUY') {
-      adjusted.takeProfit = adjusted.entry + (stopDistance * 2); // Cap at 1:2
+      adjusted.takeProfit = adjusted.entry + (stopDistance * conservativeRR);
     } else {
-      adjusted.takeProfit = adjusted.entry - (stopDistance * 2);
+      adjusted.takeProfit = adjusted.entry - (stopDistance * conservativeRR);
     }
   }
   

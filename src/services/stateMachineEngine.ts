@@ -15,8 +15,11 @@ import {
   quickValidateSignal, 
   autoAdjustSignal,
   ValidationContext,
-  ValidationError 
+  ValidationError,
+  SYMBOL_CONFIG,
+  ATR_BASELINES
 } from '@/utils/signalValidationUtils';
+import { brokerPriceAdapter, BrokerPrice } from './brokerPriceAdapter';
 
 // Hard timeout wrapper
 async function withTimeout<T>(promise: Promise<T>, ms: number, tag: string): Promise<T> {
@@ -29,16 +32,18 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, tag: string): Pro
 }
 
 class StateMachineSignalEngine {
-  private readonly MIN_CONFLUENCE = 3;
-  private readonly HIGH_CONFLUENCE = 4;
+  // WINS-FIRST CONSERVATIVE PARAMETERS
+  private readonly MIN_CONFLUENCE = 4; // Raised for higher win rate
+  private readonly HIGH_CONFLUENCE = 5;
   private readonly MIN_RR = 1.0;
-  private readonly MAX_RR = 2.5; // Reduced from 3.0 to 2.5 (more realistic)
-  private readonly ELITE_RR = 2.0;
-  private readonly SL_BUFFER_PIPS = 5; // Increased from 3 to 5 pips buffer
-  private readonly MAX_SPREAD_PIPS = 2.0;
-  private readonly MIN_EVIDENCE_SCORE = 80; // Raised back to 80
-  private readonly ELITE_EVIDENCE_SCORE = 87;
-  private readonly MAX_PRICE_AGE_MS = 800; // Maximum price quote age
+  private readonly MAX_RR = 2.0; // Capped at 1:2 for consistency  
+  private readonly TP1_RR = 1.0; // Always take profits at 1:1
+  private readonly TP2_RR = 1.5; // Optional second target
+  private readonly MAX_TP_RR = 2.0; // Absolute maximum
+  private readonly SL_BUFFER_PIPS = 3; // Conservative buffer
+  private readonly MIN_EVIDENCE_SCORE = 85; // Raised for higher quality
+  private readonly ELITE_EVIDENCE_SCORE = 90; // Premium threshold
+  private readonly MAX_PRICE_AGE_MS = 600; // Tighter price window
   
   private dailyLoss = 0;
   private readonly MAX_DAILY_LOSS = 1.5; // R multiple
@@ -62,18 +67,30 @@ class StateMachineSignalEngine {
     }
   }
 
-  // STEP 2: Price Integrity Gate - Dual feed validation
-  private validatePriceIntegrity(ctx: MarketContext): { ok: boolean; reason?: string } {
-    const { primary, secondary } = ctx;
-    const now = Date.now();
-    const pip = 0.0001; // Assume 4-digit pairs for now
-    
-    if (now - primary.ts > 800) return { ok: false, reason: 'PrimaryStale' };
-    if (now - secondary.ts > 800) return { ok: false, reason: 'SecondaryStale' };
-    if (Math.abs(primary.bid - secondary.bid) > 0.5 * pip) {
-      return { ok: false, reason: `Drift>${0.5 * pip}` };
+  // STEP 2: Broker-First Price Integrity Gate
+  private async validatePriceIntegrity(ctx: MarketContext): Promise<{ ok: boolean; reason?: string; brokerPrice?: BrokerPrice }> {
+    try {
+      const brokerPrice = await brokerPriceAdapter.getBrokerPrice(ctx.symbol);
+      if (!brokerPrice) {
+        return { ok: false, reason: 'BrokerPriceUnavailable' };
+      }
+
+      // Check price age
+      if (Date.now() - brokerPrice.timestamp > this.MAX_PRICE_AGE_MS) {
+        return { ok: false, reason: 'BrokerPriceStale' };
+      }
+
+      // Validate against engine price if available
+      const validation = brokerPriceAdapter.validatePriceIntegrity(ctx.currentPrice, brokerPrice, ctx.symbol);
+      if (!validation.isValid) {
+        return { ok: false, reason: validation.reason, brokerPrice };
+      }
+
+      return { ok: true, brokerPrice };
+    } catch (error) {
+      console.error('Price integrity validation error:', error);
+      return { ok: false, reason: 'PriceValidationError' };
     }
-    return { ok: true };
   }
 
   // STEP 3: Evidence Score (replaces confidence %)
@@ -95,8 +112,8 @@ class StateMachineSignalEngine {
     return Math.min(100, score);
   }
 
-  // STEP 4: Entry Optimization with Bulletproof Validation
-  private validateEntryQuality(ctx: MarketContext, direction: Direction): ValidationResult {
+  // STEP 4: Entry Optimization with Broker-First Validation
+  private async validateEntryQuality(ctx: MarketContext, direction: Direction): Promise<ValidationResult> {
     const evidenceScore = this.calculateEvidenceScore(ctx);
     
     // Setup state gate - must be READY
@@ -109,8 +126,8 @@ class StateMachineSignalEngine {
       };
     }
 
-    // Price integrity gate
-    const integrity = this.validatePriceIntegrity(ctx);
+    // Broker-first price integrity gate
+    const integrity = await this.validatePriceIntegrity(ctx);
     if (!integrity.ok) {
       return {
         isValid: false,
@@ -120,8 +137,21 @@ class StateMachineSignalEngine {
       };
     }
 
-    // Preliminary signal build for validation
-    const prelimSignal = this.buildPreliminarySignal(ctx, direction, evidenceScore);
+    // Check session volatility requirements
+    const atrBaseline = ATR_BASELINES[ctx.symbol as keyof typeof ATR_BASELINES] || 8;
+    const currentAtrPips = ctx.atr ? (ctx.atr / (SYMBOL_CONFIG[ctx.symbol as keyof typeof SYMBOL_CONFIG]?.pip || 0.0001)) : 0;
+    
+    if (ctx.session === 'ASIAN' && currentAtrPips < atrBaseline) {
+      return {
+        isValid: false,
+        reason: `AsianLowVolatility:${currentAtrPips}<${atrBaseline}`,
+        evidenceScore,
+        gate: 'VOLATILITY_CHECK'
+      };
+    }
+
+    // Build signal using broker price
+    const prelimSignal = this.buildConservativeSignal(ctx, direction, evidenceScore, integrity.brokerPrice!);
     
     // Bulletproof validation using new utils
     const validationContext: ValidationContext = {
@@ -136,11 +166,11 @@ class StateMachineSignalEngine {
       session: ctx.session,
       htfMomentum: this.getHTFMomentum(ctx),
       priceQuote: {
-        bid: ctx.primary?.bid || ctx.currentPrice,
-        ask: ctx.primary?.ask || ctx.currentPrice + (ctx.spread || 0.00015),
-        timestamp: ctx.primary?.ts || Date.now(),
-        quality: 'GOLD',
-        spreadPips: ctx.spread ? ctx.spread / (ctx.symbol.endsWith('JPY') ? 0.01 : 0.0001) : 1.5
+        bid: integrity.brokerPrice!.bid,
+        ask: integrity.brokerPrice!.ask,
+        timestamp: integrity.brokerPrice!.timestamp,
+        quality: integrity.brokerPrice!.quality,
+        spreadPips: integrity.brokerPrice!.spreadPips
       }
     };
 
@@ -257,9 +287,9 @@ class StateMachineSignalEngine {
       // Determine direction from market bias
       const direction: Direction = ctx.hasDisplacement && Math.random() > 0.5 ? 'BUY' : 'SELL';
       
-      // Validate entry with all gates
+      // Validate entry with all gates including broker pricing
       const validation = await withTimeout(
-        Promise.resolve(this.validateEntryQuality(ctx, direction)),
+        this.validateEntryQuality(ctx, direction),
         5000,
         'ENTRY_VALIDATION'
       );
@@ -281,8 +311,8 @@ class StateMachineSignalEngine {
         return null;
       }
 
-      // Calculate signal parameters
-      const signal = this.buildSignal(ctx, direction, validation.evidenceScore);
+      // Calculate signal parameters with broker pricing
+      const signal = await this.buildSignal(ctx, direction, validation.evidenceScore);
       
     // Final bulletproof validation before approval
     const finalValidation: ValidationContext = {
@@ -338,88 +368,87 @@ class StateMachineSignalEngine {
     return 'NEUTRAL';
   }
 
-  // Build preliminary signal for validation
-  private buildPreliminarySignal(ctx: MarketContext, direction: Direction, evidenceScore: number) {
-    const entry = ctx.currentPrice;
-    const isJPY = ctx.symbol.includes('JPY');
-    const pipValue = isJPY ? 0.01 : 0.0001;
+  // Build conservative signal using broker price
+  private buildConservativeSignal(ctx: MarketContext, direction: Direction, evidenceScore: number, brokerPrice: BrokerPrice) {
+    const entry = brokerPrice.mid; // Use broker mid for accurate entry
+    const config = SYMBOL_CONFIG[ctx.symbol as keyof typeof SYMBOL_CONFIG];
+    const pipValue = config?.pip || 0.0001;
     
-    // BULLETPROOF stop calculation - never allow sub-10 pip stops
-    const atrMultiplier = 2.0; // Increased from 1.5 to 2.0x ATR
-    const minStopPips = isJPY ? 15 : 10; // Increased minimums
-    const bufferPips = isJPY ? 6 : 5; // Larger buffers
+    // CONSERVATIVE stop calculation for wins-first approach
+    const atrMultiplier = 1.2; // Reduced from 2.0 to 1.2 for tighter stops
+    const minStopPips = config?.minSL || 10;
+    const bufferPips = Math.ceil(minStopPips * 0.3); // 30% buffer
     const minStopDistance = minStopPips * pipValue;
     
     const atrStopDistance = ctx.atr * atrMultiplier;
     const baseStopDistance = Math.max(atrStopDistance, minStopDistance);
     const stopDistance = baseStopDistance + (bufferPips * pipValue);
     
-    // Conservative R:R - prefer 1:1.5 for consistency
-    const rrMultiplier = evidenceScore >= this.ELITE_EVIDENCE_SCORE ? 1.8 : 1.5;
+    // WINS-FIRST R:R - always start with 1:1, optional 1:1.5
+    const isAsianSession = ctx.session === 'ASIAN';
+    const maxRR = isAsianSession ? 1.5 : 2.0;
+    const targetRR = evidenceScore >= this.ELITE_EVIDENCE_SCORE ? Math.min(1.8, maxRR) : 1.5;
     
     let stopLoss: number;
     let takeProfit: number;
     
     if (direction === 'BUY') {
       stopLoss = entry - stopDistance;
-      takeProfit = entry + (stopDistance * rrMultiplier);
+      takeProfit = entry + (stopDistance * targetRR);
     } else {
       stopLoss = entry + stopDistance;
-      takeProfit = entry - (stopDistance * rrMultiplier);
+      takeProfit = entry - (stopDistance * targetRR);
     }
 
     return { entry, stopLoss, takeProfit };
   }
 
-  private buildSignal(ctx: MarketContext, direction: Direction, evidenceScore: number): BaseSignal {
-    const entry = ctx.currentPrice;
-    const isJPY = ctx.symbol.includes('JPY');
-    const pipValue = isJPY ? 0.01 : 0.0001;
+  private async buildSignal(ctx: MarketContext, direction: Direction, evidenceScore: number): Promise<BaseSignal> {
+    // Get fresh broker price for final signal build
+    const brokerPrice = await brokerPriceAdapter.getBrokerPrice(ctx.symbol);
+    if (!brokerPrice) {
+      throw new Error('Cannot build signal without broker price');
+    }
+
+    const entry = brokerPrice.mid; // Always use broker mid
+    const config = SYMBOL_CONFIG[ctx.symbol as keyof typeof SYMBOL_CONFIG];
+    const pipValue = config?.pip || 0.0001;
     
-    // Structure-based stop loss calculation with proper ATR validation
-    const atrMultiplier = 1.5; // More conservative 1.5x ATR
-    const minStopPips = isJPY ? 12 : 8; // Increased minimum stop distance to avoid noise
-    const bufferPips = isJPY ? 4 : 3; // Larger buffer to avoid stop hunts
+    // WINS-FIRST stop calculation
+    const atrMultiplier = 1.0; // Conservative 1x ATR for wins-first approach
+    const minStopPips = config?.minSL || 10;
+    const bufferPips = Math.ceil(brokerPrice.spreadPips * 0.5); // Half spread buffer
     const minStopDistance = minStopPips * pipValue;
     
-    // Calculate ATR-based stop with minimum distance enforcement
     const atrStopDistance = ctx.atr * atrMultiplier;
     const baseStopDistance = Math.max(atrStopDistance, minStopDistance);
     const stopDistance = baseStopDistance + (bufferPips * pipValue);
     
-    // Determine R:R based on evidence score (conservative approach)
-    const rrMultiplier = evidenceScore >= this.ELITE_EVIDENCE_SCORE ? 2.0 : 1.5;
+    // CONSERVATIVE R:R targets for high win rate
+    const isAsianSession = ctx.session === 'ASIAN';
+    const maxRR = isAsianSession ? 1.5 : this.MAX_RR;
+    const targetRR = evidenceScore >= this.ELITE_EVIDENCE_SCORE ? Math.min(1.8, maxRR) : 1.5;
     
     let stopLoss: number;
     let takeProfit: number;
     
     if (direction === 'BUY') {
       stopLoss = entry - stopDistance;
-      takeProfit = entry + (stopDistance * rrMultiplier); // Dynamic R:R based on conviction
+      takeProfit = entry + (stopDistance * targetRR);
     } else {
       stopLoss = entry + stopDistance;
-      takeProfit = entry - (stopDistance * rrMultiplier);
+      takeProfit = entry - (stopDistance * targetRR);
     }
 
-    // Ensure we never have tiny stops that get hit by spread/noise
-    const actualStopDistance = Math.abs(entry - stopLoss);
-    const actualPipDistance = actualStopDistance / pipValue;
-    
-    if (actualPipDistance < minStopPips) {
-      console.log(`🚫 Stop too tight: ${actualPipDistance} pips, adjusting to minimum ${minStopPips} pips`);
-      if (direction === 'BUY') {
-        stopLoss = entry - (minStopPips * pipValue);
-        takeProfit = entry + (minStopPips * pipValue * rrMultiplier);
-      } else {
-        stopLoss = entry + (minStopPips * pipValue);
-        takeProfit = entry - (minStopPips * pipValue * rrMultiplier);
-      }
+    // Final validation - check if broker moved past SL
+    if (brokerPriceAdapter.checkStopLossBreached(entry, stopLoss, direction, brokerPrice)) {
+      throw new Error(`Signal expired: broker price moved past stop loss`);
     }
 
     const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
     
     let quality: SignalQuality;
-    if (evidenceScore >= this.ELITE_EVIDENCE_SCORE && riskReward >= this.ELITE_RR) {
+    if (evidenceScore >= this.ELITE_EVIDENCE_SCORE && riskReward >= 1.8) {
       quality = 'ELITE';
     } else if (evidenceScore >= this.MIN_EVIDENCE_SCORE && riskReward >= this.MIN_RR) {
       quality = 'PROFESSIONAL';
@@ -427,10 +456,11 @@ class StateMachineSignalEngine {
       quality = 'STANDARD';
     }
 
-    console.log(`📊 Signal built: ${ctx.symbol} ${direction} | Entry: ${entry} | SL: ${stopLoss} | TP: ${takeProfit} | RR: ${riskReward.toFixed(2)} | Stop pips: ${(Math.abs(entry - stopLoss) / pipValue).toFixed(1)}`);
+    const stopPips = Math.abs(entry - stopLoss) / pipValue;
+    console.log(`📊 WINS-FIRST Signal: ${ctx.symbol} ${direction} | Entry: ${entry} | SL: ${stopLoss} | TP: ${takeProfit} | RR: ${riskReward.toFixed(2)} | Stop: ${stopPips.toFixed(1)} pips | Spread: ${brokerPrice.spreadPips.toFixed(1)} pips`);
 
     return {
-      id: `robust_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `wins_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       symbol: ctx.symbol,
       direction,
       bias: direction === 'BUY' ? 'BULLISH' : 'BEARISH',
@@ -438,18 +468,20 @@ class StateMachineSignalEngine {
       stopLoss,
       takeProfit,
       riskReward,
-      confidence: Math.min(95, evidenceScore + 10), // Convert evidence to confidence
+      confidence: Math.min(95, evidenceScore + 5), // Conservative confidence
       createdAt: Date.now(),
       quality,
       evidenceScore,
       setupState: ctx.setupState,
       session: ctx.session,
       meta: {
-        priceIntegrity: ctx.priceIntegrityOK,
+        priceIntegrity: true,
         poiQuality: ctx.poiQuality,
         ltfConfirm: ctx.ltfConfirmScore,
-        stopPips: Math.abs(entry - stopLoss) / pipValue,
-        atrUsed: ctx.atr
+        stopPips,
+        atrUsed: ctx.atr,
+        brokerSource: brokerPrice.source,
+        spreadPips: brokerPrice.spreadPips
       }
     };
   }
