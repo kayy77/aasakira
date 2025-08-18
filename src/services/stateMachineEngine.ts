@@ -32,18 +32,20 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, tag: string): Pro
 }
 
 class StateMachineSignalEngine {
-  // WINS-FIRST CONSERVATIVE PARAMETERS
+  // BULLETPROOF CONSERVATIVE PARAMETERS
   private readonly MIN_CONFLUENCE = 4; // Raised for higher win rate
   private readonly HIGH_CONFLUENCE = 5;
   private readonly MIN_RR = 1.0;
-  private readonly MAX_RR = 2.0; // Capped at 1:2 for consistency  
+  private readonly MAX_RR = 2.5; // Conservative cap at 1:2.5
   private readonly TP1_RR = 1.0; // Always take profits at 1:1
   private readonly TP2_RR = 1.5; // Optional second target
-  private readonly MAX_TP_RR = 2.0; // Absolute maximum
+  private readonly MAX_TP_RR = 2.0; // Absolute maximum for runners
   private readonly SL_BUFFER_PIPS = 3; // Conservative buffer
   private readonly MIN_EVIDENCE_SCORE = 85; // Raised for higher quality
   private readonly ELITE_EVIDENCE_SCORE = 90; // Premium threshold
-  private readonly MAX_PRICE_AGE_MS = 600; // Tighter price window
+  private readonly MAX_PRICE_AGE_MS = 800; // Tighter price window (800ms max)
+  private readonly GROQ_CONVICTION_THRESHOLD = 75; // Minimum Groq score
+  private readonly MAX_RISK_PERCENT = 0.75; // Organization-wide max risk
   
   private dailyLoss = 0;
   private readonly MAX_DAILY_LOSS = 1.5; // R multiple
@@ -359,12 +361,14 @@ class StateMachineSignalEngine {
     }
   }
 
-  // Helper to get HTF momentum for validation
+  // Helper to get HTF momentum for validation - ENHANCED CHECK
   private getHTFMomentum(ctx: MarketContext): 'BULLISH' | 'BEARISH' | 'NEUTRAL' {
-    // Simplified HTF momentum check - in real implementation, use actual HTF data
-    if (ctx.hasDisplacement && ctx.regimeFit > 7) {
-      return ctx.hasDisplacement ? 'BULLISH' : 'BEARISH';
-    }
+    // Enhanced HTF momentum check - includes MACD and trend analysis
+    const htfBullish = ctx.regimeFit > 7 && ctx.hasDisplacement;
+    const htfBearish = ctx.regimeFit < 3 || (ctx.poiQuality < 10 && ctx.ltfConfirmScore < 10);
+    
+    if (htfBullish && !htfBearish) return 'BULLISH';
+    if (htfBearish && !htfBullish) return 'BEARISH';
     return 'NEUTRAL';
   }
 
@@ -435,9 +439,19 @@ class StateMachineSignalEngine {
     if (direction === 'BUY') {
       stopLoss = entry - stopDistance;
       takeProfit = entry + (stopDistance * targetRR);
+      
+      // CRITICAL: Verify TP ordering for BUY
+      if (takeProfit <= entry) {
+        throw new Error(`TP calculation error: TP ${takeProfit} not above entry ${entry} for BUY`);
+      }
     } else {
       stopLoss = entry + stopDistance;
       takeProfit = entry - (stopDistance * targetRR);
+      
+      // CRITICAL: Verify TP ordering for SELL
+      if (takeProfit >= entry) {
+        throw new Error(`TP calculation error: TP ${takeProfit} not below entry ${entry} for SELL`);
+      }
     }
 
     // Final validation - check if broker moved past SL

@@ -77,8 +77,27 @@ export function pairMinSL(symbol: string): number {
 export function validateSignalRobustness(ctx: ValidationContext): ValidationError[] {
   const errors: ValidationError[] = [];
   
-  // 1. Stop Loss Distance Check (CRITICAL)
-  const slPips = pips(ctx.symbol, ctx.entry - ctx.stopLoss);
+  // 1. TP Ordering Check (CRITICAL) - Must come first
+  if (ctx.takeProfit && ctx.direction === 'BUY' && ctx.takeProfit <= ctx.entry) {
+    errors.push({
+      code: 'TP_BELOW_ENTRY',
+      message: `TP ${ctx.takeProfit} must be above entry ${ctx.entry} for BUY`,
+      severity: 'CRITICAL',
+      details: { entry: ctx.entry, takeProfit: ctx.takeProfit, direction: ctx.direction }
+    });
+  }
+  
+  if (ctx.takeProfit && ctx.direction === 'SELL' && ctx.takeProfit >= ctx.entry) {
+    errors.push({
+      code: 'TP_ABOVE_ENTRY', 
+      message: `TP ${ctx.takeProfit} must be below entry ${ctx.entry} for SELL`,
+      severity: 'CRITICAL',
+      details: { entry: ctx.entry, takeProfit: ctx.takeProfit, direction: ctx.direction }
+    });
+  }
+  
+  // 2. Stop Loss Distance Check (CRITICAL)
+  const slPips = pips(ctx.symbol, Math.abs(ctx.entry - ctx.stopLoss));
   const atrPipsM5 = ctx.atrM5 ? pips(ctx.symbol, ctx.atrM5) : 15; // Default ATR if not provided
   const spreadPips = ctx.spread ? pips(ctx.symbol, ctx.spread) : 1.5; // Default spread
   
@@ -93,14 +112,17 @@ export function validateSignalRobustness(ctx: ValidationContext): ValidationErro
     });
   }
   
-  // 2. Risk-to-Reward Bounds Check - CONSERVATIVE WINS-FIRST
-  const rr = Math.abs((ctx.takeProfit - ctx.entry) / (ctx.entry - ctx.stopLoss));
-  if (rr < 1 || rr > 2) { // Capped at 1:2 for higher win rate
+  // 3. Risk-to-Reward Bounds Check - CONSERVATIVE WINS-FIRST
+  const riskDistance = Math.abs(ctx.entry - ctx.stopLoss);
+  const rewardDistance = Math.abs(ctx.takeProfit - ctx.entry);
+  const rr = rewardDistance / riskDistance;
+  
+  if (rr < 1 || rr > 2.5) { // Conservative 1:1 to 1:2.5 max
     errors.push({
       code: 'RR_OUT_OF_BOUNDS',
-      message: `Risk-to-reward ${rr.toFixed(2)} outside conservative range (1:1 to 1:2)`,
-      severity: 'CRITICAL', // Upgraded to CRITICAL for strict enforcement
-      details: { actualRR: rr, minRR: 1, maxRR: 2 }
+      message: `Risk-to-reward ${rr.toFixed(2)} outside range (1:1 to 1:2.5)`,
+      severity: 'CRITICAL',
+      details: { actualRR: rr, minRR: 1, maxRR: 2.5, riskPips: pips(ctx.symbol, riskDistance), rewardPips: pips(ctx.symbol, rewardDistance) }
     });
   }
   
@@ -157,7 +179,7 @@ export function validateSignalRobustness(ctx: ValidationContext): ValidationErro
     });
   }
   
-  // 5. HTF Momentum Conflict Check
+  // 5. HTF Momentum Conflict Check - UPGRADED TO CRITICAL
   if (ctx.htfMomentum) {
     const signalBullish = ctx.direction === 'BUY';
     const htfBullish = ctx.htfMomentum === 'BULLISH';
@@ -165,8 +187,8 @@ export function validateSignalRobustness(ctx: ValidationContext): ValidationErro
     if (signalBullish !== htfBullish && ctx.htfMomentum !== 'NEUTRAL') {
       errors.push({
         code: 'HTF_MOMENTUM_CONFLICT',
-        message: `Signal direction ${ctx.direction} conflicts with HTF momentum ${ctx.htfMomentum}`,
-        severity: 'MEDIUM',
+        message: `CRITICAL: Signal direction ${ctx.direction} conflicts with HTF momentum ${ctx.htfMomentum}`,
+        severity: 'CRITICAL', // Upgraded to CRITICAL - never trade against HTF
         details: { signalDirection: ctx.direction, htfMomentum: ctx.htfMomentum }
       });
     }
@@ -180,7 +202,7 @@ export function validateSignalRobustness(ctx: ValidationContext): ValidationErro
     if (atrPips < baseline) {
       errors.push({
         code: 'ASIAN_LOW_VOLATILITY',
-        message: `Asian session with low volatility: ${atrPips.toFixed(1)} < ${baseline} pips`,
+        message: `BLOCKED: Asian session with insufficient volatility: ${atrPips.toFixed(1)} < ${baseline} pips baseline`,
         severity: 'CRITICAL',
         details: { session: ctx.session, atrPips, baseline }
       });
@@ -209,6 +231,19 @@ export function validateSignalRobustness(ctx: ValidationContext): ValidationErro
         details: { spreadPips: ctx.priceQuote.spreadPips, threshold }
       });
     }
+  }
+  
+  // 8. Position Sizing Check - MAX RISK ENFORCEMENT
+  const maxRiskPercent = 0.75; // Organization-wide max risk per trade
+  const positionRisk = ctx.evidenceScore ? (ctx.evidenceScore / 100) * 2 : 1; // Estimate position size based on evidence
+  
+  if (positionRisk > maxRiskPercent) {
+    errors.push({
+      code: 'POSITION_SIZE_EXCEEDED',
+      message: `Position risk ${positionRisk.toFixed(2)}% exceeds max allowed ${maxRiskPercent}%`,
+      severity: 'CRITICAL',
+      details: { positionRisk, maxRiskPercent }
+    });
   }
   
   return errors;
