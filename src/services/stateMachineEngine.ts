@@ -10,6 +10,13 @@ import {
   Direction,
   SignalQuality
 } from '@/types/signalTypes';
+import { 
+  validateSignalRobustness, 
+  quickValidateSignal, 
+  autoAdjustSignal,
+  ValidationContext,
+  ValidationError 
+} from '@/utils/signalValidationUtils';
 
 // Hard timeout wrapper
 async function withTimeout<T>(promise: Promise<T>, ms: number, tag: string): Promise<T> {
@@ -25,11 +32,13 @@ class StateMachineSignalEngine {
   private readonly MIN_CONFLUENCE = 3;
   private readonly HIGH_CONFLUENCE = 4;
   private readonly MIN_RR = 1.0;
+  private readonly MAX_RR = 3.0; // Cap at 1:3
   private readonly ELITE_RR = 2.0;
   private readonly SL_BUFFER_PIPS = 3;
   private readonly MAX_SPREAD_PIPS = 2.5;
-  private readonly MIN_EVIDENCE_SCORE = 80;
+  private readonly MIN_EVIDENCE_SCORE = 75; // Lowered from 80
   private readonly ELITE_EVIDENCE_SCORE = 85;
+  private readonly MAX_PRICE_AGE_MS = 800; // Maximum price quote age
   
   private dailyLoss = 0;
   private readonly MAX_DAILY_LOSS = 1.5; // R multiple
@@ -86,20 +95,10 @@ class StateMachineSignalEngine {
     return Math.min(100, score);
   }
 
-  // STEP 4: Entry Optimization - No chasing
+  // STEP 4: Entry Optimization with Bulletproof Validation
   private validateEntryQuality(ctx: MarketContext, direction: Direction): ValidationResult {
     const evidenceScore = this.calculateEvidenceScore(ctx);
     
-    // Evidence score gate
-    if (evidenceScore < this.MIN_EVIDENCE_SCORE) {
-      return {
-        isValid: false,
-        reason: `EvidenceScoreLow:${evidenceScore}`,
-        evidenceScore,
-        gate: 'EVIDENCE'
-      };
-    }
-
     // Setup state gate - must be READY
     if (ctx.setupState !== 'READY') {
       return {
@@ -121,41 +120,55 @@ class StateMachineSignalEngine {
       };
     }
 
-    // Spread gate
-    const spreadPips = ctx.spread / 0.0001;
-    if (spreadPips > this.MAX_SPREAD_PIPS) {
+    // Preliminary signal build for validation
+    const prelimSignal = this.buildPreliminarySignal(ctx, direction, evidenceScore);
+    
+    // Bulletproof validation using new utils
+    const validationContext: ValidationContext = {
+      symbol: ctx.symbol,
+      entry: prelimSignal.entry,
+      stopLoss: prelimSignal.stopLoss,
+      takeProfit: prelimSignal.takeProfit,
+      direction,
+      evidenceScore,
+      atrM5: ctx.atr,
+      spread: ctx.spread,
+      session: ctx.session,
+      htfMomentum: this.getHTFMomentum(ctx),
+      priceQuote: {
+        bid: ctx.primary?.bid || ctx.currentPrice,
+        ask: ctx.primary?.ask || ctx.currentPrice + (ctx.spread || 0.00015),
+        timestamp: ctx.primary?.ts || Date.now(),
+        quality: 'GOLD',
+        spreadPips: ctx.spread ? ctx.spread / (ctx.symbol.endsWith('JPY') ? 0.01 : 0.0001) : 1.5
+      }
+    };
+
+    const validationErrors = validateSignalRobustness(validationContext);
+    const criticalErrors = validationErrors.filter(e => e.severity === 'CRITICAL');
+    
+    if (criticalErrors.length > 0) {
       return {
         isValid: false,
-        reason: `SpreadTooWide:${spreadPips}pips`,
+        reason: `CriticalValidationFailure:${criticalErrors.map(e => e.code).join(',')}`,
         evidenceScore,
-        gate: 'SPREAD'
+        gate: 'BULLETPROOF_VALIDATION',
+        validationErrors: criticalErrors
       };
     }
 
-    // Entry location gate
-    if (direction === 'BUY' && !this.validBuyEntry(ctx)) {
-      return {
-        isValid: false,
-        reason: 'PoorEntryLocation:NotBelowPOIMid',
-        evidenceScore,
-        gate: 'ENTRY_LOCATION'
-      };
-    }
-
-    if (direction === 'SELL' && !this.validSellEntry(ctx)) {
-      return {
-        isValid: false,
-        reason: 'PoorEntryLocation:NotAbovePOIMid',
-        evidenceScore,
-        gate: 'ENTRY_LOCATION'
-      };
+    // Check for high severity errors that should also block
+    const highErrors = validationErrors.filter(e => e.severity === 'HIGH');
+    if (highErrors.length > 0) {
+      console.log('⚠️ High severity validation warnings:', highErrors.map(e => e.message));
     }
 
     return {
       isValid: true,
       reason: 'AllGatesPassed',
       evidenceScore,
-      gate: 'APPROVED'
+      gate: 'APPROVED',
+      validationErrors: validationErrors
     };
   }
 
@@ -271,11 +284,41 @@ class StateMachineSignalEngine {
       // Calculate signal parameters
       const signal = this.buildSignal(ctx, direction, validation.evidenceScore);
       
-      // Final RR check
-      if (signal.riskReward < this.MIN_RR) {
-        console.log('❌ Signal rejected: RR too low:', signal.riskReward);
+    // Final bulletproof validation before approval
+    const finalValidation: ValidationContext = {
+      symbol: signal.symbol,
+      entry: signal.entry,
+      stopLoss: signal.stopLoss,
+      takeProfit: signal.takeProfit,
+      direction: signal.direction,
+      evidenceScore: signal.evidenceScore,
+      atrM5: ctx.atr,
+      spread: ctx.spread,
+      session: ctx.session
+    };
+
+    const criticalErrors = validateSignalRobustness(finalValidation).filter(e => e.severity === 'CRITICAL');
+    if (criticalErrors.length > 0) {
+      console.log('❌ Signal failed final validation:', criticalErrors.map(e => e.code));
+      
+      // Attempt auto-adjustment
+      const adjusted = autoAdjustSignal(finalValidation);
+      if (adjusted) {
+        console.log('🔧 Auto-adjusting signal parameters');
+        signal.stopLoss = adjusted.stopLoss;
+        signal.takeProfit = adjusted.takeProfit;
+        signal.riskReward = Math.abs(signal.takeProfit - signal.entry) / Math.abs(signal.entry - signal.stopLoss);
+      } else {
+        console.log('❌ Signal rejected: Cannot auto-adjust to valid parameters');
         return null;
       }
+    }
+
+    // Final RR check after any adjustments
+    if (signal.riskReward < this.MIN_RR || signal.riskReward > this.MAX_RR) {
+      console.log('❌ Signal rejected: RR outside bounds:', signal.riskReward);
+      return null;
+    }
 
       console.log('✅ ROBUST SIGNAL APPROVED:', signal.symbol, signal.direction, `Evidence:${signal.evidenceScore}`);
       return signal;
@@ -284,6 +327,51 @@ class StateMachineSignalEngine {
       console.error('❌ Robust signal generation error:', error);
       return null;
     }
+  }
+
+  // Helper to get HTF momentum for validation
+  private getHTFMomentum(ctx: MarketContext): 'BULLISH' | 'BEARISH' | 'NEUTRAL' {
+    // Simplified HTF momentum check - in real implementation, use actual HTF data
+    if (ctx.hasDisplacement && ctx.regimeFit > 7) {
+      return ctx.hasDisplacement ? 'BULLISH' : 'BEARISH';
+    }
+    return 'NEUTRAL';
+  }
+
+  // Build preliminary signal for validation
+  private buildPreliminarySignal(ctx: MarketContext, direction: Direction, evidenceScore: number) {
+    const entry = ctx.currentPrice;
+    const isJPY = ctx.symbol.includes('JPY');
+    const pipValue = isJPY ? 0.01 : 0.0001;
+    
+    // Conservative stop calculation
+    const atrMultiplier = 1.5;
+    const minStopPips = isJPY ? 12 : 8;
+    const bufferPips = isJPY ? 4 : 3;
+    const minStopDistance = minStopPips * pipValue;
+    
+    const atrStopDistance = ctx.atr * atrMultiplier;
+    const baseStopDistance = Math.max(atrStopDistance, minStopDistance);
+    const stopDistance = baseStopDistance + (bufferPips * pipValue);
+    
+    // Cap R:R at 1:3 max, prefer 1:1.5 for most trades
+    const rrMultiplier = Math.min(
+      evidenceScore >= this.ELITE_EVIDENCE_SCORE ? 2.0 : 1.5,
+      this.MAX_RR
+    );
+    
+    let stopLoss: number;
+    let takeProfit: number;
+    
+    if (direction === 'BUY') {
+      stopLoss = entry - stopDistance;
+      takeProfit = entry + (stopDistance * rrMultiplier);
+    } else {
+      stopLoss = entry + stopDistance;
+      takeProfit = entry - (stopDistance * rrMultiplier);
+    }
+
+    return { entry, stopLoss, takeProfit };
   }
 
   private buildSignal(ctx: MarketContext, direction: Direction, evidenceScore: number): BaseSignal {

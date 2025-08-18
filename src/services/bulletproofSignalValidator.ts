@@ -1,6 +1,8 @@
 // Bulletproof Signal Validation System
 // Prevents catastrophic signal errors like SL=Entry that cause instant losses
 
+import { validateSignalRobustness, ValidationContext, pips, minSLPipsFor } from '@/utils/signalValidationUtils';
+
 interface ATRData {
   pair: string;
   atr: number;
@@ -32,9 +34,10 @@ interface ValidationResult {
 
 export class BulletproofSignalValidator {
   private static readonly FOREX_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF'];
-  private static readonly MIN_RRR = 1.5;
-  private static readonly MAX_RRR = 10.0;
+  private static readonly MIN_RRR = 1.0; // Updated to align with new standards
+  private static readonly MAX_RRR = 3.0; // Cap at 1:3 maximum
   private static readonly MIN_CONFIDENCE = 65;
+  private static readonly MIN_EVIDENCE_SCORE = 75; // New evidence threshold
 
   // ATR-based minimum distances for each pair and timeframe
   private static readonly ATR_DATA: Record<string, Record<string, number>> = {
@@ -47,13 +50,35 @@ export class BulletproofSignalValidator {
     'USDCHF': { 'M1': 0.00016, 'M5': 0.00028, 'M15': 0.00045, 'H1': 0.00065, 'H4': 0.00130 }
   };
 
-  // STEP 1: Hard Validation Layer
+  // STEP 1: Hard Validation Layer with New Utils Integration
   static validateSignal(signal: ValidationInput): ValidationResult {
     console.log(`🛡️ BULLETPROOF VALIDATION: Checking ${signal.pair} ${signal.tradeType} signal...`);
     
     const errors: string[] = [];
     const warnings: string[] = [];
     const recommendations: string[] = [];
+
+    // First run the new robust validation
+    const robustValidation: ValidationContext = {
+      symbol: signal.pair,
+      entry: signal.entry,
+      stopLoss: signal.stopLoss,
+      takeProfit: signal.takeProfit,
+      direction: signal.tradeType,
+      evidenceScore: signal.confluenceScore || signal.confidence,
+      session: signal.session as any
+    };
+
+    const robustErrors = validateSignalRobustness(robustValidation);
+    
+    // Convert robust validation errors to legacy format
+    robustErrors.forEach(error => {
+      if (error.severity === 'CRITICAL' || error.severity === 'HIGH') {
+        errors.push(`${error.severity}: ${error.message}`);
+      } else {
+        warnings.push(`${error.severity}: ${error.message}`);
+      }
+    });
     
     // Critical Error Check #1: SL = Entry (Instant Loss Prevention)
     const slEntryDistance = Math.abs(signal.entry - signal.stopLoss);

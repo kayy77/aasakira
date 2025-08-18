@@ -64,6 +64,12 @@ export interface ValidationResult {
   evidenceScore: number;
   gate: string;
   adjustments?: Partial<BaseSignal>;
+  validationErrors?: Array<{
+    code: string;
+    message: string;
+    severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+    details?: any;
+  }>;
 }
 
 export interface BacktestResult {

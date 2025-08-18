@@ -23,7 +23,7 @@ class GroqService {
     const isJPY = symbol.includes('JPY');
     const pipValue = isJPY ? 0.01 : 0.0001;
     const atr = this.calculateATR(symbol, livePrice);
-    const minStopPips = isJPY ? 8 : 5; // Minimum stop distance in pips
+    const minStopPips = isJPY ? 10 : 8; // Updated minimum stop distance in pips
     const maxSpreadPips = isJPY ? 3 : 2; // Maximum allowed spread
     
     const institutionalPrompt = `
@@ -39,15 +39,19 @@ MANDATORY INSTITUTIONAL FILTERS:
    - Must pass structure check: HH/HL for buys, LH/LL for sells
    - NO counter-trend trades during strong momentum
 
-2. STOP LOSS VALIDATION (CRITICAL):
-   - Minimum SL distance: ${minStopPips} pips (${minStopPips * pipValue} for ${symbol})
-   - SL = ATR(14) × 2.0 + spread + 2 pips buffer
-   - NEVER allow SL tighter than spread + 3 pips
-   - Must be placed beyond nearest structure level
+2. BULLETPROOF STOP LOSS VALIDATION (CRITICAL):
+   - Minimum SL distance: ${minStopPips} pips minimum (${minStopPips * pipValue} for ${symbol})
+   - Must be MAX of: 35% of M5 ATR, spread × 1.2, or pair minimum
+   - Add 2-3 pip buffer to avoid stop hunts
+   - NEVER place SL inside spread or noise level
+   - Must be beyond last swing structure level
+   - If calculated SL < minimum, REJECT trade immediately
 
-3. RISK:REWARD ENFORCEMENT:
-   - Minimum R:R = 1:1.5 (anything lower = REJECT)
-   - TP1 = 1.0×SL distance, TP2 = 1.5-2.0×SL distance max
+3. RISK:REWARD ENFORCEMENT (1:1 TO 1:3 MAX):
+   - Minimum R:R = 1:1 (break-even minimum)
+   - Maximum R:R = 1:3 (cap for any trade)
+   - Target range: 1:1.5 to 1:2 for consistency
+   - TP1 = 1.0×SL distance, TP2 = 1.5-2.0×SL distance maximum
    - Conservative R:R for consistent wins over lottery tickets
 
 4. MICRO BACKTEST REQUIREMENT:
