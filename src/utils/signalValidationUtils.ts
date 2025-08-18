@@ -56,13 +56,15 @@ export const SYMBOL_CONFIG = {
   'NZDUSD': { broker_symbol: 'NZDUSD.ecn', pip: 0.0001, digits: 5, minSL: 10, spreadThreshold: 1.5 },
   'USDCAD': { broker_symbol: 'USDCAD.ecn', pip: 0.0001, digits: 5, minSL: 8, spreadThreshold: 1.2 },
   'USDCHF': { broker_symbol: 'USDCHF.ecn', pip: 0.0001, digits: 5, minSL: 8, spreadThreshold: 1.2 },
-  'XAUUSD': { broker_symbol: 'XAUUSD.m', pip: 0.10, digits: 2, minSL: 150, spreadThreshold: 30 }
+  'XAUUSD': { broker_symbol: 'XAUUSD.m', pip: 0.10, digits: 2, minSL: 150, spreadThreshold: 30 },
+  'NAS100': { broker_symbol: 'NAS100.pro', pip: 0.1, digits: 1, minSL: 8, spreadThreshold: 1.5 }
 };
 
-// Session volatility requirements (ATR M5 baselines in pips)
+// Session volatility requirements (ATR M5 baselines in pips/points)
 export const ATR_BASELINES = {
   'EURUSD': 5, 'GBPUSD': 7, 'USDJPY': 6, 'AUDUSD': 5,
-  'NZDUSD': 6, 'USDCAD': 5, 'USDCHF': 4, 'XAUUSD': 150
+  'NZDUSD': 6, 'USDCAD': 5, 'USDCHF': 4, 'XAUUSD': 150,
+  'NAS100': 8  // points for NASDAQ
 };
 
 // Get pair-specific minimum SL distance - BULLETPROOF VERSION

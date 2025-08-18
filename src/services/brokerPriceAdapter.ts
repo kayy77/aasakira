@@ -201,7 +201,8 @@ class BrokerPriceAdapter {
       'USDCAD': 1.3650,
       'USDCHF': 0.8950,
       'NZDUSD': 0.6180,
-      'XAUUSD': 2045.50
+      'XAUUSD': 2045.50,
+      'NAS100': 18245.7  // NASDAQ mock price
     };
     
     return mockPrices[symbol] || 1.0000;
