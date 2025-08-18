@@ -32,12 +32,12 @@ class StateMachineSignalEngine {
   private readonly MIN_CONFLUENCE = 3;
   private readonly HIGH_CONFLUENCE = 4;
   private readonly MIN_RR = 1.0;
-  private readonly MAX_RR = 3.0; // Cap at 1:3
+  private readonly MAX_RR = 2.5; // Reduced from 3.0 to 2.5 (more realistic)
   private readonly ELITE_RR = 2.0;
-  private readonly SL_BUFFER_PIPS = 3;
-  private readonly MAX_SPREAD_PIPS = 2.5;
-  private readonly MIN_EVIDENCE_SCORE = 75; // Lowered from 80
-  private readonly ELITE_EVIDENCE_SCORE = 85;
+  private readonly SL_BUFFER_PIPS = 5; // Increased from 3 to 5 pips buffer
+  private readonly MAX_SPREAD_PIPS = 2.0;
+  private readonly MIN_EVIDENCE_SCORE = 80; // Raised back to 80
+  private readonly ELITE_EVIDENCE_SCORE = 87;
   private readonly MAX_PRICE_AGE_MS = 800; // Maximum price quote age
   
   private dailyLoss = 0;
@@ -344,21 +344,18 @@ class StateMachineSignalEngine {
     const isJPY = ctx.symbol.includes('JPY');
     const pipValue = isJPY ? 0.01 : 0.0001;
     
-    // Conservative stop calculation
-    const atrMultiplier = 1.5;
-    const minStopPips = isJPY ? 12 : 8;
-    const bufferPips = isJPY ? 4 : 3;
+    // BULLETPROOF stop calculation - never allow sub-10 pip stops
+    const atrMultiplier = 2.0; // Increased from 1.5 to 2.0x ATR
+    const minStopPips = isJPY ? 15 : 10; // Increased minimums
+    const bufferPips = isJPY ? 6 : 5; // Larger buffers
     const minStopDistance = minStopPips * pipValue;
     
     const atrStopDistance = ctx.atr * atrMultiplier;
     const baseStopDistance = Math.max(atrStopDistance, minStopDistance);
     const stopDistance = baseStopDistance + (bufferPips * pipValue);
     
-    // Cap R:R at 1:3 max, prefer 1:1.5 for most trades
-    const rrMultiplier = Math.min(
-      evidenceScore >= this.ELITE_EVIDENCE_SCORE ? 2.0 : 1.5,
-      this.MAX_RR
-    );
+    // Conservative R:R - prefer 1:1.5 for consistency
+    const rrMultiplier = evidenceScore >= this.ELITE_EVIDENCE_SCORE ? 1.8 : 1.5;
     
     let stopLoss: number;
     let takeProfit: number;

@@ -36,29 +36,30 @@ export function pips(symbol: string, priceDiff: number): number {
   return Math.abs(priceDiff) * pipFactor;
 }
 
-// Minimum stop loss distance calculator
+// Minimum stop loss distance calculator - BULLETPROOF VERSION
 export function minSLPipsFor(symbol: string, atrPipsM5: number, spreadPips: number): number {
-  const base = symbol.endsWith('JPY') ? 10 : 8; // Base minimum for pair type
-  const atrBased = Math.round(0.35 * atrPipsM5); // 35% of M5 ATR
-  const spreadBased = Math.ceil(1.2 * spreadPips); // 20% above spread
+  const base = pairMinSL(symbol); // Use hardened minimums
+  const atrBased = Math.round(0.5 * atrPipsM5); // Increased from 35% to 50% of M5 ATR
+  const spreadBased = Math.ceil(2.0 * spreadPips); // Increased from 1.2x to 2x spread
+  const brokerBuffer = 3; // Always add 3 pip broker protection buffer
   
-  return Math.max(base, atrBased, spreadBased);
+  return Math.max(base, atrBased, spreadBased) + brokerBuffer;
 }
 
-// Get pair-specific minimum SL distance
+// Get pair-specific minimum SL distance - HARDENED RULES
 export function pairMinSL(symbol: string): number {
   const majors = ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'];
   const jpyPairs = ['USDJPY', 'EURJPY', 'GBPJPY', 'AUDJPY', 'NZDJPY', 'CADJPY', 'CHFJPY'];
   
   if (jpyPairs.some(pair => symbol.includes(pair.slice(0, 6)))) {
-    return 10; // JPY pairs need larger stops
+    return 15; // JPY pairs - increased from 10 to 15 pips minimum
   }
   
   if (majors.includes(symbol)) {
-    return 6; // Major pairs
+    return 10; // Major pairs - increased from 6 to 10 pips minimum (AUDUSD fix)
   }
   
-  return 8; // Minor pairs and exotics
+  return 12; // Minor pairs and exotics - increased from 8 to 12 pips
 }
 
 // Comprehensive signal validation
@@ -92,17 +93,17 @@ export function validateSignalRobustness(ctx: ValidationContext): ValidationErro
     });
   }
   
-  // 3. Price Integrity and Age Check
+  // 3. Price Integrity and Age Check - TIGHTENED RULES
   if (ctx.priceQuote) {
     const now = Date.now();
     const age = now - ctx.priceQuote.timestamp;
     
-    if (age > 1000) { // 1 second max age
+    if (age > 800) { // Reduced from 1000ms to 800ms max age
       errors.push({
         code: 'PRICE_STALE',
-        message: `Price quote is ${age}ms old, exceeds 1000ms limit`,
+        message: `Price quote is ${age}ms old, exceeds 800ms limit`,
         severity: 'CRITICAL',
-        details: { age, maxAge: 1000 }
+        details: { age, maxAge: 800 }
       });
     }
     
@@ -135,13 +136,13 @@ export function validateSignalRobustness(ctx: ValidationContext): ValidationErro
     }
   }
   
-  // 4. Evidence Score Check
-  if (ctx.evidenceScore < 75) {
+  // 4. Evidence Score Check - STRICTER REQUIREMENTS
+  if (ctx.evidenceScore < 80) {
     errors.push({
       code: 'LOW_CONFLUENCE',
-      message: `Evidence score ${ctx.evidenceScore} below minimum threshold of 75`,
-      severity: 'HIGH',
-      details: { evidenceScore: ctx.evidenceScore, minRequired: 75 }
+      message: `Evidence score ${ctx.evidenceScore} below minimum threshold of 80`,
+      severity: 'CRITICAL', // Upgraded from HIGH to CRITICAL
+      details: { evidenceScore: ctx.evidenceScore, minRequired: 80 }
     });
   }
   
