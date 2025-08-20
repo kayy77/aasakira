@@ -10,6 +10,7 @@ import {
   Direction,
   SignalQuality
 } from '@/types/signalTypes';
+import { FVGConfirmationEngine, FVGValidationResult } from './fvgConfirmationEngine';
 import { 
   validateSignalRobustness, 
   quickValidateSignal, 
@@ -51,7 +52,7 @@ class StateMachineSignalEngine {
   private readonly MAX_DAILY_LOSS = 1.5; // R multiple
   private readonly shadowHistory: Array<{ setup: any; outcome: number }> = [];
 
-  // STEP 1: ICT/SMC State Machine - Only trade complete setups
+  // STEP 1: ICT/SMC State Machine with FVG Confirmation Rule
   private nextSetupState(current: SetupState, ctx: MarketContext): SetupState {
     switch (current) {
       case 'IDLE':
@@ -59,11 +60,14 @@ class StateMachineSignalEngine {
       case 'SWEEP':
         return ctx.hasDisplacement ? 'DISPLACE' : 'IDLE';
       case 'DISPLACE':
-        return ctx.taggedPOI ? 'RETRACE' : 'IDLE';
+        // Enhanced: Must have FVG detected AND confirmed
+        return ctx.taggedPOI && ctx.fvgConfirmationStage === 'CONFIRMED' ? 'RETRACE' : 'IDLE';
       case 'RETRACE':
-        return ctx.ltfBOSConfirm ? 'CONFIRM' : 'RETRACE';
+        // Enhanced: Wait for FVG retest detection
+        return ctx.ltfBOSConfirm && ctx.fvgConfirmationStage === 'RETESTING' ? 'CONFIRM' : 'RETRACE';
       case 'CONFIRM':
-        return ctx.inEntryZone ? 'READY' : 'RETRACE';
+        // Enhanced: Only READY when FVG retest is confirmed (institutional setup)
+        return ctx.inEntryZone && ctx.fvgConfirmationStage === 'READY' ? 'READY' : 'RETRACE';
       default:
         return 'IDLE';
     }
@@ -114,7 +118,51 @@ class StateMachineSignalEngine {
     return Math.min(100, score);
   }
 
-  // STEP 4: Entry Optimization with Broker-First Validation
+  // 🎯 NEW: FVG Confirmation Validation Method
+  private validateFVGConfirmation(ctx: MarketContext, direction: Direction): FVGValidationResult {
+    // Mock higher timeframe candles - in production, fetch from data provider
+    const candles1H = this.generateMockCandles('1H', 48); // Last 48 hours
+    const candles4H = this.generateMockCandles('4H', 48); // Last 48 4H candles
+    
+    return FVGConfirmationEngine.validateFVGEntry(
+      ctx.symbol,
+      candles1H,
+      candles4H,
+      ctx.currentPrice,
+      direction,
+      ctx.atr
+    );
+  }
+
+  // Helper to generate mock candles for FVG analysis
+  private generateMockCandles(timeframe: string, count: number): any[] {
+    const candles = [];
+    const basePrice = 1.0850; // Mock EURUSD
+    let currentPrice = basePrice;
+    
+    for (let i = 0; i < count; i++) {
+      const variance = (Math.random() - 0.5) * 0.002; // 20 pip variance
+      const open = currentPrice;
+      const close = open + variance;
+      const high = Math.max(open, close) + Math.random() * 0.001;
+      const low = Math.min(open, close) - Math.random() * 0.001;
+      
+      candles.push({
+        open,
+        high,
+        low,
+        close,
+        volume: 1000 + Math.random() * 500,
+        timestamp: Date.now() - (count - i) * (timeframe === '1H' ? 3600000 : 14400000)
+      });
+      
+      currentPrice = close;
+    }
+    
+    return candles;
+  }
+
+  // STEP 4: Entry Optimization with FVG Confirmation + Broker-First Validation
   private async validateEntryQuality(ctx: MarketContext, direction: Direction): Promise<ValidationResult> {
     const evidenceScore = this.calculateEvidenceScore(ctx);
     
@@ -125,6 +173,18 @@ class StateMachineSignalEngine {
         reason: `SetupIncomplete:${ctx.setupState}`,
         evidenceScore,
         gate: 'SETUP_STATE'
+      };
+    }
+
+    // 🎯 NEW: FVG Confirmation Gate - Institutional Entry Validation
+    const fvgValidation = this.validateFVGConfirmation(ctx, direction);
+    if (!fvgValidation.valid) {
+      return {
+        isValid: false,
+        reason: `FVGConfirmation:${fvgValidation.reason}`,
+        evidenceScore,
+        gate: 'FVG_CONFIRMATION',
+        fvgState: fvgValidation.confirmationState
       };
     }
 

@@ -164,14 +164,32 @@ export class DeterministicFilters {
   }
 
   /**
-   * Detect Fair Value Gap (FVG) with strength scoring
+   * Detect Fair Value Gap (FVG) with FVG Confirmation Rule (Entry Upgrade)
    */
-  static detectFVG(candles: Candle[], atr: number, minGapSize: number = 0.0003): FVGResult {
+  static detectFVG(candles: Candle[], atr: number, minGapSize: number = 0.0003): FVGResult & {
+    confirmationStage: 'DETECTED' | 'CONFIRMED' | 'RETESTING' | 'READY';
+    candleClosedAboveFVG?: boolean;
+    candleClosedBelowFVG?: boolean;
+    retestDetected?: boolean;
+  } {
     if (candles.length < 5) {
-      return { valid: false, zones: [], strength: 0 };
+      return { 
+        valid: false, 
+        zones: [], 
+        strength: 0,
+        confirmationStage: 'DETECTED'
+      };
     }
     
-    const zones: Array<{ from: number; to: number; index: number; strength: number }> = [];
+    const zones: Array<{ 
+      from: number; 
+      to: number; 
+      index: number; 
+      strength: number;
+      direction: 'bullish' | 'bearish';
+      confirmed: boolean;
+      retestReady: boolean;
+    }> = [];
     
     // Look for 3-candle FVG patterns
     for (let i = 2; i < candles.length; i++) {
@@ -183,11 +201,35 @@ export class DeterministicFilters {
       const bullishGapSize = candle3.low - candle1.high;
       if (bullishGapSize > minGapSize && bullishGapSize < atr * 2) {
         const strength = Math.min(100, (bullishGapSize / atr) * 50 + (candle2.volume / candle1.volume) * 25);
+        
+        // Check for confirmation: candle closed above FVG
+        let confirmed = false;
+        let retestReady = false;
+        
+        // Look for candles that closed above the FVG zone
+        for (let j = i + 1; j < candles.length; j++) {
+          const futureCandle = candles[j];
+          
+          // Bullish confirmation: candle closes above the FVG high
+          if (futureCandle.close > candle3.low && !confirmed) {
+            confirmed = true;
+          }
+          
+          // If confirmed, check for retest (price pulling back into FVG zone)
+          if (confirmed && futureCandle.low <= candle3.low && futureCandle.high >= candle1.high) {
+            retestReady = true;
+            break; // Found retest opportunity
+          }
+        }
+        
         zones.push({
           from: candle1.high,
           to: candle3.low,
           index: i,
-          strength: Math.round(strength)
+          strength: Math.round(strength),
+          direction: 'bullish',
+          confirmed,
+          retestReady
         });
       }
       
@@ -195,28 +237,75 @@ export class DeterministicFilters {
       const bearishGapSize = candle1.low - candle3.high;
       if (bearishGapSize > minGapSize && bearishGapSize < atr * 2) {
         const strength = Math.min(100, (bearishGapSize / atr) * 50 + (candle2.volume / candle1.volume) * 25);
+        
+        // Check for confirmation: candle closed below FVG
+        let confirmed = false;
+        let retestReady = false;
+        
+        // Look for candles that closed below the FVG zone
+        for (let j = i + 1; j < candles.length; j++) {
+          const futureCandle = candles[j];
+          
+          // Bearish confirmation: candle closes below the FVG low
+          if (futureCandle.close < candle3.high && !confirmed) {
+            confirmed = true;
+          }
+          
+          // If confirmed, check for retest (price pulling back into FVG zone)
+          if (confirmed && futureCandle.high >= candle3.high && futureCandle.low <= candle1.low) {
+            retestReady = true;
+            break; // Found retest opportunity
+          }
+        }
+        
         zones.push({
           from: candle3.high,
           to: candle1.low,
           index: i,
-          strength: Math.round(strength)
+          strength: Math.round(strength),
+          direction: 'bearish',
+          confirmed,
+          retestReady
         });
       }
     }
     
-    // Filter for most recent and strongest zones
-    const validZones = zones
-      .filter(zone => zone.strength >= 60)
-      .slice(-3); // Keep only 3 most recent
+    // Filter for zones that meet institutional criteria
+    // Only accept FVGs with confirmation and retest opportunity
+    const institutionalZones = zones.filter(zone => 
+      zone.strength >= 60 && zone.confirmed && zone.retestReady
+    );
+    
+    // Also keep high-strength zones waiting for confirmation
+    const pendingZones = zones.filter(zone => 
+      zone.strength >= 70 && !zone.confirmed
+    );
+    
+    const validZones = [...institutionalZones, ...pendingZones].slice(-3);
     
     const avgStrength = validZones.length > 0 
       ? validZones.reduce((sum, zone) => sum + zone.strength, 0) / validZones.length 
       : 0;
     
+    // Determine confirmation stage
+    let confirmationStage: 'DETECTED' | 'CONFIRMED' | 'RETESTING' | 'READY' = 'DETECTED';
+    const hasConfirmedZones = institutionalZones.length > 0;
+    const hasPendingZones = pendingZones.length > 0;
+    
+    if (hasConfirmedZones) {
+      confirmationStage = 'READY'; // Ready for institutional entry
+    } else if (hasPendingZones) {
+      confirmationStage = 'CONFIRMED'; // Waiting for retest
+    }
+    
     return {
-      valid: validZones.length > 0,
+      valid: institutionalZones.length > 0, // Only valid if we have confirmed + retested zones
       zones: validZones,
-      strength: Math.round(avgStrength)
+      strength: Math.round(avgStrength),
+      confirmationStage,
+      candleClosedAboveFVG: zones.some(z => z.direction === 'bullish' && z.confirmed),
+      candleClosedBelowFVG: zones.some(z => z.direction === 'bearish' && z.confirmed),
+      retestDetected: institutionalZones.length > 0
     };
   }
 

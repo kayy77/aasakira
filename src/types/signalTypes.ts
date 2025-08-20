@@ -56,6 +56,7 @@ export interface MarketContext {
   liquidityMapAlign: number; // 0..15
   regimeFit: number; // 0..10
   priceIntegrityOK: boolean;
+  fvgConfirmationStage?: 'DETECTED' | 'CONFIRMED' | 'RETESTING' | 'READY';
 }
 
 export interface ValidationResult {
@@ -64,6 +65,7 @@ export interface ValidationResult {
   evidenceScore: number;
   gate: string;
   adjustments?: Partial<BaseSignal>;
+  fvgState?: any;
   validationErrors?: Array<{
     code: string;
     message: string;
@@ -116,6 +118,7 @@ export function safeMarketContext(raw: any): MarketContext {
     ltfConfirmScore: Number.isFinite(raw?.ltfConfirmScore) ? Math.max(0, Math.min(20, raw.ltfConfirmScore)) : 0,
     liquidityMapAlign: Number.isFinite(raw?.liquidityMapAlign) ? Math.max(0, Math.min(15, raw.liquidityMapAlign)) : 0,
     regimeFit: Number.isFinite(raw?.regimeFit) ? Math.max(0, Math.min(10, raw.regimeFit)) : 0,
-    priceIntegrityOK: Boolean(raw?.priceIntegrityOK)
+    priceIntegrityOK: Boolean(raw?.priceIntegrityOK),
+    fvgConfirmationStage: raw?.fvgConfirmationStage || 'DETECTED'
   };
 }
