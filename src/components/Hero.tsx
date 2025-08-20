@@ -11,12 +11,8 @@ const Hero = () => {
   const navigate = useNavigate();
 
   const handleStartTrading = () => {
-    if (!isAuthenticated) {
-      // Show login dialog by navigating to a route that triggers auth
-      navigate('/education'); // This will trigger AuthGuard to show login
-    } else {
-      navigate('/education');
-    }
+    // Open broker link in new tab
+    window.open('https://one.exness-track.com/a/h0w8h7d8', '_blank');
   };
 
   const handleViewLiveDemo = () => {

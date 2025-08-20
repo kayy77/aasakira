@@ -34,21 +34,24 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
       return true;
     }
 
-    // For free users, check if they have signals remaining
-    if (signalsUsed >= dailyLimit) {
-      console.log('❌ Signal generation blocked - FREE USER DAILY LIMIT REACHED');
-      toast({
-        title: "🔒 Daily Signal Limit Reached",
-        description: `You can generate 1 signal every 24 hours. Your limit will reset tomorrow!`,
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    // Allow signal generation and increment usage
+    // Allow signal generation and increment usage first
     try {
       await incrementUsage('signals');
       console.log('✅ Signal usage incremented successfully');
+      
+      // After increment, check if they've now exceeded the limit for next time
+      const newUsageCount = signalsUsed + 1;
+      if (newUsageCount >= dailyLimit) {
+        console.log('🔒 User has now reached their daily limit');
+        // Show upgrade prompt for next signal attempt
+        setTimeout(() => {
+          toast({
+            title: "🔒 Daily Signal Limit Reached",
+            description: `You can generate 1 signal every 24 hours. Upgrade for unlimited signals!`,
+            variant: "destructive"
+          });
+        }, 1000);
+      }
       
       return true;
     } catch (error) {
