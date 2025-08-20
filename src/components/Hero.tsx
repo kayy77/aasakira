@@ -12,7 +12,7 @@ const Hero = () => {
 
   const handleStartTrading = () => {
     // Open broker link in new tab
-    window.open('https://one.exness-track.com/a/h0w8h7d8', '_blank');
+    window.open('https://myaccountnew.fxlvls.com/registration?lang=en&campaignid=1000541&affiliateid=10812', '_blank');
   };
 
   const handleViewLiveDemo = () => {
