@@ -27,7 +27,7 @@ const FeatureGate: React.FC<FeatureGateProps> = ({
 
   // Feature limits for free users
   const featureLimits = {
-    signals: 1,
+    signals: 2,
     memeScans: 2,
     mentorMessages: 3
   };
