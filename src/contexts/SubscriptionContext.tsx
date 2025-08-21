@@ -44,7 +44,7 @@ interface SubscriptionContextType {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 const FREE_LIMITS: DailyLimits = {
-  signals: 1,
+  signals: 2,
   memeCoins: 2,
   aiMentorMessages: 3,
 };
