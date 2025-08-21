@@ -18,7 +18,7 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
   const { toast } = useToast();
 
   const isPremium = subscription?.tier === 'premium';
-  const dailyLimit = isPremium ? 999 : 1;
+  const dailyLimit = isPremium ? 999 : 2;
   const signalsUsed = usageStats?.signals || 0;
   
   // Fixed: Allow signal generation if user hasn't reached their limit yet
@@ -47,7 +47,7 @@ export const useSignalLimits = (): SignalLimits & { checkAndIncrementSignal: () 
         setTimeout(() => {
           toast({
             title: "🔒 Daily Signal Limit Reached",
-            description: `You can generate 1 signal every 24 hours. Upgrade for unlimited signals!`,
+            description: `You can generate 2 signals every 24 hours. Upgrade for unlimited signals!`,
             variant: "destructive"
           });
         }, 1000);
