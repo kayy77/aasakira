@@ -225,18 +225,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     feature === 'memeScans' ? 'memeScansUsedToday' : 'mentorMessagesUsedToday';
     
     const currentUsage = user[usageKey] || 0;
-    const hasReachedLimit = currentUsage >= DAILY_LIMITS[feature];
-    
-    if (hasReachedLimit) {
-      toast({
-        title: "Daily Limit Reached!",
-        description: `You've used all ${DAILY_LIMITS[feature]} ${feature} for today. Upgrade to Premium for unlimited access!`,
-        variant: "destructive",
-        duration: 5000,
-      });
-    }
-    
-    return !hasReachedLimit;
+    // Allow usage up to the limit, don't show toast here
+    return currentUsage < DAILY_LIMITS[feature];
   };
 
   const incrementUsage = (feature: 'signals' | 'memeScans' | 'mentorMessages') => {
