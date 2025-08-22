@@ -43,8 +43,8 @@ const DAILY_LIMITS = {
   mentorMessages: 3,
 };
 
-// Admin email - set your account as premium
-const ADMIN_EMAILS = ['khaijwh@gmail.com'];
+// Admin emails - set these accounts as premium
+const ADMIN_EMAILS = ['khaijwh@gmail.com', 'Konejunior09@outlook.com'];
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<UserData | null>(null);
@@ -97,12 +97,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
-    // Check if user is admin and set as premium
+    // Check if user is admin, has premium role in metadata, or is in subscribers table
     const isAdmin = ADMIN_EMAILS.includes(authUser.email || '');
+    const hasPremiumRole = authUser.user_metadata?.role === 'premium';
+    
+    // Check subscribers table on login
+    checkSubscriptionStatus(authUser.email || '');
     
     return {
       ...authUser,
-      role: isAdmin ? 'premium' : 'free',
+      role: (isAdmin || hasPremiumRole) ? 'premium' : 'free',
       username: authUser.email?.split('@')[0] || 'User',
       avatar: authUser.user_metadata?.avatar_url || '',
       createdAt: authUser.created_at,
@@ -110,6 +114,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       social: {},
       ...usageData,
     };
+  };
+
+  const checkSubscriptionStatus = async (email: string) => {
+    try {
+      const { data } = await supabase.functions.invoke('check-subscription');
+      if (data?.subscribed && user) {
+        // Update user role if subscription is active
+        setUser(prev => prev ? { ...prev, role: 'premium' } : null);
+      }
+    } catch (error) {
+      // Fallback to database check
+      try {
+        const { data: subscriber } = await supabase
+          .from('subscribers')
+          .select('subscribed, subscription_tier')
+          .eq('email', email)
+          .single();
+        
+        if (subscriber?.subscribed && user) {
+          setUser(prev => prev ? { ...prev, role: 'premium' } : null);
+        }
+      } catch (dbError) {
+        console.log('No subscription found for user');
+      }
+    }
   };
 
   const saveUsageData = (userData: UserData) => {
