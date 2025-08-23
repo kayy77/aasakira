@@ -104,9 +104,9 @@ class MultiIntelligenceCore {
     
     console.log(`📊 AI COUNCIL VOTE: ${approvedVotes}/6 APPROVED`);
     
-    // Signal only fires if 4/6 AIs agree
+    // ENHANCED: Signal only fires if 4/6 AIs agree (MINIMUM confluence requirement)
     if (approvedVotes < 4) {
-      console.log('❌ SIGNAL REJECTED - INSUFFICIENT AI CONSENSUS');
+      console.log('❌ SIGNAL REJECTED - INSUFFICIENT AI CONSENSUS (Minimum 4/6 required)');
       return null;
     }
 
