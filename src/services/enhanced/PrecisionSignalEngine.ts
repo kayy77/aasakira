@@ -375,11 +375,25 @@ export class PrecisionSignalEngine {
       return null;
     }
     
-    // Calculate stop loss with market-specific multipliers
-    const slDistance = marketProfile.averageRange * 0.3 * marketProfile.slMultiplier;
-    const stopLoss = direction === 'BUY' 
-      ? proposedEntry - (slDistance * marketProfile.pipValue)
-      : proposedEntry + (slDistance * marketProfile.pipValue);
+    // 🔑 SMART STOP-LOSS: Structure-based placement using market structure
+    const { smartStopLossEngine } = await import('./SmartStopLossEngine');
+    
+    // Create market structure context
+    const marketStructure = smartStopLossEngine.createSampleMarketStructure(symbol, proposedEntry, direction);
+    const atrData = smartStopLossEngine.createSampleATRData(this.getCurrentSession() as 'ASIA' | 'LONDON' | 'NY');
+    
+    const smartStopData = {
+      symbol,
+      direction,
+      entry: proposedEntry,
+      marketStructure,
+      atrData,
+      maxRiskPercent: 1.5, // 1.5% max risk per trade
+      accountSize: 10000 // $10k account
+    };
+    
+    const smartStopResult = smartStopLossEngine.calculateStructureBasedStop(smartStopData);
+    const stopLoss = smartStopResult.stopLoss;
     
     // 🔑 FIX 2: TP Targeting at Liquidity Pools
     const liquidityTargets = this.calculateLiquidityTargets(symbol, direction, proposedEntry);
@@ -411,7 +425,7 @@ export class PrecisionSignalEngine {
       instrumentWeight,
       riskReward: partialTPs.level2.rrr, // Use second TP for main RRR calculation
       maxRisk: 1.0, // 1% max risk per trade
-      positionSize: this.calculatePositionSize(symbol, Math.abs(proposedEntry - stopLoss)),
+      positionSize: smartStopResult.positionSize, // Use smart stop-loss calculated position size
       metadata: {
         generatedAt: new Date().toISOString(),
         session: this.getCurrentSession(),
