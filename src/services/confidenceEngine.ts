@@ -14,6 +14,9 @@ export interface ConfidenceWeights {
   session_timing: number;
 }
 
+// Import the new statistical confidence engine
+import { StatisticalConfidenceEngine, type ConfidenceBreakdown } from './enhanced/StatisticalConfidenceEngine';
+
 class ConfidenceEngine {
   
   detectSignalType(signal: any): SignalTypeAnalysis {
@@ -51,42 +54,41 @@ class ConfidenceEngine {
     return { signalType, confidence, reasoning };
   }
   
+  // 🔑 NEW: Use Statistical Confidence Engine instead of old method
   calculateOptimizedConfidence(signal: any, signalTypeAnalysis: SignalTypeAnalysis): number {
-    const { signalType } = signalTypeAnalysis;
-    const { confluenceScore, filtersPassed, session } = signal;
+    const { symbol, filtersPassed } = signal;
     
-    // Get signal-type specific weights
-    const weights = this.getWeightsForSignalType(signalType);
+    // Get current market conditions
+    const marketConditions = StatisticalConfidenceEngine.getCurrentMarketConditions();
     
-    let finalConfidence = signalTypeAnalysis.confidence;
+    // Calculate statistical confidence using the new engine
+    const confidenceBreakdown = StatisticalConfidenceEngine.calculateStatisticalConfidence(
+      symbol || 'EURUSD',
+      filtersPassed || [],
+      marketConditions
+    );
     
-    // Apply weights based on filters passed
-    filtersPassed.forEach((filter: string) => {
-      if (filter.includes('Volume') && filter.includes('Spike')) {
-        finalConfidence += weights.volume_spike;
-      }
-      if (filter.includes('RSI') && filter.includes('Divergence')) {
-        finalConfidence += weights.rsi_divergence;
-      }
-      if (filter.includes('Order') && filter.includes('Block')) {
-        finalConfidence += weights.order_block;
-      }
-      if (filter.includes('BOS') || filter.includes('CHoCH')) {
-        finalConfidence += weights.structure;
-      }
-    });
+    // Validate no hardcoded defaults (fixes EURUSD 65% bug)
+    const finalConfidence = StatisticalConfidenceEngine.validateNoHardcodedDefaults(
+      symbol || 'EURUSD',
+      confidenceBreakdown.finalConfidence
+    );
     
-    // Confluence bonus (this should always add confidence)
-    finalConfidence += (confluenceScore * weights.confluence);
+    console.log(`🔧 FIXED CONFIDENCE ENGINE: ${symbol} = ${finalConfidence}% (was potentially bugged)`);
     
-    // Session timing bonus
-    const currentHour = new Date().getUTCHours();
-    if (this.isOptimalSession(currentHour, session)) {
-      finalConfidence += weights.session_timing;
-    }
+    return finalConfidence;
+  }
+  
+  // 🔑 NEW: Get detailed confidence breakdown for transparency
+  getConfidenceBreakdown(signal: any): ConfidenceBreakdown {
+    const { symbol, filtersPassed } = signal;
+    const marketConditions = StatisticalConfidenceEngine.getCurrentMarketConditions();
     
-    // Cap confidence between 30-95%
-    return Math.min(95, Math.max(30, Math.round(finalConfidence)));
+    return StatisticalConfidenceEngine.calculateStatisticalConfidence(
+      symbol || 'EURUSD',
+      filtersPassed || [],
+      marketConditions
+    );
   }
   
   private getWeightsForSignalType(signalType: string): ConfidenceWeights {

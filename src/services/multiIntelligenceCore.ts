@@ -193,10 +193,30 @@ class MultiIntelligenceCore {
     return results;
   }
 
+  // 🔑 FIXED: Use Statistical Confidence Engine instead of fake calculation
   private calculateConfidence(results: IntelligenceModule[]): number {
-    const votingStrength = results.filter(m => m.vote).length / results.length;
-    const avgConfidence = results.reduce((sum, m) => sum + m.confidence, 0) / results.length;
-    return votingStrength * avgConfidence;
+    // Import the statistical confidence engine
+    const { StatisticalConfidenceEngine } = require('./enhanced/StatisticalConfidenceEngine');
+    
+    // Extract filters from AI module reasoning
+    const passedFilters = results
+      .filter(m => m.vote)
+      .map(m => m.name.replace(' ', '_').toUpperCase());
+    
+    // Get current market conditions
+    const marketConditions = StatisticalConfidenceEngine.getCurrentMarketConditions();
+    
+    // Calculate statistical confidence (no more fake percentages)
+    const confidenceBreakdown = StatisticalConfidenceEngine.calculateStatisticalConfidence(
+      'EURUSD', // Default symbol for multi-intelligence core
+      passedFilters,
+      marketConditions
+    );
+    
+    console.log(`🔧 MULTI-AI CONFIDENCE FIX: Statistical confidence = ${confidenceBreakdown.finalConfidence}%`);
+    console.log(`   Breakdown: ${confidenceBreakdown.transparentBreakdown.join(' | ')}`);
+    
+    return confidenceBreakdown.finalConfidence;
   }
 
   private determineSignalType(results: IntelligenceModule[]): 'Institutional' | 'SMC' | 'Hybrid' {
