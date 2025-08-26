@@ -1,5 +1,12 @@
+
 // 🚨 ULTRA SIGNAL ENGINE - Zero Carry-Over, Multi-Scan Consensus, Price Truth Validation
 // Fixes: Memory reset, Price accuracy gates, Risk filtering, Multi-scan consensus, Sanity checks
+
+import { PrecisionSignalEngine, type PrecisionSignal } from './PrecisionSignalEngine';
+import { StatisticalConfidenceEngine } from './StatisticalConfidenceEngine';
+import { RiskManagementEngine } from './RiskManagementEngine';
+import { SignalSpamPrevention } from './SignalSpamPrevention';
+import { NewsHolidayFilter } from './NewsHolidayFilter';
 
 export interface UltraSignalConfig {
   symbols: string[];
@@ -16,56 +23,29 @@ export interface ScanResult {
   scanId: number;
   timestamp: number;
   symbol: string;
-  direction: 'BUY' | 'SELL';
-  entry: number;
-  sl: number;
-  tp: number;
-  confidence: number;
-  riskReward: number;
-  reasoning: string[];
+  signal: PrecisionSignal | null;
+  rejectionReason?: string;
   memoryState: 'FRESH' | 'CONTAMINATED';
-  priceAccuracy: {
-    primaryPrice: number;
-    secondaryPrice: number;
-    difference: number;
-    acceptable: boolean;
-  };
 }
 
 export interface UltraSignalResult {
-  finalSignal?: {
-    symbol: string;
-    direction: 'BUY' | 'SELL';
-    entry: number;
-    sl: number;
-    tp: number;
-    riskReward: number;
-    confidence: number;
-    winRate: number;
-    consensusScore: number;
-    riskProfile: 'ELITE' | 'STRONG' | 'WEAK';
-    executionWindow: number;
-    sanityCheck: {
-      wouldStopOut: boolean;
-      profitProbability: number;
-      maxDrawdown: number;
-    };
-  };
+  finalSignal?: PrecisionSignal;
   scanResults: ScanResult[];
   consensusAnalysis: {
     totalScans: number;
+    successfulScans: number;
     agreementCount: number;
     consensusReached: boolean;
     majorityDirection: 'BUY' | 'SELL' | 'NO_CONSENSUS';
     averageConfidence: number;
-    priceConsistency: number;
+    consistencyScore: number;
   };
   qualityGates: {
     memoryReset: boolean;
-    priceAccuracy: boolean;
+    multiScanConsensus: boolean;
+    confidenceValidation: boolean;
     riskValidation: boolean;
-    backtestPerformance: boolean;
-    sanityCheck: boolean;
+    contextValidation: boolean;
     overallPassed: boolean;
   };
   rejectionReasons: string[];
@@ -158,12 +138,19 @@ class UltraSignalEngine {
         const scanResult = await this.executeSingleScan(this.scanCounter);
         results.push(scanResult);
         
-        // Small delay to ensure price data freshness
+        // Small delay to ensure independence
         await new Promise(resolve => setTimeout(resolve, 100));
         
       } catch (error) {
         console.error(`Scan ${i + 1} failed:`, error);
-        // Continue with remaining scans
+        results.push({
+          scanId: this.scanCounter,
+          timestamp: Date.now(),
+          symbol: this.config.symbols[i % this.config.symbols.length],
+          signal: null,
+          rejectionReason: error.message,
+          memoryState: 'FRESH'
+        });
       }
     }
     
@@ -173,176 +160,108 @@ class UltraSignalEngine {
   // 📊 Single scan with complete independence
   private async executeSingleScan(scanId: number): Promise<ScanResult> {
     const timestamp = Date.now();
-    
-    // Get the most liquid pair for this scan
     const symbol = this.config.symbols[scanId % this.config.symbols.length];
     
-    // Fresh price data - no caching
-    const priceData = await this.getFreshPriceData(symbol);
+    console.log(`🔍 Executing independent scan ${scanId} for ${symbol}...`);
     
-    // Independent technical analysis
-    const technicalAnalysis = await this.performFreshTechnicalAnalysis(symbol, priceData);
-    
-    // Price accuracy validation
-    const priceAccuracy = await this.validatePriceAccuracy(symbol, priceData.entry);
-    
-    // Risk calculation
-    const riskCalculation = this.calculateRisk(priceData, technicalAnalysis);
+    // Use PrecisionSignalEngine for deep analysis
+    const signal = await PrecisionSignalEngine.generatePrecisionSignal(symbol);
     
     return {
       scanId,
       timestamp,
       symbol,
-      direction: technicalAnalysis.direction,
-      entry: priceData.entry,
-      sl: riskCalculation.stopLoss,
-      tp: riskCalculation.takeProfit,
-      confidence: technicalAnalysis.confidence,
-      riskReward: riskCalculation.riskReward,
-      reasoning: technicalAnalysis.reasoning,
-      memoryState: 'FRESH', // Always fresh since we reset
-      priceAccuracy
-    };
-  }
-
-  // 🎯 Fresh price data without caching
-  private async getFreshPriceData(symbol: string): Promise<any> {
-    // Simulate fresh price fetch (in production, this would hit live API)
-    const basePrices = {
-      'EURUSD': 1.0856,
-      'GBPUSD': 1.2645,
-      'USDJPY': 149.85,
-      'USDCHF': 0.8756,
-      'AUDUSD': 0.6487
-    };
-    
-    const basePrice = basePrices[symbol as keyof typeof basePrices] || 1.0000;
-    const randomVariation = (Math.random() - 0.5) * 0.0010; // ±1 pip variation
-    
-    return {
-      symbol,
-      entry: basePrice + randomVariation,
-      timestamp: Date.now(),
-      source: 'FRESH_API_CALL'
-    };
-  }
-
-  // 📈 Independent technical analysis
-  private async performFreshTechnicalAnalysis(symbol: string, priceData: any): Promise<any> {
-    // Simulate comprehensive technical analysis without any cached indicators
-    const directions = ['BUY', 'SELL'];
-    const direction = directions[Math.floor(Math.random() * directions.length)] as 'BUY' | 'SELL';
-    
-    // Simulate confidence based on multiple factors
-    const baseConfidence = 70 + Math.random() * 25; // 70-95%
-    
-    const reasoning = [
-      'Fresh breakout detected',
-      'Order block retest confirmed',
-      'Multi-timeframe alignment',
-      'Liquidity sweep completed',
-      'Fair value gap filled'
-    ];
-    
-    return {
-      direction,
-      confidence: Math.round(baseConfidence),
-      reasoning: reasoning.slice(0, 2 + Math.floor(Math.random() * 3)),
-      analysisTime: Date.now()
-    };
-  }
-
-  // 💰 Price accuracy validation against secondary source
-  private async validatePriceAccuracy(symbol: string, primaryPrice: number): Promise<any> {
-    // Simulate secondary price source check
-    const secondaryPrice = primaryPrice + (Math.random() - 0.5) * 0.0008; // ±0.8 pip variation
-    const difference = Math.abs(primaryPrice - secondaryPrice) * 10000; // Convert to pips
-    const acceptable = difference <= this.config.priceAccuracyThreshold;
-    
-    return {
-      primaryPrice,
-      secondaryPrice,
-      difference,
-      acceptable
-    };
-  }
-
-  // ⚖️ Risk calculation with ATR-based stops
-  private calculateRisk(priceData: any, technicalAnalysis: any): any {
-    const atr = this.getATR(priceData.symbol);
-    const direction = technicalAnalysis.direction;
-    
-    // Dynamic stop loss based on ATR
-    const stopDistance = atr * 1.5; // 1.5x ATR for stop
-    const takeProfitDistance = atr * 3.0; // 3x ATR for take profit (2:1 RR)
-    
-    const stopLoss = direction === 'BUY' 
-      ? priceData.entry - stopDistance
-      : priceData.entry + stopDistance;
-      
-    const takeProfit = direction === 'BUY'
-      ? priceData.entry + takeProfitDistance
-      : priceData.entry - takeProfitDistance;
-    
-    const riskReward = Math.abs(takeProfit - priceData.entry) / Math.abs(priceData.entry - stopLoss);
-    
-    return {
-      stopLoss,
-      takeProfit,
-      riskReward: Math.round(riskReward * 100) / 100,
-      atrUsed: atr
+      signal,
+      rejectionReason: signal ? undefined : 'Signal did not meet precision criteria',
+      memoryState: 'FRESH' // Always fresh since we reset
     };
   }
 
   // 📊 Analyze consensus across multiple scans
   private analyzeConsensus(scanResults: ScanResult[]): any {
-    if (scanResults.length === 0) {
+    const successfulScans = scanResults.filter(r => r.signal !== null);
+    
+    if (successfulScans.length === 0) {
       return {
-        totalScans: 0,
+        totalScans: scanResults.length,
+        successfulScans: 0,
         agreementCount: 0,
         consensusReached: false,
         majorityDirection: 'NO_CONSENSUS',
         averageConfidence: 0,
-        priceConsistency: 0
+        consistencyScore: 0
       };
     }
 
-    // Direction consensus
-    const buyCount = scanResults.filter(r => r.direction === 'BUY').length;
-    const sellCount = scanResults.filter(r => r.direction === 'SELL').length;
-    const majorityDirection = buyCount > sellCount ? 'BUY' : sellCount > buyCount ? 'SELL' : 'NO_CONSENSUS';
-    const agreementCount = Math.max(buyCount, sellCount);
+    // Direction consensus analysis
+    const buySignals = successfulScans.filter(r => r.signal?.direction === 'BUY');
+    const sellSignals = successfulScans.filter(r => r.signal?.direction === 'SELL');
     
-    // Consensus threshold: at least 60% agreement
-    const consensusReached = (agreementCount / scanResults.length) >= 0.6;
+    const majorityDirection = buySignals.length > sellSignals.length ? 'BUY' : 
+                             sellSignals.length > buySignals.length ? 'SELL' : 'NO_CONSENSUS';
     
-    // Average confidence
-    const averageConfidence = scanResults.reduce((sum, r) => sum + r.confidence, 0) / scanResults.length;
+    const agreementCount = Math.max(buySignals.length, sellSignals.length);
     
-    // Price consistency (how close are the entry prices)
-    const entryPrices = scanResults.map(r => r.entry);
-    const avgPrice = entryPrices.reduce((sum, p) => sum + p, 0) / entryPrices.length;
-    const maxDeviation = Math.max(...entryPrices.map(p => Math.abs(p - avgPrice)));
-    const priceConsistency = 1 - (maxDeviation / avgPrice); // Higher is better
+    // Consensus threshold: at least 60% of successful scans must agree
+    const consensusReached = successfulScans.length >= 3 && 
+                            (agreementCount / successfulScans.length) >= 0.6;
+    
+    // Average confidence of agreeing signals
+    const agreeingSignals = majorityDirection === 'BUY' ? buySignals : 
+                           majorityDirection === 'SELL' ? sellSignals : [];
+    
+    const averageConfidence = agreeingSignals.length > 0 ? 
+      agreeingSignals.reduce((sum, r) => sum + (r.signal?.confidence || 0), 0) / agreeingSignals.length : 0;
+    
+    // Consistency score based on how similar the signals are
+    const consistencyScore = this.calculateConsistencyScore(agreeingSignals);
     
     return {
       totalScans: scanResults.length,
+      successfulScans: successfulScans.length,
       agreementCount,
       consensusReached,
       majorityDirection,
       averageConfidence: Math.round(averageConfidence),
-      priceConsistency: Math.round(priceConsistency * 100) / 100
+      consistencyScore
     };
+  }
+
+  // 📏 Calculate how consistent the agreeing signals are
+  private calculateConsistencyScore(signals: ScanResult[]): number {
+    if (signals.length < 2) return 100;
+    
+    const entries = signals.map(s => s.signal?.entryPrice || 0);
+    const stopLosses = signals.map(s => s.signal?.stopLoss || 0);
+    const confidences = signals.map(s => s.signal?.confidence || 0);
+    
+    // Calculate coefficient of variation for each metric
+    const entryCV = this.coefficientOfVariation(entries);
+    const slCV = this.coefficientOfVariation(stopLosses);
+    const confCV = this.coefficientOfVariation(confidences);
+    
+    // Lower CV = higher consistency, convert to 0-100 score
+    const consistencyScore = 100 - Math.min(100, (entryCV + slCV + confCV) * 10);
+    return Math.round(consistencyScore);
+  }
+  
+  private coefficientOfVariation(values: number[]): number {
+    if (values.length === 0) return 0;
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    if (mean === 0) return 0;
+    const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+    const stdDev = Math.sqrt(variance);
+    return stdDev / mean;
   }
 
   // 🚨 Validate all quality gates
   private async validateQualityGates(scanResults: ScanResult[], consensusAnalysis: any): Promise<any> {
     const gates = {
       memoryReset: true, // Always true since we force reset
-      priceAccuracy: scanResults.every(r => r.priceAccuracy.acceptable),
-      riskValidation: scanResults.every(r => r.riskReward >= this.config.minRiskReward),
-      backtestPerformance: await this.validateBacktestPerformance(scanResults),
-      sanityCheck: await this.performSanityCheck(scanResults),
+      multiScanConsensus: consensusAnalysis.consensusReached && consensusAnalysis.successfulScans >= 3,
+      confidenceValidation: consensusAnalysis.averageConfidence >= 75,
+      riskValidation: await this.validateRiskParameters(scanResults),
+      contextValidation: await this.validateMarketContext(scanResults),
       overallPassed: false
     };
     
@@ -353,112 +272,114 @@ class UltraSignalEngine {
     return gates;
   }
 
-  // 📈 Validate backtest performance
-  private async validateBacktestPerformance(scanResults: ScanResult[]): Promise<boolean> {
-    // Simulate backtest validation
-    const simulatedWinRate = 60 + Math.random() * 20; // 60-80%
-    return simulatedWinRate >= this.config.minWinRate;
+  // ⚖️ Validate risk parameters across signals
+  private async validateRiskParameters(scanResults: ScanResult[]): Promise<boolean> {
+    const successfulSignals = scanResults.filter(r => r.signal).map(r => r.signal!);
+    
+    if (successfulSignals.length === 0) return false;
+    
+    // Check if all signals meet minimum R:R
+    const allMeetRR = successfulSignals.every(s => s.riskReward >= this.config.minRiskReward);
+    
+    // Check if position sizes are reasonable
+    const maxPositionSize = Math.max(...successfulSignals.map(s => s.positionSize));
+    const reasonableSize = maxPositionSize <= 2.0; // Max 2 lots
+    
+    return allMeetRR && reasonableSize;
+  }
+  
+  // 🌍 Validate market context across signals
+  private async validateMarketContext(scanResults: ScanResult[]): Promise<boolean> {
+    const successfulSignals = scanResults.filter(r => r.signal).map(r => r.signal!);
+    
+    if (successfulSignals.length === 0) return false;
+    
+    // Check if any signal violates market context rules
+    const contextViolations = successfulSignals.filter(s => 
+      s.marketContext.sessionQuality === 'AVOID' ||
+      s.marketContext.newsRisk === 'HIGH' ||
+      !s.marketContext.tradingAllowed
+    );
+    
+    return contextViolations.length === 0;
   }
 
-  // 🔍 Post-trade sanity check
-  private async performSanityCheck(scanResults: ScanResult[]): Promise<boolean> {
-    if (!this.config.enableSanityCheck) return true;
+  // 🎯 Construct final validated signal from consensus
+  private async constructFinalSignal(scanResults: ScanResult[], consensusAnalysis: any): Promise<PrecisionSignal> {
+    // Get signals that match majority direction
+    const agreeingSignals = scanResults
+      .filter(r => r.signal && r.signal.direction === consensusAnalysis.majorityDirection)
+      .map(r => r.signal!);
     
-    // Simulate 5-minute replay to check if trade would be stopped out immediately
-    for (const scan of scanResults) {
-      const wouldStopOut = Math.random() < 0.1; // 10% chance of immediate stop out
-      if (wouldStopOut) {
-        console.log(`🚨 Sanity check failed: ${scan.symbol} would stop out immediately`);
-        return false;
-      }
+    if (agreeingSignals.length === 0) {
+      throw new Error('No agreeing signals found for consensus');
     }
     
-    return true;
-  }
-
-  // 🎯 Construct final validated signal
-  private async constructFinalSignal(scanResults: ScanResult[], consensusAnalysis: any): Promise<any> {
-    // Get scans that match majority direction
-    const majorityScans = scanResults.filter(r => r.direction === consensusAnalysis.majorityDirection);
+    // Use the highest confidence signal as base, but validate with consensus
+    const baseSignal = agreeingSignals.reduce((best, current) => 
+      current.confidence > best.confidence ? current : best
+    );
     
-    // Use median values for robustness
-    const entries = majorityScans.map(r => r.entry).sort((a, b) => a - b);
-    const stopLosses = majorityScans.map(r => r.sl).sort((a, b) => a - b);
-    const takeProfits = majorityScans.map(r => r.tp).sort((a, b) => a - b);
+    // Calculate consensus metrics
+    const avgEntry = agreeingSignals.reduce((sum, s) => sum + s.entryPrice, 0) / agreeingSignals.length;
+    const avgSL = agreeingSignals.reduce((sum, s) => sum + s.stopLoss, 0) / agreeingSignals.length;
+    const avgTP1 = agreeingSignals.reduce((sum, s) => sum + s.takeProfit1.price, 0) / agreeingSignals.length;
     
-    const medianIndex = Math.floor(majorityScans.length / 2);
-    
-    const entry = entries[medianIndex];
-    const sl = stopLosses[medianIndex];
-    const tp = takeProfits[medianIndex];
-    const riskReward = Math.abs(tp - entry) / Math.abs(entry - sl);
-    
-    // Risk profile based on consensus strength and confidence
-    let riskProfile: 'ELITE' | 'STRONG' | 'WEAK' = 'WEAK';
-    if (consensusAnalysis.averageConfidence >= 85 && consensusAnalysis.agreementCount >= 4) {
-      riskProfile = 'ELITE';
-    } else if (consensusAnalysis.averageConfidence >= 75 && consensusAnalysis.agreementCount >= 3) {
-      riskProfile = 'STRONG';
-    }
-    
-    return {
-      symbol: majorityScans[0].symbol,
-      direction: consensusAnalysis.majorityDirection,
-      entry,
-      sl,
-      tp,
-      riskReward: Math.round(riskReward * 100) / 100,
+    // Create consensus signal
+    const consensusSignal: PrecisionSignal = {
+      ...baseSignal,
+      entryPrice: avgEntry,
+      stopLoss: avgSL,
+      takeProfit1: { ...baseSignal.takeProfit1, price: avgTP1 },
       confidence: consensusAnalysis.averageConfidence,
-      winRate: 65 + Math.random() * 15, // Simulated historical performance
-      consensusScore: consensusAnalysis.agreementCount / consensusAnalysis.totalScans,
-      riskProfile,
-      executionWindow: 15, // 15 minutes optimal execution window
-      sanityCheck: {
-        wouldStopOut: false,
-        profitProbability: 0.7 + Math.random() * 0.2,
-        maxDrawdown: Math.abs(entry - sl) * 0.5
+      signalGrade: consensusAnalysis.averageConfidence >= 85 ? 'ELITE' : 
+                   consensusAnalysis.averageConfidence >= 78 ? 'STRONG' : 'STANDARD',
+      debugInfo: {
+        ...baseSignal.debugInfo,
+        totalAnalysisTime: baseSignal.debugInfo.totalAnalysisTime,
+        scannedTimeframes: baseSignal.debugInfo.scannedTimeframes,
+        failedFilters: [],
+        confidenceBreakdown: {
+          consensusScans: agreeingSignals.length,
+          totalScans: scanResults.length,
+          consistencyScore: consensusAnalysis.consistencyScore,
+          averageConfidence: consensusAnalysis.averageConfidence
+        }
       }
     };
+    
+    return consensusSignal;
   }
 
   // 📝 Generate rejection reasons
   private generateRejectionReasons(qualityGates: any, consensusAnalysis: any): string[] {
     const reasons: string[] = [];
     
-    if (!qualityGates.priceAccuracy) {
-      reasons.push('Price accuracy failed: Secondary source divergence too high');
+    if (!qualityGates.multiScanConsensus) {
+      reasons.push(`Multi-scan consensus failed: Only ${consensusAnalysis.agreementCount}/${consensusAnalysis.totalScans} scans agreed`);
+    }
+    
+    if (!qualityGates.confidenceValidation) {
+      reasons.push(`Confidence validation failed: Average ${consensusAnalysis.averageConfidence}% < 75% minimum`);
     }
     
     if (!qualityGates.riskValidation) {
-      reasons.push(`Risk validation failed: RR below minimum ${this.config.minRiskReward}`);
+      reasons.push('Risk validation failed: R:R below minimum or position size too large');
     }
     
-    if (!qualityGates.backtestPerformance) {
-      reasons.push(`Backtest performance failed: Win rate below ${this.config.minWinRate}%`);
+    if (!qualityGates.contextValidation) {
+      reasons.push('Market context validation failed: Trading conditions unsuitable');
     }
     
-    if (!qualityGates.sanityCheck) {
-      reasons.push('Sanity check failed: Trade would stop out immediately');
+    if (consensusAnalysis.successfulScans === 0) {
+      reasons.push('No successful scans: All precision checks failed');
     }
     
-    if (!consensusAnalysis.consensusReached) {
-      reasons.push(`Consensus failed: Only ${consensusAnalysis.agreementCount}/${consensusAnalysis.totalScans} scans agreed`);
-    }
-    
-    if (this.config.strictMode && consensusAnalysis.averageConfidence < 80) {
-      reasons.push(`Strict mode: Confidence ${consensusAnalysis.averageConfidence}% below 80% threshold`);
+    if (this.config.strictMode && consensusAnalysis.consistencyScore < 70) {
+      reasons.push(`Strict mode: Signal consistency ${consensusAnalysis.consistencyScore}% below 70% threshold`);
     }
     
     return reasons;
-  }
-
-  // Helper methods
-  private getATR(symbol: string): number {
-    const atrMap: Record<string, number> = {
-      'EURUSD': 0.0045, 'GBPUSD': 0.0085, 'USDJPY': 0.65,
-      'USDCHF': 0.0040, 'AUDUSD': 0.0055
-    };
-    return atrMap[symbol] || 0.0050;
   }
 }
 

@@ -1,4 +1,3 @@
-
 export interface SignalTypeAnalysis {
   signalType: 'continuation' | 'reversal' | 'breakout' | 'retracement';
   confidence: number;
@@ -14,7 +13,8 @@ export interface ConfidenceWeights {
   session_timing: number;
 }
 
-// Import the new statistical confidence engine
+// Import the new precision engines
+import { PrecisionSignalEngine } from './enhanced/PrecisionSignalEngine';
 import { StatisticalConfidenceEngine, type ConfidenceBreakdown } from './enhanced/StatisticalConfidenceEngine';
 
 class ConfidenceEngine {
@@ -54,14 +54,38 @@ class ConfidenceEngine {
     return { signalType, confidence, reasoning };
   }
   
-  // 🔑 NEW: Use Statistical Confidence Engine instead of old method
-  calculateOptimizedConfidence(signal: any, signalTypeAnalysis: SignalTypeAnalysis): number {
+  // 🔑 NEW: Use Precision Signal Engine for proper signal validation
+  async calculateOptimizedConfidence(signal: any, signalTypeAnalysis: SignalTypeAnalysis): Promise<number> {
+    const { symbol } = signal;
+    
+    console.log(`🎯 USING PRECISION ENGINE for ${symbol} confidence calculation...`);
+    
+    try {
+      // Generate precision signal which includes proper confidence calculation
+      const precisionSignal = await PrecisionSignalEngine.generatePrecisionSignal(symbol || 'EURUSD');
+      
+      if (precisionSignal) {
+        console.log(`✅ PRECISION CONFIDENCE: ${symbol} = ${precisionSignal.confidence}% (Grade: ${precisionSignal.signalGrade})`);
+        return precisionSignal.confidence;
+      } else {
+        console.log(`❌ PRECISION ENGINE REJECTED: ${symbol} - using fallback`);
+        // Fallback to statistical engine only if precision engine rejects
+        return this.calculateFallbackConfidence(signal, signalTypeAnalysis);
+      }
+    } catch (error) {
+      console.error(`❌ Precision engine error for ${symbol}:`, error);
+      return this.calculateFallbackConfidence(signal, signalTypeAnalysis);
+    }
+  }
+  
+  // 🔑 Fallback confidence calculation (only used if precision engine fails)
+  private calculateFallbackConfidence(signal: any, signalTypeAnalysis: SignalTypeAnalysis): number {
     const { symbol, filtersPassed } = signal;
     
     // Get current market conditions
     const marketConditions = StatisticalConfidenceEngine.getCurrentMarketConditions();
     
-    // Calculate statistical confidence using the new engine
+    // Calculate statistical confidence using the statistical engine
     const confidenceBreakdown = StatisticalConfidenceEngine.calculateStatisticalConfidence(
       symbol || 'EURUSD',
       filtersPassed || [],
@@ -74,7 +98,7 @@ class ConfidenceEngine {
       confidenceBreakdown.finalConfidence
     );
     
-    console.log(`🔧 FIXED CONFIDENCE ENGINE: ${symbol} = ${finalConfidence}% (was potentially bugged)`);
+    console.log(`🔧 FALLBACK CONFIDENCE: ${symbol} = ${finalConfidence}% (statistical engine)`);
     
     return finalConfidence;
   }
