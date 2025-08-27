@@ -14,7 +14,7 @@ export interface ConfidenceWeights {
 }
 
 // Import the new precision engines
-import { PrecisionSignalEngine } from './enhanced/PrecisionSignalEngine';
+import { precisionSignalEngine } from './enhanced/PrecisionSignalEngine';
 import { StatisticalConfidenceEngine, type ConfidenceBreakdown } from './enhanced/StatisticalConfidenceEngine';
 
 class ConfidenceEngine {
@@ -62,7 +62,7 @@ class ConfidenceEngine {
     
     try {
       // Generate precision signal which includes proper confidence calculation
-      const precisionSignal = await PrecisionSignalEngine.generatePrecisionSignal(symbol || 'EURUSD');
+      const precisionSignal = await precisionSignalEngine.generatePrecisionSignal(symbol || 'EURUSD');
       
       if (precisionSignal) {
         console.log(`✅ PRECISION CONFIDENCE: ${symbol} = ${precisionSignal.confidence}% (Grade: ${precisionSignal.signalGrade})`);

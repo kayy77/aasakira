@@ -43,8 +43,8 @@ export interface SignalDNA {
 }
 
 // Import the new precision engines
-import { PrecisionSignalEngine } from './enhanced/PrecisionSignalEngine';
-import { UltraSignalEngine } from './enhanced/UltraSignalEngine';
+import { precisionSignalEngine } from './enhanced/PrecisionSignalEngine';
+import { ultraSignalEngine } from './enhanced/UltraSignalEngine';
 
 class MultiIntelligenceCore {
   private intelligenceModules: IntelligenceModule[] = [
@@ -104,7 +104,7 @@ class MultiIntelligenceCore {
     
     try {
       // Use Ultra Signal Engine for comprehensive multi-scan analysis
-      const ultraResult = await UltraSignalEngine.generateUltraSignal();
+      const ultraResult = await ultraSignalEngine.generateUltraSignal();
       
       if (!ultraResult.finalSignal) {
         console.log(`❌ ${pair} ULTRA ENGINE REJECTED:`, ultraResult.rejectionReasons.join(', '));
@@ -169,7 +169,7 @@ class MultiIntelligenceCore {
       // Fallback to precision engine only
       try {
         console.log(`🔄 Falling back to Precision Engine for ${pair}...`);
-        const precisionSignal = await PrecisionSignalEngine.generatePrecisionSignal(pair);
+        const precisionSignal = await precisionSignalEngine.generatePrecisionSignal(pair);
         
         if (!precisionSignal) {
           console.log(`❌ ${pair} PRECISION ENGINE ALSO REJECTED`);

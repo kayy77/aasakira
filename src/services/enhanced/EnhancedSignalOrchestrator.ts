@@ -1,7 +1,7 @@
 // Enhanced Signal Orchestrator - Integrates all 4 fixes
 // This is the main orchestrator that combines all improvements
 
-import { PrecisionSignalEngine, PrecisionSignal } from './PrecisionSignalEngine';
+import { precisionSignalEngine, PrecisionSignal } from './PrecisionSignalEngine';
 import { LiquidityPoolAnalyzer, LiquidityAnalysis } from './LiquidityPoolAnalyzer';
 import { MarketSpecificAdjustments } from './MarketSpecificAdjustments';
 import { BulletproofSignalValidator, ValidationInput, ValidationResult } from '../bulletproofSignalValidator';
@@ -58,7 +58,7 @@ export class EnhancedSignalOrchestrator {
       console.log(`🎯 Selected instrument: ${targetInstrument} (optimized for ${currentSession} session)`);
       
       // 🔑 STEP 3: Generate precision signal with all fixes
-      const precisionSignal = await PrecisionSignalEngine.generatePrecisionSignal(targetInstrument);
+      const precisionSignal = await precisionSignalEngine.generatePrecisionSignal(targetInstrument);
       
       if (!precisionSignal) {
         rejectionReasons.push(`Failed to generate precision signal for ${targetInstrument}`);
@@ -83,7 +83,7 @@ export class EnhancedSignalOrchestrator {
         precisionSignal.symbol,
         precisionSignal.entry,
         precisionSignal.stopLoss,
-        precisionSignal.partialTPs.level2.target
+        precisionSignal.takeProfit2.price
       );
       
       if (!marketAdjustments.shouldTrade) {
@@ -95,13 +95,11 @@ export class EnhancedSignalOrchestrator {
       const enhancedSignal: PrecisionSignal = {
         ...precisionSignal,
         stopLoss: marketAdjustments.adjustedSL,
-        partialTPs: {
-          ...precisionSignal.partialTPs,
-          level2: {
-            ...precisionSignal.partialTPs.level2,
-            target: marketAdjustments.adjustedTP
-          }
-        },
+        partialTPs: [
+          precisionSignal.takeProfit1,
+          { ...precisionSignal.takeProfit2, price: marketAdjustments.adjustedTP },
+          precisionSignal.runner
+        ],
         confidenceLevel: Math.min(100, precisionSignal.confidenceLevel + marketAdjustments.confidenceAdjustment)
       };
       
@@ -110,7 +108,7 @@ export class EnhancedSignalOrchestrator {
         pair: enhancedSignal.symbol,
         entry: enhancedSignal.entry,
         stopLoss: enhancedSignal.stopLoss,
-        takeProfit: enhancedSignal.partialTPs.level1.target, // Validate against first TP
+        takeProfit: precisionSignal.takeProfit1.price, // Validate against first TP
         tradeType: enhancedSignal.direction,
         confidence: enhancedSignal.confidenceLevel,
         timeframe: '15M',
@@ -132,7 +130,7 @@ export class EnhancedSignalOrchestrator {
       console.log(`   📈 ${enhancedSignal.symbol} ${enhancedSignal.direction} @ ${enhancedSignal.entry}`);
       console.log(`   🎯 Confluence: ${enhancedSignal.confluenceScore}/8 | Quality: ${enhancedSignal.metadata.qualityGrade}`);
       console.log(`   🛡️ Risk: ${validationResult.riskLevel} | Confidence: ${enhancedSignal.confidenceLevel}%`);
-      console.log(`   💰 Partial TPs: ${enhancedSignal.partialTPs.level1.target} (60%) | ${enhancedSignal.partialTPs.level2.target} (30%) | ${enhancedSignal.partialTPs.level3?.target} (10%)`);
+      console.log(`   💰 Partial TPs: ${enhancedSignal.takeProfit1.price} (50%) | ${enhancedSignal.takeProfit2.price} (30%) | ${enhancedSignal.runner.price} (20%)`);
       
       return {
         signal: enhancedSignal,
@@ -236,7 +234,7 @@ export class EnhancedSignalOrchestrator {
     const currentSession = this.getCurrentSession();
     
     // Force generate signal for specific instrument
-    const precisionSignal = await PrecisionSignalEngine.generatePrecisionSignal(symbol);
+    const precisionSignal = await precisionSignalEngine.generatePrecisionSignal(symbol);
     
     if (!precisionSignal) {
       return {

@@ -2,7 +2,7 @@
 // 🚨 ULTRA SIGNAL ENGINE - Zero Carry-Over, Multi-Scan Consensus, Price Truth Validation
 // Fixes: Memory reset, Price accuracy gates, Risk filtering, Multi-scan consensus, Sanity checks
 
-import { PrecisionSignalEngine, type PrecisionSignal } from './PrecisionSignalEngine';
+import { precisionSignalEngine, type PrecisionSignal } from './PrecisionSignalEngine';
 import { StatisticalConfidenceEngine } from './StatisticalConfidenceEngine';
 import { RiskManagementEngine } from './RiskManagementEngine';
 import { SignalSpamPrevention } from './SignalSpamPrevention';
@@ -165,7 +165,7 @@ class UltraSignalEngine {
     console.log(`🔍 Executing independent scan ${scanId} for ${symbol}...`);
     
     // Use PrecisionSignalEngine for deep analysis
-    const signal = await PrecisionSignalEngine.generatePrecisionSignal(symbol);
+    const signal = await precisionSignalEngine.generatePrecisionSignal(symbol);
     
     return {
       scanId,
