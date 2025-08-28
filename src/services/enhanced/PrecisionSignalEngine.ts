@@ -28,11 +28,11 @@ export interface ConfluenceAnalysis {
     smcStructure: { score: number; weight: 40; details: string };
     liquidityAnalysis: { score: number; weight: 25; details: string };
     orderBlocks: { score: number; weight: 20; details: string };
-    fvgAlignment: { score: number; weight: 15; details: string };
-    volumeConfirmation: { score: number; weight: 10; details: string };
+    fvgAlignment: { score: number; weight: 10; details: string };
+    volumeConfirmation: { score: number; weight: 5; details: string };
     momentum: { score: number; weight: 8; details: string };
   };
-  minimumThreshold: 75; // Must score 75+ to proceed
+  minimumThreshold: 80; // Must score 80+ to proceed
   passed: boolean;
 }
 
@@ -119,18 +119,39 @@ class PrecisionSignalEngine {
         return null;
       }
       
-      // STEP 2: Multi-Timeframe Structure Analysis
+      // STEP 2: HTF Bias Check (CRITICAL: Daily + H4 must agree)
       const timeframeAnalysis = await this.performMultiTimeframeAnalysis(symbol);
-      const alignment = this.validateTimeframeAlignment(timeframeAnalysis);
-      if (!alignment.sufficient) {
-        console.log(`❌ ${symbol} REJECTED: Insufficient timeframe alignment`);
+      const htfBias = this.validateHTFBias(timeframeAnalysis);
+      if (!htfBias.biasAligned) {
+        console.log(`❌ ${symbol} HTF BIAS CONFLICT: ${htfBias.conflictReason}`);
         return null;
       }
       
-      // STEP 3: Deep Confluence Analysis (weighted scoring)
-      const confluenceAnalysis = await this.performConfluenceAnalysis(symbol, timeframeAnalysis);
-      if (!confluenceAnalysis.passed) {
-        console.log(`❌ ${symbol} REJECTED: Confluence score ${confluenceAnalysis.totalScore} < 75 minimum`);
+      // STEP 3: Liquidity Event Validation (Must have sweep first)
+      const liquidityEvent = await this.validateLiquidityEvent(symbol, timeframeAnalysis);
+      if (!liquidityEvent.sweptRecently) {
+        console.log(`❌ ${symbol} NO LIQUIDITY SWEEP: ${liquidityEvent.reason}`);
+        return null;
+      }
+      
+      // STEP 4: Displacement Confirmation (Wait for impulsive break)
+      const displacement = await this.confirmDisplacement(symbol, timeframeAnalysis);
+      if (!displacement.confirmed) {
+        console.log(`❌ ${symbol} NO DISPLACEMENT: ${displacement.reason}`);
+        return null;
+      }
+      
+      // STEP 5: Kill Zone / Session Check
+      const sessionCheck = this.validateTradingSession();
+      if (!sessionCheck.inKillZone) {
+        console.log(`❌ ${symbol} OUTSIDE KILL ZONE: ${sessionCheck.reason}`);
+        return null;
+      }
+      
+      // STEP 6: Weighted Confluence Analysis (Must score ≥80%)
+      const confluenceAnalysis = await this.performWeightedConfluenceAnalysis(symbol, timeframeAnalysis, liquidityEvent, displacement);
+      if (confluenceAnalysis.totalScore < 80) {
+        console.log(`❌ ${symbol} WEAK CONFLUENCE: ${confluenceAnalysis.totalScore}% < 80% required`);
         return null;
       }
       
@@ -149,8 +170,8 @@ class PrecisionSignalEngine {
         return null;
       }
       
-      // STEP 5: Spam Prevention Check
-      const direction = alignment.dominantBias;
+      // STEP 7: Spam Prevention Check
+      const direction = htfBias.dailyBias === 'BULLISH' ? 'BUY' : 'SELL';
       const currentPrice = await this.getCurrentPrice(symbol);
       const spamCheck = SignalSpamPrevention.checkSignalSpam(symbol, direction, currentPrice, confidenceBreakdown.finalConfidence);
       if (!spamCheck.allowed) {
@@ -242,34 +263,57 @@ class PrecisionSignalEngine {
     }
   }
   
-  // 🌍 Market Context Analysis
+  // 🌍 Enhanced Market Context Analysis
   private async analyzeMarketContext(symbol: string): Promise<MarketContext> {
     const newsCheck = NewsHolidayFilter.checkMarketConditions(symbol);
+    const sessionCheck = this.validateTradingSession();
     const currentHour = new Date().getUTCHours();
     
-    // Session Detection
+    // Session Detection with Kill Zone Awareness
     let session: MarketContext['session'];
     let sessionQuality: MarketContext['sessionQuality'];
     
-    if (currentHour >= 13 && currentHour <= 16) {
-      session = 'OVERLAP';
-      sessionQuality = 'OPTIMAL';
-    } else if (currentHour >= 8 && currentHour <= 17) {
-      session = 'LONDON';
-      sessionQuality = 'ACCEPTABLE';
-    } else if (currentHour >= 13 && currentHour <= 22) {
-      session = 'NY';
-      sessionQuality = 'ACCEPTABLE';
+    if (sessionCheck.inKillZone) {
+      if (sessionCheck.currentSession === 'LONDON_KZ') {
+        session = 'LONDON';
+        sessionQuality = 'OPTIMAL';
+      } else if (sessionCheck.currentSession === 'NY_KZ') {
+        session = 'NY';
+        sessionQuality = 'OPTIMAL';
+      } else {
+        session = 'OVERLAP';
+        sessionQuality = 'OPTIMAL';
+      }
     } else {
-      session = 'ASIAN';
-      sessionQuality = 'POOR';
+      // Outside kill zones - downgrade quality
+      if (currentHour >= 8 && currentHour <= 17) {
+        session = 'LONDON';
+        sessionQuality = 'POOR'; // Outside kill zone
+      } else if (currentHour >= 13 && currentHour <= 22) {
+        session = 'NY';
+        sessionQuality = 'POOR'; // Outside kill zone
+      } else {
+        session = 'ASIAN';
+        sessionQuality = 'AVOID'; // Dead zone
+      }
     }
     
-    // News Risk Assessment
+    // Enhanced News Risk Assessment
     const newsRisk = (newsCheck as any).newsRisk || 'NONE';
     if (newsRisk === 'HIGH' || newsRisk === 'EXTREME') {
       sessionQuality = 'AVOID';
     }
+    
+    // Bank Holiday Check
+    const isHoliday = await this.checkBankHolidays(new Date());
+    if (isHoliday) {
+      sessionQuality = 'AVOID';
+    }
+    
+    const blockingReasons = [];
+    if (!newsCheck.tradingAllowed) blockingReasons.push(newsCheck.reason || 'News risk too high');
+    if (!sessionCheck.inKillZone) blockingReasons.push('Outside trading kill zones');
+    if (isHoliday) blockingReasons.push('Bank holiday - reduced liquidity');
     
     return {
       session,
@@ -277,9 +321,26 @@ class PrecisionSignalEngine {
       newsRisk,
       volatility: 'NORMAL', // Would be calculated from ATR in production
       spread: 'NORMAL', // Would be calculated from live spreads
-      tradingAllowed: newsCheck.tradingAllowed && sessionQuality !== 'AVOID',
-      blockingReasons: newsCheck.tradingAllowed ? [] : [newsCheck.reason || 'Market conditions unfavorable']
+      tradingAllowed: newsCheck.tradingAllowed && sessionCheck.inKillZone && !isHoliday,
+      blockingReasons
     };
+  }
+  
+  private async checkBankHolidays(date: Date): Promise<boolean> {
+    const dayOfMonth = date.getUTCDate();
+    const month = date.getUTCMonth();
+    const dayOfWeek = date.getUTCDay();
+    
+    // Weekend check
+    if (dayOfWeek === 0 || dayOfWeek === 6) return true;
+    
+    // Major holidays (simplified)
+    const isChristmas = month === 11 && (dayOfMonth === 24 || dayOfMonth === 25 || dayOfMonth === 26);
+    const isNewYear = month === 0 && (dayOfMonth === 1 || dayOfMonth === 2);
+    const isEaster = Math.random() < 0.02; // Simulate occasional Easter Monday
+    const isThanksgiving = month === 10 && dayOfWeek === 4 && dayOfMonth >= 22 && dayOfMonth <= 28;
+    
+    return isChristmas || isNewYear || isEaster || isThanksgiving;
   }
   
   // 📊 Multi-Timeframe Structure Analysis
@@ -326,51 +387,219 @@ class PrecisionSignalEngine {
     };
   }
   
-  // ✅ Timeframe Alignment Validation
-  private validateTimeframeAlignment(analyses: TimeframeAnalysis[]): { sufficient: boolean; dominantBias: 'BUY' | 'SELL'; strength: number } {
-    const bullishCount = analyses.filter(a => a.bias === 'BULLISH').length;
-    const bearishCount = analyses.filter(a => a.bias === 'BEARISH').length;
+  // 🚨 HTF Bias Validation - Daily + H4 MUST agree
+  private validateHTFBias(analyses: TimeframeAnalysis[]): {
+    biasAligned: boolean;
+    conflictReason?: string;
+    dailyBias: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+    h4Bias: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+    agreement: number;
+  } {
+    const daily = analyses.find(a => a.timeframe === 'D1');
+    const h4 = analyses.find(a => a.timeframe === '4H');
     
-    // Need at least 3/4 timeframes to agree
-    const sufficient = Math.max(bullishCount, bearishCount) >= 3;
-    const dominantBias = bullishCount > bearishCount ? 'BUY' : 'SELL';
-    const strength = (Math.max(bullishCount, bearishCount) / analyses.length) * 100;
+    if (!daily || !h4) {
+      return {
+        biasAligned: false,
+        conflictReason: 'Missing Daily or H4 analysis',
+        dailyBias: 'NEUTRAL',
+        h4Bias: 'NEUTRAL',
+        agreement: 0
+      };
+    }
     
-    return { sufficient, dominantBias, strength };
-  }
-  
-  // 🎯 Deep Confluence Analysis (Weighted Scoring)
-  private async performConfluenceAnalysis(symbol: string, timeframeAnalysis: TimeframeAnalysis[]): Promise<ConfluenceAnalysis> {
-    // Calculate weighted confluence scores
-    const smcStructure = this.assessSMCStructure(timeframeAnalysis);
-    const liquidityAnalysis = this.assessLiquidityConditions(timeframeAnalysis);
-    const orderBlocks = this.assessOrderBlocks(timeframeAnalysis);
-    const fvgAlignment = this.assessFVGAlignment(timeframeAnalysis);
-    const volumeConfirmation = this.assessVolumeConfirmation(symbol);
-    const momentum = this.assessMomentum(timeframeAnalysis);
+    // CRITICAL: Daily and H4 must agree AND show strong bias
+    const biasAligned = daily.bias === h4.bias && 
+                       daily.bias !== 'NEUTRAL' && 
+                       daily.strength >= 70 && 
+                       h4.strength >= 70;
     
-    const totalScore = (
-      (smcStructure.score * 40 / 100) +
-      (liquidityAnalysis.score * 25 / 100) +
-      (orderBlocks.score * 20 / 100) +
-      (fvgAlignment.score * 15 / 100) +
-      (volumeConfirmation.score * 10 / 100) +
-      (momentum.score * 8 / 100)
-    );
+    const agreement = biasAligned ? 100 : 0;
     
     return {
-      totalScore: Math.round(totalScore),
-      breakdown: {
-        smcStructure: { ...smcStructure, weight: 40 },
-        liquidityAnalysis: { ...liquidityAnalysis, weight: 25 },
-        orderBlocks: { ...orderBlocks, weight: 20 },
-        fvgAlignment: { ...fvgAlignment, weight: 15 },
-        volumeConfirmation: { ...volumeConfirmation, weight: 10 },
-        momentum: { ...momentum, weight: 8 }
-      },
-      minimumThreshold: 75,
-      passed: totalScore >= 75
+      biasAligned,
+      conflictReason: biasAligned ? undefined : `Daily: ${daily.bias} (${daily.strength}%), H4: ${h4.bias} (${h4.strength}%) - No clear alignment`,
+      dailyBias: daily.bias,
+      h4Bias: h4.bias,
+      agreement
     };
+  }
+
+  // 💧 Liquidity Event Validation - Must have recent sweep
+  private async validateLiquidityEvent(symbol: string, analyses: TimeframeAnalysis[]): Promise<{
+    sweptRecently: boolean;
+    reason?: string;
+    sweepType: 'HIGHS' | 'LOWS' | 'BOTH' | 'NONE';
+    timeSinceSweep: number;
+    confirmedTimeframes: number;
+  }> {
+    // Count how many timeframes show liquidity sweeps
+    const sweepingTimeframes = analyses.filter(a => a.structure.liquiditySweep);
+    const confirmedTimeframes = sweepingTimeframes.length;
+    
+    // Must have sweeps confirmed on at least 2 timeframes (including HTF)
+    const htfSweeps = sweepingTimeframes.filter(a => a.timeframe === 'D1' || a.timeframe === '4H').length;
+    const sweptRecently = confirmedTimeframes >= 2 && htfSweeps >= 1;
+    
+    // Simulate sweep type and timing
+    const sweepTypes = ['HIGHS', 'LOWS', 'BOTH', 'NONE'];
+    const sweepType = sweptRecently ? 
+      (sweepTypes[Math.floor(Math.random() * 3)] as 'HIGHS' | 'LOWS' | 'BOTH') : 'NONE';
+    const timeSinceSweep = sweptRecently ? Math.random() * 45 : 999; // 0-45 minutes if swept
+    
+    return {
+      sweptRecently,
+      reason: sweptRecently ? undefined : 
+        htfSweeps === 0 ? 'No HTF liquidity sweeps detected' : 
+        `Only ${confirmedTimeframes}/4 timeframes confirm sweeps (need 2+ with HTF)`,
+      sweepType,
+      timeSinceSweep,
+      confirmedTimeframes
+    };
+  }
+
+  // ⚡ Displacement Confirmation - Wait for impulsive break
+  private async confirmDisplacement(symbol: string, analyses: TimeframeAnalysis[]): Promise<{
+    confirmed: boolean;
+    reason?: string;
+    displacementStrength: number;
+    structureBreak: boolean;
+    timeframesShowingDisplacement: number;
+  }> {
+    // Look for BOS (Break of Structure) across multiple timeframes
+    const bosTimeframes = analyses.filter(a => a.structure.bos);
+    const timeframesShowingDisplacement = bosTimeframes.length;
+    
+    // Calculate average strength of displacing moves
+    const avgDisplacementStrength = bosTimeframes.length > 0 ? 
+      bosTimeframes.reduce((sum, a) => sum + a.strength, 0) / bosTimeframes.length : 0;
+    
+    // Need strong displacement on at least 2 timeframes including HTF
+    const htfDisplacement = bosTimeframes.filter(a => a.timeframe === 'D1' || a.timeframe === '4H').length > 0;
+    const structureBreak = timeframesShowingDisplacement >= 2 && htfDisplacement;
+    const confirmed = structureBreak && avgDisplacementStrength >= 75;
+    
+    return {
+      confirmed,
+      reason: confirmed ? undefined : 
+        !htfDisplacement ? 'No HTF structural break detected' :
+        timeframesShowingDisplacement < 2 ? `Only ${timeframesShowingDisplacement} timeframes show BOS (need 2+)` :
+        `Displacement too weak: ${avgDisplacementStrength.toFixed(1)}% < 75%`,
+      displacementStrength: avgDisplacementStrength,
+      structureBreak,
+      timeframesShowingDisplacement
+    };
+  }
+
+  // ⏰ Kill Zone / Session Validation
+  private validateTradingSession(): {
+    inKillZone: boolean;
+    reason?: string;
+    currentSession: string;
+    killZoneActive: boolean;
+  } {
+    const now = new Date();
+    const utcHour = now.getUTCHours();
+    const utcMinute = now.getUTCMinutes();
+    const timeInMinutes = utcHour * 60 + utcMinute;
+    
+    // London Kill Zone: 7-10am GMT (420-600 minutes)
+    const londonStart = 7 * 60; // 420 minutes
+    const londonEnd = 10 * 60;   // 600 minutes
+    
+    // NY Kill Zone: 1-3pm GMT (780-900 minutes) 
+    const nyStart = 13 * 60;     // 780 minutes  
+    const nyEnd = 15 * 60;       // 900 minutes
+    
+    const inLondonKZ = timeInMinutes >= londonStart && timeInMinutes <= londonEnd;
+    const inNYKZ = timeInMinutes >= nyStart && timeInMinutes <= nyEnd;
+    const inKillZone = inLondonKZ || inNYKZ;
+    
+    let currentSession = 'DEAD_ZONE';
+    if (inLondonKZ) currentSession = 'LONDON_KZ';
+    if (inNYKZ) currentSession = 'NY_KZ';
+    
+    return {
+      inKillZone,
+      reason: inKillZone ? undefined : `Outside kill zones. Current: ${utcHour}:${utcMinute.toString().padStart(2, '0')} GMT (London: 7-10am, NY: 1-3pm)`,
+      currentSession,
+      killZoneActive: inKillZone
+    };
+  }
+  
+  // 🎯 Weighted Confluence Analysis - NEW SCORING SYSTEM
+  private async performWeightedConfluenceAnalysis(
+    symbol: string, 
+    timeframeAnalysis: TimeframeAnalysis[], 
+    liquidityEvent: any, 
+    displacement: any
+  ): Promise<ConfluenceAnalysis> {
+    
+    // NEW WEIGHTED SYSTEM: OB alignment (40%), Liquidity sweep (25%), Displacement (20%), FVG fill (10%), Volume/momentum (5%)
+    
+    // 1. Order Block Alignment (Weight: 40%)
+    const obAlignment = this.assessOrderBlockAlignment(timeframeAnalysis);
+    const obScore = obAlignment.score;
+    const obContribution = (obScore / 100) * 40;
+    
+    // 2. Liquidity Sweep (Weight: 25%)
+    const sweepScore = liquidityEvent.sweptRecently ? 
+      (80 + (liquidityEvent.confirmedTimeframes * 5)) : // 80-100% if swept recently
+      Math.max(0, 50 - ((Date.now() - liquidityEvent.timeSinceSweep) / 1000 / 60)); // Decay over time
+    const sweepContribution = (Math.min(100, sweepScore) / 100) * 25;
+    
+    // 3. Displacement (Weight: 20%)  
+    const dispScore = displacement.confirmed ? 
+      Math.min(100, displacement.displacementStrength + 10) : // Boost confirmed displacement
+      Math.max(0, displacement.displacementStrength - 20); // Penalize unconfirmed
+    const dispContribution = (dispScore / 100) * 20;
+    
+    // 4. FVG Fill (Weight: 10%)
+    const fvgAlignment = this.assessFVGAlignment(timeframeAnalysis);
+    const fvgContribution = (fvgAlignment.score / 100) * 10;
+    
+    // 5. Volume/Momentum (Weight: 5%)
+    const momentum = this.assessMomentum(timeframeAnalysis);
+    const momentumContribution = (momentum.score / 100) * 5;
+    
+    const totalScore = obContribution + sweepContribution + dispContribution + fvgContribution + momentumContribution;
+    
+    return {
+      totalScore: Math.round(totalScore * 10) / 10,
+      breakdown: {
+        smcStructure: { score: obScore, weight: 40, details: obAlignment.details },
+        liquidityAnalysis: { score: Math.round(sweepScore), weight: 25, details: `Liquidity sweep: ${liquidityEvent.sweptRecently ? 'Recent' : 'None'} (${liquidityEvent.confirmedTimeframes} TFs)` },
+        orderBlocks: { score: dispScore, weight: 20, details: `Displacement: ${displacement.confirmed ? 'Confirmed' : 'Weak'} (${displacement.timeframesShowingDisplacement} TFs)` },
+        fvgAlignment: { score: fvgAlignment.score, weight: 10, details: fvgAlignment.details },
+        volumeConfirmation: { score: momentum.score, weight: 5, details: momentum.details },
+        momentum: { score: momentum.score, weight: 8, details: momentum.details }
+      },
+      minimumThreshold: 80, // Raised to 80% as requested
+      passed: totalScore >= 80
+    };
+  }
+  
+  // Enhanced Order Block Alignment Assessment
+  private assessOrderBlockAlignment(analyses: TimeframeAnalysis[]): { score: number; details: string } {
+    const obTimeframes = analyses.filter(a => a.structure.orderBlock);
+    const htfOBs = obTimeframes.filter(a => a.timeframe === 'D1' || a.timeframe === '4H').length;
+    const ltfOBs = obTimeframes.filter(a => a.timeframe === '1H' || a.timeframe === '15M').length;
+    
+    let score = 0;
+    
+    // HTF order blocks are crucial
+    if (htfOBs >= 2) score += 60; // Both Daily and H4
+    else if (htfOBs >= 1) score += 35; // One HTF
+    
+    // LTF confirmation adds value
+    if (ltfOBs >= 2) score += 30;
+    else if (ltfOBs >= 1) score += 15;
+    
+    // Bonus for full alignment
+    if (obTimeframes.length >= 3) score += 10;
+    
+    const details = `OB alignment: ${obTimeframes.length}/4 TFs (${htfOBs} HTF, ${ltfOBs} LTF)`;
+    return { score: Math.min(100, score), details };
   }
   
   // Assessment methods for each confluence factor
