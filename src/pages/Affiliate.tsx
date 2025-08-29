@@ -21,100 +21,111 @@ const Affiliate = () => {
               Make Money in Your Sleep
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
-              Join our affiliate program and earn commissions by sharing our trading signals with your network
+              Get the best broker deals or use our services for your business
             </p>
-            <Button 
-              size="lg" 
-              className="bg-primary hover:bg-primary/90"
-              onClick={() => window.open('https://aff.fxlvls.com/registration?refAff=10812', '_blank')}
-            >
-              <ExternalLink className="mr-2 h-5 w-5" />
-              Start Earning Now
-            </Button>
           </div>
 
-          {/* Benefits Grid */}
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
-            <Card className="border-primary/20 bg-card/50 backdrop-blur">
-              <CardHeader className="text-center">
-                <DollarSign className="h-12 w-12 mx-auto text-primary mb-4" />
-                <CardTitle>High Commissions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-center">
-                  Earn competitive commissions for every successful referral you bring to our platform
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-primary/20 bg-card/50 backdrop-blur">
-              <CardHeader className="text-center">
-                <Users className="h-12 w-12 mx-auto text-primary mb-4" />
-                <CardTitle>Passive Income</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-center">
-                  Build recurring revenue streams that work for you around the clock
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-primary/20 bg-card/50 backdrop-blur">
-              <CardHeader className="text-center">
-                <TrendingUp className="h-12 w-12 mx-auto text-primary mb-4" />
-                <CardTitle>Growing Market</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-center">
-                  Tap into the expanding forex and trading education market
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* How It Works */}
+          {/* Broker Deal Section */}
           <Card className="mb-12 border-primary/20 bg-card/50 backdrop-blur">
             <CardHeader>
-              <CardTitle className="text-2xl">How It Works</CardTitle>
-              <CardDescription>Simple steps to start earning</CardDescription>
+              <CardTitle className="text-3xl text-center mb-4">Get Your Own Broker Deal</CardTitle>
+              <CardDescription className="text-center text-lg">
+                Get the best broker deal in the market. Sign up through this link to apply and we will get you a deal - no one else is beating our deals.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <div className="flex items-start space-x-4">
-                  <div className="bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center font-bold">
-                    1
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Sign Up</h3>
-                    <p className="text-muted-foreground">
-                      Register for our affiliate program using the link below
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start space-x-4">
-                  <div className="bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center font-bold">
-                    2
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Get Approved</h3>
-                    <p className="text-muted-foreground">
-                      Contact us to get your affiliate account activated and start promoting
-                    </p>
-                  </div>
-                </div>
+              <div className="text-center mb-8">
+                <Button 
+                  size="lg" 
+                  className="bg-primary hover:bg-primary/90"
+                  onClick={() => window.open('https://aff.fxlvls.com/registration?refAff=10812', '_blank')}
+                >
+                  <ExternalLink className="mr-2 h-5 w-5" />
+                  Apply for Broker Deal
+                </Button>
+              </div>
 
-                <div className="flex items-start space-x-4">
-                  <div className="bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center font-bold">
-                    3
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Start Earning</h3>
-                    <p className="text-muted-foreground">
-                      Share your unique links and earn commissions on every conversion
-                    </p>
-                  </div>
+              <div className="mb-8">
+                <h3 className="text-2xl font-semibold mb-6 text-center">Why This Is Good For You?</h3>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Card className="border-primary/20 bg-background/50">
+                    <CardHeader className="text-center">
+                      <Users className="h-10 w-10 mx-auto text-primary mb-3" />
+                      <CardTitle className="text-lg">Have a Community of Traders?</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground text-center text-sm">
+                        Monetize your trading community with the best broker deals available
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-primary/20 bg-background/50">
+                    <CardHeader className="text-center">
+                      <TrendingUp className="h-10 w-10 mx-auto text-primary mb-3" />
+                      <CardTitle className="text-lg">Have a Big Following?</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground text-center text-sm">
+                        Turn your influence into consistent revenue streams
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-primary/20 bg-background/50">
+                    <CardHeader className="text-center">
+                      <DollarSign className="h-10 w-10 mx-auto text-primary mb-3" />
+                      <CardTitle className="text-lg">Looking to Get Into Affiliate Game?</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground text-center text-sm">
+                        Start your affiliate journey with industry-leading commissions
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-primary/20 bg-background/50">
+                    <CardHeader className="text-center">
+                      <TrendingUp className="h-10 w-10 mx-auto text-primary mb-3" />
+                      <CardTitle className="text-lg">Looking to Make Extra Cash?</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground text-center text-sm">
+                        Generate passive income that works while you sleep
+                      </p>
+                    </CardContent>
+                  </Card>
                 </div>
+              </div>
+
+              <div className="bg-muted/30 rounded-lg p-6 text-center">
+                <h4 className="font-semibold text-lg mb-3">How It Works</h4>
+                <p className="text-muted-foreground">
+                  If you answered yes to any of the above, then a broker deal is what you need. 
+                  <strong className="text-foreground"> You get paid for every person that you bring onto the broker.</strong>
+                </p>
+                <p className="text-muted-foreground mt-3">
+                  And we want your clients to win - you get paid for every single trade they take which equals 
+                  <strong className="text-primary"> passive income.</strong>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Services Section */}
+          <Card className="mb-12 border-primary/20 bg-card/50 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="text-3xl text-center mb-4">Use Our Services for Your Business</CardTitle>
+              <CardDescription className="text-center text-lg">
+                Looking to use our services for your own business or build something similar?
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center">
+                <p className="text-muted-foreground mb-6">
+                  Whether you want to integrate our trading signals into your platform or build a custom solution, 
+                  we're here to help you succeed.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -122,43 +133,36 @@ const Affiliate = () => {
           {/* Contact Section */}
           <Card className="border-primary/20 bg-card/50 backdrop-blur">
             <CardHeader>
-              <CardTitle className="text-2xl">Get Started Today</CardTitle>
-              <CardDescription>Join thousands of affiliates earning with us</CardDescription>
+              <CardTitle className="text-2xl text-center">Get Started Today</CardTitle>
+              <CardDescription className="text-center">
+                Reach out for broker deals or to use our services
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="text-center">
-                <Button 
-                  size="lg" 
-                  className="bg-primary hover:bg-primary/90 mb-6"
-                  onClick={() => window.open('https://aff.fxlvls.com/registration?refAff=10812', '_blank')}
-                >
-                  <ExternalLink className="mr-2 h-5 w-5" />
-                  Register as Affiliate
-                </Button>
-              </div>
-
-              <div className="text-center">
-                <p className="text-muted-foreground mb-4">
-                  After registration, contact us to activate your account:
+                <p className="text-muted-foreground mb-6">
+                  Contact us for any of the 2 options: broker deals or using our services
                 </p>
                 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button 
                     variant="outline" 
+                    size="lg"
                     className="flex items-center"
-                    onClick={() => window.open('mailto:aasakiraltd@gmail.com', '_blank')}
+                    onClick={() => window.open('https://t.me/khaiwh', '_blank')}
                   >
-                    <Mail className="mr-2 h-4 w-4" />
-                    aasakiraltd@gmail.com
+                    <MessageSquare className="mr-2 h-5 w-5" />
+                    @khaiwh on Telegram
                   </Button>
                   
                   <Button 
                     variant="outline" 
+                    size="lg"
                     className="flex items-center"
-                    onClick={() => window.open('https://t.me/khaiwh', '_blank')}
+                    onClick={() => window.open('mailto:aasakiraltd@gmail.com', '_blank')}
                   >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    @khaiwh on Telegram
+                    <Mail className="mr-2 h-5 w-5" />
+                    aasakiraltd@gmail.com
                   </Button>
                 </div>
               </div>
