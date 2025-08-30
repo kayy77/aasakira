@@ -118,7 +118,7 @@ const Hero = () => {
               <Button 
                 size="lg"
                 className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold px-8 py-3 text-lg hover-lift"
-                onClick={() => window.open('https://t.me/aasakirasignals', '_blank')}
+                onClick={() => window.open('https://t.me/aasakirafree', '_blank')}
               >
                 <MessageSquare className="mr-2 w-5 h-5" />
                 Join FREE Telegram
