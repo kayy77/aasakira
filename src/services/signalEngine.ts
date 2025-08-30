@@ -2,7 +2,9 @@
 import { groqService } from './groqService';
 import { geminiService } from './geminiService';
 import { computeAIConsensus, defaultRRBySession, computeEV } from './canonicalConsensus';
+import { fixedSignalEngine, FixedSignalResult } from './fixedSignalEngine';
 
+// Export the existing types for compatibility
 export interface AIVote {
   direction: 'BULLISH' | 'BEARISH';
   confidence: number;
@@ -29,6 +31,11 @@ export interface StrategyValidation {
   strategyWeights: { [key: string]: number };
 }
 
+export interface PenaltyEntry {
+  name: string;
+  amount: number; // percentage points to subtract
+  reason: string;
+}
 
 export interface MACDData {
   macd: number;
@@ -41,12 +48,6 @@ export interface AMDPhase {
   phase: 'ACCUMULATION' | 'MANIPULATION' | 'DISTRIBUTION';
   confidence: number;
   reasoning: string;
-}
-
-export interface PenaltyEntry {
-  name: string;
-  amount: number; // percentage points to subtract
-  reason: string;
 }
 
 export interface SignalResult {

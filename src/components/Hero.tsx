@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowRight, Zap, Target, TrendingUp, Sparkles } from 'lucide-react';
+import { ArrowRight, Zap, Target, TrendingUp, Sparkles, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -102,6 +102,29 @@ const Hero = () => {
               </div>
             );
           })}
+        </div>
+
+        {/* Free Telegram Announcement */}
+        <div className="mt-12 mb-8 animate-fade-in" style={{animationDelay: '0.5s'}}>
+          <div className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-blue-500/30 rounded-2xl p-6 max-w-2xl mx-auto">
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-white mb-3 flex items-center justify-center gap-2">
+                <MessageSquare className="w-6 h-6 text-blue-400" />
+                Join Our FREE Telegram Community
+              </h3>
+              <p className="text-gray-300 mb-4">
+                Get exclusive trading insights, live market updates, and connect with fellow traders
+              </p>
+              <Button 
+                size="lg"
+                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold px-8 py-3 text-lg hover-lift"
+                onClick={() => window.open('https://t.me/aasakirasignals', '_blank')}
+              >
+                <MessageSquare className="mr-2 w-5 h-5" />
+                Join FREE Telegram
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Trust Indicators */}
