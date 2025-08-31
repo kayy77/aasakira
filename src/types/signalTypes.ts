@@ -28,6 +28,10 @@ export interface BaseSignal {
   evidenceScore: number; // 0..100
   setupState: SetupState;
   session: SessionType;
+  reasoning?: string;
+  timeframe?: string;
+  timestamp?: number;
+  status?: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
   meta?: Record<string, unknown>;
 }
 
