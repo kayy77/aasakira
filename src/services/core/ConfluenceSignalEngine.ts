@@ -152,8 +152,8 @@ export class ConfluenceSignalEngine {
     const confluenceFilters = this.runConfluenceFilters(marketData, symbol, session);
     const filtersPassedCount = Object.values(confluenceFilters).filter(f => f.passed).length;
 
-    // EURUSD requires stricter confluence (4/6 filters)
-    const requiredFilters = symbol === 'EURUSD' ? this.EURUSD_MIN_FILTERS : this.MIN_FILTERS_REQUIRED;
+    // EURUSD requires perfect confluence (5/6 filters), others need 4/6
+    const requiredFilters = symbol === 'EURUSD' ? 5 : this.MIN_FILTERS_REQUIRED;
     
     if (filtersPassedCount < requiredFilters) {
       const rejection = `INSUFFICIENT_CONFLUENCE: ${filtersPassedCount}/6 filters passed (${requiredFilters} required for ${symbol})`;
@@ -313,31 +313,29 @@ export class ConfluenceSignalEngine {
         .map(([key, filter]) => `${key}: ${filter.passed ? '✅' : '❌'} (${filter.reason})`)
         .join('\n');
 
-      const prompt = `You are a strict SMC trading analyst. Check if this ${symbol} setup is high probability.
+      const prompt = `STRICT SMC SIGNAL VALIDATOR - REJECT 90% OF TRADES
 
-FILTERS ANALYSIS:
+SYMBOL: ${symbol}
+FILTERS: ${filtersPassedCount}/6 passed
 ${filterDetails}
 
-CONFLUENCE: ${filtersPassedCount}/6 filters passed
+PRICE: ${marketData.currentPrice}
+RSI: ${marketData.rsi}
+VOLUME: ${marketData.volume}x average 
+MTF ALIGNMENT: 15M ${marketData.trend15m} | 1H ${marketData.trend1h}
 
-MARKET CONDITIONS:
-- Entry Price: ${marketData.currentPrice}
-- RSI: ${marketData.rsi} 
-- Volume: ${marketData.volume}x average
-- 15M Trend: ${marketData.trend15m}
-- 1H Trend: ${marketData.trend1h}
+REJECTION CRITERIA (Say NO if ANY are true):
+- Less than 4/6 filters passed
+- RSI not oversold/overbought (30-70 range = NO)
+- No clear institutional liquidity sweep
+- Entry too early (no structure confirmation)
+- Multi-timeframe misalignment
+- Low volume (under 1.5x average)
+- ${symbol === 'EURUSD' ? 'EURUSD requires PERFECT setup (5/6 filters)' : 'Standard confluence required'}
 
-CRITICAL REQUIREMENTS:
-1. Must have higher timeframe structure alignment
-2. Entry must be at optimal liquidity level
-3. No weak/early entries allowed
-4. Must show institutional confluence
+ONLY ANSWER: YES or NO
 
-Does this trade meet ALL confluence requirements AND show high-probability institutional setup?
-
-RESPOND WITH ONLY: YES or NO
-
-If NO, the signal will be blocked. Be strict - only approve obvious, high-conviction setups.`;
+Be extremely strict - only 1 in 10 trades should be YES.`;
 
       const response = await groqService.generateResponse(prompt);
       const cleanResponse = response.trim().toUpperCase();
@@ -450,22 +448,32 @@ If NO, the signal will be blocked. Be strict - only approve obvious, high-convic
    */
   private calculateDynamicTradeStructure(mid: number, direction: 'BUY' | 'SELL', symbol: string, filtersCount: number) {
     const assetClass = RestrictedAssetFilter.getAssetClass(symbol);
-    const pipValue = assetClass === 'INDEX' ? 0.1 : 0.0001;
     
-    // SL buffer based on asset type (1-2 pips for FX, 5-10 pts for indices)
-    const slBuffer = assetClass === 'INDEX' ? (5 + Math.random() * 5) : (1 + Math.random());
+    // Asset-specific pip values
+    let pipValue: number;
+    let slBuffer: number;
+    let baseRisk: number;
+    
+    if (assetClass === 'INDEX') {
+      pipValue = 0.1;  // 0.1 points for indices
+      slBuffer = 8 + Math.random() * 7;  // 8-15 pts buffer
+      baseRisk = filtersCount >= 5 ? 20 : 25; // Tighter stops for indices
+    } else if (assetClass === 'METAL') {
+      pipValue = 0.01;  // $0.01 for gold
+      slBuffer = 2 + Math.random() * 3;  // $2-5 buffer  
+      baseRisk = filtersCount >= 5 ? 8 : 12; // Gold-specific risk
+    } else {
+      pipValue = 0.0001;  // Standard pips for FX
+      slBuffer = 2 + Math.random() * 3;  // 2-5 pips buffer
+      baseRisk = filtersCount >= 5 ? 15 : 20; // FX risk levels
+    }
+    
     const slBufferDistance = slBuffer * pipValue;
+    const riskDistance = (baseRisk + Math.random() * 5) * pipValue + slBufferDistance;
     
-    // Risk distance (outside liquidity grab + buffer)
-    const baseRisk = filtersCount >= 5 ? 15 : filtersCount >= 4 ? 18 : 22;
-    const riskPips = baseRisk + Math.random() * 8;
-    const riskDistance = riskPips * pipValue + slBufferDistance;
-    
-    // TP1 = nearest liquidity (simulated)
-    const tp1Distance = riskDistance * 1.2; // Conservative first target
-    
-    // TP2 = 1:2 R:R extension  
-    const tp2Distance = riskDistance * 2.0;
+    // TP levels based on better R:R
+    const tp1Distance = riskDistance * 1.5; // First target at 1:1.5
+    const tp2Distance = riskDistance * 2.5; // Extended target 1:2.5
     
     if (direction === 'BUY') {
       return {
