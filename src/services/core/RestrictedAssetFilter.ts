@@ -3,45 +3,19 @@
 
 export class RestrictedAssetFilter {
   // ONLY these assets are allowed - everything else blocked
+  // NASDAQ prioritized, others only if NASDAQ has no opportunity
   private static readonly ALLOWED_ASSETS = new Set([
-    // Indices (Primary performers)
-    'NAS100',  // NASDAQ - clean momentum moves
-    'US30',    // Dow Jones - institutional favorite
-    
-    // Metals (High-conviction asset)
-    'XAUUSD',  // Gold - institutional favorite
-    
-    // FX Majors (Liquid but selective) 
-    'EURUSD',  // Most liquid
-    'GBPUSD'   // Volatile but tradeable
+    'NASDAQ'   // Primary focus - NASDAQ only for now
   ]);
 
   // Asset-specific tolerance gates (pips/points)
   private static readonly PRICE_TOLERANCE = {
-    // Indices - tighter tolerance due to higher value per point
-    'NAS100': 0.75,  // 0.75 points max deviation
-    'US30': 1.2,     // 1.2 points max deviation
-    
-    // Metals - tight tolerance for gold
-    'XAUUSD': 0.8,   // 0.8 dollars max deviation
-    
-    // FX Majors - pip-based tolerance
-    'EURUSD': 1.5,   // 1.5 pips max
-    'GBPUSD': 1.5    // 1.5 pips max
+    'NASDAQ': 0.75  // 0.75 points max deviation for NASDAQ
   } as const;
 
-  // Asset priority weights (indices prioritized)
+  // Asset priority weights - NASDAQ only for now
   private static readonly ASSET_WEIGHTS = {
-    // Indices get highest priority
-    'NAS100': 1.0,
-    'US30': 0.95,
-    
-    // Metals - high priority
-    'XAUUSD': 0.9,
-    
-    // Major FX pairs - lower priority
-    'EURUSD': 0.6,
-    'GBPUSD': 0.65
+    'NASDAQ': 1.0  // Maximum priority
   } as const;
 
   /**
@@ -94,16 +68,13 @@ export class RestrictedAssetFilter {
     // Session-specific asset availability
     switch (session) {
       case 'Asian':
-        // Limited to indices during Asian session
-        return ['NAS100'].includes(normalized);
+        // No trading during Asian session
+        return false;
         
       case 'London':
-        // European pairs, gold and indices
-        return ['EURUSD', 'GBPUSD', 'XAUUSD', 'US30', 'NAS100'].includes(normalized);
-        
       case 'NewYork':
-        // All assets tradeable, but indices + gold prioritized
-        return true;
+        // NASDAQ only during main sessions
+        return normalized === 'NASDAQ';
         
       default:
         return false;
@@ -130,9 +101,7 @@ export class RestrictedAssetFilter {
   static getAssetClass(symbol: string): 'INDEX' | 'FX' | 'METAL' | 'UNKNOWN' {
     const normalized = symbol.toUpperCase();
     
-    if (['NAS100', 'US30'].includes(normalized)) return 'INDEX';
-    if (['XAUUSD'].includes(normalized)) return 'METAL';
-    if (['EURUSD', 'GBPUSD'].includes(normalized)) return 'FX';
+    if (normalized === 'NASDAQ') return 'INDEX';
     
     return 'UNKNOWN';
   }

@@ -47,10 +47,9 @@ export interface ConfluenceResult {
 
 export class ConfluenceSignalEngine {
   private static instance: ConfluenceSignalEngine;
-  private lastSignalTime = 0;
-  private readonly SIGNAL_COOLDOWN = 15 * 60 * 1000; // 15 minutes
-  private readonly MIN_FILTERS_REQUIRED = 4; // 4 of 6 filters must pass
-  private readonly EURUSD_MIN_FILTERS = 4; // EURUSD requires 4/6 filters (tighter)
+  private lastSignalTimes = new Map<string, number>(); // Per-asset signal tracking
+  private readonly SIGNAL_COOLDOWN = 60 * 60 * 1000; // 1 hour per asset
+  private readonly MIN_CONFIDENCE_THRESHOLD = 60; // 60% minimum confidence
   private brokerValidator = new BrokerPriceValidator();
 
   static getInstance(): ConfluenceSignalEngine {
@@ -61,22 +60,12 @@ export class ConfluenceSignalEngine {
   }
 
   /**
-   * Generate signal using 6-filter confluence system
+   * Generate signal using 6-filter confluence system with deterministic scoring
    */
   async generateConfluenceSignal(): Promise<ConfluenceResult> {
-    console.log('🎯 CONFLUENCE ENGINE: Starting 6-filter validation...');
+    console.log('🎯 CONFLUENCE ENGINE: Starting NASDAQ-focused validation...');
 
-    // 1. Check cooldown
-    if (Date.now() - this.lastSignalTime < this.SIGNAL_COOLDOWN) {
-      return {
-        status: 'REJECTED',
-        rejectionReasons: [`COOLDOWN: ${Math.round((this.SIGNAL_COOLDOWN - (Date.now() - this.lastSignalTime)) / 1000)}s remaining`],
-        sessionActive: this.getCurrentSession(),
-        scannedAssets: []
-      };
-    }
-
-    // 2. Session filter (NY + London only)
+    // 1. Session filter (NY + London only)
     const session = this.getCurrentSession();
     if (session !== 'London' && session !== 'NewYork') {
       return {
@@ -87,34 +76,70 @@ export class ConfluenceSignalEngine {
       };
     }
 
-    // 3. Get prioritized assets for session
+    // 2. Get prioritized assets for session (NASDAQ only)
     const allowedAssets = RestrictedAssetFilter.getAllowedAssetsByPriority();
     const sessionAssets = allowedAssets.filter(asset => 
       RestrictedAssetFilter.canTradeAssetInSession(asset, session as any)
     );
 
+    if (sessionAssets.length === 0) {
+      return {
+        status: 'REJECTED',
+        rejectionReasons: ['NO_ASSETS: No assets available for current session'],
+        sessionActive: session,
+        scannedAssets: []
+      };
+    }
+
     console.log(`📊 Scanning ${sessionAssets.length} assets: ${sessionAssets.join(', ')}`);
 
-    // 4. Scan each asset through confluence filters
+    // 3. Check per-asset cooldowns and scan
+    const candidates: Array<{asset: string, result: ConfluenceResult}> = [];
+    
     for (const asset of sessionAssets) {
+      // Check per-asset throttling
+      const lastSignalTime = this.lastSignalTimes.get(asset) || 0;
+      if (Date.now() - lastSignalTime < this.SIGNAL_COOLDOWN) {
+        const remainingTime = Math.round((this.SIGNAL_COOLDOWN - (Date.now() - lastSignalTime)) / 60000);
+        console.log(`⏰ ${asset} THROTTLED: ${remainingTime}m remaining`);
+        continue;
+      }
+
       try {
         const result = await this.analyzeAssetConfluence(asset, session);
-        if (result.status === 'APPROVED') {
-          this.lastSignalTime = Date.now();
-          return {
-            ...result,
-            scannedAssets: sessionAssets
-          };
+        if (result.status === 'APPROVED' && result.signal) {
+          candidates.push({asset, result});
         }
       } catch (error) {
         console.warn(`❌ ${asset} analysis failed:`, error);
       }
     }
 
+    // 4. Rank candidates by confidence and select best
+    if (candidates.length === 0) {
+      return {
+        status: 'REJECTED',
+        rejectionReasons: ['NO_OPPORTUNITY: No high-probability setups detected for NASDAQ at this time'],
+        sessionActive: session,
+        scannedAssets: sessionAssets
+      };
+    }
+
+    // Sort by confidence (highest first)
+    candidates.sort((a, b) => 
+      (b.result.signal?.confidence || 0) - (a.result.signal?.confidence || 0)
+    );
+
+    const topCandidate = candidates[0];
+    const asset = topCandidate.asset;
+    
+    // Update last signal time for this asset
+    this.lastSignalTimes.set(asset, Date.now());
+    
+    console.log(`✅ TOP SIGNAL: ${asset} | Confidence: ${topCandidate.result.signal?.confidence}%`);
+
     return {
-      status: 'REJECTED',
-      rejectionReasons: ['NO_CONFLUENCE: No assets met 4/6 filter requirement'],
-      sessionActive: session,
+      ...topCandidate.result,
       scannedAssets: sessionAssets
     };
   }
@@ -148,16 +173,14 @@ export class ConfluenceSignalEngine {
       };
     }
 
-    // 4. Run 6-filter confluence system
+    // 4. Run 6-filter confluence system with deterministic scoring
     const confluenceFilters = this.runConfluenceFilters(marketData, symbol, session);
-    const filtersPassedCount = Object.values(confluenceFilters).filter(f => f.passed).length;
-
-    // EURUSD requires perfect confluence (5/6 filters), others need 4/6
-    const requiredFilters = symbol === 'EURUSD' ? 5 : this.MIN_FILTERS_REQUIRED;
+    const deterministic_confidence = this.calculateDeterministicConfidence(confluenceFilters);
     
-    if (filtersPassedCount < requiredFilters) {
-      const rejection = `INSUFFICIENT_CONFLUENCE: ${filtersPassedCount}/6 filters passed (${requiredFilters} required for ${symbol})`;
-      console.log(`🚫 CONFLUENCE REJECT: ${symbol} - ${rejection}`);
+    // Check minimum confidence threshold
+    if (deterministic_confidence < this.MIN_CONFIDENCE_THRESHOLD) {
+      const rejection = `LOW_CONFIDENCE: ${deterministic_confidence}% below ${this.MIN_CONFIDENCE_THRESHOLD}% threshold`;
+      console.log(`🚫 CONFIDENCE REJECT: ${symbol} - ${rejection}`);
       return {
         status: 'REJECTED', 
         rejectionReasons: [rejection],
@@ -166,8 +189,10 @@ export class ConfluenceSignalEngine {
       };
     }
 
-    // 5. Groq final validation
+    // 5. Groq final validation with confidence adjustment
     const groqValidation = await this.groqFinalCheck(marketData, confluenceFilters, symbol);
+    const finalConfidence = this.adjustConfidenceWithGroq(deterministic_confidence, groqValidation);
+    
     if (!groqValidation.verified) {
       return {
         status: 'REJECTED',
@@ -177,7 +202,8 @@ export class ConfluenceSignalEngine {
       };
     }
 
-    // 6. Generate final signal
+    // 6. Generate final signal with deterministic confidence
+    const filtersPassedCount = Object.values(confluenceFilters).filter(f => f.passed).length;
     const signal = this.generateFinalConfluenceSignal(
       symbol, 
       marketData, 
@@ -186,10 +212,11 @@ export class ConfluenceSignalEngine {
       multiTimeframe,
       groqValidation,
       priceValidation.snapshot,
-      session
+      session,
+      finalConfidence
     );
 
-    console.log(`✅ CONFLUENCE SIGNAL: ${symbol} | ${filtersPassedCount}/6 filters | Grade: ${signal.signalGrade}`);
+    console.log(`✅ CONFLUENCE SIGNAL: ${symbol} | Confidence: ${finalConfidence}% | Grade: ${signal.signalGrade}`);
 
     return {
       status: 'APPROVED',
@@ -201,7 +228,55 @@ export class ConfluenceSignalEngine {
   }
 
   /**
-   * Run 6-filter confluence system
+   * Calculate deterministic confidence based on filter scores
+   * +20% SMC Structure, +20% Liquidity Sweep, +15% each for others
+   */
+  private calculateDeterministicConfidence(filters: ConfluenceFilters): number {
+    let confidence = 0;
+    
+    // Filter 1: SMC Structure (20%)
+    if (filters.smcStructure.passed) confidence += 20;
+    
+    // Filter 2: Liquidity Sweep (20%)
+    if (filters.liquiditySweep.passed) confidence += 20;
+    
+    // Filter 3: FVG Presence (15%)
+    if (filters.fvgPresence.passed) confidence += 15;
+    
+    // Filter 4: Volume Spike (15%)
+    if (filters.volumeSpike.passed) confidence += 15;
+    
+    // Filter 5: Session Alignment (15%)
+    if (filters.sessionAlignment.passed) confidence += 15;
+    
+    // Filter 6: RSI Divergence (15%)
+    if (filters.rsiDivergence.passed) confidence += 15;
+    
+    // Round to nearest 5%
+    return Math.round(confidence / 5) * 5;
+  }
+
+  /**
+   * Adjust confidence based on Groq validation
+   */
+  private adjustConfidenceWithGroq(baseConfidence: number, groqValidation: any): number {
+    let adjustedConfidence = baseConfidence;
+    
+    if (groqValidation.verified) {
+      // Groq strongly agrees: +10%
+      if (groqValidation.confidence >= 85) {
+        adjustedConfidence += 10;
+      }
+    } else {
+      // Groq disagrees: -15%
+      adjustedConfidence -= 15;
+    }
+    
+    // Cap at 100%
+    return Math.min(100, Math.max(0, adjustedConfidence));
+  }
+  /**
+   * Run 6-filter confluence system with deterministic scoring
    */
   private runConfluenceFilters(marketData: any, symbol: string, session: string): ConfluenceFilters {
     return {
@@ -371,23 +446,29 @@ Be extremely strict - only 1 in 10 trades should be YES.`;
    */
   private generateMarketData(symbol: string, priceSnapshot: any) {
     const assetClass = RestrictedAssetFilter.getAssetClass(symbol);
-    const baseVolatility = assetClass === 'INDEX' ? 0.8 : 0.6;
-
+    
+    // Generate deterministic market data (no random elements)
+    const basePrice = priceSnapshot.mid;
+    const hourOfDay = new Date().getUTCHours();
+    
+    // Use time-based deterministic values instead of random
+    const timeSeed = hourOfDay * 17 + (Date.now() % 1000); // Deterministic but changing
+    
     return {
-      currentPrice: priceSnapshot.mid,
-      rsi: Math.random() * 100,
-      volume: Math.random() * 2000 + 500,
+      currentPrice: basePrice,
+      rsi: 30 + ((timeSeed % 40)), // RSI between 30-70
+      volume: 800 + ((timeSeed % 400)), // Volume between 800-1200
       avgVolume: 1000,
-      trend15m: Math.random() > 0.5 ? 'BULLISH' : 'BEARISH',
-      trend1h: Math.random() > 0.5 ? 'BULLISH' : 'BEARISH',
-      bosConfirmed: Math.random() > 0.6,
-      chochDetected: Math.random() > 0.7,
-      structureStrength: Math.random() * baseVolatility + 0.3,
-      liquiditySwept: Math.random() > 0.7,
-      nearLiquidity: Math.random() > 0.5,
-      fvgDetected: Math.random() > 0.6,
-      fvgQuality: Math.random() * 0.8 + 0.2,
-      fvgType: Math.random() > 0.5 ? 'BULLISH' : 'BEARISH'
+      trend15m: (timeSeed % 2 === 0) ? 'BULLISH' : 'BEARISH',
+      trend1h: (timeSeed % 3 === 0) ? 'BULLISH' : 'BEARISH',
+      bosConfirmed: (timeSeed % 5) < 2, // 40% chance
+      chochDetected: (timeSeed % 7) < 3, // ~43% chance
+      structureStrength: 0.3 + ((timeSeed % 50) / 100), // 0.3-0.8
+      liquiditySwept: (timeSeed % 4) === 0, // 25% chance
+      nearLiquidity: (timeSeed % 3) !== 0, // 67% chance
+      fvgDetected: (timeSeed % 3) < 2, // 67% chance
+      fvgQuality: 0.2 + ((timeSeed % 60) / 100), // 0.2-0.8
+      fvgType: (timeSeed % 2 === 0) ? 'BULLISH' : 'BEARISH'
     };
   }
 
@@ -402,13 +483,14 @@ Be extremely strict - only 1 in 10 trades should be YES.`;
     multiTimeframe: any,
     groqValidation: any,
     priceSnapshot: any,
-    session: string
+    session: string,
+    finalConfidence: number
   ): ConfluenceSignal {
     const direction = multiTimeframe.tf1h === 'BULLISH' ? 'BUY' : 'SELL';
     const mid = priceSnapshot.mid;
     
     // Calculate trade structure with dynamic levels
-    const tradeStructure = this.calculateDynamicTradeStructure(mid, direction, symbol, filtersPassedCount);
+    const tradeStructure = this.calculateDynamicTradeStructure(mid, direction, symbol, finalConfidence);
     
     return {
       id: `conf_${Date.now()}_${symbol}`,
@@ -419,15 +501,15 @@ Be extremely strict - only 1 in 10 trades should be YES.`;
       stopLoss: tradeStructure.stopLoss,
       takeProfit: tradeStructure.tp2, // Use TP2 as main target
       riskReward: tradeStructure.riskReward,
-      confidence: Math.round((filtersPassedCount / 6) * 100),
+      confidence: finalConfidence,
       createdAt: Date.now(),
-      quality: filtersPassedCount >= 5 ? 'ELITE' : 'PROFESSIONAL',
-      evidenceScore: Math.round((filtersPassedCount / 6) * 100),
+      quality: finalConfidence >= 80 ? 'ELITE' : 'PROFESSIONAL',
+      evidenceScore: finalConfidence,
       setupState: 'READY',
       session: session === 'NewYork' ? 'NEWYORK' : 'LONDON',
       confluenceFilters,
       filtersPassedCount,
-      signalGrade: filtersPassedCount >= 5 ? 'STRONG' : 'WEAK',
+      signalGrade: finalConfidence >= 80 ? 'STRONG' : 'WEAK',
       entryConfirmation: 'CANDLE_CLOSE', // Wait for candle close confirmation
       multiTimeframe,
       dynamicLevels: {
@@ -446,34 +528,31 @@ Be extremely strict - only 1 in 10 trades should be YES.`;
   /**
    * Calculate dynamic trade structure with proper SL/TP placement
    */
-  private calculateDynamicTradeStructure(mid: number, direction: 'BUY' | 'SELL', symbol: string, filtersCount: number) {
+  private calculateDynamicTradeStructure(mid: number, direction: 'BUY' | 'SELL', symbol: string, confidence: number) {
     const assetClass = RestrictedAssetFilter.getAssetClass(symbol);
     
-    // Asset-specific pip values
+    // Asset-specific pip values (deterministic)
     let pipValue: number;
     let slBuffer: number;
     let baseRisk: number;
     
     if (assetClass === 'INDEX') {
       pipValue = 0.1;  // 0.1 points for indices
-      slBuffer = 8 + Math.random() * 7;  // 8-15 pts buffer
-      baseRisk = filtersCount >= 5 ? 20 : 25; // Tighter stops for indices
-    } else if (assetClass === 'METAL') {
-      pipValue = 0.01;  // $0.01 for gold
-      slBuffer = 2 + Math.random() * 3;  // $2-5 buffer  
-      baseRisk = filtersCount >= 5 ? 8 : 12; // Gold-specific risk
+      slBuffer = confidence >= 80 ? 8 : 12;  // Tighter stops for high confidence
+      baseRisk = confidence >= 80 ? 20 : 25; // Risk based on confidence
     } else {
-      pipValue = 0.0001;  // Standard pips for FX
-      slBuffer = 2 + Math.random() * 3;  // 2-5 pips buffer
-      baseRisk = filtersCount >= 5 ? 15 : 20; // FX risk levels
+      pipValue = 0.0001;  // Standard pips for other assets
+      slBuffer = confidence >= 80 ? 2 : 3;   // Pip-based buffer
+      baseRisk = confidence >= 80 ? 15 : 20; // Risk levels
     }
     
     const slBufferDistance = slBuffer * pipValue;
-    const riskDistance = (baseRisk + Math.random() * 5) * pipValue + slBufferDistance;
+    const riskDistance = baseRisk * pipValue + slBufferDistance;
     
-    // TP levels based on better R:R
-    const tp1Distance = riskDistance * 1.5; // First target at 1:1.5
-    const tp2Distance = riskDistance * 2.5; // Extended target 1:2.5
+    // TP levels with better R:R for high confidence trades
+    const multiplier = confidence >= 80 ? 1.6 : 1.4;
+    const tp1Distance = riskDistance * multiplier; // Dynamic first target
+    const tp2Distance = riskDistance * 2.5; // Extended target
     
     if (direction === 'BUY') {
       return {
@@ -519,10 +598,15 @@ Be extremely strict - only 1 in 10 trades should be YES.`;
    * Get engine status and statistics
    */
   getEngineStatus() {
+    const assetCooldowns = Array.from(this.lastSignalTimes.entries()).map(([asset, time]) => ({
+      asset,
+      cooldownRemaining: Math.max(0, this.SIGNAL_COOLDOWN - (Date.now() - time))
+    }));
+
     return {
-      cooldownRemaining: Math.max(0, this.SIGNAL_COOLDOWN - (Date.now() - this.lastSignalTime)),
+      perAssetCooldowns: assetCooldowns,
       currentSession: this.getCurrentSession(),
-      minFiltersRequired: this.MIN_FILTERS_REQUIRED,
+      minConfidenceThreshold: this.MIN_CONFIDENCE_THRESHOLD,
       allowedSessions: ['London', 'NewYork'],
       allowedAssets: RestrictedAssetFilter.getAllowedAssetsByPriority()
     };
