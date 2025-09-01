@@ -29,8 +29,17 @@ export class SignalSpamPrevention {
     cooldownMinutes: 30, // Minimum 30 minutes between signals on same pair+direction
     maxSignalsPerPairPerHour: 2, // Max 2 signals per pair per hour
     maxSignalsPerDayPerPair: 5, // Max 5 signals per pair per day
-    recentWindowMinutes: 60 // Window for checking recent signals
+    recentWindowMinutes: 60, // Window for checking recent signals
+    eurusdCooldownMinutes: 240 // 4H cooldown for EURUSD specifically
   };
+
+  // Track rejected signals for logging
+  private static rejectedSignals: Array<{
+    pair: string;
+    direction: 'BUY' | 'SELL';
+    reason: string;
+    timestamp: Date;
+  }> = [];
   
   // 🔑 MAIN FUNCTION - Check if signal should be allowed
   static checkSignalSpam(
@@ -50,13 +59,15 @@ export class SignalSpamPrevention {
       const lastSignal = recentSimilar[0];
       const minutesSince = (now.getTime() - lastSignal.timestamp.getTime()) / (1000 * 60);
       
-      if (minutesSince < this.SPAM_RULES.cooldownMinutes) {
-        return {
+    if (minutesSince < this.SPAM_RULES.cooldownMinutes) {
+        const result = {
           allowed: false,
           reason: `🕒 Cooldown active: ${this.SPAM_RULES.cooldownMinutes - Math.floor(minutesSince)} min remaining`,
           lastSimilarSignal: lastSignal,
           cooldownRemaining: this.SPAM_RULES.cooldownMinutes - Math.floor(minutesSince)
         };
+        this.logRejectedSignal(pair, direction, result.reason);
+        return result;
       }
     }
     
@@ -69,40 +80,52 @@ export class SignalSpamPrevention {
     
     if (tooClose) {
       const pipsDistance = this.calculatePipsDistance(pair, entryPrice, tooClose.entryPrice);
-      return {
+      const result = {
         allowed: false,
         reason: `📏 Too close to recent signal: ${pipsDistance.toFixed(1)} pips < ${this.SPAM_RULES.minPriceDistance} min`,
         lastSimilarSignal: tooClose,
         priceDistance: pipsDistance
       };
+      this.logRejectedSignal(pair, direction, result.reason);
+      return result;
     }
     
     // 3. CHECK HOURLY SIGNAL LIMIT
     const hourlySignals = this.getRecentSignalsForPair(pair, now, 60);
     if (hourlySignals.length >= this.SPAM_RULES.maxSignalsPerPairPerHour) {
-      return {
+      const result = {
         allowed: false,
         reason: `⏰ Hourly limit reached: ${hourlySignals.length}/${this.SPAM_RULES.maxSignalsPerPairPerHour} signals for ${pair}`
       };
+      this.logRejectedSignal(pair, direction, result.reason);
+      return result;
     }
     
     // 4. CHECK DAILY SIGNAL LIMIT
     const dailySignals = this.getRecentSignalsForPair(pair, now, 24 * 60);
     if (dailySignals.length >= this.SPAM_RULES.maxSignalsPerDayPerPair) {
-      return {
+      const result = {
         allowed: false,
         reason: `📅 Daily limit reached: ${dailySignals.length}/${this.SPAM_RULES.maxSignalsPerDayPerPair} signals for ${pair}`
       };
+      this.logRejectedSignal(pair, direction, result.reason);
+      return result;
     }
     
-    // 5. SPECIAL CASE: EURUSD PROTECTION (the main culprit)
+    // 5. SPECIAL CASE: EURUSD 4H THROTTLING (the main culprit)
     if (pair === 'EURUSD') {
-      const recentEUR = recentSamePair.filter(s => s.direction === direction);
-      if (recentEUR.length >= 2) {
-        return {
+      const eurusd4HSignals = this.getRecentSignalsForPair(pair, now, this.SPAM_RULES.eurusdCooldownMinutes);
+      if (eurusd4HSignals.length >= 1) {
+        const lastEURSignal = eurusd4HSignals[0];
+        const minutesSince = (now.getTime() - lastEURSignal.timestamp.getTime()) / (1000 * 60);
+        const result = {
           allowed: false,
-          reason: `🇪🇺 EURUSD PROTECTION: Already ${recentEUR.length} ${direction} signals in last hour`
+          reason: `🇪🇺 EURUSD 4H THROTTLE: Only 1 per 4H session. Last signal ${Math.floor(minutesSince)}min ago`,
+          lastSimilarSignal: lastEURSignal,
+          cooldownRemaining: this.SPAM_RULES.eurusdCooldownMinutes - Math.floor(minutesSince)
         };
+        this.logRejectedSignal(pair, direction, result.reason);
+        return result;
       }
     }
     
@@ -217,5 +240,49 @@ export class SignalSpamPrevention {
   // Get signal history for debugging
   static getSignalHistory(): SignalHistory[] {
     return [...this.signalHistory];
+  }
+
+  // Log rejected signals for quality control
+  private static logRejectedSignal(pair: string, direction: 'BUY' | 'SELL', reason: string): void {
+    this.rejectedSignals.push({
+      pair,
+      direction, 
+      reason,
+      timestamp: new Date()
+    });
+
+    // Keep only last 24 hours of rejections
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    this.rejectedSignals = this.rejectedSignals.filter(r => r.timestamp > cutoff);
+
+    console.log(`🚫 SIGNAL REJECTED: ${pair} ${direction} - ${reason}`);
+  }
+
+  // Get rejection stats for monitoring
+  static getRejectionStats(): {
+    totalRejections: number;
+    rejectionsByPair: { pair: string; count: number; reasons: string[] }[];
+    recentRejections: Array<{ pair: string; direction: 'BUY' | 'SELL'; reason: string; timestamp: Date }>;
+  } {
+    const rejectionsByPair = new Map<string, { count: number; reasons: string[] }>();
+    
+    this.rejectedSignals.forEach(rejection => {
+      const pairStats = rejectionsByPair.get(rejection.pair) || { count: 0, reasons: [] };
+      pairStats.count++;
+      if (!pairStats.reasons.includes(rejection.reason)) {
+        pairStats.reasons.push(rejection.reason);
+      }
+      rejectionsByPair.set(rejection.pair, pairStats);
+    });
+
+    return {
+      totalRejections: this.rejectedSignals.length,
+      rejectionsByPair: Array.from(rejectionsByPair.entries()).map(([pair, stats]) => ({
+        pair,
+        count: stats.count,
+        reasons: stats.reasons
+      })),
+      recentRejections: this.rejectedSignals.slice(-10) // Last 10 rejections
+    };
   }
 }

@@ -50,6 +50,7 @@ export class ConfluenceSignalEngine {
   private lastSignalTime = 0;
   private readonly SIGNAL_COOLDOWN = 15 * 60 * 1000; // 15 minutes
   private readonly MIN_FILTERS_REQUIRED = 4; // 4 of 6 filters must pass
+  private readonly EURUSD_MIN_FILTERS = 4; // EURUSD requires 4/6 filters (tighter)
   private brokerValidator = new BrokerPriceValidator();
 
   static getInstance(): ConfluenceSignalEngine {
@@ -151,10 +152,15 @@ export class ConfluenceSignalEngine {
     const confluenceFilters = this.runConfluenceFilters(marketData, symbol, session);
     const filtersPassedCount = Object.values(confluenceFilters).filter(f => f.passed).length;
 
-    if (filtersPassedCount < this.MIN_FILTERS_REQUIRED) {
+    // EURUSD requires stricter confluence (4/6 filters)
+    const requiredFilters = symbol === 'EURUSD' ? this.EURUSD_MIN_FILTERS : this.MIN_FILTERS_REQUIRED;
+    
+    if (filtersPassedCount < requiredFilters) {
+      const rejection = `INSUFFICIENT_CONFLUENCE: ${filtersPassedCount}/6 filters passed (${requiredFilters} required for ${symbol})`;
+      console.log(`🚫 CONFLUENCE REJECT: ${symbol} - ${rejection}`);
       return {
         status: 'REJECTED', 
-        rejectionReasons: [`INSUFFICIENT_CONFLUENCE: ${filtersPassedCount}/6 filters passed (${this.MIN_FILTERS_REQUIRED} required)`],
+        rejectionReasons: [rejection],
         sessionActive: session as any,
         scannedAssets: []
       };
@@ -307,44 +313,49 @@ export class ConfluenceSignalEngine {
         .map(([key, filter]) => `${key}: ${filter.passed ? '✅' : '❌'} (${filter.reason})`)
         .join('\n');
 
-      const prompt = `SMC Confluence Verification for ${symbol}:
+      const prompt = `You are a strict SMC trading analyst. Check if this ${symbol} setup is high probability.
 
+FILTERS ANALYSIS:
 ${filterDetails}
 
-Filters Passed: ${filtersPassedCount}/6
+CONFLUENCE: ${filtersPassedCount}/6 filters passed
 
-Market Context:
-- Price: ${marketData.currentPrice}
-- RSI: ${marketData.rsi}
-- Volume: ${marketData.volume}
-- Trend: ${marketData.trend15m}
+MARKET CONDITIONS:
+- Entry Price: ${marketData.currentPrice}
+- RSI: ${marketData.rsi} 
+- Volume: ${marketData.volume}x average
+- 15M Trend: ${marketData.trend15m}
+- 1H Trend: ${marketData.trend1h}
 
-CRITICAL: Check if entry aligns with higher TF structure and liquidity. 
-If entry is weak, early, or lacks confluence - reject it.
+CRITICAL REQUIREMENTS:
+1. Must have higher timeframe structure alignment
+2. Entry must be at optimal liquidity level
+3. No weak/early entries allowed
+4. Must show institutional confluence
 
-Respond with: APPROVED/REJECTED|confidence(0-100)|detailed_reasoning`;
+Does this trade meet ALL confluence requirements AND show high-probability institutional setup?
+
+RESPOND WITH ONLY: YES or NO
+
+If NO, the signal will be blocked. Be strict - only approve obvious, high-conviction setups.`;
 
       const response = await groqService.generateResponse(prompt);
-      const parts = response.split('|');
+      const cleanResponse = response.trim().toUpperCase();
+      
+      // Strict YES/NO parsing - any ambiguous response is treated as NO
+      const approved = cleanResponse === 'YES' || cleanResponse.startsWith('YES');
+      const confidence = approved ? 85 : 15;
+      
+      const reasoning = approved 
+        ? `Groq approved: High confluence setup confirmed`
+        : `Groq rejected: ${response.substring(0, 100)}`;
 
-      if (parts.length >= 3) {
-        const approved = parts[0].includes('APPROVED');
-        const confidence = Math.min(100, Math.max(0, parseInt(parts[1]) || 0));
-        const reasoning = parts.slice(2).join('|').trim();
+      console.log(`🤖 GROQ ${approved ? 'APPROVED' : 'REJECTED'}: ${symbol} - ${reasoning}`);
 
-        return {
-          verified: approved,
-          confidence,
-          reasoning
-        };
-      }
-
-      // Fallback parsing
-      const approved = response.includes('APPROVED');
       return {
         verified: approved,
-        confidence: approved ? 75 : 25,
-        reasoning: response.substring(0, 150)
+        confidence,
+        reasoning
       };
 
     } catch (error) {
