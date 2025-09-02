@@ -48,8 +48,10 @@ export interface ConfluenceResult {
 export class ConfluenceSignalEngine {
   private static instance: ConfluenceSignalEngine;
   private lastSignalTimes = new Map<string, number>(); // Per-asset signal tracking
+  private pairRotationOrder: string[] = []; // Track which pairs have been used
   private readonly SIGNAL_COOLDOWN = 60 * 60 * 1000; // 1 hour per asset
-  private readonly MIN_CONFIDENCE_THRESHOLD = 60; // 60% minimum confidence
+  private readonly MIN_CONFIDENCE_THRESHOLD = 70; // Raised to 70% minimum
+  private readonly STRUCTURE_CONFIRMATION_THRESHOLD = 0.6; // Structure must be 60%+ confirmed
   private brokerValidator = new BrokerPriceValidator();
 
   static getInstance(): ConfluenceSignalEngine {
@@ -76,11 +78,9 @@ export class ConfluenceSignalEngine {
       };
     }
 
-    // 2. Get prioritized assets for session (NASDAQ only)
+    // 2. Get prioritized assets with NASDAQ first, then others
     const allowedAssets = RestrictedAssetFilter.getAllowedAssetsByPriority();
-    const sessionAssets = allowedAssets.filter(asset => 
-      RestrictedAssetFilter.canTradeAssetInSession(asset, session as any)
-    );
+    const sessionAssets = this.prioritizeAssetsByTier(allowedAssets, session);
 
     if (sessionAssets.length === 0) {
       return {
@@ -189,7 +189,19 @@ export class ConfluenceSignalEngine {
       };
     }
 
-    // 5. Groq final validation with confidence adjustment
+    // 5. STRUCTURAL VALIDATION GATE - Block signals with unclear structure
+    if (!confluenceFilters.smcStructure.passed) {
+      const rejection = `STRUCTURE_UNCLEAR: ${confluenceFilters.smcStructure.reason}`;
+      console.log(`🚫 STRUCTURE REJECT: ${symbol} - ${rejection}`);
+      return {
+        status: 'REJECTED',
+        rejectionReasons: [rejection],
+        sessionActive: session as any,
+        scannedAssets: []
+      };
+    }
+
+    // 6. Groq final validation with confidence adjustment
     const groqValidation = await this.groqFinalCheck(marketData, confluenceFilters, symbol);
     const finalConfidence = this.adjustConfidenceWithGroq(deterministic_confidence, groqValidation);
     
@@ -202,7 +214,7 @@ export class ConfluenceSignalEngine {
       };
     }
 
-    // 6. Generate final signal with deterministic confidence
+    // 7. Generate final signal with deterministic confidence
     const filtersPassedCount = Object.values(confluenceFilters).filter(f => f.passed).length;
     const signal = this.generateFinalConfluenceSignal(
       symbol, 
@@ -300,13 +312,70 @@ export class ConfluenceSignalEngine {
     };
   }
 
+  /**
+   * Prioritize assets by tier: NASDAQ first, then major FX pairs, EURUSD last
+   */
+  private prioritizeAssetsByTier(assets: string[], session: string): string[] {
+    const tiers = {
+      tier1: ['NASDAQ', 'NAS100', 'US30'], // Highest priority
+      tier2: ['GBPUSD', 'USDJPY', 'USDCAD'], // Major FX
+      tier3: ['EURUSD'] // Lowest priority - only if nothing else available
+    };
+
+    // Filter assets by session availability and sort by tier
+    const sessionFiltered = assets.filter(asset => 
+      RestrictedAssetFilter.canTradeAssetInSession(asset, session as any)
+    );
+
+    // Sort by tier priority with pair rotation
+    const prioritized = [
+      ...sessionFiltered.filter(a => tiers.tier1.includes(a)),
+      ...sessionFiltered.filter(a => tiers.tier2.includes(a)), 
+      ...sessionFiltered.filter(a => tiers.tier3.includes(a))
+    ];
+
+    // Apply pair rotation - check which pairs haven't been used recently
+    const availableAssets = prioritized.filter(asset => {
+      const lastUsed = this.pairRotationOrder.indexOf(asset);
+      // Allow if not in recent rotation or enough time passed
+      return lastUsed === -1 || this.pairRotationOrder.length - lastUsed > 2;
+    });
+
+    // Update rotation order
+    if (availableAssets.length > 0) {
+      const selectedAsset = availableAssets[0];
+      this.pairRotationOrder.push(selectedAsset);
+      // Keep only last 10 in rotation history
+      if (this.pairRotationOrder.length > 10) {
+        this.pairRotationOrder = this.pairRotationOrder.slice(-10);
+      }
+    }
+
+    console.log(`🎯 ASSET PRIORITY: ${prioritized.join(', ')} | Available: ${availableAssets.join(', ')}`);
+    return prioritized;
+  }
+
   private checkSMCStructure(marketData: any) {
     const hasStructure = marketData.bosConfirmed || marketData.chochDetected;
-    const score = hasStructure ? (marketData.structureStrength * 100) : 0;
+    const structureStrength = marketData.structureStrength;
+    
+    // STRUCTURAL VALIDATION GATE: Must meet minimum structure confirmation
+    const structureConfirmed = hasStructure && structureStrength >= this.STRUCTURE_CONFIRMATION_THRESHOLD;
+    const score = structureConfirmed ? (structureStrength * 100) : 0;
+    
+    let reason: string;
+    if (!hasStructure) {
+      reason = 'No market structure detected';
+    } else if (structureStrength < this.STRUCTURE_CONFIRMATION_THRESHOLD) {
+      reason = `Structure weak (${Math.round(structureStrength * 100)}% < ${this.STRUCTURE_CONFIRMATION_THRESHOLD * 100}% required)`;
+    } else {
+      reason = 'BOS/CHoCH confirmed with strong structure';
+    }
+    
     return {
-      passed: hasStructure,
+      passed: structureConfirmed,
       score,
-      reason: hasStructure ? 'BOS/CHoCH confirmed' : 'No clear market structure'
+      reason
     };
   }
 
@@ -388,42 +457,57 @@ export class ConfluenceSignalEngine {
         .map(([key, filter]) => `${key}: ${filter.passed ? '✅' : '❌'} (${filter.reason})`)
         .join('\n');
 
-      const prompt = `STRICT SMC SIGNAL VALIDATOR - REJECT 90% OF TRADES
+      const prompt = `ULTRA-STRICT SMC SIGNAL VALIDATOR - REJECT 95% OF TRADES
 
 SYMBOL: ${symbol}
-FILTERS: ${filtersPassedCount}/6 passed
+FILTERS PASSED: ${filtersPassedCount}/6
+Structure Status: ${filters.smcStructure.passed ? 'CONFIRMED' : 'UNCLEAR'}
+Structure Strength: ${marketData.structureStrength * 100}%
+
 ${filterDetails}
 
-PRICE: ${marketData.currentPrice}
-RSI: ${marketData.rsi}
-VOLUME: ${marketData.volume}x average 
-MTF ALIGNMENT: 15M ${marketData.trend15m} | 1H ${marketData.trend1h}
+MARKET DATA:
+- Price: ${marketData.currentPrice}
+- RSI: ${marketData.rsi} (must be <30 or >70)  
+- Volume: ${marketData.volume} vs avg ${marketData.avgVolume}
+- MTF: 15M=${marketData.trend15m} | 1H=${marketData.trend1h}
 
-REJECTION CRITERIA (Say NO if ANY are true):
-- Less than 4/6 filters passed
-- RSI not oversold/overbought (30-70 range = NO)
-- No clear institutional liquidity sweep
-- Entry too early (no structure confirmation)
-- Multi-timeframe misalignment
-- Low volume (under 1.5x average)
-- ${symbol === 'EURUSD' ? 'EURUSD requires PERFECT setup (5/6 filters)' : 'Standard confluence required'}
+AUTOMATIC REJECTION CRITERIA (any ONE means NO):
+❌ Structure strength < 60% (awaiting clearer structure)
+❌ RSI between 30-70 (not oversold/overbought)
+❌ Less than 4/6 filters passed
+❌ Multi-timeframe misalignment  
+❌ Volume spike absent (< 1.5x average)
+❌ No institutional liquidity sweep confirmed
+❌ ${symbol === 'NASDAQ' ? 'NASDAQ requires 5/6 filters minimum' : 'High confluence required'}
 
 ONLY ANSWER: YES or NO
 
-Be extremely strict - only 1 in 10 trades should be YES.`;
+Current structure strength: ${Math.round(marketData.structureStrength * 100)}%
+If structure < 60% or says "awaiting" = AUTOMATIC NO`;
 
       const response = await groqService.generateResponse(prompt);
       const cleanResponse = response.trim().toUpperCase();
       
+      // ULTRA-STRICT: Structure must be confirmed, no "awaiting" allowed
+      if (marketData.structureStrength < 0.6) {
+        console.log(`🚫 GROQ AUTO-REJECT: Structure ${Math.round(marketData.structureStrength * 100)}% < 60%`);
+        return {
+          verified: false,
+          confidence: 0,
+          reasoning: `Structure confirmation too weak: ${Math.round(marketData.structureStrength * 100)}%`
+        };
+      }
+      
       // Strict YES/NO parsing - any ambiguous response is treated as NO
       const approved = cleanResponse === 'YES' || cleanResponse.startsWith('YES');
-      const confidence = approved ? 85 : 15;
+      const confidence = approved ? 90 : 10; // More extreme confidence spread
       
       const reasoning = approved 
-        ? `Groq approved: High confluence setup confirmed`
-        : `Groq rejected: ${response.substring(0, 100)}`;
+        ? `Groq approved: All criteria met with ${Math.round(marketData.structureStrength * 100)}% structure strength`
+        : `Groq rejected: Failed validation criteria`;
 
-      console.log(`🤖 GROQ ${approved ? 'APPROVED' : 'REJECTED'}: ${symbol} - ${reasoning}`);
+      console.log(`🤖 GROQ ${approved ? 'APPROVED' : 'REJECTED'}: ${symbol} - Structure: ${Math.round(marketData.structureStrength * 100)}%`);
 
       return {
         verified: approved,
