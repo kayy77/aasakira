@@ -752,13 +752,13 @@ ASIAN SESSION PLAYBOOK (0-8 UTC):
     return true;
   }
 
-  private async createInstitutionalFallback(): Promise<ProfessionalSignal> {
+  private async createInstitutionalFallback(): Promise<ProfessionalSignal | null> {
     console.log('🚨 EMERGENCY PATCH: INSTITUTIONAL FALLBACK DISABLED');
     console.log('❌ Fallback strategies are blocked - no 65% confidence signals allowed');
     
-    // EMERGENCY DISABLE: Throw error instead of creating fallback signals
+    // EMERGENCY DISABLE: Return null instead of creating fallback signals
     // This method used to create fake 65% EURUSD signals when no real setups existed
-    throw new Error('FALLBACK_BLOCKED: Institutional fallback analysis disabled - no fake 65% signals allowed');
+    return null; // Return null instead of throwing error
   }
 
   // Generate mock candle data for analysis
