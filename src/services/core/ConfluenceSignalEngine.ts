@@ -594,6 +594,13 @@ Auto-reject if structure < 60% or news_window = true or HTF misaligned.`;
    * Generate market data for confluence analysis (deterministic)
    */
   private generateMarketData(symbol: string, priceSnapshot: any) {
+    // EMERGENCY FALLBACK BLOCKER: Block any price data that indicates fallback strategy
+    if ((priceSnapshot as any)?.source === 'fallback' || 
+        (priceSnapshot as any)?.strategy === 'Institutional Fallback Analysis') {
+      console.log(`❌ FALLBACK BLOCKED: ${symbol} using fallback price data - rejecting`);
+      throw new Error(`FALLBACK_BLOCKED: No fallback strategies allowed for ${symbol}`);
+    }
+
     const currentPrice = priceSnapshot.currentPrice;
     const spread = priceSnapshot.spread || 1.0;
     
