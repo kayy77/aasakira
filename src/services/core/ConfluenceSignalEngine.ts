@@ -720,17 +720,25 @@ Auto-reject if structure < 60% or news_window = true or HTF misaligned.`;
     const direction = multiTimeframe.tf1h === 'BULLISH' ? 'BUY' : 'SELL';
     const dynamicLevels = this.calculateDynamicTradeStructure(symbol, marketData, direction);
     
+    const riskReward = Math.abs((dynamicLevels.tp1 - dynamicLevels.entry) / (dynamicLevels.entry - dynamicLevels.stopLoss));
+    
     return {
       id: `confluence_${Date.now()}_${symbol}`,
       symbol,
       direction,
+      bias: direction === 'BUY' ? 'BULLISH' : 'BEARISH',
       entry: dynamicLevels.entry,
       stopLoss: dynamicLevels.stopLoss,
       takeProfit: dynamicLevels.tp1,
+      riskReward: Math.round(riskReward * 100) / 100,
       confidence: finalConfidence,
-      timestamp: Date.now(),
+      createdAt: Date.now(),
+      quality: finalConfidence >= 85 ? 'ELITE' : finalConfidence >= 70 ? 'PROFESSIONAL' : 'STANDARD',
+      evidenceScore: finalConfidence,
+      setupState: 'READY',
       session: session as SessionType,
       reasoning: `Confluence Analysis: ${filtersPassedCount}/6 filters passed. ${groqValidation.reasoning}`,
+      timestamp: Date.now(),
       
       // Confluence-specific fields
       confluenceFilters: filters,
@@ -744,6 +752,25 @@ Auto-reject if structure < 60% or news_window = true or HTF misaligned.`;
         slBuffer: dynamicLevels.slBuffer
       },
       groqValidation
+    };
+  }
+
+  /**
+   * Get engine status and configuration
+   */
+  getEngineStatus() {
+    return {
+      activeFilters: 6,
+      confidenceMethod: 'DETERMINISTIC',
+      groqValidation: 'ENABLED',
+      sessionRestriction: ['London', 'NewYork'],
+      assetPriority: RestrictedAssetFilter.getAllowedAssetsByPriority(),
+      throttling: {
+        perAsset2h: this.MAX_PER_SYMBOL_PER_2H,
+        global30m: this.GLOBAL_MAX_PER_30M
+      },
+      lastSignalTimes: Object.fromEntries(this.lastSignalTimes),
+      rotationOrder: this.pairRotationOrder
     };
   }
 
@@ -766,3 +793,6 @@ Auto-reject if structure < 60% or news_window = true or HTF misaligned.`;
     return 'Dead';
   }
 }
+
+// Export singleton instance
+export const confluenceSignalEngine = ConfluenceSignalEngine.getInstance();
