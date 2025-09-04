@@ -47,14 +47,16 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
     
     try {
       console.log('🏛️ Generating institutional-grade signal...');
+      console.log('🔍 DEBUG: Starting signal generation process...');
       
       // Generate signal with new institutional engine
       const signal = await institutionalSignalEngine.generateInstitutionalSignal();
       
-      console.log('Institutional signal generated:', signal);
+      console.log('🔍 DEBUG: Signal generation completed. Result:', signal);
       
-      // Test signal quality with institutional standards
+      // Handle different signal outcomes
       if (signal && signal.confidence >= 85 && signal.confluenceScore >= 7) {
+        console.log('✅ High-quality institutional signal generated');
         onSignalGenerated?.(signal);
         
         toast({
@@ -62,6 +64,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
           description: `${signal.type} ${signal.pair} - ${signal.confluenceScore}/10 confluence, ${signal.expectedWinRate}% win rate`,
         });
       } else if (signal) {
+        console.log('⚠️ Lower-quality signal generated, but still valid');
         // Signal generated but below institutional standards
         onSignalGenerated?.(signal);
         
@@ -71,21 +74,30 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
           variant: "destructive"
         });
       } else {
+        console.log('❌ No signal generated - all filters rejected or validation failed');
         toast({
           title: "❌ No Institutional Signal",
-          description: "Market conditions don't meet institutional standards. All filters rejected.",
+          description: "Market conditions don't meet institutional standards. Fallback strategies blocked, validation filters active.",
           variant: "destructive"
         });
       }
       
     } catch (error) {
-      console.error('Signal generation error:', error);
+      console.error('❌ Signal generation error:', error);
+      console.error('❌ Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      });
+      
       toast({
-        title: "Generation Failed",
-        description: "Unable to generate signal. Please try again.",
+        title: "❌ Signal Generation Error",
+        description: "Failed to generate enhanced signal. Please try again.",
         variant: "destructive"
       });
     } finally {
+      // Always reset loading state
+      console.log('🔍 DEBUG: Resetting loading state');
       setIsGenerating(false);
     }
   };
