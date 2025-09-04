@@ -10,7 +10,8 @@ class GroqService {
   private initialized = false;
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_GROQ_API_KEY || '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';
+    // Fixed: VITE_ env vars not supported by Lovable - using direct API key
+    this.apiKey = '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';
     this.initialized = true; // Force initialization to proceed
     console.log('🧠 GROQ SERVICE FORCE INITIALIZED - Ready for institutional analysis');
   }
