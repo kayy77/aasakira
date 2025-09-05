@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Zap, TrendingUp, Crown } from 'lucide-react';
-import { useSubscription } from '@/contexts/SubscriptionContext';
 import { toast } from 'sonner';
 
 interface SignalGeneratorProps {
@@ -38,10 +37,9 @@ const generateSimpleSignal = () => {
 
 const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const { subscription, usageStats } = useSubscription();
+  const [signalsUsed, setSignalsUsed] = useState(0);
   
-  const isPremium = subscription?.tier === 'premium';
-  const signalsUsed = usageStats?.signals || 0;
+  const isPremium = false; // Default to free for now
   const dailyLimit = 2;
   const canGenerate = isPremium || signalsUsed < dailyLimit;
 
@@ -60,6 +58,9 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
       try {
         const signal = generateSimpleSignal();
         console.log('✅ Signal generated:', signal);
+        
+        // Increment usage counter
+        setSignalsUsed(prev => prev + 1);
         
         onSignalGenerated?.(signal);
         toast.success(`🏛️ Signal Generated: ${signal.type} ${signal.pair} (${signal.confidence}%)`);
