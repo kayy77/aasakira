@@ -753,84 +753,12 @@ ASIAN SESSION PLAYBOOK (0-8 UTC):
   }
 
   private async createInstitutionalFallback(): Promise<ProfessionalSignal> {
-    console.log('🚨 CREATING INSTITUTIONAL FALLBACK SIGNAL');
+    console.log('🚨 EMERGENCY PATCH: INSTITUTIONAL FALLBACK DISABLED');
+    console.log('❌ Fallback strategies are blocked - no 65% confidence signals allowed');
     
-    const session = this.getCurrentTradingSession();
-    const pairs = this.getSessionOptimalPairs(session);
-    const selectedPair = pairs[0];
-    
-    const priceData = await trueLivePriceService.getTrueLivePrice(selectedPair)
-      .catch(() => ({ price: 1.0850, source: 'fallback', age: 0, timestamp: Date.now() }));
-    
-    return {
-      id: `institutional_fallback_${Date.now()}`,
-      symbol: selectedPair,
-      direction: 'BUY',
-      entry: priceData.price,
-      stopLoss: priceData.price * 0.998,
-      takeProfit1: priceData.price * 1.008,
-      takeProfit2: priceData.price * 1.016,
-      confidence: 65,
-      quality: 'INSTITUTIONAL',
-      expectedValue: 0.4,
-      riskReward: '1:2.0',
-      strategy: 'Institutional Fallback Analysis',
-      reasoning: 'Conservative institutional setup with proper risk management during challenging market conditions',
-      smcAnalysis: {
-        orderBlocks: ['Conservative order block level identified'],
-        fairValueGaps: ['Minimal gap structure present'],
-        institutionalFVG: {
-          ifvg1H: ['1H IFVG: Conservative zone identified'],
-          ifvg4H: ['4H IFVG: Basic institutional level'],
-          ifvgDaily: ['Daily IFVG: Long-term zone mapped'],
-          proximityScore: 60,
-          unfilleTd: false,
-          layeredAnalysis: 'Conservative IFVG approach during uncertain conditions'
-        },
-        macdMomentum: {
-          macd15m: {
-            signal: 'NEUTRAL',
-            crossover: false,
-            histogram: 'FLAT',
-            divergence: false
-          },
-          macd1h: {
-            signal: 'NEUTRAL',
-            crossover: false,
-            histogram: 'FLAT',
-            divergence: false
-          },
-          confluenceScore: 45,
-          momentumStrength: 'WEAK',
-          multiTimeframeAlignment: false
-        },
-        liquiditySweeps: ['Basic liquidity mapping complete'],
-        changeOfCharacter: false,
-        breakOfStructure: 'Awaiting clearer structure',
-        accumulation: false
-      },
-      sessionBias: `${session} Conservative Approach`,
-      confluenceFactors: ['Risk Management', 'Session Timing', 'Conservative Entry'],
-      timestamp: new Date().toISOString(),
-      timeframe: '15m',
-      setupType: 'Conservative Institutional',
-      institutionalGrade: 'INSTITUTIONAL',
-      convictionScore: 65,
-      positionSizeRec: '0.5%',
-      executionNotes: 'Conservative entry with tight risk management - institutional safety first',
-      marketContext: {
-        session,
-        volatility: 'MEDIUM',
-        trend: 'NEUTRAL',
-        momentum: 'NEUTRAL'
-      },
-      riskAnalysis: {
-        riskLevel: 'LOW',
-        maxRisk: 1.0,
-        probabilityOfSuccess: 65,
-        worstCaseScenario: 'Limited downside with conservative stop placement'
-      }
-    };
+    // EMERGENCY DISABLE: Throw error instead of creating fallback signals
+    // This method used to create fake 65% EURUSD signals when no real setups existed
+    throw new Error('FALLBACK_BLOCKED: Institutional fallback analysis disabled - no fake 65% signals allowed');
   }
 
   // Generate mock candle data for analysis
