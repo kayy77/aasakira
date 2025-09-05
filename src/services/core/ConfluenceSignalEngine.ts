@@ -192,16 +192,6 @@ export class ConfluenceSignalEngine {
 
     // 2. Generate market data for analysis
     const marketData = this.generateMarketData(symbol, priceValidation.snapshot);
-    
-    // Check if market data generation was blocked (fallback detected)
-    if (!marketData) {
-      return {
-        status: 'REJECTED',
-        rejectionReasons: [`FALLBACK_BLOCKED: ${symbol} using fallback strategy - no 65% confidence signals allowed`],
-        sessionActive: session as any,
-        scannedAssets: []
-      };
-    }
 
     // 3. Multi-timeframe confluence check
     const multiTimeframe = this.checkMultiTimeframeAlignment(marketData);
@@ -604,13 +594,6 @@ Auto-reject if structure < 60% or news_window = true or HTF misaligned.`;
    * Generate market data for confluence analysis (deterministic)
    */
   private generateMarketData(symbol: string, priceSnapshot: any) {
-    // EMERGENCY FALLBACK BLOCKER: Block any price data that indicates fallback strategy
-    if ((priceSnapshot as any)?.source === 'fallback' || 
-        (priceSnapshot as any)?.strategy === 'Institutional Fallback Analysis') {
-      console.log(`❌ FALLBACK BLOCKED: ${symbol} using fallback price data - rejecting`);
-      return null; // Return null instead of throwing error
-    }
-
     const currentPrice = priceSnapshot.currentPrice;
     const spread = priceSnapshot.spread || 1.0;
     

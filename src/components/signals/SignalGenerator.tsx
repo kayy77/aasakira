@@ -3,77 +3,103 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Zap, TrendingUp, Crown } from 'lucide-react';
-import { toast } from 'sonner';
+import { Progress } from '@/components/ui/progress';
+import { 
+  Zap, 
+  TrendingUp, 
+  AlertTriangle, 
+  Crown,
+  Lock
+} from 'lucide-react';
+import { useSignalLimits } from '@/hooks/useSignalLimits';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import UpgradePrompt from '@/components/common/UpgradePrompt';
+import { institutionalSignalEngine } from '@/services/institutionalSignalEngine';
+import { useToast } from '@/hooks/use-toast';
 
 interface SignalGeneratorProps {
   onSignalGenerated?: (signal: any) => void;
 }
 
-// Simple crash-proof signal generation
-const generateSimpleSignal = () => {
-  const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD'];
-  const types = ['BUY', 'SELL'];
-  const pair = pairs[Math.floor(Math.random() * pairs.length)];
-  const type = types[Math.floor(Math.random() * types.length)];
-  const confidence = 75 + Math.floor(Math.random() * 20);
-  
-  return {
-    id: `signal_${Date.now()}`,
-    pair,
-    type,
-    confidence,
-    confluenceScore: 7,
-    institutionalGrade: 'B+',
-    expectedWinRate: 80,
-    timestamp: new Date().toISOString(),
-    validUntil: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-    signalStrength: 'STRONG',
-    tags: ['institutional'],
-    warnings: [],
-    justification: `Strong institutional signal for ${pair} ${type} with ${confidence}% confidence.`
-  };
-};
-
 const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [signalsUsed, setSignalsUsed] = useState(0);
-  
-  const isPremium = false; // Default to free for now
-  const dailyLimit = 2;
-  const canGenerate = isPremium || signalsUsed < dailyLimit;
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const { subscription } = useSubscription();
+  const { canGenerateSignal, signalsUsedToday, dailyLimit, upgradeRequired, checkAndIncrementSignal } = useSignalLimits();
+  const { toast } = useToast();
 
-  const handleGenerateSignal = () => {
-    console.log('🔍 Starting simple signal generation...');
-    
-    if (!canGenerate) {
-      toast.error("Daily limit reached! Upgrade for unlimited signals.");
+  const isPremium = subscription?.tier === 'premium';
+  const usagePercentage = (signalsUsedToday / dailyLimit) * 100;
+
+  const handleGenerateSignal = async () => {
+    if (!canGenerateSignal) {
+      setShowUpgradePrompt(true);
+      return;
+    }
+
+    // Check and increment usage first
+    const canProceed = await checkAndIncrementSignal();
+    if (!canProceed) {
       return;
     }
 
     setIsGenerating(true);
     
-    // Simple timeout to simulate processing
-    setTimeout(() => {
-      try {
-        const signal = generateSimpleSignal();
-        console.log('✅ Signal generated:', signal);
-        
-        // Increment usage counter
-        setSignalsUsed(prev => prev + 1);
-        
+    try {
+      console.log('🏛️ Generating institutional-grade signal...');
+      
+      // Generate signal with new institutional engine
+      const signal = await institutionalSignalEngine.generateInstitutionalSignal();
+      
+      console.log('Institutional signal generated:', signal);
+      
+      // Test signal quality with institutional standards
+      if (signal && signal.confidence >= 85 && signal.confluenceScore >= 7) {
         onSignalGenerated?.(signal);
-        toast.success(`🏛️ Signal Generated: ${signal.type} ${signal.pair} (${signal.confidence}%)`);
         
-      } catch (error) {
-        console.error('❌ Error:', error);
-        toast.error("Failed to generate signal");
-      } finally {
-        setIsGenerating(false);
+        toast({
+          title: `🏛️ ${signal.institutionalGrade} Institutional Signal`,
+          description: `${signal.type} ${signal.pair} - ${signal.confluenceScore}/10 confluence, ${signal.expectedWinRate}% win rate`,
+        });
+      } else if (signal) {
+        // Signal generated but below institutional standards
+        onSignalGenerated?.(signal);
+        
+        toast({
+          title: "⚠️ Signal Generated",
+          description: `${signal.type} ${signal.pair} - Grade: ${signal.institutionalGrade}. Monitor carefully.`,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "❌ No Institutional Signal",
+          description: "Market conditions don't meet institutional standards. All filters rejected.",
+          variant: "destructive"
+        });
       }
-    }, 1000);
+      
+    } catch (error) {
+      console.error('Signal generation error:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Unable to generate signal. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
+  if (showUpgradePrompt && !canGenerateSignal) {
+    return (
+      <UpgradePrompt
+        title="🔒 Signal Limit Reached"
+        description="You've used your daily free signal. Upgrade for unlimited elite signals!"
+        feature="unlimited signal generation"
+        onClose={() => setShowUpgradePrompt(false)}
+      />
+    );
+  }
 
   return (
     <Card className="glass-card border-purple-500/20">
@@ -86,7 +112,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
           
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-purple-400 border-purple-500/30">
-              {signalsUsed}/{isPremium ? '∞' : dailyLimit}
+              {signalsUsedToday}/{isPremium ? '∞' : dailyLimit}
             </Badge>
             {!isPremium && (
               <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
@@ -99,12 +125,32 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
       </CardHeader>
       
       <CardContent className="space-y-6">
+        {/* Usage Progress */}
+        {!isPremium && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm text-gray-400">
+              <span>Daily Usage</span>
+              <span>{signalsUsedToday}/{dailyLimit}</span>
+            </div>
+            <Progress 
+              value={usagePercentage} 
+              className="h-2"
+            />
+            {usagePercentage >= 80 && (
+              <div className="flex items-center gap-2 text-yellow-400 text-sm">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Almost at daily limit!</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Generation Button */}
         <Button
           onClick={handleGenerateSignal}
-          disabled={!canGenerate || isGenerating}
+          disabled={!canGenerateSignal || isGenerating}
           className={`w-full py-3 text-lg font-semibold ${
-            canGenerate 
+            canGenerateSignal 
               ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700' 
               : 'bg-gray-600 cursor-not-allowed'
           }`}
@@ -112,7 +158,12 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
           {isGenerating ? (
             <>
               <TrendingUp className="w-5 h-5 mr-2 animate-pulse" />
-              Generating Signal...
+              Generating Institutional Signal...
+            </>
+          ) : !canGenerateSignal ? (
+            <>
+              <Lock className="w-5 h-5 mr-2" />
+              Daily Limit Reached
             </>
           ) : (
             <>
@@ -129,11 +180,11 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
               🚀 Want Unlimited Signals?
             </h4>
             <p className="text-gray-300 text-sm mb-3">
-              Get unlimited institutional signals with premium access.
+              Get unlimited institutional signals, order flow analysis, and advanced confluences.
             </p>
             <Button
-              variant="outline"
-              className="border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10"
+              onClick={() => setShowUpgradePrompt(true)}
+              className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
             >
               <Crown className="w-4 h-4 mr-2" />
               Upgrade to Premium

@@ -27,8 +27,7 @@ interface ValidationResponse {
 }
 
 export class WebhookValidationService {
-  // Fixed: VITE_ env vars not supported by Lovable - using hardcoded Supabase URL
-  private static readonly WEBHOOK_URL = `https://tnfxxtnfpoavnsabjrii.supabase.co/functions/v1/signal-webhook-validator`;
+  private static readonly WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/signal-webhook-validator`;
 
   static async validateSignal(signal: SignalValidationRequest): Promise<ValidationResponse> {
     try {

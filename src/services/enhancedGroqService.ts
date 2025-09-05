@@ -89,157 +89,113 @@ class UltraEnhancedGroqService {
   private strategyFrameworks: string[];
 
   constructor() {
-    console.log('🔍 DEBUG: UltraEnhancedGroqService constructor starting...');
-    
-    try {
-      // Fixed: VITE_ env vars not supported by Lovable - using direct API key
-      this.apiKey = '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';
-      this.initialized = true;
-      
-      console.log('🔍 DEBUG: About to initialize institutional playbook...');
-      this.initializeInstitutionalPlaybook();
-      
-      console.log('🔍 DEBUG: About to initialize strategy frameworks...');
-      this.initializeStrategyFrameworks();
-      
-      console.log('🚀 ULTRA-ENHANCED GROQ SERVICE INITIALIZED - Multi-pass reasoning with strategy stacking activated');
-    } catch (error) {
-      console.error('❌ DEBUG: UltraEnhancedGroqService constructor failed:', error);
-      // Fallback initialization
-      this.apiKey = '';
-      this.initialized = false;
-      this.institutionalPlaybook = {} as InstitutionalPlaybook;
-      this.strategyFrameworks = [];
-    }
+    this.apiKey = import.meta.env.VITE_GROQ_API_KEY || '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';
+    this.initialized = true;
+    this.initializeInstitutionalPlaybook();
+    this.initializeStrategyFrameworks();
+    console.log('🚀 ULTRA-ENHANCED GROQ SERVICE INITIALIZED - Multi-pass reasoning with strategy stacking activated');
   }
 
   private initializeInstitutionalPlaybook(): void {
-    console.log('🔍 DEBUG: initializeInstitutionalPlaybook starting...');
-    
-    try {
-      this.institutionalPlaybook = {
-        ictRules: [
-          "London Kill Zone: 2-5 AM EST (high probability reversals)",
-          "New York Kill Zone: 7-10 AM EST (trend continuation)",
-          "Asian Range Play: 8 PM-12 AM EST (range-bound strategies only)",
-          "Silver Bullet: 10-11 AM and 2-3 PM EST (highest conviction)",
-          "Judas Swing: First hour reversal patterns (fake breakouts)",
-          "Fair Value Gap: Unfilled price gaps from institutional moves",
-          "Order Blocks: Last opposing candle before strong moves",
-          "Liquidity Sweeps: Stop hunt above/below key levels + volume"
-        ],
-        smcRules: [
-          "Break of Structure (BOS): Clear break above previous high/low with volume",
-          "Change of Character (CHoCH): Shift from bullish to bearish structure",
-          "Internal Structure: Lower highs in uptrend = weakness",
-          "External Structure: Primary trend direction confirmation", 
-          "Market Structure Shift: CHoCH followed by BOS = new trend",
-          "Smart Money Reversal: Sweep + opposite structure break",
-          "Confirmation Bias: Wait for pullback after BOS",
-          "Multi-timeframe Confluence: Structure alignment across 3+ TFs"
-        ],
-        wyckoffPhases: [
-          "Accumulation Phase 1: Initial support after decline",
-          "Accumulation Phase 2: Testing support with lower volume",
-          "Accumulation Phase 3: Last point of support before markup",
-          "Markup Phase: Sustained higher highs and higher lows",
-          "Distribution Phase 1: Initial resistance after advance", 
-          "Distribution Phase 2: Testing resistance with higher volume",
-          "Distribution Phase 3: Last point of supply before markdown",
-          "Markdown Phase: Sustained lower highs and lower lows"
-        ],
-        vsaRules: [
-          "High Volume + Small Spread = Absorption (reversal signal)",
-          "Low Volume + Wide Spread = Weakness (continuation likely)",
-          "High Volume + Wide Spread = Professional interest",
-          "Climax Volume = Potential reversal point",
-          "Background Volume = Normal market flow",
-          "Test Volume = Smart money probing for liquidity",
-          "Effort vs Result: Volume should match price movement",
-          "Volume Confirmation: Entry only with volume agreement"
-        ],
-        confluenceRules: [
-          "Minimum 3 confluence factors for any trade",
-          "Higher timeframe bias must align (H4/Daily)",
-          "Structure + Volume + Pattern = Triple confirmation", 
-          "Session timing adds 15% confidence bonus",
-          "Economic news reduces confidence by 25%",
-          "Correlation agreement adds 10% confidence",
-          "Support/Resistance confluence critical",
-          "Fibonacci levels enhance but don't create signals"
-        ],
-        newsAvoidanceLogic: [
-          "Avoid trading 30 minutes before/after high impact news",
-          "NFP, CPI, FOMC = No trading for 2 hours",
-          "Medium impact news = Reduce position size by 50%",
-          "Surprise news = Close all positions immediately",
-          "Scheduled events = Pre-position or avoid completely",
-          "Economic calendar check is mandatory",
-          "News-driven volatility invalidates technical analysis",
-          "Wait for market to digest news before re-entering"
-        ],
-        trendContinuationRules: [
-          "Higher highs and higher lows on HTF = bullish continuation",
-          "Pullbacks to 38.2%-61.8% fib = ideal reentry zones",
-          "Volume expansion on continuation moves",
-          "Breaking previous swing high with conviction",
-          "Flag/pennant patterns after strong moves",
-          "Moving average support holding on pullbacks"
-        ],
-        breakoutRules: [
-          "Volume must be 150%+ of average on breakout",
-          "Clear close above/below key resistance/support", 
-          "Volatility expansion confirmation",
-          "No immediate retest of broken level",
-          "Higher timeframe alignment required",
-          "Stop hunt false breakout elimination"
-        ],
-        killzoneRules: [
-          "London Open: 8-9 AM GMT (European momentum)",
-          "New York Open: 1-2 PM GMT (US momentum)",
-          "London Close: 4-5 PM GMT (position adjustments)",
-          "Asian Session: 12-2 AM GMT (range trading only)",
-          "Overlap periods: Highest volatility and opportunity",
-          "Off-hours trading: Reduced position sizes"
-        ]
-      };
-      console.log('🔍 DEBUG: Institutional playbook initialized successfully');
-    } catch (error) {
-      console.error('❌ DEBUG: Failed to initialize institutional playbook:', error);
-      // Fallback
-      this.institutionalPlaybook = {
-        ictRules: [],
-        smcRules: [],
-        wyckoffPhases: [],
-        vsaRules: [],
-        confluenceRules: [],
-        newsAvoidanceLogic: [],
-        trendContinuationRules: [],
-        breakoutRules: [],
-        killzoneRules: []
-      };
-    }
+    this.institutionalPlaybook = {
+      ictRules: [
+        "London Kill Zone: 2-5 AM EST (high probability reversals)",
+        "New York Kill Zone: 7-10 AM EST (trend continuation)",
+        "Asian Range Play: 8 PM-12 AM EST (range-bound strategies only)",
+        "Silver Bullet: 10-11 AM and 2-3 PM EST (highest conviction)",
+        "Judas Swing: First hour reversal patterns (fake breakouts)",
+        "Fair Value Gap: Unfilled price gaps from institutional moves",
+        "Order Blocks: Last opposing candle before strong moves",
+        "Liquidity Sweeps: Stop hunt above/below key levels + volume"
+      ],
+      smcRules: [
+        "Break of Structure (BOS): Clear break above previous high/low with volume",
+        "Change of Character (CHoCH): Shift from bullish to bearish structure",
+        "Internal Structure: Lower highs in uptrend = weakness",
+        "External Structure: Primary trend direction confirmation", 
+        "Market Structure Shift: CHoCH followed by BOS = new trend",
+        "Smart Money Reversal: Sweep + opposite structure break",
+        "Confirmation Bias: Wait for pullback after BOS",
+        "Multi-timeframe Confluence: Structure alignment across 3+ TFs"
+      ],
+      wyckoffPhases: [
+        "Accumulation Phase 1: Initial support after decline",
+        "Accumulation Phase 2: Testing support with lower volume",
+        "Accumulation Phase 3: Last point of support before markup",
+        "Markup Phase: Sustained higher highs and higher lows",
+        "Distribution Phase 1: Initial resistance after advance", 
+        "Distribution Phase 2: Testing resistance with higher volume",
+        "Distribution Phase 3: Last point of supply before markdown",
+        "Markdown Phase: Sustained lower highs and lower lows"
+      ],
+      vsaRules: [
+        "High Volume + Small Spread = Absorption (reversal signal)",
+        "Low Volume + Wide Spread = Weakness (continuation likely)",
+        "High Volume + Wide Spread = Professional interest",
+        "Climax Volume = Potential reversal point",
+        "Background Volume = Normal market flow",
+        "Test Volume = Smart money probing for liquidity",
+        "Effort vs Result: Volume should match price movement",
+        "Volume Confirmation: Entry only with volume agreement"
+      ],
+      confluenceRules: [
+        "Minimum 3 confluence factors for any trade",
+        "Higher timeframe bias must align (H4/Daily)",
+        "Structure + Volume + Pattern = Triple confirmation", 
+        "Session timing adds 15% confidence bonus",
+        "Economic news reduces confidence by 25%",
+        "Correlation agreement adds 10% confidence",
+        "Support/Resistance confluence critical",
+        "Fibonacci levels enhance but don't create signals"
+      ],
+      newsAvoidanceLogic: [
+        "Avoid trading 30 minutes before/after high impact news",
+        "NFP, CPI, FOMC = No trading for 2 hours",
+        "Medium impact news = Reduce position size by 50%",
+        "Surprise news = Close all positions immediately",
+        "Scheduled events = Pre-position or avoid completely",
+        "Economic calendar check is mandatory",
+        "News-driven volatility invalidates technical analysis",
+        "Wait for market to digest news before re-entering"
+      ],
+      trendContinuationRules: [
+        "Higher highs and higher lows on HTF = bullish continuation",
+        "Pullbacks to 38.2%-61.8% fib = ideal reentry zones",
+        "Volume expansion on continuation moves",
+        "Breaking previous swing high with conviction",
+        "Flag/pennant patterns after strong moves",
+        "Moving average support holding on pullbacks"
+      ],
+      breakoutRules: [
+        "Volume must be 150%+ of average on breakout",
+        "Clear close above/below key resistance/support", 
+        "Volatility expansion confirmation",
+        "No immediate retest of broken level",
+        "Higher timeframe alignment required",
+        "Stop hunt false breakout elimination"
+      ],
+      killzoneRules: [
+        "London Open: 8-9 AM GMT (European momentum)",
+        "New York Open: 1-2 PM GMT (US momentum)",
+        "London Close: 4-5 PM GMT (position adjustments)",
+        "Asian Session: 12-2 AM GMT (range trading only)",
+        "Overlap periods: Highest volatility and opportunity",
+        "Off-hours trading: Reduced position sizes"
+      ]
+    };
   }
 
   private initializeStrategyFrameworks(): void {
-    console.log('🔍 DEBUG: initializeStrategyFrameworks starting...');
-    
-    try {
-      this.strategyFrameworks = [
-        'Smart Money Concepts (SMC)',
-        'Inner Circle Trader (ICT)', 
-        'Wyckoff Accumulation/Distribution',
-        'Volume Spread Analysis (VSA)',
-        'Trend Continuation Strategy',
-        'Breakout with Volatility Confirmation',
-        'Session-Based Momentum Trading',
-        'Multi-Timeframe Confluence Trading'
-      ];
-      console.log('🔍 DEBUG: Strategy frameworks initialized successfully');
-    } catch (error) {
-      console.error('❌ DEBUG: Failed to initialize strategy frameworks:', error);
-      this.strategyFrameworks = [];
-    }
+    this.strategyFrameworks = [
+      'Smart Money Concepts (SMC)',
+      'Inner Circle Trader (ICT)', 
+      'Wyckoff Accumulation/Distribution',
+      'Volume Spread Analysis (VSA)',
+      'Trend Continuation Strategy',
+      'Breakout with Volatility Confirmation',
+      'Session-Based Momentum Trading',
+      'Multi-Timeframe Confluence Trading'
+    ];
   }
 
   async generateUltraInstitutionalSignal(

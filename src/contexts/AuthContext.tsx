@@ -3,8 +3,6 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-console.log('🔍 DEBUG: AuthContext.tsx starting to load...');
-
 interface UserData extends User {
   role?: 'free' | 'premium';
   aiSignalsUsedToday?: number;
@@ -49,21 +47,9 @@ const DAILY_LIMITS = {
 const ADMIN_EMAILS = ['khaijwh@gmail.com', 'Konejunior09@outlook.com'];
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  console.log('🔍 DEBUG: AuthProvider initializing...');
-  
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  let toast: any;
-  try {
-    const { toast: toastHook } = useToast();
-    toast = toastHook;
-    console.log('🔍 DEBUG: useToast hook successful');
-  } catch (error) {
-    console.error('❌ DEBUG: useToast hook failed:', error);
-    // Fallback toast function
-    toast = () => {};
-  }
+  const { toast } = useToast();
 
   useEffect(() => {
     // Get initial session

@@ -58,8 +58,7 @@ export class UltraGroqAnalyzer {
   private apiKey: string = '';
   
   constructor() {
-    // Fixed: VITE_ env vars not supported by Lovable - using direct API key
-    this.apiKey = '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';
+    this.apiKey = import.meta.env.VITE_GROQ_API_KEY || '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';
   }
 
   async performInstitutionalAnalysis(params: {
