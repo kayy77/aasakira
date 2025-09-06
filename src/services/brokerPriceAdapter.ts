@@ -24,40 +24,48 @@ export interface PriceValidation {
 }
 
 class BrokerPriceAdapter {
-  private priceCache = new Map<string, BrokerPrice>();
-  private readonly CACHE_TTL = 500; // 500ms cache for price stability
+  // ❗ SEV-0: NO PRICE CACHE - only feature cache allowed
+  private featureCache = new Map<string, { data: any; timestamp: number; barId: string }>();
+  private readonly FEATURE_CACHE_TTL = 90000; // 90s for derived features only
   private readonly MAX_PRICE_GAP_PIPS = 5; // Alert if vendor vs broker > 5 pips
   
-  // Get broker-accurate price for signal generation
+  // Get broker-accurate price for signal generation - NO CACHE on ticks
   async getBrokerPrice(symbol: string): Promise<BrokerPrice | null> {
     try {
-      // Check cache first
-      const cached = this.priceCache.get(symbol);
-      if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-        return cached;
-      }
-
-      // Try broker first (MetaApi/cTrader integration would go here)
+      // ❗ SEV-0 FIX: NO CACHED TICKS - fetch fresh every time
       const brokerPrice = await this.fetchBrokerPrice(symbol);
       if (brokerPrice) {
-        this.priceCache.set(symbol, brokerPrice);
+        // Timestamp freshness check - reject if older than 8s
+        if (Date.now() - brokerPrice.timestamp > 8000) {
+          console.warn(`⚠️ Broker tick stale (${Date.now() - brokerPrice.timestamp}ms) - using fallback`);
+          const vendorPrice = await this.fetchVendorPrice(symbol);
+          if (vendorPrice) {
+            vendorPrice.source = 'VENDOR_FALLBACK';
+            vendorPrice.quality = 'SILVER';
+            return vendorPrice;
+          }
+          throw new Error('no_fresh_feed');
+        }
         return brokerPrice;
       }
 
-      // Fallback to vendor with warning
-      console.warn(`⚠️ Broker price unavailable for ${symbol}, using vendor fallback`);
+      // Immediate fallback only on broker failure
+      console.warn(`⚠️ Broker unavailable for ${symbol} - immediate fallback`);
       const vendorPrice = await this.fetchVendorPrice(symbol);
       if (vendorPrice) {
+        // Fresh check on fallback too
+        if (Date.now() - vendorPrice.timestamp > 8000) {
+          throw new Error('fallback_stale');
+        }
         vendorPrice.source = 'VENDOR_FALLBACK';
-        vendorPrice.quality = 'SILVER'; // Downgrade quality
-        this.priceCache.set(symbol, vendorPrice);
+        vendorPrice.quality = 'BRONZE'; // Lower quality for fallback
         return vendorPrice;
       }
 
-      return null;
+      throw new Error('no_live_feed');
     } catch (error) {
-      console.error('Error fetching broker price:', error);
-      return null;
+      console.error(`❌ Price fetch failed for ${symbol}:`, error);
+      throw error; // Don't swallow - let caller handle
     }
   }
 
@@ -208,19 +216,46 @@ class BrokerPriceAdapter {
     return mockPrices[symbol] || 1.0000;
   }
 
-  // Clear cache (call this periodically)
+  // Clear feature cache (SEV-0: no price cache)
   clearCache(): void {
-    this.priceCache.clear();
+    this.featureCache.clear();
   }
 
-  // Get cached price info for debugging
-  getCacheInfo(): Array<{ symbol: string; age: number; source: string }> {
+  // Get feature cache info for debugging
+  getCacheInfo(): Array<{ key: string; age: number; barId: string }> {
     const now = Date.now();
-    return Array.from(this.priceCache.entries()).map(([symbol, price]) => ({
-      symbol,
-      age: now - price.timestamp,
-      source: price.source
+    return Array.from(this.featureCache.entries()).map(([key, data]) => ({
+      key,
+      age: now - data.timestamp,
+      barId: data.barId
     }));
+  }
+
+  // Cache derived features only (not raw prices)
+  cacheFeature(symbol: string, timeframe: string, barId: string, featureData: any): void {
+    const key = `features:${symbol}:${timeframe}:${barId}`;
+    this.featureCache.set(key, {
+      data: featureData,
+      timestamp: Date.now(),
+      barId
+    });
+  }
+
+  // Get cached feature if valid
+  getCachedFeature(symbol: string, timeframe: string, barId: string): any | null {
+    const key = `features:${symbol}:${timeframe}:${barId}`;
+    const cached = this.featureCache.get(key);
+    
+    if (!cached) return null;
+    
+    // Check TTL and barId validity
+    const now = Date.now();
+    if (now - cached.timestamp > this.FEATURE_CACHE_TTL || cached.barId !== barId) {
+      this.featureCache.delete(key);
+      return null;
+    }
+    
+    return cached.data;
   }
 }
 
