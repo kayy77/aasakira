@@ -14,7 +14,7 @@ import {
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import UpgradePrompt from '@/components/common/UpgradePrompt';
-import { institutionalSignalEngine } from '@/services/institutionalSignalEngine';
+import { sev0SignalEngine } from '@/services/sev0SignalEngine';
 import { useToast } from '@/hooks/use-toast';
 
 interface SignalGeneratorProps {
@@ -46,43 +46,40 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
     setIsGenerating(true);
     
     try {
-      console.log('🏛️ Generating institutional-grade signal...');
+      console.log('🔥 SEV-0 Signal Engine: Starting bulletproof generation...');
       
-      // Generate signal with new institutional engine
-      const signal = await institutionalSignalEngine.generateInstitutionalSignal();
+      // Generate signal with SEV-0 engine - no fallbacks, deterministic scoring
+      const result = await sev0SignalEngine.generateSignal();
       
-      console.log('Institutional signal generated:', signal);
+      console.log('SEV-0 Result:', result);
       
-      // Test signal quality with institutional standards
-      if (signal && signal.confidence >= 85 && signal.confluenceScore >= 7) {
-        onSignalGenerated?.(signal);
+      if (result.status === 'SIGNAL' && result.signal) {
+        onSignalGenerated?.(result.signal);
         
         toast({
-          title: `🏛️ ${signal.institutionalGrade} Institutional Signal`,
-          description: `${signal.type} ${signal.pair} - ${signal.confluenceScore}/10 confluence, ${signal.expectedWinRate}% win rate`,
+          title: `🏛️ ${result.signal.risk_tier} Risk Signal`,
+          description: `${result.signal.direction} ${result.signal.symbol} - Score: ${result.signal.score}, RR: ${result.signal.rr}`,
         });
-      } else if (signal) {
-        // Signal generated but below institutional standards
-        onSignalGenerated?.(signal);
-        
+      } else if (result.status === 'NO_SETUP') {
         toast({
-          title: "⚠️ Signal Generated",
-          description: `${signal.type} ${signal.pair} - Grade: ${signal.institutionalGrade}. Monitor carefully.`,
-          variant: "destructive"
+          title: "📊 No Setup Available",
+          description: result.message || "No high-probability setup right now.",
+          variant: "default"
         });
-      } else {
+      } else if (result.status === 'ERROR') {
         toast({
-          title: "❌ No Institutional Signal",
-          description: "Market conditions don't meet institutional standards. All filters rejected.",
+          title: "❌ Generation Failed",
+          description: `${result.message} [${result.trace_id}]`,
           variant: "destructive"
         });
       }
       
     } catch (error) {
-      console.error('Signal generation error:', error);
+      const errorId = Date.now().toString(36);
+      console.error(`Signal generation crash [${errorId}]:`, error);
       toast({
-        title: "Generation Failed",
-        description: "Unable to generate signal. Please try again.",
+        title: "🚨 System Error",
+        description: `Signal generation crashed. Error ID: ${errorId}`,
         variant: "destructive"
       });
     } finally {
@@ -107,7 +104,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-purple-400" />
-            Institutional Signal Engine
+            SEV-0 Signal Engine
           </div>
           
           <div className="flex items-center gap-2">
@@ -158,7 +155,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
           {isGenerating ? (
             <>
               <TrendingUp className="w-5 h-5 mr-2 animate-pulse" />
-              Generating Institutional Signal...
+              Generating SEV-0 Signal...
             </>
           ) : !canGenerateSignal ? (
             <>
@@ -168,7 +165,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
           ) : (
             <>
               <Zap className="w-5 h-5 mr-2" />
-              Generate Institutional Signal
+              Generate SEV-0 Signal
             </>
           )}
         </Button>
