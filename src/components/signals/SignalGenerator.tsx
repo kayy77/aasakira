@@ -67,19 +67,33 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
           variant: "default"
         });
       } else if (result.status === 'ERROR') {
+        const displayMessage = result.error_code 
+          ? `${result.message} (Code: ${result.error_code})`
+          : result.message;
+          
         toast({
-          title: "❌ Generation Failed",
-          description: `${result.message} [${result.trace_id}]`,
+          title: "❌ Signal Generation Failed",
+          description: `${displayMessage} • Trace: ${result.trace_id}`,
           variant: "destructive"
+        });
+        
+        // Log detailed error for debugging
+        console.error(`SEV-0 Error [${result.trace_id}]:`, {
+          error_code: result.error_code,
+          message: result.message,
+          cause: result.cause
         });
       }
       
     } catch (error) {
       const errorId = Date.now().toString(36);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
       console.error(`Signal generation crash [${errorId}]:`, error);
+      
       toast({
         title: "🚨 System Error",
-        description: `Signal generation crashed. Error ID: ${errorId}`,
+        description: `Signal engine crashed: ${errorMessage.slice(0, 50)}... • ID: ${errorId}`,
         variant: "destructive"
       });
     } finally {

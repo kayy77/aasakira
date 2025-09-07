@@ -2,6 +2,7 @@
 // Implements exact spec: deterministic scoring, no fallbacks, Groq final judge
 
 import { v4 as uuidv4 } from 'uuid';
+import { brokerPriceAdapter } from './brokerPriceAdapter';
 
 // Data contracts as specified
 export type PriceTick = {
@@ -60,6 +61,7 @@ export type SignalResult = {
   message?: string;
   trace_id?: string;
   cause?: string;
+  error_code?: string;
 };
 
 export class SEV0SignalEngine {
@@ -168,13 +170,14 @@ export class SEV0SignalEngine {
 
         } catch (symbolError) {
           const errorMessage = symbolError instanceof Error ? symbolError.message : 'unknown_error';
-          console.error(`❌ ${symbol} scan failed: ${errorMessage}`);
+          console.error(`❌ ${symbol} scan failed [${traceId}]: ${errorMessage}`);
           
-          // Log structured error for monitoring
-          if (errorMessage.includes('no_price_feed') || errorMessage.includes('price_stale')) {
-            console.warn(`🚨 Price feed issue: ${symbol} - ${errorMessage}`);
-          }
-          continue; // Continue to next symbol
+          // Log structured error for monitoring with trace ID
+          const errorCode = this.categorizeError(errorMessage);
+          console.warn(`🚨 Structured Error: [${traceId}] ${errorCode} - ${symbol} - ${errorMessage}`);
+          
+          // Continue to next symbol - don't fail entire scan for single symbol issues
+          continue;
         }
       }
 
@@ -186,12 +189,17 @@ export class SEV0SignalEngine {
       };
 
     } catch (error) {
-      console.error(`❌ SEV-0 Engine error [${traceId}]:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorCode = this.categorizeError(errorMessage);
+      
+      console.error(`❌ SEV-0 Engine error [${traceId}]: ${errorCode} - ${errorMessage}`, error);
+      
       return {
         status: 'ERROR',
         trace_id: traceId,
-        message: 'Signal generation failed',
-        cause: error instanceof Error ? error.message : 'Unknown error'
+        message: this.getHumanReadableError(errorCode),
+        cause: errorMessage,
+        error_code: errorCode
       };
     }
   }
@@ -306,15 +314,15 @@ export class SEV0SignalEngine {
     if (!isIndex && session === 'Asia' && symbol !== 'USDJPY') return null;
 
     // ❗ SEV-0: Get live broker price - no cache, fresh data only
-    const { brokerPriceAdapter } = await import('./brokerPriceAdapter');
     const brokerPrice = await brokerPriceAdapter.getBrokerPrice(symbol);
     if (!brokerPrice) {
-      throw new Error(`no_price_feed:${symbol}`);
+      throw new Error(`no_live_tick:${symbol}`);
     }
 
-    // High latency check
-    if (brokerPrice.timestamp < Date.now() - 5000) { // older than 5s
-      throw new Error(`price_stale:${symbol}`);
+    // Strict freshness check - SEV-0 spec: reject if older than 8s
+    const priceAge = Date.now() - brokerPrice.timestamp;
+    if (priceAge > 8000) { 
+      throw new Error(`stale_tick:${symbol}:age_${priceAge}ms`);
     }
 
     const engineMid = brokerPrice.mid;
@@ -502,6 +510,52 @@ Return exactly:
       id: `sev0_${traceId}`,
       timestamp: new Date().toISOString()
     };
+  }
+
+  /**
+   * Error categorization for structured logging and user feedback
+   */
+  private categorizeError(errorMessage: string): string {
+    if (errorMessage.includes('no_live_tick') || errorMessage.includes('no_price_feed')) {
+      return 'no_live_tick';
+    }
+    if (errorMessage.includes('stale_tick') || errorMessage.includes('price_stale')) {
+      return 'stale_tick';
+    }
+    if (errorMessage.includes('candidate_builder_failed')) {
+      return 'candidate_builder_failed';
+    }
+    if (errorMessage.includes('groq_parse_error') || errorMessage.includes('JSON.parse')) {
+      return 'groq_parse_error';
+    }
+    if (errorMessage.includes('groq_reject')) {
+      return 'groq_reject';
+    }
+    if (errorMessage.includes('price_tolerance') || errorMessage.includes('Price integrity')) {
+      return 'price_tolerance';
+    }
+    if (errorMessage.includes('htf_mismatch')) {
+      return 'htf_mismatch';
+    }
+    if (errorMessage.includes('no_sweep_or_bos')) {
+      return 'no_sweep_or_bos';
+    }
+    return 'unknown_error';
+  }
+
+  private getHumanReadableError(errorCode: string): string {
+    const errorMessages: Record<string, string> = {
+      'no_live_tick': 'Price feed unavailable - market may be closed',
+      'stale_tick': 'Price data too old - live feed issue detected',
+      'candidate_builder_failed': 'Market analysis incomplete - insufficient data',
+      'groq_parse_error': 'Signal validation failed - analysis error',
+      'groq_reject': 'Setup rejected - quality standards not met',
+      'price_tolerance': 'Price mismatch detected - broker sync issue',
+      'htf_mismatch': 'Timeframe conflict - trend alignment required',
+      'no_sweep_or_bos': 'Structure unclear - awaiting clearer setup',
+      'unknown_error': 'System error - please try again'
+    };
+    return errorMessages[errorCode] || 'Signal generation failed';
   }
 
   /**
