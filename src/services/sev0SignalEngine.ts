@@ -1,10 +1,12 @@
-// 🚨 SEV-0 HOTFIX - Bulletproof Signal Engine
+// 🚨 SEV-0 HOTFIX - Emergency Bulletproof Signal Engine
+// SAFE MODE ACTIVE - EURUSD DISABLED until root cause found
 // Implements exact spec: deterministic scoring, no fallbacks, Groq final judge
 
 import { v4 as uuidv4 } from 'uuid';
-import { brokerPriceAdapter } from './brokerPriceAdapter';
+import { emergencyPriceAdapter, EmergencyPriceTick } from './emergencyPriceAdapter';
+import { groqService } from './groqService';
 
-// Data contracts as specified
+// Data contracts as specified - EMERGENCY SAFE MODE
 export type PriceTick = {
   symbol: string;
   bid: number;
@@ -16,7 +18,7 @@ export type PriceTick = {
   provider: 'BROKER' | 'FALLBACK';
 };
 
-export type WhitelistedSymbol = 'NAS100' | 'US30' | 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'AUDUSD' | 'USDCAD' | 'NZDUSD';
+export type WhitelistedSymbol = 'NAS100' | 'US30' | 'USDJPY';
 
 export type Candidate = {
   symbol: WhitelistedSymbol;
@@ -65,54 +67,56 @@ export type SignalResult = {
 };
 
 export class SEV0SignalEngine {
-  // Whitelisted instruments only - strict enforcement
+  // EMERGENCY SAFE MODE - Only these 3 symbols during maintenance
   private static readonly WHITELIST: WhitelistedSymbol[] = [
-    'NAS100', 'US30', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD'
+    'NAS100', 'US30', 'USDJPY'
   ];
 
-  // Priority order: scan in this exact order every cycle
+  // EMERGENCY SAFE MODE - Priority order (EURUSD DISABLED until root cause found)
   private static readonly PRIORITY_ORDER: WhitelistedSymbol[] = [
-    'NAS100', 'US30', 'USDJPY', 'GBPUSD', 'EURUSD', 'AUDUSD', 'USDCAD', 'NZDUSD'
+    'NAS100', 'US30', 'USDJPY'
   ];
 
-  // Price tolerance per symbol
+  // Price tolerance per symbol - EMERGENCY SAFE MODE
   private static readonly PRICE_TOLERANCE: Record<WhitelistedSymbol, number> = {
     'NAS100': 0.75,   // 0.75 points max deviation
     'US30': 1.2,      // 1.2 points max deviation  
-    'EURUSD': 0.00015, // 1.5 pips max deviation
-    'GBPUSD': 0.00015, // 1.5 pips max deviation
     'USDJPY': 0.015,   // 1.5 pips max deviation
-    'AUDUSD': 0.00015, // 1.5 pips max deviation
-    'USDCAD': 0.00015, // 1.5 pips max deviation
-    'NZDUSD': 0.00015  // 1.5 pips max deviation
   };
 
-  // Confidence thresholds per asset
+  // Confidence thresholds per asset - EMERGENCY SAFE MODE
   private static readonly CONFIDENCE_THRESHOLDS: Record<WhitelistedSymbol, number> = {
     'NAS100': 80,
     'US30': 80,
-    'EURUSD': 85,
-    'GBPUSD': 80,
-    'USDJPY': 80,
-    'AUDUSD': 80,
-    'USDCAD': 80,
-    'NZDUSD': 80
+    'USDJPY': 80
   };
 
-  // Anti-spam: cooldown tracking
+  // Anti-spam: cooldown tracking - EMERGENCY THROTTLE
   private static lastPublish: Record<string, number> = {};
   private static lastGlobalPublish: number = 0;
   private static readonly PER_SYMBOL_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2h
   private static readonly GLOBAL_COOLDOWN_MS = 30 * 60 * 1000; // 30m
 
   /**
-   * Generate signal following SEV-0 specification
+   * Generate signal following SEV-0 specification - EMERGENCY SAFE MODE
    */
   async generateSignal(): Promise<SignalResult> {
     const traceId = uuidv4();
     
     try {
-      console.log(`🔥 SEV-0 Engine starting scan [${traceId}]`);
+      console.log(`🚨 EMERGENCY SEV-0 Engine - SAFE MODE ACTIVE [${traceId}]`);
+      console.log(`🔒 Whitelisted symbols only:`, SEV0SignalEngine.WHITELIST);
+      
+      // EMERGENCY SAFE MODE - Check global throttle first
+      const now = Date.now();
+      if (now - SEV0SignalEngine.lastGlobalPublish < SEV0SignalEngine.GLOBAL_COOLDOWN_MS) {
+        console.log(`⏰ EMERGENCY THROTTLE: Global cooldown active`);
+        return { 
+          status: 'NO_SETUP', 
+          message: 'Signals paused for maintenance — investigating data integrity.',
+          trace_id: traceId 
+        };
+      }
       
       // Scan in priority order
       for (const symbol of SEV0SignalEngine.PRIORITY_ORDER) {
@@ -137,7 +141,6 @@ export class SEV0SignalEngine {
           }
 
           // Check cooldowns
-          const now = Date.now();
           const symbolLastPublish = SEV0SignalEngine.lastPublish[symbol] || 0;
           
           if (now - symbolLastPublish < SEV0SignalEngine.PER_SYMBOL_COOLDOWN_MS) {
@@ -145,12 +148,7 @@ export class SEV0SignalEngine {
             continue;
           }
 
-          if (now - SEV0SignalEngine.lastGlobalPublish < SEV0SignalEngine.GLOBAL_COOLDOWN_MS) {
-            console.log(`⏰ Global cooldown active`);
-            continue;
-          }
-
-          // Groq final judge (simulated for now - replace with actual Groq call)
+          // Emergency Groq final judge
           const groqDecision = await this.groqFinalJudge(candidate, score);
           
           if (groqDecision.decision === 'REJECT' || groqDecision.risk_tier === 'NONE') {
@@ -165,7 +163,7 @@ export class SEV0SignalEngine {
           SEV0SignalEngine.lastPublish[symbol] = now;
           SEV0SignalEngine.lastGlobalPublish = now;
           
-          console.log(`✅ SEV-0 Signal generated: ${symbol} ${candidate.direction} @ ${score}`);
+          console.log(`✅ EMERGENCY SEV-0 Signal generated: ${symbol} ${candidate.direction} @ ${score}`);
           return { status: 'SIGNAL', signal };
 
         } catch (symbolError) {
@@ -181,18 +179,19 @@ export class SEV0SignalEngine {
         }
       }
 
-      // No valid signals found after scanning all symbols
-      console.log('📊 SEV-0: No high-probability setup right now - all symbols scanned');
+      // No valid signals found after scanning all symbols - SAFE MODE MESSAGE
+      console.log('📊 EMERGENCY SEV-0: No high-probability setup during maintenance - all symbols scanned');
       return { 
         status: 'NO_SETUP', 
-        message: 'No high-probability setup right now.' 
+        message: 'Signals paused for maintenance — investigating data integrity (traceable ID: ' + traceId + ').',
+        trace_id: traceId 
       };
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorCode = this.categorizeError(errorMessage);
       
-      console.error(`❌ SEV-0 Engine error [${traceId}]: ${errorCode} - ${errorMessage}`, error);
+      console.error(`❌ EMERGENCY SEV-0 Engine error [${traceId}]: ${errorCode} - ${errorMessage}`, error);
       
       return {
         status: 'ERROR',
@@ -303,7 +302,7 @@ export class SEV0SignalEngine {
   }
 
   /**
-   * Real symbol scanning with live broker data - SEV-0 implementation
+   * Real symbol scanning with live broker data - EMERGENCY SAFE MODE
    */
   private async scanSymbol(symbol: WhitelistedSymbol): Promise<Candidate | null> {
     const session = this.getCurrentSession();
@@ -313,22 +312,19 @@ export class SEV0SignalEngine {
     if (isIndex && session !== 'NY') return null;
     if (!isIndex && session === 'Asia' && symbol !== 'USDJPY') return null;
 
-    // ❗ SEV-0: Get live broker price - no cache, fresh data only
-    const brokerPrice = await brokerPriceAdapter.getBrokerPrice(symbol);
-    if (!brokerPrice) {
-      throw new Error(`no_live_tick:${symbol}`);
+    // ❗ EMERGENCY SEV-0: Get live broker price - NO CACHE, strict validation
+    const brokerTick = await emergencyPriceAdapter.latestBrokerTick(symbol);
+    
+    // Validate tick integrity - EMERGENCY RULES
+    const tickValidation = emergencyPriceAdapter.validateTick(brokerTick);
+    if (!tickValidation.valid) {
+      throw new Error(`${tickValidation.error_code}:${symbol}:${tickValidation.message}`);
     }
 
-    // Strict freshness check - SEV-0 spec: reject if older than 8s
-    const priceAge = Date.now() - brokerPrice.timestamp;
-    if (priceAge > 8000) { 
-      throw new Error(`stale_tick:${symbol}:age_${priceAge}ms`);
-    }
+    const engineMid = brokerTick.mid;
+    const brokerMid = brokerTick.mid;
 
-    const engineMid = brokerPrice.mid;
-    const brokerMid = brokerPrice.mid;
-
-    // ❗ SEV-0: Real market analysis with live data
+    // ❗ EMERGENCY SEV-0: Real market analysis with live data
     // TODO: Replace with actual market data analysis
     // For now, generate realistic test candidates that match the session/symbol rules
     
@@ -379,7 +375,7 @@ export class SEV0SignalEngine {
   }
 
   /**
-   * Groq final judge - REAL API integration with strict rules
+   * EMERGENCY Groq final judge - STRICT JSON SCHEMA with enhanced error handling
    */
   private async groqFinalJudge(candidate: Candidate, score: number): Promise<{
     decision: 'APPROVE' | 'REJECT';
@@ -387,101 +383,74 @@ export class SEV0SignalEngine {
     reasons: string[];
   }> {
     try {
-      // ❗ SEV-0: Real Groq API call with strict prompt
-      const groqPayload = {
-        model: 'llama3-8b-8192',
-        messages: [
-          {
-            role: 'system',
-            content: `You are the final trade quality gate. Output JSON only.
+      // ❗ EMERGENCY SEV-0: Enhanced Groq prompt with strict rules
+      const systemPrompt = `You are the final trade quality gate. Output JSON only.
 Given the structured candidate JSON and precomputed score, return either APPROVE or REJECT.
-Rules:
+
+EMERGENCY RULES (ZERO TOLERANCE):
 - Reject if HTF (daily/h4/h1) are not unanimous in direction.
 - Reject if no external liquidity sweep (external_high/external_low).
 - Reject if no BOS/displacement >= 0.6 body ratio.
 - Reject if candidate.ctx.newsWindow === true.
 - Reject if pricing engine_mid vs broker_mid delta > tolerance.
 - Reject if price tick timestamp is older than 8 seconds.
+- SAFE MODE: Extra conservative - prefer NO_TRADE over risky trades.
+
 If APPROVE, return risk_tier: LOW|MEDIUM and list of short reasons.
 If REJECT, return reasons array explaining the top 3 blockers.
+
 Return exactly:
-{"decision":"APPROVE"|"REJECT","risk_tier":"LOW"|"MEDIUM"|"NONE","reasons":["..."]}`
-          },
-          {
-            role: 'user',
-            content: JSON.stringify({ candidate, score, timestamp: Date.now() })
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 200
+{"decision":"APPROVE"|"REJECT","risk_tier":"LOW"|"MEDIUM"|"NONE","reasons":["..."]}`;
+
+      const userPayload = JSON.stringify({ 
+        candidate, 
+        score, 
+        timestamp: Date.now(),
+        emergency_mode: true 
+      });
+
+      const groqResponse = await groqService.generateResponse(
+        `${systemPrompt}\n\nCandidate data: ${userPayload}`,
+        { model: 'llama-3.1-8b-instant', temperature: 0.1, max_tokens: 200 }
+      );
+
+      // Parse and validate JSON response
+      let parsedResponse;
+      try {
+        // Extract JSON from response if it contains extra text
+        const jsonMatch = groqResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('No JSON found in Groq response');
+        }
+        parsedResponse = JSON.parse(jsonMatch[0]);
+      } catch (parseError) {
+        console.error('❌ Groq JSON parse error:', parseError);
+        throw new Error(`groq_parse_error:${parseError.message}`);
+      }
+
+      // Validate required fields
+      if (!parsedResponse.decision || !parsedResponse.reasons) {
+        throw new Error('groq_parse_error:Missing required fields');
+      }
+
+      // Ensure decision is valid
+      if (!['APPROVE', 'REJECT'].includes(parsedResponse.decision)) {
+        throw new Error('groq_parse_error:Invalid decision value');
+      }
+
+      return {
+        decision: parsedResponse.decision,
+        risk_tier: parsedResponse.risk_tier || 'NONE',
+        reasons: Array.isArray(parsedResponse.reasons) ? parsedResponse.reasons : [parsedResponse.reasons]
       };
 
-      // For development - simulate Groq response with real logic
-      // TODO: Replace with actual Groq API call when API key available
-      const reasons: string[] = [];
-      let decision: 'APPROVE' | 'REJECT' = 'REJECT';
-      
-      // HTF alignment check
-      const htfAlign = candidate.htf.daily === candidate.htf.h4 && candidate.htf.h4 === candidate.htf.h1;
-      if (!htfAlign) {
-        reasons.push('HTF not unanimous');
-      } else {
-        reasons.push(`HTF ${candidate.htf.daily} (D/H4/H1)`);
-      }
-      
-      // External sweep check
-      if (!candidate.features.sweep.startsWith('external')) {
-        reasons.push('No external liquidity sweep');
-      } else {
-        reasons.push('External sweep of prior session level');
-      }
-      
-      // Displacement check
-      if (candidate.features.displacement_body_ratio < 0.6) {
-        reasons.push('Weak displacement < 0.6');
-      } else {
-        reasons.push('Strong displacement; retest into unmitigated zone');
-      }
-      
-      // News window check
-      if (candidate.ctx.newsWindow) {
-        reasons.push('News window active');
-      }
-      
-      // Price integrity check
-      const tolerance = SEV0SignalEngine.PRICE_TOLERANCE[candidate.symbol];
-      if (Math.abs(candidate.pricing.engineMid - candidate.pricing.brokerMid) > tolerance) {
-        reasons.push('Price integrity failed');
-      }
-      
-      // Market quality checks
-      if (candidate.features.atr > candidate.features.atrBaseline && candidate.ctx.spread <= 1.5 * candidate.ctx.spreadMed20) {
-        reasons.push('ATR > baseline, spread normal');
-      }
-
-      // Final decision logic
-      const blockingReasons = reasons.filter(r => 
-        r.includes('not unanimous') || 
-        r.includes('No external') || 
-        r.includes('Weak displacement') || 
-        r.includes('News window') || 
-        r.includes('Price integrity')
-      );
-      
-      if (blockingReasons.length === 0 && score >= 75) {
-        decision = 'APPROVE';
-      }
-      
-      const risk_tier = score >= 85 ? 'LOW' : score >= 75 ? 'MEDIUM' : 'NONE';
-      
-      return { decision, risk_tier, reasons: reasons.slice(0, 4) };
-      
     } catch (error) {
-      console.error('❌ Groq judge failed:', error);
+      console.error('❌ Emergency Groq judge failed:', error);
+      // EMERGENCY FALLBACK: Always reject on error
       return { 
         decision: 'REJECT', 
         risk_tier: 'NONE', 
-        reasons: ['Groq API error'] 
+        reasons: [`Emergency Groq error: ${error.message}`] 
       };
     }
   }
@@ -507,7 +476,7 @@ Return exactly:
       session: candidate.ctx.session,
       groq: groqDecision.decision,
       reasons: groqDecision.reasons,
-      id: `sev0_${traceId}`,
+      id: `emergency_sev0_${traceId}`,
       timestamp: new Date().toISOString()
     };
   }
@@ -572,12 +541,7 @@ Return exactly:
     const prices: Record<WhitelistedSymbol, number> = {
       'NAS100': 18250 + Math.random() * 100,
       'US30': 39500 + Math.random() * 200,
-      'EURUSD': 1.0850 + Math.random() * 0.01,
-      'GBPUSD': 1.2650 + Math.random() * 0.01,
       'USDJPY': 149.50 + Math.random() * 1,
-      'AUDUSD': 0.6450 + Math.random() * 0.01,
-      'USDCAD': 1.3850 + Math.random() * 0.01,
-      'NZDUSD': 0.5950 + Math.random() * 0.01
     };
     return prices[symbol];
   }

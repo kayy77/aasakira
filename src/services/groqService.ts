@@ -145,12 +145,12 @@ CRITICAL: You are managing real money. ONE bad trade can destroy the account. On
     }
 
     console.log('🧠 GROQ API REQUEST INITIATED');
-    console.log('📝 Model:', options.model || 'llama3-8b-8192');
+    console.log('📝 Model:', options.model || 'llama-3.1-8b-instant');
     console.log('🌡️ Temperature:', options.temperature || 0.1);
 
     try {
       const requestBody = {
-        model: options.model || 'llama3-8b-8192',
+        model: options.model || 'llama-3.1-8b-instant',
         messages: [
           { role: 'user', content: prompt }
         ],
