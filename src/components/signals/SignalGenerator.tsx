@@ -14,7 +14,7 @@ import {
 import { useSignalLimits } from '@/hooks/useSignalLimits';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import UpgradePrompt from '@/components/common/UpgradePrompt';
-import { sev0SignalEngine } from '@/services/sev0SignalEngine';
+import { deterministicSignalEngine } from '@/services/core/DeterministicSignalEngine';
 import { useToast } from '@/hooks/use-toast';
 
 interface SignalGeneratorProps {
@@ -49,7 +49,7 @@ const SignalGenerator: React.FC<SignalGeneratorProps> = ({ onSignalGenerated }) 
       console.log('🔥 SEV-0 Signal Engine: Starting bulletproof generation...');
       
       // Generate signal with SEV-0 engine - no fallbacks, deterministic scoring
-      const result = await sev0SignalEngine.generateSignal();
+      const result = await deterministicSignalEngine.generateSignal();
       
       console.log('SEV-0 Result:', result);
       

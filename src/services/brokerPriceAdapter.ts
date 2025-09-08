@@ -32,7 +32,26 @@ class BrokerPriceAdapter {
   // Get broker-accurate price for signal generation - NO CACHE on ticks
   async getBrokerPrice(symbol: string): Promise<BrokerPrice | null> {
     try {
-      // ❗ SEV-0 FIX: NO CACHED TICKS - fetch fresh every time
+      // ❗ SEV-0 FIX: PRODUCTION MODE - no mocks in production
+      if (process.env.NODE_ENV === 'production') {
+        const brokerPrice = await this.fetchBrokerPrice(symbol);
+        if (brokerPrice && (Date.now() - brokerPrice.timestamp) <= 8000) {
+          return brokerPrice;
+        }
+
+        // Single fallback attempt
+        const vendorPrice = await this.fetchVendorPrice(symbol);
+        if (vendorPrice && (Date.now() - vendorPrice.timestamp) <= 8000) {
+          vendorPrice.source = 'VENDOR_FALLBACK';
+          vendorPrice.quality = 'SILVER';
+          return vendorPrice;
+        }
+
+        // Explicit failure - let caller handle
+        throw new Error('no_fresh_feed');
+      }
+
+      // Development mode: allow mocks but still enforce freshness
       const brokerPrice = await this.fetchBrokerPrice(symbol);
       if (brokerPrice) {
         // Timestamp freshness check - reject if older than 8s

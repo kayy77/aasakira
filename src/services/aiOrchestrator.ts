@@ -103,16 +103,19 @@ class GroqAdapter implements ProviderAdapter {
     const startTime = Date.now();
     
     try {
-      // TODO: Implement actual Groq API call
-      // For now, simulate response
-      await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
-      
+      // SEV-0 FIX: No random responses in production
+      if (process.env.NODE_ENV === 'production') {
+        // TODO: Implement actual Groq API call
+        throw new Error('Groq API not yet implemented for production');
+      }
+
+      // Development: Deterministic response for testing
       const response: AIModelResponse = {
         provider: 'Groq',
-        direction: Math.random() > 0.5 ? 'long' : 'short',
-        confidence: 0.6 + Math.random() * 0.3,
-        tier: 'elite',
-        reasoning: `Groq analysis for ${marketData.pair}`,
+        direction: 'neutral', // Deterministic neutral until real API is implemented
+        confidence: 0.0, // Zero confidence for mock responses
+        tier: 'weak',
+        reasoning: `Mock Groq analysis for ${marketData.pair} - implement real API`,
         timestamp: new Date().toISOString(),
         latency_ms: Date.now() - startTime
       };
@@ -148,15 +151,19 @@ class GeminiAdapter implements ProviderAdapter {
     const startTime = Date.now();
     
     try {
-      // TODO: Implement actual Gemini API call
-      await new Promise(resolve => setTimeout(resolve, Math.random() * 1500 + 700));
-      
+      // SEV-0 FIX: No random responses in production
+      if (process.env.NODE_ENV === 'production') {
+        // TODO: Implement actual Gemini API call
+        throw new Error('Gemini API not yet implemented for production');
+      }
+
+      // Development: Deterministic response for testing
       const response: AIModelResponse = {
         provider: 'Gemini',
-        direction: Math.random() > 0.6 ? 'long' : 'short',
-        confidence: 0.5 + Math.random() * 0.4,
-        tier: 'moderate',
-        reasoning: `Gemini analysis for ${marketData.pair}`,
+        direction: 'neutral', // Deterministic neutral until real API is implemented
+        confidence: 0.0, // Zero confidence for mock responses
+        tier: 'weak',
+        reasoning: `Mock Gemini analysis for ${marketData.pair} - implement real API`,
         timestamp: new Date().toISOString(),
         latency_ms: Date.now() - startTime
       };
@@ -179,78 +186,8 @@ class GeminiAdapter implements ProviderAdapter {
   }
 }
 
-// Strategy engines
-class SMCStrategy {
-  static async analyze(marketData: MarketData): Promise<StrategyResult> {
-    // Simulate SMC analysis
-    const filters: FilterScore[] = [
-      { name: 'Order Block', score: Math.random() > 0.3 ? 1 : 0, reason: 'OB detected on H4' },
-      { name: 'Liquidity Sweep', score: Math.random() > 0.4 ? 1 : 0, reason: 'Recent sweep confirmed' },
-      { name: 'FVG', score: Math.random() > 0.5 ? 0.5 : 0, reason: 'Partial FVG fill' },
-      { name: 'Structure', score: Math.random() > 0.4 ? 1 : 0, reason: 'HTF structure intact' }
-    ];
-
-    const passedFilters = filters.filter(f => f.score > 0).length;
-    const avgScore = filters.reduce((sum, f) => sum + f.score, 0) / filters.length;
-
-    return {
-      name: 'SMC',
-      passedFilters,
-      strategyConfidence: avgScore,
-      direction: Math.random() > 0.5 ? 'long' : 'short',
-      reasons: filters.filter(f => f.score > 0).map(f => f.reason || f.name),
-      filters
-    };
-  }
-}
-
-class SniperStrategy {
-  static async analyze(marketData: MarketData): Promise<StrategyResult> {
-    // Simulate precision entry analysis
-    const filters: FilterScore[] = [
-      { name: 'Micro Confirmation', score: Math.random() > 0.4 ? 1 : 0, reason: '1m wick rejection' },
-      { name: 'Tight SL', score: Math.random() > 0.3 ? 1 : 0, reason: 'SL < 10 pips' },
-      { name: 'Low Spread', score: Math.random() > 0.2 ? 1 : 0, reason: 'Spread within limits' },
-      { name: 'Session Timing', score: Math.random() > 0.5 ? 0.5 : 0, reason: 'Optimal session' }
-    ];
-
-    const passedFilters = filters.filter(f => f.score > 0).length;
-    const avgScore = filters.reduce((sum, f) => sum + f.score, 0) / filters.length;
-
-    return {
-      name: 'Sniper',
-      passedFilters,
-      strategyConfidence: avgScore,
-      direction: Math.random() > 0.5 ? 'long' : 'short',
-      reasons: filters.filter(f => f.score > 0).map(f => f.reason || f.name),
-      filters
-    };
-  }
-}
-
-class AMDStrategy {
-  static async analyze(marketData: MarketData): Promise<StrategyResult> {
-    // Simulate Adaptive Market Dynamics
-    const filters: FilterScore[] = [
-      { name: 'Volatility Regime', score: Math.random() > 0.4 ? 1 : 0, reason: 'Optimal ATR ratio' },
-      { name: 'VWAP Alignment', score: Math.random() > 0.3 ? 1 : 0, reason: 'Price above VWAP' },
-      { name: 'Volume Imbalance', score: Math.random() > 0.5 ? 0.5 : 0, reason: 'Moderate imbalance' },
-      { name: 'Session Overlap', score: Math.random() > 0.6 ? 1 : 0, reason: 'London/NY overlap' }
-    ];
-
-    const passedFilters = filters.filter(f => f.score > 0).length;
-    const avgScore = filters.reduce((sum, f) => sum + f.score, 0) / filters.length;
-
-    return {
-      name: 'AMD',
-      passedFilters,
-      strategyConfidence: avgScore,
-      direction: Math.random() > 0.5 ? 'long' : 'short',
-      reasons: filters.filter(f => f.score > 0).map(f => f.reason || f.name),
-      filters
-    };
-  }
-}
+// SEV-0 HOTFIX: Import deterministic strategies
+import { SMCStrategy, SniperStrategy, AMDStrategy } from './core/ProductionStrategyEngines';
 
 // Main orchestrator
 export class AIOrchestrator {
@@ -354,11 +291,31 @@ export class AIOrchestrator {
       )
       .map(result => result.value);
 
-    if (responses.length === 0) {
-      throw new Error('All providers failed');
+    // SEV-0 FIX: Validate AI responses to prevent random data
+    const validResponses = responses.filter(this.validateAIResponse);
+
+    if (validResponses.length === 0) {
+      throw new Error('All providers failed or returned invalid responses');
     }
 
-    return responses;
+    return validResponses;
+  }
+
+  /**
+   * SEV-0 FIX: Validate AI responses to prevent random/invalid data
+   */
+  private validateAIResponse(response: AIModelResponse): boolean {
+    if (!response) return false;
+    if (response.confidence == null || isNaN(response.confidence)) return false;
+    if (!['long', 'short', 'neutral'].includes(response.direction)) return false;
+    if (response.confidence < 0 || response.confidence > 1) return false;
+    
+    // In production, reject zero-confidence mock responses
+    if (process.env.NODE_ENV === 'production' && response.confidence === 0) {
+      return false;
+    }
+    
+    return true;
   }
 
   private async runStrategyEngines(marketData: MarketData): Promise<StrategyResult[]> {
@@ -405,6 +362,16 @@ export class AIOrchestrator {
   }
 
   private buildSignalRecord(marketData: MarketData, consensus: any, validation: any, strategies: StrategyResult[]): any {
+    // SEV-0 FIX: Validate consensus before building signal
+    if (consensus.frac === null || isNaN(consensus.frac) || consensus.frac < 0) {
+      throw new Error('Invalid consensus fraction - cannot build signal');
+    }
+
+    // Don't persist signals below minimum threshold
+    if (consensus.frac < 0.45) {
+      throw new Error('Consensus below minimum threshold - signal rejected');
+    }
+
     return {
       pair: marketData.pair,
       signal_type: 'AI_CONSENSUS',
