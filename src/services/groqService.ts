@@ -13,6 +13,7 @@ class GroqService {
     this.apiKey = import.meta.env.VITE_GROQ_API_KEY || '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';
     this.initialized = true; // Force initialization to proceed
     console.log('🧠 GROQ SERVICE FORCE INITIALIZED - Ready for institutional analysis');
+    console.log("🔑 Using API key:", this.apiKey?.substring(0,6) + "...");
   }
 
   async generateInstitutionalSignal(symbol: string, livePrice: number, timeframe: string = '15m', strategy: any = {}, multiTfData: any = {}): Promise<any> {
@@ -102,39 +103,41 @@ CRITICAL: You are managing real money. ONE bad trade can destroy the account. On
 
     try {
       const response = await this.generateResponse(institutionalPrompt, {
-        model: 'llama3-8b-8192',
+        model: 'llama-3.1-8b-instant', // Updated to supported model
         temperature: 0.1, // Lower temperature for more consistent responses
         max_tokens: 600
       });
 
-      console.log('🧠 GROQ Raw Response:', response.substring(0, 200));
+      console.log('🧠 FULL GROQ RAW RESPONSE:', response);
 
-      // Check for NO_TRADE response first
-      if (response.includes('NO_TRADE')) {
-        console.log('🚫 GROQ REJECTED TRADE - Conditions not met');
-        return { signal: 'REJECTED', reason: 'Failed institutional filters' };
-      }
-
-      // Parse JSON response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        
-        // Validate the parsed response has required fields
-        if (parsed.signal === 'APPROVED' && parsed.entry && parsed.stop_loss && parsed.take_profit_1) {
-          console.log('✅ GROQ APPROVED TRADE:', parsed.symbol, parsed.direction);
-          return parsed;
+      // Safe JSON parsing
+      let parsed: any = null;
+      try {
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+          console.log('✅ GROQ JSON PARSED SUCCESSFULLY:', parsed);
         }
+      } catch (e) {
+        console.error("❌ Failed to parse JSON:", e, "Raw:", response);
       }
 
-      console.log('🚫 GROQ RESPONSE INVALID - No trade generated');
-      return { signal: 'REJECTED', reason: 'Invalid response format' };
+      if (parsed && parsed.signal === "APPROVED") {
+        console.log('✅ GROQ APPROVED TRADE:', parsed.symbol, parsed.direction);
+        return parsed;
+      } else if (response.includes("NO_TRADE")) {
+        console.log('🚫 GROQ REJECTED TRADE - Conditions not met');
+        return { signal: "REJECTED", reason: "Failed institutional filters" };
+      } else {
+        console.log('🚫 GROQ RESPONSE INVALID - No valid trade found');
+        return { signal: "REJECTED", reason: "Invalid response format", raw: response.substring(0, 500) };
+      }
       
     } catch (error) {
-      console.error('❌ GROQ API call failed:', error);
+      console.error('❌ GROQ API call failed - EXPOSING REAL ERROR:', error);
       
-      // NO fallback signals - if GROQ fails, we don't trade
-      return { signal: 'REJECTED', reason: 'System error - GROQ unavailable' };
+      // Don't suppress real errors - throw them so we can see what's wrong
+      throw new Error(`Groq error: ${error.message || error}`);
     }
   }
 
@@ -271,7 +274,7 @@ CRITICAL: You are managing real money. ONE bad trade can destroy the account. On
       console.log('🧪 TESTING GROQ CONNECTION...');
       const testPrompt = 'Please respond with exactly: {"status": "success", "message": "GROQ_TEST_SUCCESS"}';
       const response = await this.generateResponse(testPrompt, {
-        model: 'llama3-8b-8192',
+        model: 'llama-3.1-8b-instant', // Updated to supported model
         temperature: 0.1,
         max_tokens: 100
       });
