@@ -94,6 +94,66 @@ export type Database = {
           },
         ]
       }
+      journal_entries: {
+        Row: {
+          ai_feedback: string | null
+          created_at: string
+          direction: string
+          entry_price: number
+          entry_time: string
+          exit_price: number | null
+          exit_time: string | null
+          id: string
+          notes: string | null
+          pair: string
+          result_percentage: number | null
+          result_pips: number | null
+          risk_reward_ratio: number | null
+          status: string
+          strategy: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_feedback?: string | null
+          created_at?: string
+          direction: string
+          entry_price: number
+          entry_time: string
+          exit_price?: number | null
+          exit_time?: string | null
+          id?: string
+          notes?: string | null
+          pair: string
+          result_percentage?: number | null
+          result_pips?: number | null
+          risk_reward_ratio?: number | null
+          status?: string
+          strategy: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_feedback?: string | null
+          created_at?: string
+          direction?: string
+          entry_price?: number
+          entry_time?: string
+          exit_price?: number | null
+          exit_time?: string | null
+          id?: string
+          notes?: string | null
+          pair?: string
+          result_percentage?: number | null
+          result_pips?: number | null
+          risk_reward_ratio?: number | null
+          status?: string
+          strategy?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       learning_metrics: {
         Row: {
           created_at: string
