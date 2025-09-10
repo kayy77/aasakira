@@ -366,61 +366,53 @@ const Journal = () => {
             </Dialog>
           </div>
 
-          {/* Stats Dashboard */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Trades</p>
-                    <p className="text-3xl font-bold">{stats.totalTrades}</p>
-                  </div>
-                  <Activity className="h-8 w-8 text-primary" />
+          {/* Stats Dashboard - SuperTrader Style */}
+          <div className="grid grid-cols-4 gap-3 mb-8">
+            <div className="bg-card/50 backdrop-blur border border-border/50 rounded-lg p-3 hover:shadow-sm transition-all">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground/80 uppercase tracking-wide">Total Trades</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{stats.totalTrades}</p>
                 </div>
-              </CardContent>
-            </Card>
+                <Activity className="h-4 w-4 text-primary/60" />
+              </div>
+            </div>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Win Rate</p>
-                    <p className="text-3xl font-bold text-green-500">{stats.winRate.toFixed(1)}%</p>
-                  </div>
-                  <Target className="h-8 w-8 text-green-500" />
+            <div className="bg-card/50 backdrop-blur border border-border/50 rounded-lg p-3 hover:shadow-sm transition-all">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground/80 uppercase tracking-wide">Win Rate</p>
+                  <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.winRate.toFixed(1)}%</p>
                 </div>
-              </CardContent>
-            </Card>
+                <Target className="h-4 w-4 text-emerald-400/60" />
+              </div>
+            </div>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Pips</p>
-                    <p className={`text-3xl font-bold ${stats.totalPips >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {stats.totalPips > 0 ? '+' : ''}{stats.totalPips.toFixed(1)}
-                    </p>
-                  </div>
-                  {stats.totalPips >= 0 ? (
-                    <TrendingUp className="h-8 w-8 text-green-500" />
-                  ) : (
-                    <TrendingDown className="h-8 w-8 text-red-500" />
-                  )}
+            <div className="bg-card/50 backdrop-blur border border-border/50 rounded-lg p-3 hover:shadow-sm transition-all">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground/80 uppercase tracking-wide">Total Pips</p>
+                  <p className={`text-2xl font-bold mt-1 ${stats.totalPips >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {stats.totalPips > 0 ? '+' : ''}{stats.totalPips.toFixed(1)}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                {stats.totalPips >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-emerald-400/60" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-400/60" />
+                )}
+              </div>
+            </div>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Avg R:R</p>
-                    <p className="text-3xl font-bold">{stats.avgRR.toFixed(2)}</p>
-                  </div>
-                  <Brain className="h-8 w-8 text-primary" />
+            <div className="bg-card/50 backdrop-blur border border-border/50 rounded-lg p-3 hover:shadow-sm transition-all">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground/80 uppercase tracking-wide">Avg R:R</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{stats.avgRR.toFixed(2)}</p>
                 </div>
-              </CardContent>
-            </Card>
+                <Brain className="h-4 w-4 text-primary/60" />
+              </div>
+            </div>
           </div>
 
           {/* Journal Entries */}
@@ -439,119 +431,145 @@ const Journal = () => {
               </Card>
             ) : (
               entries.map((entry) => (
-                <Card key={entry.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-4">
+                <div 
+                  key={entry.id} 
+                  className={`bg-card/30 backdrop-blur border rounded-lg hover:shadow-sm transition-all ${
+                    entry.status === 'CLOSED' && entry.result_pips !== null
+                      ? entry.result_pips > 0 
+                        ? 'border-l-4 border-l-emerald-400' 
+                        : 'border-l-4 border-l-red-400'
+                      : 'border-l-4 border-l-muted-foreground/30'
+                  }`}
+                >
+                  <div className="p-4">
+                    {/* Compact Horizontal Layout */}
+                    <div className="flex items-center justify-between">
+                      {/* Left: Pair + Tags */}
+                      <div className="flex items-center gap-3">
                         <div>
-                          <h3 className="text-lg font-semibold">{entry.pair}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(entry.entry_time).toLocaleString()}
+                          <h3 className="font-semibold text-lg">{entry.pair}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(entry.entry_time).toLocaleDateString()} {new Date(entry.entry_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </p>
                         </div>
-                        <Badge variant={entry.direction === 'LONG' ? 'default' : 'secondary'}>
-                          {entry.direction}
-                        </Badge>
-                        <Badge variant="outline">{entry.strategy}</Badge>
-                        <Badge variant={
-                          entry.status === 'OPEN' ? 'secondary' : 
-                          entry.status === 'CLOSED' ? 'default' : 'destructive'
-                        }>
-                          {entry.status}
-                        </Badge>
-                      </div>
-
-                      <div className="text-right">
-                        {entry.result_pips !== null && (
-                          <div className={`text-lg font-bold ${
-                            (entry.result_pips || 0) >= 0 ? 'text-green-500' : 'text-red-500'
-                          }`}>
-                            {entry.result_pips > 0 ? '+' : ''}{entry.result_pips?.toFixed(1)} pips
-                          </div>
-                        )}
-                        <div className="text-sm text-muted-foreground">
-                          Entry: {entry.entry_price}
-                          {entry.exit_price && ` → ${entry.exit_price}`}
+                        
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant={entry.direction === 'LONG' ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {entry.direction}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">{entry.strategy}</Badge>
+                          <Badge 
+                            variant={
+                              entry.status === 'OPEN' ? 'secondary' : 
+                              entry.result_pips && entry.result_pips > 0 ? 'default' : 'destructive'
+                            }
+                            className="text-xs"
+                          >
+                            {entry.status}
+                          </Badge>
                         </div>
+                      </div>
+                      
+                      {/* Center: Entry → Exit + Notes */}
+                      <div className="flex-1 px-6 text-center">
+                        <div className="flex items-center justify-center gap-4 text-sm">
+                          <span className="text-muted-foreground">{entry.entry_price}</span>
+                          <span className="text-muted-foreground/50">→</span>
+                          {entry.exit_price ? (
+                            <span className="text-muted-foreground">{entry.exit_price}</span>
+                          ) : (
+                            <span className="text-muted-foreground/50">Open</span>
+                          )}
+                        </div>
+                        {entry.notes && (
+                          <p className="text-xs text-muted-foreground/80 mt-1 truncate max-w-md">
+                            {entry.notes.length > 50 ? `${entry.notes.substring(0, 50)}...` : entry.notes}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Right: Result */}
+                      <div className="text-right">
+                        {entry.status === 'CLOSED' && entry.result_pips !== null ? (
+                          <>
+                            <p className={`text-xl font-bold ${entry.result_pips > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {entry.result_pips > 0 ? '+' : ''}{entry.result_pips.toFixed(1)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">pips</p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground/50">Pending</p>
+                        )}
                       </div>
                     </div>
 
-                    {entry.notes && (
-                      <div className="mb-4">
-                        <p className="text-sm text-muted-foreground mb-1">Notes:</p>
-                        <p className="text-sm">{entry.notes}</p>
-                      </div>
-                    )}
-
-                    {/* AI Feedback Section */}
-                    <div className="border-t pt-4">
-                      {isPremium ? (
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Brain className="h-4 w-4 text-primary" />
-                              <span className="text-sm font-medium">AI Insights</span>
-                              <Crown className="h-4 w-4 text-yellow-500" />
-                            </div>
-                            {!entry.ai_feedback && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => generateAIFeedback(entry.id)}
-                                disabled={generatingAI === entry.id}
-                                className="gap-2"
-                              >
-                                {generatingAI === entry.id ? (
-                                  <div className="animate-spin rounded-full h-3 w-3 border-b border-primary" />
-                                ) : (
-                                  <Brain className="h-3 w-3" />
-                                )}
-                                {generatingAI === entry.id ? 'Analyzing...' : 'Get AI Feedback'}
-                              </Button>
+                    {/* AI Insights - Clean Premium Upsell */}
+                    <div className="mt-4 pt-3 border-t border-border/30">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Brain className="h-3 w-3 text-primary/60" />
+                          <span className="text-xs font-medium text-muted-foreground">AI Analysis</span>
+                        </div>
+                        
+                        {!entry.ai_feedback && !isPremium && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setShowUpgradeDialog(true)}
+                            className="h-6 px-2 text-xs gap-1"
+                          >
+                            <Lock className="h-3 w-3" />
+                            Unlock
+                          </Button>
+                        )}
+                        
+                        {!entry.ai_feedback && isPremium && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => generateAIFeedback(entry.id)}
+                            disabled={generatingAI === entry.id}
+                            className="h-6 px-2 text-xs gap-1"
+                          >
+                            {generatingAI === entry.id ? (
+                              <div className="animate-spin rounded-full h-2 w-2 border border-primary"></div>
+                            ) : (
+                              <Brain className="h-3 w-3" />
                             )}
+                            Analyze
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {entry.ai_feedback ? (
+                        <div className="bg-muted/20 p-3 rounded text-xs leading-relaxed">
+                          {entry.ai_feedback}
+                        </div>
+                      ) : !isPremium ? (
+                        <div 
+                          className="relative bg-muted/10 p-3 rounded text-xs text-muted-foreground/60 cursor-pointer hover:bg-muted/20 transition-colors"
+                          onClick={() => setShowUpgradeDialog(true)}
+                        >
+                          <div className="blur-sm select-none">
+                            ⚡ Your entry timing shows good market awareness. Stop loss placement could be optimized for better risk management...
                           </div>
-                          {entry.ai_feedback ? (
-                            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                              <p className="text-sm">{entry.ai_feedback}</p>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="bg-background/80 backdrop-blur-sm px-3 py-1 rounded border text-primary font-medium">
+                              🔓 Unlock AI Insights
                             </div>
-                          ) : generatingAI === entry.id ? (
-                            <div className="bg-muted rounded-lg p-3">
-                              <div className="animate-pulse text-sm text-muted-foreground">
-                                AI is analyzing your trade...
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="bg-muted rounded-lg p-3">
-                              <p className="text-sm text-muted-foreground">
-                                Click "Get AI Feedback" to receive personalized insights about this trade
-                              </p>
-                            </div>
-                          )}
+                          </div>
                         </div>
                       ) : (
-                        <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Lock className="h-4 w-4 text-yellow-500" />
-                              <span className="text-sm font-medium">Premium AI Insights</span>
-                            </div>
-                            <Button
-                              size="sm"
-                              onClick={() => setShowUpgradeDialog(true)}
-                              className="gap-2"
-                            >
-                              <Crown className="h-3 w-3" />
-                              Upgrade
-                            </Button>
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Get personalized AI feedback on your trades, identify patterns, and improve your strategy
-                          </p>
+                        <div className="bg-muted/10 p-3 rounded text-xs text-muted-foreground/60">
+                          Click "Analyze" to get AI feedback on this trade
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))
             )}
           </div>
