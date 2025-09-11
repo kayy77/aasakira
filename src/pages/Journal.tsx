@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, TrendingUp, TrendingDown, Activity, Target, Brain, Crown, Lock } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Activity, Target, Brain, Crown, Lock, Calendar, Filter, Users, Settings, BarChart3 } from 'lucide-react';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
@@ -92,8 +93,61 @@ const Journal = () => {
     const winRate = totalTrades > 0 ? (wins.length / totalTrades) * 100 : 0;
     const totalPips = closedTrades.reduce((sum, e) => sum + (e.result_pips || 0), 0);
     const avgRR = closedTrades.reduce((sum, e) => sum + (e.risk_reward_ratio || 0), 0) / (totalTrades || 1);
+    
+    // Calculate monetary values (assuming 1 pip = $10 for demo)
+    const totalPnL = totalPips * 10;
+    const avgWin = wins.length > 0 ? wins.reduce((sum, e) => sum + (e.result_pips || 0), 0) / wins.length : 0;
+    const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((sum, e) => sum + (e.result_pips || 0), 0) / losses.length) : 0;
+    const profitFactor = avgLoss > 0 ? (avgWin / avgLoss) : 0;
 
-    return { totalTrades, winRate, totalPips, avgRR, wins: wins.length, losses: losses.length };
+    return { 
+      totalTrades, 
+      winRate, 
+      totalPips, 
+      avgRR, 
+      wins: wins.length, 
+      losses: losses.length,
+      totalPnL,
+      avgWin,
+      avgLoss,
+      profitFactor
+    };
+  };
+
+  const generateChartData = () => {
+    const dailyPnL: { [key: string]: number } = {};
+    const cumulativeData: { date: string; pnl: number; winRate: number }[] = [];
+    
+    let runningPnL = 0;
+    let runningWins = 0;
+    let runningTrades = 0;
+
+    entries
+      .filter(e => e.status === 'CLOSED' && e.result_pips !== null)
+      .sort((a, b) => new Date(a.exit_time || a.created_at).getTime() - new Date(b.exit_time || b.created_at).getTime())
+      .forEach((entry) => {
+        const date = new Date(entry.exit_time || entry.created_at).toLocaleDateString();
+        const pips = entry.result_pips || 0;
+        
+        dailyPnL[date] = (dailyPnL[date] || 0) + pips;
+        
+        runningPnL += pips;
+        runningTrades += 1;
+        if (pips > 0) runningWins += 1;
+        
+        cumulativeData.push({
+          date: date.split('/').slice(0, 2).join('/'),
+          pnl: runningPnL,
+          winRate: (runningWins / runningTrades) * 100
+        });
+      });
+
+    const barChartData = Object.entries(dailyPnL).map(([date, pnl]) => ({
+      date: date.split('/').slice(0, 2).join('/'),
+      pnl: Math.round(pnl * 10) / 10
+    }));
+
+    return { barChartData, cumulativeData };
   };
 
   const handleAddEntry = async () => {
@@ -220,6 +274,7 @@ const Journal = () => {
   };
 
   const stats = calculateStats();
+  const { barChartData, cumulativeData } = generateChartData();
 
   if (loading) {
     return (
@@ -236,25 +291,56 @@ const Journal = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+    <div className="min-h-screen bg-black">
       <Navigation />
       
       <main className="pt-20 pb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-4xl font-bold gradient-text mb-2">Trading Journal</h1>
-              <p className="text-muted-foreground">Track your trades and improve with AI insights</p>
+        <div className="max-w-7xl mx-auto px-6">
+          {/* Top Navigation Bar - SuperTrader Style */}
+          <div className="flex items-center justify-between mb-8 bg-[#1a1a1a] rounded-lg px-6 py-4 border border-zinc-800/50">
+            <div className="flex items-center gap-4">
+              <h1 className="text-xl font-semibold text-white">Dashboard</h1>
             </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" className="gap-2 text-xs">
+                <Calendar className="h-3 w-3" />
+                Date Range
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2 text-xs">
+                <Filter className="h-3 w-3" />
+                Filters
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2 text-xs">
+                <Users className="h-3 w-3" />
+                All accounts
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2 text-xs">
+                <Brain className="h-3 w-3" />
+                Assistant
+              </Button>
+              <Button size="sm" className="gap-2 text-xs bg-blue-600 hover:bg-blue-700">
+                Start free trial
+              </Button>
+              <Button variant="ghost" size="sm">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Demo Data Notice */}
+          <div className="mb-6 text-center">
+            <p className="text-sm text-zinc-400">
+              This journal is showing all features with demo data for you to evaluate the application. Once you are ready, <span className="text-blue-400 underline cursor-pointer">Erase Demo Data</span>
+            </p>
+          </div>
             
-            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Trade
-                </Button>
-              </DialogTrigger>
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button className="fixed top-24 right-6 gap-2 z-50">
+                <Plus className="h-4 w-4" />
+                Add Trade
+              </Button>
+            </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Add New Trade</DialogTitle>
@@ -364,55 +450,241 @@ const Journal = () => {
                 </div>
               </DialogContent>
             </Dialog>
+
+          {/* Main Stats - SuperTrader Style */}
+          <div className="grid grid-cols-4 gap-6 mb-8">
+            {/* Total PnL */}
+            <div className="bg-[#1a1a1a] rounded-lg p-6 border border-zinc-800/30">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-zinc-400">Total PnL</span>
+                <span className="text-xs text-emerald-400">+2798.4%</span>
+              </div>
+              <div className="text-2xl font-bold text-white mb-1">
+                ${stats.totalPnL >= 0 ? '+' : ''}{Math.abs(stats.totalPnL).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-zinc-500">from $800.00</div>
+            </div>
+
+            {/* Average Win */}
+            <div className="bg-[#1a1a1a] rounded-lg p-6 border border-zinc-800/30 relative">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-zinc-400">Average win</span>
+              </div>
+              <div className="text-2xl font-bold text-white mb-1">{stats.winRate.toFixed(0)}%</div>
+              <div className="absolute top-4 right-4">
+                <div className="relative w-12 h-12">
+                  <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#2a2a2a"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="2"
+                      strokeDasharray={`${stats.winRate}, 100`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-emerald-400">
+                    {stats.winRate.toFixed(0)}%
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Average Loss */}
+            <div className="bg-[#1a1a1a] rounded-lg p-6 border border-zinc-800/30 relative">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-zinc-400">Average loss</span>
+              </div>
+              <div className="text-2xl font-bold text-white mb-1">{(100 - stats.winRate).toFixed(0)}</div>
+              <div className="absolute top-4 right-4">
+                <div className="relative w-12 h-12">
+                  <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#2a2a2a"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#ef4444"
+                      strokeWidth="2"
+                      strokeDasharray={`${100 - stats.winRate}, 100`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-red-400">
+                    {(100 - stats.winRate).toFixed(0)}%
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Profit Factor */}
+            <div className="bg-[#1a1a1a] rounded-lg p-6 border border-zinc-800/30 relative">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-zinc-400">Profit factor</span>
+              </div>
+              <div className="text-2xl font-bold text-white mb-1">{stats.profitFactor.toFixed(2)}</div>
+              <div className="absolute top-4 right-4">
+                <div className="relative w-12 h-12">
+                  <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#2a2a2a"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke={stats.profitFactor > 2 ? "#10b981" : stats.profitFactor > 1 ? "#f59e0b" : "#ef4444"}
+                      strokeWidth="2"
+                      strokeDasharray={`${Math.min(stats.profitFactor * 20, 100)}, 100`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-emerald-400">
+                    {stats.profitFactor.toFixed(1)}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Stats Dashboard - SuperTrader Style */}
-          <div className="grid grid-cols-4 gap-4 mb-8">
-            <div className="bg-[#1a1a1a] border border-zinc-800/50 rounded-lg p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Total Trades</p>
-                  <p className="text-3xl font-bold text-white mt-0.5">{stats.totalTrades}</p>
-                </div>
-                <Activity className="h-4 w-4 text-blue-400/70" />
+          {/* Charts Section */}
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            {/* Aggregate PnL vs Date */}
+            <div className="bg-[#1a1a1a] rounded-lg p-6 border border-zinc-800/30">
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-lg font-semibold text-white">Aggregate PnL vs date</h3>
+              </div>
+              <div className="text-xs text-zinc-400 mb-4">Daily PnL</div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fill: '#71717a', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fill: '#71717a', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#1a1a1a', 
+                        border: '1px solid #374151',
+                        borderRadius: '8px',
+                        color: '#fff'
+                      }}
+                    />
+                    <Bar dataKey="pnl" radius={2}>
+                      {barChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#10b981' : '#ef4444'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="bg-[#1a1a1a] border border-zinc-800/50 rounded-lg p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Win Rate</p>
-                  <p className="text-3xl font-bold text-emerald-400 mt-0.5 glow-soft">{stats.winRate.toFixed(0)}%</p>
-                </div>
-                <Target className="h-4 w-4 text-emerald-400/70" />
+            {/* Win & Loss % vs Date */}
+            <div className="bg-[#1a1a1a] rounded-lg p-6 border border-zinc-800/30">
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-lg font-semibold text-white">Win & loss % vs date</h3>
+              </div>
+              <div className="text-xs text-zinc-400 mb-4">Cumulative win %</div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={cumulativeData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fill: '#71717a', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fill: '#71717a', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#1a1a1a', 
+                        border: '1px solid #374151',
+                        borderRadius: '8px',
+                        color: '#fff'
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="winRate" 
+                      stroke="#10b981" 
+                      strokeWidth={3}
+                      dot={{ fill: '#10b981', strokeWidth: 0, r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </div>
+          </div>
 
-            <div className="bg-[#1a1a1a] border border-zinc-800/50 rounded-lg p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Total Pips</p>
-                  <p className={`text-3xl font-bold mt-0.5 ${stats.totalPips >= 0 ? 'text-emerald-400 glow-soft' : 'text-red-400'}`}>
-                    {stats.totalPips > 0 ? '+' : ''}{stats.totalPips.toFixed(0)}
-                  </p>
+          {/* Management Section */}
+          <div className="grid grid-cols-3 gap-6 mb-8">
+            <div className="col-span-2 bg-[#1a1a1a] rounded-lg p-6 border border-zinc-800/30">
+              <h3 className="text-lg font-semibold text-white mb-4">Management</h3>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Focusing on the Setups, Times, Volume, and Price described below could lead to a profit increase. Below you 
+                will see how on point your latest 15 trades have been in respect to what you should be focusing on.
+              </p>
+            </div>
+            <div className="bg-[#1a1a1a] rounded-lg p-6 border border-zinc-800/30 relative">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-zinc-400">Potential profit increase</span>
+              </div>
+              <div className="absolute top-4 right-4">
+                <div className="relative w-16 h-16">
+                  <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#2a2a2a"
+                      strokeWidth="3"
+                    />
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="3"
+                      strokeDasharray="70, 100"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-xl font-bold text-emerald-400">
+                    70%
+                  </div>
                 </div>
-                {stats.totalPips >= 0 ? (
-                  <TrendingUp className="h-4 w-4 text-emerald-400/70" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 text-red-400/70" />
-                )}
               </div>
             </div>
+          </div>
 
-            <div className="bg-[#1a1a1a] border border-zinc-800/50 rounded-lg p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Avg R:R</p>
-                  <p className="text-3xl font-bold text-white mt-0.5">{stats.avgRR.toFixed(1)}</p>
-                </div>
-                <Brain className="h-4 w-4 text-blue-400/70" />
-              </div>
-            </div>
+          {/* Premium Upgrade Section */}
+          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-zinc-800/30 text-center">
+            <h3 className="text-lg font-semibold text-white mb-2">Go Premium</h3>
+            <p className="text-sm text-zinc-400 mb-4">Unlock exclusive features with our premium plan</p>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+              Upgrade now
+            </Button>
           </div>
 
           {/* Journal Entries */}
