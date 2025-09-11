@@ -367,50 +367,50 @@ const Journal = () => {
           </div>
 
           {/* Stats Dashboard - SuperTrader Style */}
-          <div className="grid grid-cols-4 gap-3 mb-8">
-            <div className="bg-card/50 backdrop-blur border border-border/50 rounded-lg p-3 hover:shadow-sm transition-all">
+          <div className="grid grid-cols-4 gap-4 mb-8">
+            <div className="bg-[#1a1a1a] border border-zinc-800/50 rounded-lg p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground/80 uppercase tracking-wide">Total Trades</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">{stats.totalTrades}</p>
+                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Total Trades</p>
+                  <p className="text-3xl font-bold text-white mt-0.5">{stats.totalTrades}</p>
                 </div>
-                <Activity className="h-4 w-4 text-primary/60" />
+                <Activity className="h-4 w-4 text-blue-400/70" />
               </div>
             </div>
 
-            <div className="bg-card/50 backdrop-blur border border-border/50 rounded-lg p-3 hover:shadow-sm transition-all">
+            <div className="bg-[#1a1a1a] border border-zinc-800/50 rounded-lg p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground/80 uppercase tracking-wide">Win Rate</p>
-                  <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.winRate.toFixed(1)}%</p>
+                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Win Rate</p>
+                  <p className="text-3xl font-bold text-emerald-400 mt-0.5 glow-soft">{stats.winRate.toFixed(0)}%</p>
                 </div>
-                <Target className="h-4 w-4 text-emerald-400/60" />
+                <Target className="h-4 w-4 text-emerald-400/70" />
               </div>
             </div>
 
-            <div className="bg-card/50 backdrop-blur border border-border/50 rounded-lg p-3 hover:shadow-sm transition-all">
+            <div className="bg-[#1a1a1a] border border-zinc-800/50 rounded-lg p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground/80 uppercase tracking-wide">Total Pips</p>
-                  <p className={`text-2xl font-bold mt-1 ${stats.totalPips >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {stats.totalPips > 0 ? '+' : ''}{stats.totalPips.toFixed(1)}
+                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Total Pips</p>
+                  <p className={`text-3xl font-bold mt-0.5 ${stats.totalPips >= 0 ? 'text-emerald-400 glow-soft' : 'text-red-400'}`}>
+                    {stats.totalPips > 0 ? '+' : ''}{stats.totalPips.toFixed(0)}
                   </p>
                 </div>
                 {stats.totalPips >= 0 ? (
-                  <TrendingUp className="h-4 w-4 text-emerald-400/60" />
+                  <TrendingUp className="h-4 w-4 text-emerald-400/70" />
                 ) : (
-                  <TrendingDown className="h-4 w-4 text-red-400/60" />
+                  <TrendingDown className="h-4 w-4 text-red-400/70" />
                 )}
               </div>
             </div>
 
-            <div className="bg-card/50 backdrop-blur border border-border/50 rounded-lg p-3 hover:shadow-sm transition-all">
+            <div className="bg-[#1a1a1a] border border-zinc-800/50 rounded-lg p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground/80 uppercase tracking-wide">Avg R:R</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">{stats.avgRR.toFixed(2)}</p>
+                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Avg R:R</p>
+                  <p className="text-3xl font-bold text-white mt-0.5">{stats.avgRR.toFixed(1)}</p>
                 </div>
-                <Brain className="h-4 w-4 text-primary/60" />
+                <Brain className="h-4 w-4 text-blue-400/70" />
               </div>
             </div>
           </div>
@@ -433,40 +433,51 @@ const Journal = () => {
               entries.map((entry) => (
                 <div 
                   key={entry.id} 
-                  className={`bg-card/30 backdrop-blur border rounded-lg hover:shadow-sm transition-all ${
+                  className={`bg-[#1a1a1a] border border-zinc-800/50 rounded-lg shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transition-all ${
                     entry.status === 'CLOSED' && entry.result_pips !== null
                       ? entry.result_pips > 0 
-                        ? 'border-l-4 border-l-emerald-400' 
-                        : 'border-l-4 border-l-red-400'
-                      : 'border-l-4 border-l-muted-foreground/30'
+                        ? 'border-l-4 border-l-emerald-400 shadow-emerald-400/5' 
+                        : 'border-l-4 border-l-red-400 shadow-red-400/5'
+                      : 'border-l-4 border-l-zinc-600'
                   }`}
                 >
-                  <div className="p-4">
+                  <div className="p-5">
                     {/* Compact Horizontal Layout */}
                     <div className="flex items-center justify-between">
                       {/* Left: Pair + Tags */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4 min-w-0 flex-shrink-0">
                         <div>
-                          <h3 className="font-semibold text-lg">{entry.pair}</h3>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(entry.entry_time).toLocaleDateString()} {new Date(entry.entry_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          <h3 className="font-bold text-xl text-white">{entry.pair}</h3>
+                          <p className="text-xs text-zinc-400 mt-0.5">
+                            {new Date(entry.entry_time).toLocaleDateString()} • {new Date(entry.entry_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </p>
                         </div>
                         
                         <div className="flex items-center gap-2">
                           <Badge 
                             variant={entry.direction === 'LONG' ? 'default' : 'secondary'}
-                            className="text-xs"
+                            className={`text-xs font-semibold ${
+                              entry.direction === 'LONG' 
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' 
+                                : 'bg-red-500/20 text-red-300 border-red-400/30'
+                            }`}
                           >
                             {entry.direction}
                           </Badge>
-                          <Badge variant="outline" className="text-xs">{entry.strategy}</Badge>
                           <Badge 
-                            variant={
-                              entry.status === 'OPEN' ? 'secondary' : 
-                              entry.result_pips && entry.result_pips > 0 ? 'default' : 'destructive'
-                            }
-                            className="text-xs"
+                            variant="outline" 
+                            className="text-xs bg-zinc-800/50 text-zinc-300 border-zinc-600/50"
+                          >
+                            {entry.strategy}
+                          </Badge>
+                          <Badge 
+                            className={`text-xs font-medium ${
+                              entry.status === 'OPEN' 
+                                ? 'bg-blue-500/20 text-blue-300 border-blue-400/30'
+                                : entry.result_pips && entry.result_pips > 0 
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' 
+                                  : 'bg-red-500/20 text-red-300 border-red-400/30'
+                            }`}
                           >
                             {entry.status}
                           </Badge>
@@ -474,97 +485,104 @@ const Journal = () => {
                       </div>
                       
                       {/* Center: Entry → Exit + Notes */}
-                      <div className="flex-1 px-6 text-center">
-                        <div className="flex items-center justify-center gap-4 text-sm">
-                          <span className="text-muted-foreground">{entry.entry_price}</span>
-                          <span className="text-muted-foreground/50">→</span>
+                      <div className="flex-1 px-8 text-center min-w-0">
+                        <div className="flex items-center justify-center gap-3 text-sm mb-1">
+                          <span className="text-zinc-300 font-mono">{entry.entry_price}</span>
+                          <span className="text-zinc-500">→</span>
                           {entry.exit_price ? (
-                            <span className="text-muted-foreground">{entry.exit_price}</span>
+                            <span className="text-zinc-300 font-mono">{entry.exit_price}</span>
                           ) : (
-                            <span className="text-muted-foreground/50">Open</span>
+                            <span className="text-zinc-500 text-xs">Open</span>
                           )}
                         </div>
                         {entry.notes && (
-                          <p className="text-xs text-muted-foreground/80 mt-1 truncate max-w-md">
-                            {entry.notes.length > 50 ? `${entry.notes.substring(0, 50)}...` : entry.notes}
+                          <p className="text-xs text-zinc-400 truncate max-w-xs">
+                            {entry.notes.length > 60 ? `${entry.notes.substring(0, 60)}...` : entry.notes}
                           </p>
                         )}
                       </div>
                       
                       {/* Right: Result */}
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0">
                         {entry.status === 'CLOSED' && entry.result_pips !== null ? (
                           <>
-                            <p className={`text-xl font-bold ${entry.result_pips > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            <p className={`text-3xl font-bold ${
+                              entry.result_pips > 0 
+                                ? 'text-emerald-400 glow-soft' 
+                                : 'text-red-400'
+                            }`}>
                               {entry.result_pips > 0 ? '+' : ''}{entry.result_pips.toFixed(1)}
                             </p>
-                            <p className="text-xs text-muted-foreground">pips</p>
+                            <p className="text-xs text-zinc-400 mt-0.5">pips</p>
                           </>
                         ) : (
-                          <p className="text-sm text-muted-foreground/50">Pending</p>
+                          <div className="text-zinc-500">
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse mx-auto"></div>
+                            <p className="text-xs mt-1">Active</p>
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    {/* AI Insights - Clean Premium Upsell */}
-                    <div className="mt-4 pt-3 border-t border-border/30">
-                      <div className="flex items-center justify-between mb-2">
+                    {/* AI Insights - Blurred Premium Upsell */}
+                    <div className="mt-4 pt-4 border-t border-zinc-800/50">
+                      <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <Brain className="h-3 w-3 text-primary/60" />
-                          <span className="text-xs font-medium text-muted-foreground">AI Analysis</span>
+                          <Brain className="h-4 w-4 text-blue-400" />
+                          <span className="text-sm font-medium text-zinc-300">AI Trade Analysis</span>
                         </div>
                         
                         {!entry.ai_feedback && !isPremium && (
                           <Button
                             size="sm"
-                            variant="ghost"
                             onClick={() => setShowUpgradeDialog(true)}
-                            className="h-6 px-2 text-xs gap-1"
+                            className="h-7 px-3 text-xs bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
                           >
-                            <Lock className="h-3 w-3" />
-                            Unlock
+                            <Crown className="h-3 w-3 mr-1" />
+                            Unlock Premium
                           </Button>
                         )}
                         
                         {!entry.ai_feedback && isPremium && (
                           <Button
                             size="sm"
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => generateAIFeedback(entry.id)}
                             disabled={generatingAI === entry.id}
-                            className="h-6 px-2 text-xs gap-1"
+                            className="h-7 px-3 text-xs bg-zinc-800/50 border-zinc-700 text-zinc-300 hover:bg-zinc-700"
                           >
                             {generatingAI === entry.id ? (
-                              <div className="animate-spin rounded-full h-2 w-2 border border-primary"></div>
+                              <div className="animate-spin rounded-full h-3 w-3 border border-blue-400"></div>
                             ) : (
                               <Brain className="h-3 w-3" />
                             )}
-                            Analyze
+                            <span className="ml-1">Analyze</span>
                           </Button>
                         )}
                       </div>
                       
                       {entry.ai_feedback ? (
-                        <div className="bg-muted/20 p-3 rounded text-xs leading-relaxed">
+                        <div className="bg-zinc-800/30 border border-zinc-700/50 p-4 rounded-lg text-sm text-zinc-200 leading-relaxed">
                           {entry.ai_feedback}
                         </div>
                       ) : !isPremium ? (
                         <div 
-                          className="relative bg-muted/10 p-3 rounded text-xs text-muted-foreground/60 cursor-pointer hover:bg-muted/20 transition-colors"
+                          className="relative bg-zinc-800/20 border border-zinc-700/30 p-4 rounded-lg cursor-pointer hover:bg-zinc-800/30 transition-all group"
                           onClick={() => setShowUpgradeDialog(true)}
                         >
-                          <div className="blur-sm select-none">
-                            ⚡ Your entry timing shows good market awareness. Stop loss placement could be optimized for better risk management...
+                          <div className="blur-sm select-none text-sm text-zinc-300 leading-relaxed">
+                            ⚡ Your entry timing shows excellent market structure awareness. The stop loss placement could be optimized for better risk management considering the recent liquidity sweep. This setup aligns with smart money concepts...
                           </div>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="bg-background/80 backdrop-blur-sm px-3 py-1 rounded border text-primary font-medium">
-                              🔓 Unlock AI Insights
+                            <div className="bg-zinc-900/90 backdrop-blur-sm px-4 py-2 rounded-lg border border-zinc-600 text-blue-400 font-medium text-sm group-hover:scale-105 transition-transform">
+                              <Lock className="inline h-3 w-3 mr-1" />
+                              Unlock AI Insights
                             </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-muted/10 p-3 rounded text-xs text-muted-foreground/60">
-                          Click "Analyze" to get AI feedback on this trade
+                        <div className="bg-zinc-800/20 border border-zinc-700/30 p-4 rounded-lg text-sm text-zinc-400">
+                          Click "Analyze" to get professional AI feedback on this trade setup and execution
                         </div>
                       )}
                     </div>
