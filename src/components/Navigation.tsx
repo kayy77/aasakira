@@ -20,7 +20,7 @@ const Navigation = () => {
 
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
-    { name: 'AI Signal Scanner', href: '/signals', icon: Signal },
+    { name: 'AI Setup Scanner', href: '/signals', icon: Signal },
     { name: 'Trading Journal', href: '/journal', icon: BookOpen },
     { name: 'Affiliate', href: '/affiliate', icon: DollarSign },
   ];

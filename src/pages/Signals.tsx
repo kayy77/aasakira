@@ -4,7 +4,7 @@ import CherryBlossomBackground from '@/components/CherryBlossomBackground';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import { useIsMobile } from '@/hooks/use-mobile';
 import FeatureGate from '@/components/FeatureGate';
-import AISetupScanner from '@/components/signals/AISetupScanner';
+import HighConvictionSetupScanner from '@/components/signals/HighConvictionSetupScanner';
 
 const Signals = () => {
   const isMobile = useIsMobile();
@@ -18,31 +18,31 @@ const Signals = () => {
         <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8">
           <div className="text-center mb-4 md:mb-6 lg:mb-8">
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold gradient-text mb-2 md:mb-3 lg:mb-4">
-              AI Setup Scanner - Market Opportunities
+              AI Setup Scanner - High Conviction Setups
             </h1>
             <p className="text-gray-300 text-xs sm:text-sm md:text-base lg:text-lg max-w-3xl mx-auto px-2 md:px-4">
-              Educational trading setup scanner - Learn what to watch, not what to trade
+              Quality over quantity - Only the highest probability setups with AI explanations
             </p>
             <div className={`flex justify-center gap-1 sm:gap-2 md:gap-4 mt-2 md:mt-3 lg:mt-4 ${
               isMobile ? 'flex-wrap px-2' : ''
             }`}>
               <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400">
                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className={isMobile ? 'text-xs' : ''}>Setup Detection</span>
-              </div>
-              <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400">
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                <span className={isMobile ? 'text-xs' : ''}>Educational Mode</span>
+                <span className={isMobile ? 'text-xs' : ''}>High-Conviction Only</span>
               </div>
               <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400">
                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                <span className={isMobile ? 'text-xs' : ''}>Learning Focus</span>
+                <span className={isMobile ? 'text-xs' : ''}>AI Explanations</span>
+              </div>
+              <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400">
+                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <span className={isMobile ? 'text-xs' : ''}>Max 3 Setups</span>
               </div>
             </div>
           </div>
 
-          <FeatureGate feature="signals" featureName="AI Setup Scanner - Market Opportunities">
-            <AISetupScanner />
+          <FeatureGate feature="signals" featureName="AI Setup Scanner - High Conviction Setups">
+            <HighConvictionSetupScanner />
           </FeatureGate>
         </div>
       </div>
