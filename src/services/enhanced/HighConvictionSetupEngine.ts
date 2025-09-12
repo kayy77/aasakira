@@ -2,6 +2,7 @@
 // Implements scoring, ranking, and AI explanations for trading setups
 
 import { groqService } from '../groqService';
+import { trueLivePriceService } from '@/services/trueLivePriceService';
 
 export interface SetupFilter {
   name: string;
@@ -30,11 +31,8 @@ export interface MarketSetup {
   filters: SetupFilter[];
   score: SetupScore;
   
-  // Price levels
-  keyLevels: {
-    entry: number;
-    stopLoss: number;
-    takeProfit: number;
+  // Price context (no signals/TP/SL)
+  keyLevels?: {
     currentPrice: number;
   };
   
@@ -101,13 +99,16 @@ class HighConvictionSetupEngine {
       // Step 2: Score and rank each candidate
       const scoredSetups = await this.scoreAndRankSetups(candidates);
       
-      // Step 3: Filter by minimum quality threshold
+      // Step 3: Enforce multi-timeframe confirmation and quality thresholds
       const qualitySetups = scoredSetups.filter(
-        setup => setup.score.totalPoints >= this.QUALITY_THRESHOLDS.MINIMUM
+        setup => (setup.timeframes?.confirmation?.length || 0) >= 2 &&
+                 setup.score.totalPoints >= this.QUALITY_THRESHOLDS.MINIMUM
       );
       
-      // Step 4: Limit to top 3 setups
-      const topSetups = qualitySetups.slice(0, 3);
+      // Step 4: Prioritize High (>=80) then Medium (60-79), max 3
+      const high = qualitySetups.filter(s => s.score.percentage >= 80);
+      const medium = qualitySetups.filter(s => s.score.percentage >= 60 && s.score.percentage < 80);
+      const topSetups = [...high.slice(0, 3), ...medium.slice(0, Math.max(0, 3 - high.length))];
       
       // Step 5: Generate AI explanations for each setup
       const setupsWithExplanations = await this.generateSetupExplanations(topSetups);
@@ -140,17 +141,25 @@ class HighConvictionSetupEngine {
   }
 
   private async generateSetupCandidates(): Promise<Partial<MarketSetup>[]> {
-    // Simulated setup detection - in real implementation, this would analyze price data
+    // In real implementation, we'd analyze orderflow/SMC data on the backend
     const symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'US30', 'BTCUSD'];
     const candidates: Partial<MarketSetup>[] = [];
 
     for (const symbol of symbols) {
-      // Generate 1-2 potential setups per symbol with randomized but realistic data
+      // Randomized candidate count to simulate detection density
       const setupCount = Math.random() > 0.7 ? 2 : Math.random() > 0.3 ? 1 : 0;
+      
+      // Fetch actual live price (no fake entries/TP/SL)
+      let livePrice = 0;
+      try {
+        const live = await trueLivePriceService.getTrueLivePrice(symbol);
+        livePrice = live.price;
+      } catch (e) {
+        console.warn(`Live price unavailable for ${symbol}, skipping price context.`);
+      }
       
       for (let i = 0; i < setupCount; i++) {
         const direction = Math.random() > 0.5 ? 'BUY' : 'SELL';
-        const currentPrice = this.getSimulatedPrice(symbol);
         
         candidates.push({
           id: `${symbol}_${direction}_${Date.now()}_${i}`,
@@ -158,7 +167,7 @@ class HighConvictionSetupEngine {
           direction: direction as 'BUY' | 'SELL',
           setupType: this.randomSetupType(),
           timestamp: Date.now(),
-          keyLevels: this.generateKeyLevels(symbol, currentPrice, direction),
+          keyLevels: livePrice ? { currentPrice: livePrice } : undefined,
           timeframes: this.generateTimeframeData(),
           quality: this.generateQualityMetrics()
         });
@@ -310,7 +319,7 @@ class HighConvictionSetupEngine {
         console.error(`Failed to generate explanation for ${setup.symbol}:`, error);
         setup.explanation = {
           why: `${setup.symbol} shows ${setup.setupType.toLowerCase()} setup with ${setup.score.grade.toLowerCase()} probability`,
-          nextStep: `Monitor price action around ${setup.keyLevels.entry} level`,
+          nextStep: `Monitor price action on ${setup.timeframes.primary} and wait for confirmation candle`,
           riskWarning: 'Educational analysis only - not financial advice',
           confidence: setup.score.percentage
         };
@@ -335,8 +344,7 @@ SETUP DETAILS:
 - Setup Type: ${setup.setupType}
 - Direction: ${setup.direction}
 - Score: ${setup.score.totalPoints}/${setup.score.maxPossiblePoints} (${setup.score.percentage}% - ${setup.score.grade})
-- Entry: ${setup.keyLevels.entry}
-- Current: ${setup.keyLevels.currentPrice}
+- Live Price: ${setup.keyLevels?.currentPrice ?? 'N/A'}
 
 DETECTED CONFLUENCES:
 ${detectedFilters.map(f => `✅ ${f.name} (${f.points}pts): ${f.details || 'Confirmed'}`).join('\n')}
@@ -349,10 +357,10 @@ TIMEFRAME ANALYSIS:
 Provide a concise professional analysis in exactly this format:
 
 WHY: [1-2 sentences explaining why this setup matters - mention key confluences]
-NEXT: [1 sentence - specific price level or action to watch]
+NEXT: [1 sentence - what to wait for to confirm — no entry prices]
 RISK: [1 sentence warning about what could invalidate this]
 
-Keep it under 200 words total. Be direct and educational. No fluff.`;
+Keep it under 200 words total. Be direct and educational. No numbers for entries/stops/targets.`;
 
     try {
       const response = await groqService.generateResponse(prompt, {
@@ -379,7 +387,7 @@ Keep it under 200 words total. Be direct and educational. No fluff.`;
       if (!why || !nextStep || !riskWarning) {
         const sentences = response.split('. ');
         why = why || sentences[0] || `${setup.symbol} shows ${setupStrength.toLowerCase()} probability setup`;
-        nextStep = nextStep || sentences[1] || `Watch price action around ${setup.keyLevels.entry}`;
+        nextStep = nextStep || sentences[1] || `Wait for candle close confirmation on ${setup.timeframes.primary}`;
         riskWarning = riskWarning || sentences[2] || 'Educational analysis only - not financial advice';
       }
 

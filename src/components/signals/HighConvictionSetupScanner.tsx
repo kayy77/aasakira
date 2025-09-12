@@ -213,25 +213,23 @@ const SetupCard: React.FC<{ setup: MarketSetup }> = ({ setup }) => {
           </div>
         </div>
 
-        {/* Setup Type & Key Info */}
+        {/* Setup Type & Live Context (no entries/SL/TP shown) */}
         <div className="mb-4">
           <div className="text-lg font-semibold text-gray-200 mb-2">{setup.setupType}</div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             <div>
-              <span className="text-gray-400">Entry:</span>
-              <span className="text-white ml-2">{setup.keyLevels.entry}</span>
+              <span className="text-gray-400">Live Price:</span>
+              <span className="text-white ml-2">{setup.keyLevels?.currentPrice ?? '—'}</span>
             </div>
             <div>
-              <span className="text-gray-400">Current:</span>
-              <span className="text-white ml-2">{setup.keyLevels.currentPrice}</span>
+              <span className="text-gray-400">Timeframes:</span>
+              <span className="text-gray-300 ml-2">{setup.timeframes.confirmation.join(', ') || '—'}</span>
             </div>
             <div>
-              <span className="text-gray-400">Stop:</span>
-              <span className="text-red-400 ml-2">{setup.keyLevels.stopLoss}</span>
-            </div>
-            <div>
-              <span className="text-gray-400">Target:</span>
-              <span className="text-green-400 ml-2">{setup.keyLevels.takeProfit}</span>
+              <span className="text-gray-400">Liquidity:</span>
+              <span className="ml-2 {setup.quality.liquidityLevel === 'HIGH' ? 'text-green-400' : setup.quality.liquidityLevel === 'MEDIUM' ? 'text-yellow-400' : 'text-gray-400'}">
+                {setup.quality.liquidityLevel}
+              </span>
             </div>
           </div>
         </div>
