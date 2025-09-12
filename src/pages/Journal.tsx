@@ -56,6 +56,13 @@ const Journal = () => {
   const [aiSummary, setAiSummary] = useState<string>('');
   const [generatingAISummary, setGeneratingAISummary] = useState(false);
 
+  // Display settings
+  const pipValueUSD = 10; // dollars per pip (assumes standard lot unless user customizes)
+  const formatPnLUSD = (pips: number) => {
+    const dollars = Math.round(Math.abs(pips) * pipValueUSD);
+    return `${pips >= 0 ? '+' : ''}$${dollars.toLocaleString()}`;
+  };
+
   const analyticsService = new JournalAnalyticsService();
 
   const [newEntry, setNewEntry] = useState({
@@ -104,7 +111,10 @@ const Journal = () => {
       return entryDate === dateStr && entry.status === 'CLOSED';
     });
     
-    return dayTrades.reduce((sum, entry) => sum + (entry.result_pips || 0), 0);
+    return dayTrades.reduce((sum, entry) => {
+      const p = entry.result_pips || 0;
+      return Math.abs(p) > 1000 ? sum : sum + p;
+    }, 0);
   };
 
   const getDayColor = (date: Date) => {
@@ -347,6 +357,10 @@ const Journal = () => {
     }
   };
 
+  const sanitizedEntries = React.useMemo(() =>
+    entries.filter(e => !(e.status === 'CLOSED' && Math.abs(e.result_pips || 0) > 1000))
+  , [entries]);
+
   const getFilteredEntries = () => {
     const filter = {
       type: timeFilter,
@@ -354,10 +368,10 @@ const Journal = () => {
       endDate: customEndDate ? new Date(customEndDate) : undefined
     };
 
-    return analyticsService['filterEntriesByTime'](entries, filter);
+    return analyticsService['filterEntriesByTime'](sanitizedEntries, filter);
   };
 
-  const stats = analyticsService.calculateStats(entries, {
+  const stats = analyticsService.calculateStats(sanitizedEntries, {
     type: timeFilter,
     startDate: customStartDate ? new Date(customStartDate) : undefined,
     endDate: customEndDate ? new Date(customEndDate) : undefined
@@ -455,7 +469,7 @@ const Journal = () => {
                   <p className={`text-3xl font-bold ${
                     stats.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'
                   }`}>
-                    {stats.totalPnL >= 0 ? '+' : ''}${(stats.totalPnL * 10).toFixed(0)}
+                    {formatPnLUSD(stats.totalPnL)}
                   </p>
                   <p className="text-xs text-zinc-500 mt-1">
                     {stats.totalTrades} trades • {stats.winRate}% win rate
@@ -549,19 +563,19 @@ const Journal = () => {
                 <CardContent className="p-4 space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Best Day</span>
-                    <span className="text-green-400">+${(stats.bestDay * 10).toFixed(0)}</span>
+                    <span className="text-green-400">{formatPnLUSD(stats.bestDay)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Worst Day</span>
-                    <span className="text-red-400">${(stats.worstDay * 10).toFixed(0)}</span>
+                    <span className="text-red-400">{formatPnLUSD(stats.worstDay)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Avg Win</span>
-                    <span className="text-green-400">+${(stats.avgWin * 10).toFixed(0)}</span>
+                    <span className="text-green-400">{formatPnLUSD(stats.avgWin)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Avg Loss</span>
-                    <span className="text-red-400">-${(stats.avgLoss * 10).toFixed(0)}</span>
+                    <span className="text-red-400">{formatPnLUSD(-stats.avgLoss)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Streak</span>
@@ -661,7 +675,7 @@ const Journal = () => {
                               <span className={`text-[8px] font-bold ${
                                 pnl > 0 ? 'text-green-200' : 'text-red-200'
                               }`}>
-                                {pnl > 0 ? '+' : ''}${(pnl * 10).toFixed(0)}
+                                {formatPnLUSD(pnl)}
                               </span>
                             )}
                           </button>
@@ -692,7 +706,7 @@ const Journal = () => {
                   <div className={`text-3xl font-bold mb-2 ${
                     selectedDayPnL >= 0 ? 'text-green-400' : 'text-red-400'
                   }`}>
-                    {selectedDayPnL >= 0 ? '+' : ''}${(selectedDayPnL * 10).toFixed(0)}
+                    {formatPnLUSD(selectedDayPnL)}
                   </div>
                   
                   {selectedDayTrades.length > 0 && (
@@ -756,17 +770,17 @@ const Journal = () => {
                               )}
                             </div>
                             
-                            {entry.status === 'CLOSED' && (
-                              <span className={`text-sm font-bold px-2 py-1 rounded ${
-                                isWin 
-                                  ? 'bg-green-500/20 text-green-400' 
-                                  : isLoss 
-                                    ? 'bg-red-500/20 text-red-400' 
-                                    : 'text-zinc-400'
-                              }`}>
-                                {(entry.result_pips || 0) >= 0 ? '+' : ''}${((entry.result_pips || 0) * 10).toFixed(0)}
-                              </span>
-                            )}
+                              {entry.status === 'CLOSED' && (
+                                <span className={`text-sm font-bold px-2 py-1 rounded ${
+                                  isWin 
+                                    ? 'bg-green-500/20 text-green-400' 
+                                    : isLoss 
+                                      ? 'bg-red-500/20 text-red-400' 
+                                      : 'text-zinc-400'
+                                }`}>
+                                  {formatPnLUSD(entry.result_pips || 0)}
+                                </span>
+                              )}
                           </div>
                           
                           {entry.notes && (
