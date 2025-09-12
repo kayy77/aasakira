@@ -94,6 +94,36 @@ export type Database = {
           },
         ]
       }
+      incoming_signals: {
+        Row: {
+          created_at: string
+          id: string
+          processed: boolean
+          raw_data: Json
+          source: string
+          timestamp: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          processed?: boolean
+          raw_data: Json
+          source: string
+          timestamp?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          processed?: boolean
+          raw_data?: Json
+          source?: string
+          timestamp?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       journal_entries: {
         Row: {
           ai_feedback: string | null
