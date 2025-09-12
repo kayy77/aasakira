@@ -87,15 +87,14 @@ const Journal = () => {
     const totalTrades = entries.length;
     const closedTrades = entries.filter(e => e.status === 'CLOSED');
     const wins = closedTrades.filter(e => (e.result_pips || 0) > 0);
-    const losses = closedTrades.filter(e => (e.result_pips || 0) <= 0);
     
     const winRate = closedTrades.length > 0 ? Math.round((wins.length / closedTrades.length) * 100) : 0;
+    const netPips = closedTrades.reduce((sum, entry) => sum + (entry.result_pips || 0), 0);
     
     return { 
       totalTrades, 
       winRate, 
-      wins: wins.length, 
-      losses: losses.length,
+      netPips: Math.round(netPips * 10) / 10,
     };
   };
 
@@ -281,7 +280,7 @@ const Journal = () => {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-white">Trading Journal</h1>
-              <p className="text-zinc-400 mt-1">Track your trades manually</p>
+              <p className="text-zinc-400 mt-1">Your battle log of trades</p>
             </div>
             <Button 
               className="bg-primary hover:bg-primary/90 text-black font-semibold" 
@@ -292,37 +291,33 @@ const Journal = () => {
             </Button>
           </div>
 
-          {/* Simple Stats Row */}
+          {/* Simple Stats Row - Only 3 Stats */}
           <div className="grid grid-cols-3 gap-6 mb-8">
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-zinc-900/50 border-zinc-800">
               <CardContent className="p-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white">{stats.totalTrades}</div>
+                  <div className="text-4xl font-bold text-white">{stats.totalTrades}</div>
                   <div className="text-zinc-400 text-sm mt-1">Total Trades</div>
                 </div>
               </CardContent>
             </Card>
             
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-zinc-900/50 border-zinc-800">
               <CardContent className="p-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white">{stats.winRate}%</div>
+                  <div className="text-4xl font-bold text-white">{stats.winRate}%</div>
                   <div className="text-zinc-400 text-sm mt-1">Win Rate</div>
                 </div>
               </CardContent>
             </Card>
             
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-zinc-900/50 border-zinc-800">
               <CardContent className="p-6">
-                <div className="flex justify-center gap-8">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-emerald-400">{stats.wins}</div>
-                    <div className="text-zinc-400 text-xs">Wins</div>
+                <div className="text-center">
+                  <div className={`text-4xl font-bold ${stats.netPips >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {stats.netPips >= 0 ? '+' : ''}{stats.netPips}
                   </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-red-400">{stats.losses}</div>
-                    <div className="text-zinc-400 text-xs">Losses</div>
-                  </div>
+                  <div className="text-zinc-400 text-sm mt-1">Net P/L (pips)</div>
                 </div>
               </CardContent>
             </Card>
@@ -444,10 +439,10 @@ const Journal = () => {
             </DialogContent>
           </Dialog>
 
-          {/* Journal Entries */}
+          {/* Trade Feed - Battle Log */}
           <div className="space-y-4">
             {entries.length === 0 ? (
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-zinc-900/50 border-zinc-800">
                 <CardContent className="p-8 text-center">
                   <div className="text-zinc-400 mb-4">No trades recorded yet</div>
                   <Button 
@@ -459,136 +454,162 @@ const Journal = () => {
                 </CardContent>
               </Card>
             ) : (
-              entries.map((entry) => (
-                <Card 
-                  key={entry.id} 
-                  className={`bg-zinc-900 border-l-4 hover:bg-zinc-800/50 transition-colors ${
-                    entry.direction === 'LONG' ? 'border-l-emerald-400' : 'border-l-red-400'
-                  }`}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl font-bold text-white">{entry.pair}</span>
-                        <Badge 
-                          className={`${
-                            entry.direction === 'LONG' 
-                              ? 'bg-emerald-500/20 text-emerald-400' 
-                              : 'bg-red-500/20 text-red-400'
-                          }`}
-                        >
-                          {entry.direction}
-                        </Badge>
-                        <Badge variant="outline" className="text-zinc-400">
-                          {entry.status}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm text-zinc-400">
-                          {formatDate(entry.created_at)}
+              entries.map((entry) => {
+                const isWin = entry.status === 'CLOSED' && (entry.result_pips || 0) > 0;
+                const isLoss = entry.status === 'CLOSED' && (entry.result_pips || 0) < 0;
+                const resultBadge = entry.status === 'OPEN' ? '⏳ OPEN' : isWin ? '✅ WIN' : isLoss ? '❌ LOSS' : '⚪ BE';
+                
+                return (
+                  <Card 
+                    key={entry.id} 
+                    className={`bg-zinc-900/30 border-l-4 hover:bg-zinc-800/30 transition-all ${
+                      entry.direction === 'LONG' ? 'border-l-emerald-400' : 'border-l-red-400'
+                    }`}
+                  >
+                    <CardContent className="p-5">
+                      {/* Header Row */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl font-bold text-white">{entry.pair}</span>
+                          <Badge 
+                            className={`font-semibold ${
+                              entry.direction === 'LONG' 
+                                ? 'bg-emerald-500/20 text-emerald-400' 
+                                : 'bg-red-500/20 text-red-400'
+                            }`}
+                          >
+                            {entry.direction}
+                          </Badge>
+                          <Badge 
+                            className={`font-semibold ${
+                              entry.status === 'OPEN' 
+                                ? 'bg-blue-500/20 text-blue-400'
+                                : isWin 
+                                  ? 'bg-emerald-500/20 text-emerald-400' 
+                                  : isLoss
+                                    ? 'bg-red-500/20 text-red-400'
+                                    : 'bg-zinc-500/20 text-zinc-400'
+                            }`}
+                          >
+                            {resultBadge}
+                          </Badge>
                         </div>
+                        
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                           onClick={() => handleDeleteEntry(entry.id)}
+                          className="text-zinc-400 hover:text-red-400 hover:bg-red-500/10 p-2"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-4 gap-4 mb-4 text-sm">
-                      <div>
-                        <div className="text-zinc-400">Entry</div>
-                        <div className="font-semibold text-white">{entry.entry_price}</div>
-                      </div>
-                      <div>
-                        <div className="text-zinc-400">Exit</div>
-                        <div className="font-semibold text-white">
-                          {entry.exit_price || 'Open'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-zinc-400">P/L</div>
-                        {entry.result_pips !== null ? (
-                          <div className={`font-bold ${
-                            (entry.result_pips || 0) > 0 ? 'text-emerald-400' : 'text-red-400'
-                          }`}>
-                            {(entry.result_pips || 0) > 0 ? '+' : ''}{entry.result_pips} pips
-                          </div>
-                        ) : (
-                          <div className="text-zinc-400">-</div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-zinc-400">Strategy</div>
-                        <Badge variant="secondary" className="text-xs">
-                          {entry.strategy}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {entry.notes && (
-                      <div className="mb-4 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
-                        <div className="text-xs text-zinc-400 uppercase tracking-wide mb-2">Notes</div>
-                        <div className="text-sm text-zinc-300">{entry.notes}</div>
-                      </div>
-                    )}
-
-                    {/* AI Feedback Section */}
-                    <div className="border-t border-zinc-700/50 pt-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="text-xs text-zinc-400 uppercase tracking-wide flex items-center gap-2">
-                          <Brain className="h-3 w-3" />
-                          AI Analysis
+                      {/* Main Price Info */}
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2 text-white">
+                          <span className="text-lg">Entry → Exit:</span>
+                          <span className="text-xl font-mono">
+                            {entry.entry_price}
+                            {entry.exit_price && (
+                              <> → {entry.exit_price}</>
+                            )}
+                          </span>
                         </div>
                         
-                        {!isPremium ? (
+                        {entry.result_pips !== undefined && entry.result_pips !== null && (
+                          <div className={`text-2xl font-bold mt-1 ${
+                            entry.result_pips >= 0 ? 'text-emerald-400' : 'text-red-400'
+                          }`}>
+                            {entry.result_pips >= 0 ? '+' : ''}{entry.result_pips} pips
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bottom Row - Meta Info */}
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-4">
+                          <Badge variant="secondary" className="bg-zinc-800 text-zinc-300">
+                            {entry.strategy}
+                          </Badge>
+                          
+                          {entry.notes && (
+                            <details className="text-zinc-400 cursor-pointer">
+                              <summary className="hover:text-white italic">
+                                View notes...
+                              </summary>
+                              <div className="mt-2 p-2 bg-zinc-800/50 rounded text-xs text-zinc-300">
+                                {entry.notes}
+                              </div>
+                            </details>
+                          )}
+                        </div>
+                        
+                        <span className="text-zinc-500 text-xs">
+                          {formatDate(entry.created_at)}
+                        </span>
+                      </div>
+
+                      {/* AI Insights Hook */}
+                      {!isPremium && (
+                        <div className="mt-4 p-3 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded">
+                          <div className="flex items-center gap-2">
+                            <Brain className="h-4 w-4 text-blue-400" />
+                            <span className="text-blue-400 text-sm font-medium">💡 AI Insight locked</span>
+                          </div>
+                          <p className="text-zinc-400 text-xs mt-1">
+                            Upgrade to Premium to see trade feedback and analysis.
+                          </p>
                           <Button
-                            variant="outline"
                             size="sm"
-                            className="text-primary border-primary/30 hover:bg-primary/10"
                             onClick={() => setShowUpgradeDialog(true)}
+                            className="mt-2 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border-blue-500/30"
+                            variant="outline"
                           >
-                            <Lock className="h-3 w-3 mr-1" />
-                            Unlock
+                            Upgrade to Premium
                           </Button>
-                        ) : !entry.ai_feedback ? (
+                        </div>
+                      )}
+
+                      {isPremium && !entry.ai_feedback && (
+                        <div className="mt-4">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => generateAIFeedback(entry.id)}
                             disabled={generatingAI === entry.id}
+                            className="text-xs border-zinc-700 hover:bg-zinc-800"
                           >
-                            <Brain className="h-3 w-3 mr-1" />
-                            {generatingAI === entry.id ? 'Analyzing...' : 'Analyze'}
+                            {generatingAI === entry.id ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b border-zinc-400 mr-2"></div>
+                                Analyzing...
+                              </>
+                            ) : (
+                              <>
+                                <Brain className="h-3 w-3 mr-1" />
+                                Get AI Analysis
+                              </>
+                            )}
                           </Button>
-                        ) : null}
-                      </div>
-                      
-                      {!isPremium ? (
-                        <div className="p-3 bg-zinc-800/30 rounded-lg border border-zinc-700/30 backdrop-blur-sm">
-                          <div className="text-sm text-zinc-400 text-center">
-                            Get AI insights on your trades with Premium
+                        </div>
+                      )}
+
+                      {entry.ai_feedback && (
+                        <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Brain className="h-4 w-4 text-emerald-400" />
+                            <span className="text-emerald-400 text-sm font-medium">AI Analysis</span>
                           </div>
-                        </div>
-                      ) : entry.ai_feedback ? (
-                        <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                          <div className="text-sm text-zinc-200">{entry.ai_feedback}</div>
-                        </div>
-                      ) : (
-                        <div className="p-3 bg-zinc-800/30 rounded-lg border border-zinc-700/30">
-                          <div className="text-sm text-zinc-400 text-center">
-                            Click "Analyze" to get AI feedback on this trade
+                          <div className="text-zinc-300 text-sm leading-relaxed">
+                            {entry.ai_feedback}
                           </div>
                         </div>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                    </CardContent>
+                  </Card>
+                );
+              })
             )}
           </div>
         </div>
