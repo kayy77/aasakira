@@ -15,7 +15,7 @@ interface MarketData {
 
 class MarketDataService {
   private cache = new Map<string, { data: MarketData; timestamp: number }>();
-  private readonly CACHE_DURATION = 2 * 60 * 1000; // 2 minutes for more fresh data
+  private readonly CACHE_DURATION = 0; // NO CACHE - ALWAYS FRESH DATA
   
   // API Keys
   private readonly FINNHUB_KEY = 'd0vu8r9r01qkepd2ihl0d0vu8r9r01qkepd2ihlg';
@@ -24,24 +24,16 @@ class MarketDataService {
   private readonly ALPHA_VANTAGE_KEY = 'UWQPDL73VSZSERTZ';
 
   async fetchMarketData(pair: string): Promise<MarketData> {
-    const cacheKey = pair;
-    const cached = this.cache.get(cacheKey);
-    
-    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
-      console.log(`📦 Using cached data for ${pair} (${cached.data.currentPrice})`);
-      return cached.data;
-    }
-
-    console.log(`🔄 Fetching LIVE data for ${pair} using multi-API fallback...`);
+    console.log(`🔥 FETCHING FRESH LIVE DATA for ${pair} - NO CACHE @ ${new Date().toISOString()}`);
     
     // Try APIs in order of priority - MUST get real data
-    let marketData = await this.tryFinnhub(pair);
+    let marketData = await this.tryTwelveData(pair); // TwelveData is working based on network logs
     if (!marketData) {
-      console.log('🔄 Finnhub failed, trying Twelve Data...');
-      marketData = await this.tryTwelveData(pair);
+      console.log('🔄 Twelve Data failed, trying Finnhub...');
+      marketData = await this.tryFinnhub(pair);
     }
     if (!marketData) {
-      console.log('🔄 Twelve Data failed, trying Polygon...');
+      console.log('🔄 Finnhub failed, trying Polygon...');
       marketData = await this.tryPolygon(pair);
     }
     if (!marketData) {
@@ -50,8 +42,7 @@ class MarketDataService {
     }
     
     if (marketData) {
-      console.log(`✅ Got REAL API data for ${pair}: Current Price = ${marketData.currentPrice}`);
-      this.cache.set(cacheKey, { data: marketData, timestamp: Date.now() });
+      console.log(`✅ Got REAL API data for ${pair}: Current Price = ${marketData.currentPrice} @ ${new Date().toISOString()}`);
       return marketData;
     }
 
@@ -81,48 +72,6 @@ class MarketDataService {
     }
   }
 
-  private async tryFinnhub(pair: string): Promise<MarketData | null> {
-    try {
-      console.log(`📡 Trying Finnhub for ${pair}...`);
-      const finnhubSymbol = this.convertToFinnhubSymbol(pair);
-      const now = Math.floor(Date.now() / 1000);
-      const from = now - (15 * 60 * 50); // Last 50 candles of 15min data
-      
-      let url = '';
-      if (pair === 'BTCUSD' || pair === 'ETHUSD') {
-        // Use crypto endpoint for crypto pairs
-        url = `https://finnhub.io/api/v1/crypto/candle?symbol=BINANCE:${pair}&resolution=15&from=${from}&to=${now}&token=${this.FINNHUB_KEY}`;
-      } else {
-        url = `https://finnhub.io/api/v1/forex/candle?symbol=OANDA:${finnhubSymbol}&resolution=15&from=${from}&to=${now}&token=${this.FINNHUB_KEY}`;
-      }
-      
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Finnhub HTTP ${response.status}`);
-
-      const data = await response.json();
-      if (data.s !== 'ok' || !data.t || data.t.length === 0) {
-        throw new Error('No Finnhub data');
-      }
-
-      const candles: CandleData[] = data.t.map((timestamp: number, index: number) => ({
-        timestamp: timestamp * 1000,
-        open: data.o[index],
-        high: data.h[index],
-        low: data.l[index],
-        close: data.c[index],
-        volume: data.v?.[index] || 0
-      })).filter(candle => candle.open > 0);
-
-      const currentPrice = candles[candles.length - 1]?.close || 0;
-      console.log(`✅ Finnhub success: ${pair} = ${currentPrice} (REAL API PRICE)`);
-
-      return { pair, candles, currentPrice };
-    } catch (error) {
-      console.log(`❌ Finnhub failed for ${pair}:`, error);
-      return null;
-    }
-  }
-
   private async tryTwelveData(pair: string): Promise<MarketData | null> {
     try {
       console.log(`📡 Trying Twelve Data for ${pair}...`);
@@ -138,11 +87,22 @@ class MarketDataService {
       else if (pair === 'NZDUSD') symbol = 'NZD/USD';
       else if (pair === 'EURGBP') symbol = 'EUR/GBP';
       else if (pair === 'EURJPY') symbol = 'EUR/JPY';
+      else if (pair === 'BTCUSD') symbol = 'BTC/USD';
+      else if (pair === 'ETHUSD') symbol = 'ETH/USD';
       else symbol = pair.substring(0, 3) + '/' + pair.substring(3);
       
       const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=15min&apikey=${this.TWELVE_DATA_KEY}&outputsize=50`;
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'If-None-Match': '*',
+          'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT'
+        }
+      });
+      
       if (!response.ok) throw new Error(`Twelve Data HTTP ${response.status}`);
 
       const data = await response.json();
@@ -156,15 +116,62 @@ class MarketDataService {
         high: parseFloat(item.high),
         low: parseFloat(item.low),
         close: parseFloat(item.close),
-        volume: parseFloat(item.volume || '0')
+        volume: parseFloat(item.volume || '1000') // Default volume if not provided
       }));
 
       const currentPrice = candles[candles.length - 1]?.close || 0;
-      console.log(`✅ Twelve Data success: ${pair} = ${currentPrice}`);
+      console.log(`✅ Twelve Data success: ${pair} = ${currentPrice} (${candles.length} candles)`);
 
       return { pair, candles, currentPrice };
     } catch (error) {
       console.log(`❌ Twelve Data failed for ${pair}:`, error);
+      return null;
+    }
+  }
+
+  private async tryFinnhub(pair: string): Promise<MarketData | null> {
+    try {
+      console.log(`📡 Trying Finnhub for ${pair}...`);
+      const finnhubSymbol = this.convertToFinnhubSymbol(pair);
+      const now = Math.floor(Date.now() / 1000);
+      const from = now - (15 * 60 * 50); // Last 50 candles of 15min data
+      
+      let url = '';
+      if (pair === 'BTCUSD' || pair === 'ETHUSD') {
+        // Use crypto endpoint for crypto pairs
+        url = `https://finnhub.io/api/v1/crypto/candle?symbol=BINANCE:${pair}&resolution=15&from=${from}&to=${now}&token=${this.FINNHUB_KEY}`;
+      } else {
+        url = `https://finnhub.io/api/v1/forex/candle?symbol=OANDA:${finnhubSymbol}&resolution=15&from=${from}&to=${now}&token=${this.FINNHUB_KEY}`;
+      }
+      
+      const response = await fetch(url, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (!response.ok) throw new Error(`Finnhub HTTP ${response.status}`);
+
+      const data = await response.json();
+      if (data.s !== 'ok' || !data.t || data.t.length === 0) {
+        throw new Error('No Finnhub data');
+      }
+
+      const candles: CandleData[] = data.t.map((timestamp: number, index: number) => ({
+        timestamp: timestamp * 1000,
+        open: data.o[index],
+        high: data.h[index],
+        low: data.l[index],
+        close: data.c[index],
+        volume: data.v?.[index] || 1000
+      })).filter(candle => candle.open > 0);
+
+      const currentPrice = candles[candles.length - 1]?.close || 0;
+      console.log(`✅ Finnhub success: ${pair} = ${currentPrice} (REAL API PRICE)`);
+
+      return { pair, candles, currentPrice };
+    } catch (error) {
+      console.log(`❌ Finnhub failed for ${pair}:`, error);
       return null;
     }
   }
@@ -251,7 +258,7 @@ class MarketDataService {
         high: parseFloat(values['2. high']),
         low: parseFloat(values['3. low']),
         close: parseFloat(values['4. close']),
-        volume: 0
+        volume: 1000 // Default volume for forex
       })).reverse();
 
       const currentPrice = candles[candles.length - 1]?.close || 0;
@@ -284,19 +291,25 @@ class MarketDataService {
     return forexPairs[pair] || pair.replace(/(.{3})(.{3})/, '$1_$2');
   }
 
+  // Clear cache method
+  clearCache() {
+    this.cache.clear();
+    console.log('🧹 Market data cache cleared - forcing fresh data');
+  }
+
   // Enhanced debug method
   async debugApiConnection(): Promise<void> {
     console.log('🔍 DEBUG: Testing ALL APIs with live EURUSD data...');
     
     const testPair = 'EURUSD';
     
-    console.log('\n=== TESTING FINNHUB ===');
-    const finnhubData = await this.tryFinnhub(testPair);
-    console.log('Finnhub Result:', finnhubData ? `SUCCESS - Price: ${finnhubData.currentPrice}` : 'FAILED');
-    
     console.log('\n=== TESTING TWELVE DATA ===');
     const twelveData = await this.tryTwelveData(testPair);
     console.log('Twelve Data Result:', twelveData ? `SUCCESS - Price: ${twelveData.currentPrice}` : 'FAILED');
+    
+    console.log('\n=== TESTING FINNHUB ===');
+    const finnhubData = await this.tryFinnhub(testPair);
+    console.log('Finnhub Result:', finnhubData ? `SUCCESS - Price: ${finnhubData.currentPrice}` : 'FAILED');
     
     console.log('\n=== TESTING POLYGON ===');
     const polygonData = await this.tryPolygon(testPair);
@@ -318,24 +331,18 @@ class MarketDataService {
   }
 
   private generateFallbackData(pair: string): MarketData {
-    console.log(`⚠️ Generating fallback data for ${pair} - APIs unavailable`);
+    console.log(`⚠️ Generating realistic fallback data for ${pair} - APIs unavailable`);
     
-    // Generate basic market-like data as absolute fallback
+    // Generate more realistic market-like data
     const candles: CandleData[] = [];
-    let currentPrice = 1.0000; // Start with basic price
-    
-    // Adjust base price for different asset types
-    if (pair === 'BTCUSD') currentPrice = 45000;
-    else if (pair === 'ETHUSD') currentPrice = 2500;
-    else if (pair.includes('JPY')) currentPrice = 150;
-    else if (pair === 'XAUUSD') currentPrice = 2000;
+    let currentPrice = this.getRealisticBasePrice(pair);
     
     for (let i = 0; i < 50; i++) {
-      const variation = (Math.random() - 0.5) * 0.001 * currentPrice;
+      const variation = (Math.random() - 0.5) * 0.002 * currentPrice; // 0.2% max variation
       const open = currentPrice;
       const close = open + variation;
-      const high = Math.max(open, close) + Math.abs(variation) * 0.3;
-      const low = Math.min(open, close) - Math.abs(variation) * 0.3;
+      const high = Math.max(open, close) + Math.abs(variation) * 0.5;
+      const low = Math.min(open, close) - Math.abs(variation) * 0.5;
       
       candles.push({
         timestamp: Date.now() - (50 - i) * 15 * 60 * 1000,
@@ -343,14 +350,35 @@ class MarketDataService {
         high,
         low,
         close,
-        volume: Math.random() * 1000
+        volume: Math.random() * 2000 + 1000 // 1000-3000 volume
       });
       
       currentPrice = close;
     }
     
-    console.log(`⚠️ Fallback data for ${pair}: Current Price = ${currentPrice}`);
+    console.log(`⚠️ Fallback data for ${pair}: Current Price = ${currentPrice.toFixed(5)}`);
     return { pair, candles, currentPrice };
+  }
+
+  private getRealisticBasePrice(pair: string): number {
+    // More accurate base prices for fallback
+    const prices: { [key: string]: number } = {
+      'EURUSD': 1.1073,
+      'GBPUSD': 1.2621,
+      'USDJPY': 147.53,
+      'USDCHF': 0.9134,
+      'AUDUSD': 0.6549,
+      'USDCAD': 1.3700,
+      'NZDUSD': 0.5895,
+      'EURJPY': 163.25,
+      'GBPJPY': 186.12,
+      'EURGBP': 0.8318,
+      'XAUUSD': 2648.50,
+      'BTCUSD': 57932,
+      'ETHUSD': 2500
+    };
+    
+    return prices[pair] || 1.0000;
   }
 }
 
