@@ -404,9 +404,6 @@ const Journal = () => {
 
           {/* Add Trade Dialog */}
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogTrigger asChild>
-              <div className="hidden" /> {/* Hidden trigger */}
-            </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add New Trade</DialogTitle>
