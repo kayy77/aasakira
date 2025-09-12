@@ -367,24 +367,36 @@ const Journal = () => {
     const filtered = getFilteredEntries();
     const dailyPnL: { [key: string]: number } = {};
     
-    // Group entries by date and calculate daily P&L
+    // Group entries by date and calculate daily P&L with validation
     filtered.forEach(entry => {
       if (entry.status === 'CLOSED' && entry.result_pips) {
+        // Filter out unrealistic pip values (should be between -1000 and +1000 pips for most trades)
+        const pips = entry.result_pips;
+        if (Math.abs(pips) > 1000) {
+          console.warn(`Filtering out unrealistic trade: ${pips} pips on ${entry.entry_time}`);
+          return;
+        }
+        
         const date = new Date(entry.entry_time).toISOString().split('T')[0];
-        dailyPnL[date] = (dailyPnL[date] || 0) + entry.result_pips;
+        dailyPnL[date] = (dailyPnL[date] || 0) + pips;
       }
     });
+    
+    // Debug: Log the daily P&L values
+    console.log('Daily P&L data:', dailyPnL);
     
     // Convert to chart data format and sort by date
     const chartData = Object.entries(dailyPnL)
       .map(([dateStr, pnl]) => ({
         date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        pnl: Math.round(pnl * 10), // Convert to dollars
+        pnl: Math.round(pnl * 10), // Convert to dollars (10 pip = $1 for standard lot)
         originalDate: dateStr
       }))
+      .filter(entry => Math.abs(entry.pnl) <= 10000) // Cap at $10,000 per day
       .sort((a, b) => new Date(a.originalDate).getTime() - new Date(b.originalDate).getTime())
       .slice(-15); // Show last 15 days for better visibility
     
+    console.log('Chart data after processing:', chartData);
     return chartData;
   };
 
