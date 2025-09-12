@@ -252,9 +252,11 @@ const Journal = () => {
       }
 
       console.log('✅ Trade saved successfully:', data);
+      // Update state and calendar view
       setEntries([data as JournalEntry, ...entries]);
-
-      setEntries([data as JournalEntry, ...entries]);
+      const entryDate = new Date((data as any).entry_time);
+      setCurrentDate(entryDate);
+      setSelectedDate(entryDate);
       setShowAddDialog(false);
       setNewEntry({
         pair: '',
@@ -686,6 +688,11 @@ const Journal = () => {
                         const isSelected = date.toDateString() === selectedDate.toDateString();
                         const isToday = date.toDateString() === new Date().toDateString();
                         const pnl = getDailyPnL(date);
+                        const dateStr = date.toISOString().split('T')[0];
+                        const hasTrades = entries.some(entry => {
+                          const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
+                          return entryDate === dateStr;
+                        });
                         
                         return (
                           <button
@@ -707,6 +714,9 @@ const Journal = () => {
                               }`}>
                                 {formatPnLUSD(pnl)}
                               </span>
+                            )}
+                            {pnl === 0 && hasTrades && isCurrentMonth && (
+                              <span className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-zinc-300" />
                             )}
                           </button>
                         );
@@ -847,7 +857,7 @@ const Journal = () => {
 
       {/* Add Trade Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-md mx-4 bg-zinc-900 border-zinc-700">
+        <DialogContent className="max-w-md mx-4 max-h-[85vh] overflow-y-auto bg-zinc-900 border-zinc-700">
           <DialogHeader>
             <DialogTitle className="text-white">Add New Trade</DialogTitle>
           </DialogHeader>
@@ -869,7 +879,7 @@ const Journal = () => {
                   <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-800 border-zinc-600">
+                  <SelectContent className="bg-zinc-800 border-zinc-600 z-50">
                     <SelectItem value="LONG">Long (Buy)</SelectItem>
                     <SelectItem value="SHORT">Short (Sell)</SelectItem>
                   </SelectContent>
@@ -943,7 +953,7 @@ const Journal = () => {
                   <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-800 border-zinc-600">
+                  <SelectContent className="bg-zinc-800 border-zinc-600 z-50">
                     <SelectItem value="OPEN">Open</SelectItem>
                     <SelectItem value="CLOSED">Closed</SelectItem>
                   </SelectContent>
@@ -957,7 +967,7 @@ const Journal = () => {
                   <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
                     <SelectValue placeholder="Select strategy" />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-800 border-zinc-600">
+                  <SelectContent className="bg-zinc-800 border-zinc-600 z-50">
                     <SelectItem value="SMC">Smart Money Concepts</SelectItem>
                     <SelectItem value="ICT">Inner Circle Trader</SelectItem>
                     <SelectItem value="Scalping">Scalping</SelectItem>
