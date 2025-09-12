@@ -19,14 +19,13 @@ export class DirectPriceService {
   }
   
   private async fetchCrypto(pair: string): Promise<MarketData | null> {
-    // Get candles from TwelveData and spot price from TwelveData/CoinGecko to avoid stale prices
+    // Get candles from TwelveData and current spot price from CoinGecko
     const candlesData = await this.fetchFromTwelveDataSimple(pair);
     if (!candlesData) return null;
 
-    // Prefer TwelveData spot; fallback to CoinGecko
-    const tdSpot = await this.fetchSpotFromTwelveData(pair);
-    const cgSpot = tdSpot == null ? await this.fetchFromCoinGecko(pair) : null;
-    const currentPrice = (tdSpot ?? cgSpot ?? candlesData.currentPrice);
+    // Get fresh spot price from CoinGecko for accuracy
+    const spotPrice = await this.fetchFromCoinGecko(pair);
+    const currentPrice = spotPrice ?? candlesData.currentPrice;
 
     // Sanity bounds for BTC/ETH
     const min = pair === 'BTCUSD' ? 1000 : 100;
@@ -44,7 +43,7 @@ export class DirectPriceService {
       return null;
     }
 
-    console.log(`✅ ${pair} SPOT ${currentPrice} (last candle ${Math.round((Date.now()-lastTs)/60000)}m ago)`);
+    console.log(`✅ ${pair} LIVE SPOT ${currentPrice} (candles ${Math.round((Date.now()-lastTs)/60000)}m ago)`);
     return { pair, candles: candlesData.candles, currentPrice };
   }
 
