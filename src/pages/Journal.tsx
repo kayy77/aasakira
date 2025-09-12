@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, BarChart3, Brain, Filter } from 'lucide-react';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
@@ -361,6 +363,35 @@ const Journal = () => {
     endDate: customEndDate ? new Date(customEndDate) : undefined
   });
 
+  const generateProgressChartData = () => {
+    const filtered = getFilteredEntries();
+    const dailyPnL: { [key: string]: number } = {};
+    
+    // Group entries by date and calculate daily P&L
+    filtered.forEach(entry => {
+      if (entry.status === 'CLOSED' && entry.result_pips) {
+        const date = new Date(entry.entry_time).toISOString().split('T')[0];
+        dailyPnL[date] = (dailyPnL[date] || 0) + entry.result_pips;
+      }
+    });
+    
+    // Convert to chart data format and sort by date
+    return Object.entries(dailyPnL)
+      .map(([date, pnl]) => ({
+        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        pnl: Math.round(pnl * 10), // Convert to dollars
+        fillColor: pnl >= 0 ? '#10b981' : '#ef4444'
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(-30); // Show last 30 days
+  };
+
+  const chartConfig = {
+    pnl: {
+      label: "P&L ($)",
+    },
+  };
+
   const selectedDayPnL = getDailyPnL(selectedDate);
   const selectedDayTrades = entries.filter(entry => {
     const dateStr = selectedDate.toISOString().split('T')[0];
@@ -457,27 +488,43 @@ const Journal = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Left Sidebar - Categories */}
+            {/* Left Sidebar - Progress Chart */}
             <div className="lg:col-span-1">
               <Card className="bg-zinc-900/50 border-zinc-700">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-white text-sm">Categories</CardTitle>
+                  <CardTitle className="text-white text-sm flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Progress Chart
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="space-y-1">
-                    {analyticsService.getCategories().map((category) => (
-                      <button
-                        key={category.key}
-                        onClick={() => setActiveCategory(category.key)}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                          activeCategory === category.key
-                            ? 'bg-zinc-700/50 border-r-2 border-green-400 text-white'
-                            : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-                        }`}
-                      >
-                        {category.name}
-                      </button>
-                    ))}
+                <CardContent className="p-4">
+                  <div className="h-48">
+                    <ChartContainer config={chartConfig}>
+                      <BarChart data={generateProgressChartData()}>
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis hide />
+                        <ChartTooltip 
+                          content={<ChartTooltipContent 
+                            formatter={(value) => [`$${value}`, 'P&L']}
+                            labelStyle={{ color: '#ffffff' }}
+                            contentStyle={{ 
+                              backgroundColor: '#27272a', 
+                              border: '1px solid #3f3f46',
+                              borderRadius: '6px'
+                            }}
+                          />}
+                        />
+                        <Bar 
+                          dataKey="pnl" 
+                          radius={[2, 2, 0, 0]}
+                        />
+                      </BarChart>
+                    </ChartContainer>
                   </div>
                 </CardContent>
               </Card>
