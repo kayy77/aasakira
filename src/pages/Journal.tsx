@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, BarChart3, Brain, Filter } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Cell } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
@@ -388,6 +388,8 @@ const Journal = () => {
     return chartData;
   };
 
+  const progressData = React.useMemo(() => generateProgressChartData(), [entries, timeFilter, customStartDate, customEndDate]);
+
   const chartConfig = {
     pnl: {
       label: "P&L",
@@ -501,32 +503,29 @@ const Journal = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
-                  <div className="h-48 w-full">
-                    <ChartContainer config={chartConfig}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={generateProgressChartData()}>
-                          <XAxis 
-                            dataKey="date" 
-                            tick={{ fontSize: 10, fill: '#9ca3af' }}
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <YAxis hide />
-                          <ChartTooltip 
-                            content={<ChartTooltipContent />}
-                          />
-                          <Bar 
-                            dataKey="pnl" 
-                            radius={[2, 2, 0, 0]}
-                          >
-                            {generateProgressChartData().map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#10b981' : '#ef4444'} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+                  {progressData.length === 0 ? (
+                    <div className="h-48 flex items-center justify-center text-xs text-zinc-400">
+                      No closed trades in this period.
+                    </div>
+                  ) : (
+                    <ChartContainer config={chartConfig} className="h-48 aspect-auto w-full">
+                      <BarChart data={progressData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis hide />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="pnl" barSize={12} radius={[3, 3, 0, 0]}>
+                          {progressData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#10b981' : '#ef4444'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ChartContainer>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
