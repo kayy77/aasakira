@@ -25,9 +25,12 @@ interface JournalEntry {
   entry_price: number;
   exit_price?: number;
   entry_time: string;
-  exit_time?: string;
   direction: 'LONG' | 'SHORT';
   strategy: string;
+  lot_size?: number;
+  fees?: number;
+  feelings?: string;
+  mistakes?: string;
   risk_reward_ratio?: number;
   result_pips?: number;
   result_percentage?: number;
@@ -56,11 +59,18 @@ const Journal = () => {
   const [aiSummary, setAiSummary] = useState<string>('');
   const [generatingAISummary, setGeneratingAISummary] = useState(false);
 
-  // Display settings
-  const pipValueUSD = 10; // dollars per pip (assumes standard lot unless user customizes)
-  const formatPnLUSD = (pips: number) => {
-    const dollars = Math.round(Math.abs(pips) * pipValueUSD);
-    return `${pips >= 0 ? '+' : ''}$${dollars.toLocaleString()}`;
+  // Display settings - Calculate actual P&L using lot size
+  const calculateRealPnL = (pips: number, lotSize: number = 1, fees: number = 0) => {
+    // Standard lot = 100,000 units, Mini lot = 10,000 units, Micro lot = 1,000 units
+    const pipValue = lotSize * 10; // $10 per pip for standard lot
+    const grossProfit = pips * pipValue;
+    const netProfit = grossProfit - fees;
+    return netProfit;
+  };
+
+  const formatPnLUSD = (pips: number, lotSize: number = 1, fees: number = 0) => {
+    const netPnL = calculateRealPnL(pips, lotSize, fees);
+    return `${netPnL >= 0 ? '+' : ''}$${Math.abs(netPnL).toLocaleString()}`;
   };
 
   const analyticsService = new JournalAnalyticsService();
@@ -70,9 +80,12 @@ const Journal = () => {
     entry_price: '',
     exit_price: '',
     entry_time: '',
-    exit_time: '',
     direction: 'LONG' as 'LONG' | 'SHORT',
     strategy: '',
+    lot_size: '',
+    fees: '',
+    feelings: '',
+    mistakes: '',
     notes: '',
     status: 'OPEN' as 'OPEN' | 'CLOSED'
   });
@@ -112,8 +125,9 @@ const Journal = () => {
     });
     
     return dayTrades.reduce((sum, entry) => {
-      const p = entry.result_pips || 0;
-      return Math.abs(p) > 1000 ? sum : sum + p;
+      const pips = entry.result_pips || 0;
+      if (Math.abs(pips) > 1000) return sum; // Skip unrealistic values
+      return sum + calculateRealPnL(pips, entry.lot_size || 1, entry.fees || 0);
     }, 0);
   };
 
@@ -184,6 +198,8 @@ const Journal = () => {
   const handleAddEntry = async () => {
     if (!user) return;
 
+    console.log('🔄 Adding journal entry...', { newEntry, user: user.id });
+
     try {
       const entryData: any = {
         user_id: user.id,
@@ -191,12 +207,17 @@ const Journal = () => {
         entry_price: parseFloat(newEntry.entry_price),
         exit_price: newEntry.exit_price ? parseFloat(newEntry.exit_price) : null,
         entry_time: newEntry.entry_time,
-        exit_time: newEntry.exit_time || null,
         direction: newEntry.direction,
         strategy: newEntry.strategy,
+        lot_size: newEntry.lot_size ? parseFloat(newEntry.lot_size) : null,
+        fees: newEntry.fees ? parseFloat(newEntry.fees) : 0,
+        feelings: newEntry.feelings || null,
+        mistakes: newEntry.mistakes || null,
         status: newEntry.status,
         notes: newEntry.notes || null,
       };
+
+      console.log('📤 Sending to database:', entryData);
 
       // Calculate metrics if trade is closed
       if (newEntry.status === 'CLOSED' && newEntry.exit_price) {
@@ -225,7 +246,13 @@ const Journal = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Database error:', error);
+        throw error;
+      }
+
+      console.log('✅ Trade saved successfully:', data);
+      setEntries([data as JournalEntry, ...entries]);
 
       setEntries([data as JournalEntry, ...entries]);
       setShowAddDialog(false);
@@ -234,9 +261,12 @@ const Journal = () => {
         entry_price: '',
         exit_price: '',
         entry_time: '',
-        exit_time: '',
         direction: 'LONG',
         strategy: '',
+        lot_size: '',
+        fees: '',
+        feelings: '',
+        mistakes: '',
         notes: '',
         status: 'OPEN'
       });
@@ -466,11 +496,11 @@ const Journal = () => {
               <CardContent className="p-4">
                 <div className="text-center">
                   <p className="text-sm text-zinc-400 mb-1">P/L ({timeFilter})</p>
-                  <p className={`text-3xl font-bold ${
-                    stats.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    {formatPnLUSD(stats.totalPnL)}
-                  </p>
+                   <p className={`text-3xl font-bold ${
+                     stats.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'
+                   }`}>
+                     ${stats.totalPnL >= 0 ? '+' : ''}${Math.abs(stats.totalPnL).toLocaleString()}
+                   </p>
                   <p className="text-xs text-zinc-500 mt-1">
                     {stats.totalTrades} trades • {stats.winRate}% win rate
                   </p>
@@ -561,22 +591,22 @@ const Journal = () => {
                   <CardTitle className="text-white text-sm">Quick Stats</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-400">Best Day</span>
-                    <span className="text-green-400">{formatPnLUSD(stats.bestDay)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-400">Worst Day</span>
-                    <span className="text-red-400">{formatPnLUSD(stats.worstDay)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-400">Avg Win</span>
-                    <span className="text-green-400">{formatPnLUSD(stats.avgWin)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-400">Avg Loss</span>
-                    <span className="text-red-400">{formatPnLUSD(-stats.avgLoss)}</span>
-                  </div>
+                   <div className="flex justify-between text-sm">
+                     <span className="text-zinc-400">Best Day</span>
+                     <span className="text-green-400">+${Math.abs(stats.bestDay).toLocaleString()}</span>
+                   </div>
+                   <div className="flex justify-between text-sm">
+                     <span className="text-zinc-400">Worst Day</span>
+                     <span className="text-red-400">-${Math.abs(stats.worstDay).toLocaleString()}</span>
+                   </div>
+                   <div className="flex justify-between text-sm">
+                     <span className="text-zinc-400">Avg Win</span>
+                     <span className="text-green-400">+${Math.abs(stats.avgWin).toLocaleString()}</span>
+                   </div>
+                   <div className="flex justify-between text-sm">
+                     <span className="text-zinc-400">Avg Loss</span>
+                     <span className="text-red-400">-${Math.abs(stats.avgLoss).toLocaleString()}</span>
+                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Streak</span>
                     <span className={stats.currentStreak >= 0 ? 'text-green-400' : 'text-red-400'}>
@@ -742,13 +772,14 @@ const Journal = () => {
 
               {/* Trade List for Selected Day */}
               {selectedDayTrades.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-white font-medium text-sm mb-3">
-                    Trades for {formatSelectedDate()}
-                  </h3>
-                  {selectedDayTrades.map((entry) => {
-                    const isWin = entry.status === 'CLOSED' && (entry.result_pips || 0) > 0;
-                    const isLoss = entry.status === 'CLOSED' && (entry.result_pips || 0) < 0;
+                 <div className="space-y-2">
+                   <h3 className="text-white font-medium text-sm mb-3">
+                     Trades for {formatSelectedDate()}
+                   </h3>
+                   {selectedDayTrades.map((entry) => {
+                     const realPnL = entry.status === 'CLOSED' ? calculateRealPnL(entry.result_pips || 0, entry.lot_size || 1, entry.fees || 0) : 0;
+                     const isWin = entry.status === 'CLOSED' && realPnL > 0;
+                     const isLoss = entry.status === 'CLOSED' && realPnL < 0;
                     
                     return (
                       <Card key={entry.id} className="bg-zinc-900/30 border-zinc-700">
@@ -778,14 +809,30 @@ const Journal = () => {
                                       ? 'bg-red-500/20 text-red-400' 
                                       : 'text-zinc-400'
                                 }`}>
-                                  {formatPnLUSD(entry.result_pips || 0)}
+                                  {formatPnLUSD(entry.result_pips || 0, entry.lot_size || 1, entry.fees || 0)}
                                 </span>
                               )}
                           </div>
                           
-                          {entry.notes && (
-                            <p className="text-xs text-zinc-400 mt-2">{entry.notes}</p>
-                          )}
+                           {entry.notes && (
+                             <p className="text-xs text-zinc-400 mt-2">{entry.notes}</p>
+                           )}
+                           
+                           {/* Display lot size, fees, feelings, and mistakes */}
+                           <div className="mt-3 space-y-1">
+                             {entry.lot_size && (
+                               <p className="text-xs text-zinc-500">Lot Size: {entry.lot_size}</p>
+                             )}
+                             {entry.fees && entry.fees > 0 && (
+                               <p className="text-xs text-zinc-500">Fees: ${entry.fees}</p>
+                             )}
+                             {entry.feelings && (
+                               <p className="text-xs text-amber-400">Feelings: {entry.feelings}</p>
+                             )}
+                             {entry.mistakes && (
+                               <p className="text-xs text-blue-400">Lessons: {entry.mistakes}</p>
+                             )}
+                           </div>
                         </CardContent>
                       </Card>
                     );
@@ -865,14 +912,42 @@ const Journal = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="exit_time" className="text-white">Exit Time (if closed)</Label>
+                <Label htmlFor="lot_size" className="text-white">Lot Size</Label>
                 <Input
-                  id="exit_time"
-                  type="datetime-local"
-                  value={newEntry.exit_time}
-                  onChange={(e) => setNewEntry({...newEntry, exit_time: e.target.value})}
+                  id="lot_size"
+                  type="number"
+                  step="0.1"
+                  placeholder="1.0 = Standard lot"
+                  value={newEntry.lot_size}
+                  onChange={(e) => setNewEntry({...newEntry, lot_size: e.target.value})}
                   className="bg-zinc-800 border-zinc-600 text-white"
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="fees" className="text-white">Fees/Commission ($)</Label>
+                <Input
+                  id="fees"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={newEntry.fees}
+                  onChange={(e) => setNewEntry({...newEntry, fees: e.target.value})}
+                  className="bg-zinc-800 border-zinc-600 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="status" className="text-white">Status</Label>
+                <Select value={newEntry.status} onValueChange={(value: 'OPEN' | 'CLOSED') => setNewEntry({...newEntry, status: value})}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-800 border-zinc-600">
+                    <SelectItem value="OPEN">Open</SelectItem>
+                    <SelectItem value="CLOSED">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -892,18 +967,28 @@ const Journal = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="status" className="text-white">Status</Label>
-                <Select value={newEntry.status} onValueChange={(value: 'OPEN' | 'CLOSED') => setNewEntry({...newEntry, status: value})}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-zinc-800 border-zinc-600">
-                    <SelectItem value="OPEN">Open</SelectItem>
-                    <SelectItem value="CLOSED">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            </div>
+            <div>
+              <Label htmlFor="feelings" className="text-white">Feelings During Trade</Label>
+              <Textarea
+                id="feelings"
+                placeholder="How did you feel during this trade? (confident, nervous, FOMO, etc.)"
+                value={newEntry.feelings}
+                onChange={(e) => setNewEntry({...newEntry, feelings: e.target.value})}
+                rows={2}
+                className="bg-zinc-800 border-zinc-600 text-white"
+              />
+            </div>
+            <div>
+              <Label htmlFor="mistakes" className="text-white">Mistakes & Lessons Learned</Label>
+              <Textarea
+                id="mistakes"
+                placeholder="What went wrong? What would you do differently next time?"
+                value={newEntry.mistakes}
+                onChange={(e) => setNewEntry({...newEntry, mistakes: e.target.value})}
+                rows={2}
+                className="bg-zinc-800 border-zinc-600 text-white"
+              />
             </div>
             <div>
               <Label htmlFor="notes" className="text-white">Notes</Label>

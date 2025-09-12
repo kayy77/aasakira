@@ -133,7 +133,11 @@ export type Database = {
           entry_time: string
           exit_price: number | null
           exit_time: string | null
+          feelings: string | null
+          fees: number | null
           id: string
+          lot_size: number | null
+          mistakes: string | null
           notes: string | null
           pair: string
           result_percentage: number | null
@@ -152,7 +156,11 @@ export type Database = {
           entry_time: string
           exit_price?: number | null
           exit_time?: string | null
+          feelings?: string | null
+          fees?: number | null
           id?: string
+          lot_size?: number | null
+          mistakes?: string | null
           notes?: string | null
           pair: string
           result_percentage?: number | null
@@ -171,7 +179,11 @@ export type Database = {
           entry_time?: string
           exit_price?: number | null
           exit_time?: string | null
+          feelings?: string | null
+          fees?: number | null
           id?: string
+          lot_size?: number | null
+          mistakes?: string | null
           notes?: string | null
           pair?: string
           result_percentage?: number | null
