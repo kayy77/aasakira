@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, BarChart3, Brain, Filter } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
@@ -376,19 +376,22 @@ const Journal = () => {
     });
     
     // Convert to chart data format and sort by date
-    return Object.entries(dailyPnL)
-      .map(([date, pnl]) => ({
-        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    const chartData = Object.entries(dailyPnL)
+      .map(([dateStr, pnl]) => ({
+        date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         pnl: Math.round(pnl * 10), // Convert to dollars
-        fillColor: pnl >= 0 ? '#10b981' : '#ef4444'
+        originalDate: dateStr
       }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(-30); // Show last 30 days
+      .sort((a, b) => new Date(a.originalDate).getTime() - new Date(b.originalDate).getTime())
+      .slice(-15); // Show last 15 days for better visibility
+    
+    return chartData;
   };
 
   const chartConfig = {
     pnl: {
-      label: "P&L ($)",
+      label: "P&L",
+      color: "hsl(var(--chart-1))",
     },
   };
 
@@ -498,32 +501,30 @@ const Journal = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
-                  <div className="h-48">
+                  <div className="h-48 w-full">
                     <ChartContainer config={chartConfig}>
-                      <BarChart data={generateProgressChartData()}>
-                        <XAxis 
-                          dataKey="date" 
-                          tick={{ fontSize: 10, fill: '#9ca3af' }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis hide />
-                        <ChartTooltip 
-                          content={<ChartTooltipContent 
-                            formatter={(value) => [`$${value}`, 'P&L']}
-                            labelStyle={{ color: '#ffffff' }}
-                            contentStyle={{ 
-                              backgroundColor: '#27272a', 
-                              border: '1px solid #3f3f46',
-                              borderRadius: '6px'
-                            }}
-                          />}
-                        />
-                        <Bar 
-                          dataKey="pnl" 
-                          radius={[2, 2, 0, 0]}
-                        />
-                      </BarChart>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={generateProgressChartData()}>
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{ fontSize: 10, fill: '#9ca3af' }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis hide />
+                          <ChartTooltip 
+                            content={<ChartTooltipContent />}
+                          />
+                          <Bar 
+                            dataKey="pnl" 
+                            radius={[2, 2, 0, 0]}
+                          >
+                            {generateProgressChartData().map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#10b981' : '#ef4444'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     </ChartContainer>
                   </div>
                 </CardContent>
