@@ -403,11 +403,11 @@ const Journal = () => {
             <Card className="bg-zinc-900/50 border-zinc-700">
               <CardContent className="p-4">
                 <div className="text-center">
-                  <p className="text-sm text-zinc-400 mb-1">Total P/L ({timeFilter})</p>
+                  <p className="text-sm text-zinc-400 mb-1">P/L ({timeFilter})</p>
                   <p className={`text-3xl font-bold ${
                     stats.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'
                   }`}>
-                    {stats.totalPnL >= 0 ? '+' : ''}{stats.totalPnL} pips
+                    {stats.totalPnL >= 0 ? '+' : ''}${(stats.totalPnL * 10).toFixed(0)}
                   </p>
                   <p className="text-xs text-zinc-500 mt-1">
                     {stats.totalTrades} trades • {stats.winRate}% win rate
@@ -490,19 +490,19 @@ const Journal = () => {
                 <CardContent className="p-4 space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Best Day</span>
-                    <span className="text-green-400">+{stats.bestDay}</span>
+                    <span className="text-green-400">+${(stats.bestDay * 10).toFixed(0)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Worst Day</span>
-                    <span className="text-red-400">{stats.worstDay}</span>
+                    <span className="text-red-400">${(stats.worstDay * 10).toFixed(0)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Avg Win</span>
-                    <span className="text-green-400">+{stats.avgWin}</span>
+                    <span className="text-green-400">+${(stats.avgWin * 10).toFixed(0)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Avg Loss</span>
-                    <span className="text-red-400">-{stats.avgLoss}</span>
+                    <span className="text-red-400">-${(stats.avgLoss * 10).toFixed(0)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Streak</span>
@@ -602,7 +602,7 @@ const Journal = () => {
                               <span className={`text-[8px] font-bold ${
                                 pnl > 0 ? 'text-green-200' : 'text-red-200'
                               }`}>
-                                {pnl > 0 ? '+' : ''}{pnl.toFixed(0)}
+                                {pnl > 0 ? '+' : ''}${(pnl * 10).toFixed(0)}
                               </span>
                             )}
                           </button>
@@ -633,7 +633,7 @@ const Journal = () => {
                   <div className={`text-3xl font-bold mb-2 ${
                     selectedDayPnL >= 0 ? 'text-green-400' : 'text-red-400'
                   }`}>
-                    {selectedDayPnL >= 0 ? '+' : ''}{selectedDayPnL.toFixed(1)} pips
+                    {selectedDayPnL >= 0 ? '+' : ''}${(selectedDayPnL * 10).toFixed(0)}
                   </div>
                   
                   {selectedDayTrades.length > 0 && (
@@ -705,7 +705,7 @@ const Journal = () => {
                                     ? 'bg-red-500/20 text-red-400' 
                                     : 'text-zinc-400'
                               }`}>
-                                {(entry.result_pips || 0) >= 0 ? '+' : ''}{entry.result_pips}
+                                {(entry.result_pips || 0) >= 0 ? '+' : ''}${((entry.result_pips || 0) * 10).toFixed(0)}
                               </span>
                             )}
                           </div>
