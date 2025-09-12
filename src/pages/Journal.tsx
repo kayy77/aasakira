@@ -508,15 +508,15 @@ const Journal = () => {
                       No closed trades in this period.
                     </div>
                   ) : (
-                    <ChartContainer config={chartConfig} className="h-48 aspect-auto w-full">
-                      <BarChart data={progressData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                    <ChartContainer config={chartConfig} className="w-full" style={{ aspectRatio: 'auto', height: '192px' }}>
+                      <BarChart data={progressData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
                         <XAxis 
                           dataKey="date" 
                           tick={{ fontSize: 10, fill: '#9ca3af' }}
                           axisLine={false}
                           tickLine={false}
                         />
-                        <YAxis hide />
+                        <YAxis domain={[ 'auto', 'auto' ]} hide />
                         <ChartTooltip content={<ChartTooltipContent />} />
                         <Bar dataKey="pnl" barSize={12} radius={[3, 3, 0, 0]}>
                           {progressData.map((entry, index) => (
