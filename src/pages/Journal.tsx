@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,13 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, BarChart3, Brain, Filter } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Navigation from '@/components/Navigation';
 import PremiumUpgrade from '@/components/PremiumUpgrade';
+import { JournalAnalyticsService } from '@/services/journalAnalyticsService';
 
 interface JournalEntry {
   id: string;
@@ -45,6 +47,14 @@ const Journal = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [generatingAI, setGeneratingAI] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState('overview');
+  const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('monthly');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [aiSummary, setAiSummary] = useState<string>('');
+  const [generatingAISummary, setGeneratingAISummary] = useState(false);
+
+  const analyticsService = new JournalAnalyticsService();
 
   const [newEntry, setNewEntry] = useState({
     pair: '',
@@ -306,6 +316,51 @@ const Journal = () => {
     }
   };
 
+  const generateProgressSummary = async () => {
+    if (!isPremium) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+
+    try {
+      setGeneratingAISummary(true);
+      
+      const timeframeName = timeFilter === 'custom' ? 'selected period' : timeFilter;
+      const summary = await analyticsService.generateAISummary(user?.id || '', entries, timeframeName);
+      
+      setAiSummary(summary);
+      toast({
+        title: "AI Analysis Complete",
+        description: "Progress summary generated successfully",
+      });
+    } catch (error) {
+      console.error('Error generating AI summary:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate AI summary",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingAISummary(false);
+    }
+  };
+
+  const getFilteredEntries = () => {
+    const filter = {
+      type: timeFilter,
+      startDate: customStartDate ? new Date(customStartDate) : undefined,
+      endDate: customEndDate ? new Date(customEndDate) : undefined
+    };
+
+    return analyticsService['filterEntriesByTime'](entries, filter);
+  };
+
+  const stats = analyticsService.calculateStats(entries, {
+    type: timeFilter,
+    startDate: customStartDate ? new Date(customStartDate) : undefined,
+    endDate: customEndDate ? new Date(customEndDate) : undefined
+  });
+
   const selectedDayPnL = getDailyPnL(selectedDate);
   const selectedDayTrades = entries.filter(entry => {
     const dateStr = selectedDate.toISOString().split('T')[0];
@@ -335,7 +390,7 @@ const Journal = () => {
       <Navigation />
       
       <main className="pt-20 pb-8">
-        <div className="max-w-md mx-auto px-6">
+        <div className="max-w-6xl mx-auto px-6">
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-green-400 mb-1">Stop emotional</h1>
@@ -343,149 +398,330 @@ const Journal = () => {
             <p className="text-zinc-400 text-sm">Eliminate losses on bad days</p>
           </div>
 
-          {/* Calendar */}
-          <Card className="bg-zinc-900/50 border-zinc-700 mb-6">
-            <CardContent className="p-4">
-              {/* Month Navigation */}
-              <div className="flex items-center justify-between mb-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => navigateMonth('prev')}
-                  className="text-white hover:bg-zinc-800"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h3 className="text-white font-semibold">{monthYearText}</h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => navigateMonth('next')}
-                  className="text-white hover:bg-zinc-800"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+          {/* Overall P/L and Filter Controls */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="bg-zinc-900/50 border-zinc-700">
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <p className="text-sm text-zinc-400 mb-1">Total P/L ({timeFilter})</p>
+                  <p className={`text-3xl font-bold ${
+                    stats.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {stats.totalPnL >= 0 ? '+' : ''}{stats.totalPnL} pips
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {stats.totalTrades} trades • {stats.winRate}% win rate
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Weekday Headers */}
-              <div className="grid grid-cols-7 gap-2 mb-2">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-xs text-zinc-400 text-center p-1">
-                    {day}
+            <Card className="bg-zinc-900/50 border-zinc-700">
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-zinc-400" />
+                    <Label className="text-sm text-zinc-300">Time Period</Label>
                   </div>
-                ))}
-              </div>
-
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-2">
-                {calendarDays.map((date, index) => {
-                  const isCurrentMonth = date.getMonth() === currentDate.getMonth();
-                  const isSelected = date.toDateString() === selectedDate.toDateString();
-                  const isToday = date.toDateString() === new Date().toDateString();
+                  <Select value={timeFilter} onValueChange={(value: any) => setTimeFilter(value)}>
+                    <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-800 border-zinc-600">
+                      <SelectItem value="daily">Today</SelectItem>
+                      <SelectItem value="weekly">This Week</SelectItem>
+                      <SelectItem value="monthly">This Month</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
+                    </SelectContent>
+                  </Select>
                   
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedDate(date)}
-                      className={`
-                        aspect-square rounded-md text-xs font-medium transition-all relative
-                        ${isCurrentMonth ? 'text-white' : 'text-zinc-600'}
-                        ${isSelected ? 'ring-2 ring-white' : ''}
-                        ${isToday && !isSelected ? 'ring-1 ring-zinc-400' : ''}
-                        ${getDayColor(date)}
-                        hover:opacity-80
-                      `}
+                  {timeFilter === 'custom' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="bg-zinc-800 border-zinc-600 text-white text-xs"
+                      />
+                      <Input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="bg-zinc-800 border-zinc-600 text-white text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Left Sidebar - Categories */}
+            <div className="lg:col-span-1">
+              <Card className="bg-zinc-900/50 border-zinc-700">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-white text-sm">Categories</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="space-y-1">
+                    {analyticsService.getCategories().map((category) => (
+                      <button
+                        key={category.key}
+                        onClick={() => setActiveCategory(category.key)}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                          activeCategory === category.key
+                            ? 'bg-zinc-700/50 border-r-2 border-green-400 text-white'
+                            : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                        }`}
+                      >
+                        {category.name}
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Quick Stats */}
+              <Card className="bg-zinc-900/50 border-zinc-700 mt-4">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-white text-sm">Quick Stats</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Best Day</span>
+                    <span className="text-green-400">+{stats.bestDay}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Worst Day</span>
+                    <span className="text-red-400">{stats.worstDay}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Avg Win</span>
+                    <span className="text-green-400">+{stats.avgWin}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Avg Loss</span>
+                    <span className="text-red-400">-{stats.avgLoss}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Streak</span>
+                    <span className={stats.currentStreak >= 0 ? 'text-green-400' : 'text-red-400'}>
+                      {stats.currentStreak >= 0 ? '+' : ''}{stats.currentStreak}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AI Analysis Button */}
+              {isPremium && (
+                <Card className="bg-zinc-900/50 border-zinc-700 mt-4">
+                  <CardContent className="p-4">
+                    <Button
+                      onClick={generateProgressSummary}
+                      disabled={generatingAISummary}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                     >
-                      {date.getDate()}
-                    </button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Daily Summary */}
-          <Card className="bg-zinc-900/50 border-zinc-700 mb-6">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-zinc-400">
-                  Today - {formatSelectedDate().split(',')[0]}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAddDialog(true)}
-                  className="text-white hover:bg-zinc-800"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              <div className={`text-3xl font-bold mb-2 ${
-                selectedDayPnL >= 0 ? 'text-green-400' : 'text-red-400'
-              }`}>
-                {selectedDayPnL >= 0 ? '+' : ''}{selectedDayPnL.toFixed(1)} pips
-              </div>
-              
-              {selectedDayTrades.length > 0 && (
-                <div className="text-sm text-zinc-400">
-                  {selectedDayTrades.length} trade{selectedDayTrades.length !== 1 ? 's' : ''}
-                </div>
-              )}
-              
-              {selectedDayTrades.length === 0 && (
-                <div className="text-sm text-zinc-500">
-                  No trades on this day
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Trade List for Selected Day */}
-          {selectedDayTrades.length > 0 && (
-            <div className="space-y-2">
-              {selectedDayTrades.map((entry) => {
-                const isWin = entry.status === 'CLOSED' && (entry.result_pips || 0) > 0;
-                const isLoss = entry.status === 'CLOSED' && (entry.result_pips || 0) < 0;
-                
-                return (
-                  <Card key={entry.id} className="bg-zinc-900/30 border-zinc-700">
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between">
+                      {generatingAISummary ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-white font-medium">{entry.pair}</span>
-                          <Badge className={`text-xs ${
-                            entry.direction === 'LONG' 
-                              ? 'bg-green-500/20 text-green-400' 
-                              : 'bg-red-500/20 text-red-400'
-                          }`}>
-                            {entry.direction}
-                          </Badge>
-                          {entry.status === 'CLOSED' && (
-                            <span className="text-xs">
-                              {isWin ? '✅' : isLoss ? '❌' : '⚪'}
-                            </span>
-                          )}
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Analyzing...
                         </div>
-                        
-                        {entry.status === 'CLOSED' && (
-                          <span className={`text-sm font-medium ${
-                            isWin ? 'text-green-400' : isLoss ? 'text-red-400' : 'text-zinc-400'
-                          }`}>
-                            {(entry.result_pips || 0) >= 0 ? '+' : ''}{entry.result_pips} pips
-                          </span>
-                        )}
-                      </div>
-                      
-                      {entry.notes && (
-                        <p className="text-xs text-zinc-400 mt-2">{entry.notes}</p>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Brain className="h-4 w-4" />
+                          AI Analysis
+                        </div>
                       )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
-          )}
+
+            {/* Main Content Area */}
+            <div className="lg:col-span-3 space-y-6">
+              {/* Calendar Section */}
+              <div className="max-w-md mx-auto">
+                <Card className="bg-zinc-900/50 border-zinc-700">
+                  <CardContent className="p-4">
+
+                    {/* Month Navigation */}
+                    <div className="flex items-center justify-between mb-4">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => navigateMonth('prev')}
+                        className="text-white hover:bg-zinc-800"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <h3 className="text-white font-semibold">{monthYearText}</h3>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => navigateMonth('next')}
+                        className="text-white hover:bg-zinc-800"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Weekday Headers */}
+                    <div className="grid grid-cols-7 gap-2 mb-2">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <div key={day} className="text-xs text-zinc-400 text-center p-1">
+                          {day}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Calendar Grid */}
+                    <div className="grid grid-cols-7 gap-2">
+                      {calendarDays.map((date, index) => {
+                        const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+                        const isSelected = date.toDateString() === selectedDate.toDateString();
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        const pnl = getDailyPnL(date);
+                        
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => setSelectedDate(date)}
+                            className={`
+                              aspect-square rounded-md text-xs font-medium transition-all relative flex flex-col items-center justify-center
+                              ${isCurrentMonth ? 'text-white' : 'text-zinc-600'}
+                              ${isSelected ? 'ring-2 ring-white' : ''}
+                              ${isToday && !isSelected ? 'ring-1 ring-zinc-400' : ''}
+                              ${getDayColor(date)}
+                              hover:opacity-80
+                            `}
+                          >
+                            <span>{date.getDate()}</span>
+                            {pnl !== 0 && isCurrentMonth && (
+                              <span className={`text-[8px] font-bold ${
+                                pnl > 0 ? 'text-green-200' : 'text-red-200'
+                              }`}>
+                                {pnl > 0 ? '+' : ''}{pnl.toFixed(0)}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Daily Summary */}
+              <Card className="bg-zinc-900/50 border-zinc-700">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm text-zinc-400">
+                      Today - {formatSelectedDate().split(',')[0]}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAddDialog(true)}
+                      className="text-white hover:bg-zinc-800"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className={`text-3xl font-bold mb-2 ${
+                    selectedDayPnL >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {selectedDayPnL >= 0 ? '+' : ''}{selectedDayPnL.toFixed(1)} pips
+                  </div>
+                  
+                  {selectedDayTrades.length > 0 && (
+                    <div className="text-sm text-zinc-400">
+                      {selectedDayTrades.length} trade{selectedDayTrades.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                  
+                  {selectedDayTrades.length === 0 && (
+                    <div className="text-sm text-zinc-500">
+                      No trades on this day
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* AI Summary Display */}
+              {aiSummary && (
+                <Card className="bg-gradient-to-r from-purple-900/20 to-purple-800/20 border-purple-500/30">
+                  <CardHeader>
+                    <CardTitle className="text-purple-300 flex items-center gap-2">
+                      <Brain className="h-5 w-5" />
+                      AI Analysis - {timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} Performance
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm text-zinc-300 whitespace-pre-line">
+                      {aiSummary}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Trade List for Selected Day */}
+              {selectedDayTrades.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-white font-medium text-sm mb-3">
+                    Trades for {formatSelectedDate()}
+                  </h3>
+                  {selectedDayTrades.map((entry) => {
+                    const isWin = entry.status === 'CLOSED' && (entry.result_pips || 0) > 0;
+                    const isLoss = entry.status === 'CLOSED' && (entry.result_pips || 0) < 0;
+                    
+                    return (
+                      <Card key={entry.id} className="bg-zinc-900/30 border-zinc-700">
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-medium">{entry.pair}</span>
+                              <Badge className={`text-xs ${
+                                entry.direction === 'LONG' 
+                                  ? 'bg-green-500/20 text-green-400' 
+                                  : 'bg-red-500/20 text-red-400'
+                              }`}>
+                                {entry.direction}
+                              </Badge>
+                              {entry.status === 'CLOSED' && (
+                                <span className="text-xs">
+                                  {isWin ? '✅' : isLoss ? '❌' : '⚪'}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {entry.status === 'CLOSED' && (
+                              <span className={`text-sm font-bold px-2 py-1 rounded ${
+                                isWin 
+                                  ? 'bg-green-500/20 text-green-400' 
+                                  : isLoss 
+                                    ? 'bg-red-500/20 text-red-400' 
+                                    : 'text-zinc-400'
+                              }`}>
+                                {(entry.result_pips || 0) >= 0 ? '+' : ''}{entry.result_pips}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {entry.notes && (
+                            <p className="text-xs text-zinc-400 mt-2">{entry.notes}</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </main>
 
