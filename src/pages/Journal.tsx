@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, TrendingUp, TrendingDown, Trash2, Brain, Lock } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +42,8 @@ const Journal = () => {
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [generatingAI, setGeneratingAI] = useState<string | null>(null);
 
   const [newEntry, setNewEntry] = useState({
@@ -83,19 +85,69 @@ const Journal = () => {
     }
   };
 
-  const calculateStats = () => {
-    const totalTrades = entries.length;
-    const closedTrades = entries.filter(e => e.status === 'CLOSED');
-    const wins = closedTrades.filter(e => (e.result_pips || 0) > 0);
+  const getDailyPnL = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    const dayTrades = entries.filter(entry => {
+      const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
+      return entryDate === dateStr && entry.status === 'CLOSED';
+    });
     
-    const winRate = closedTrades.length > 0 ? Math.round((wins.length / closedTrades.length) * 100) : 0;
-    const netPips = closedTrades.reduce((sum, entry) => sum + (entry.result_pips || 0), 0);
+    return dayTrades.reduce((sum, entry) => sum + (entry.result_pips || 0), 0);
+  };
+
+  const getDayColor = (date: Date) => {
+    const pnl = getDailyPnL(date);
+    if (pnl > 0) return 'bg-green-500';
+    if (pnl < 0) return 'bg-red-500';
     
-    return { 
-      totalTrades, 
-      winRate, 
-      netPips: Math.round(netPips * 10) / 10,
-    };
+    // Check if there are any trades this day
+    const dateStr = date.toISOString().split('T')[0];
+    const hasTrades = entries.some(entry => {
+      const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
+      return entryDate === dateStr;
+    });
+    
+    return hasTrades ? 'bg-gray-500' : 'bg-gray-700';
+  };
+
+  const generateCalendarDays = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    
+    const days = [];
+    const current = new Date(startDate);
+    
+    // Generate 42 days (6 weeks)
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return days;
+  };
+
+  const formatSelectedDate = () => {
+    return selectedDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    if (direction === 'prev') {
+      newDate.setMonth(newDate.getMonth() - 1);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 1);
+    }
+    setCurrentDate(newDate);
   };
 
   const formatDate = (dateString: string) => {
@@ -254,7 +306,15 @@ const Journal = () => {
     }
   };
 
-  const stats = calculateStats();
+  const selectedDayPnL = getDailyPnL(selectedDate);
+  const selectedDayTrades = entries.filter(entry => {
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
+    return entryDate === dateStr;
+  });
+
+  const calendarDays = generateCalendarDays();
+  const monthYearText = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   if (loading) {
     return (
@@ -275,365 +335,295 @@ const Journal = () => {
       <Navigation />
       
       <main className="pt-20 pb-8">
-        <div className="max-w-6xl mx-auto px-6">
+        <div className="max-w-md mx-auto px-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-white">Trading Journal</h1>
-              <p className="text-zinc-400 mt-1">Your battle log of trades</p>
-            </div>
-            <Button 
-              className="bg-primary hover:bg-primary/90 text-black font-semibold" 
-              onClick={() => setShowAddDialog(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Trade
-            </Button>
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-green-400 mb-1">Stop emotional</h1>
+            <h2 className="text-2xl font-bold text-white mb-2">trading</h2>
+            <p className="text-zinc-400 text-sm">Eliminate losses on bad days</p>
           </div>
 
-          {/* Simple Stats Row - Only 3 Stats */}
-          <div className="grid grid-cols-3 gap-6 mb-8">
-            <Card className="bg-zinc-900/50 border-zinc-800">
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-white">{stats.totalTrades}</div>
-                  <div className="text-zinc-400 text-sm mt-1">Total Trades</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-zinc-900/50 border-zinc-800">
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-white">{stats.winRate}%</div>
-                  <div className="text-zinc-400 text-sm mt-1">Win Rate</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-zinc-900/50 border-zinc-800">
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <div className={`text-4xl font-bold ${stats.netPips >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {stats.netPips >= 0 ? '+' : ''}{stats.netPips}
+          {/* Calendar */}
+          <Card className="bg-zinc-900/50 border-zinc-700 mb-6">
+            <CardContent className="p-4">
+              {/* Month Navigation */}
+              <div className="flex items-center justify-between mb-4">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigateMonth('prev')}
+                  className="text-white hover:bg-zinc-800"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <h3 className="text-white font-semibold">{monthYearText}</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigateMonth('next')}
+                  className="text-white hover:bg-zinc-800"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Weekday Headers */}
+              <div className="grid grid-cols-7 gap-2 mb-2">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} className="text-xs text-zinc-400 text-center p-1">
+                    {day}
                   </div>
-                  <div className="text-zinc-400 text-sm mt-1">Net P/L (pips)</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Add Trade Dialog */}
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Add New Trade</DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="pair">Currency Pair</Label>
-                  <Input
-                    id="pair"
-                    placeholder="EURUSD"
-                    value={newEntry.pair}
-                    onChange={(e) => setNewEntry({...newEntry, pair: e.target.value.toUpperCase()})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="direction">Direction</Label>
-                  <Select value={newEntry.direction} onValueChange={(value: 'LONG' | 'SHORT') => setNewEntry({...newEntry, direction: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="LONG">Long (Buy)</SelectItem>
-                      <SelectItem value="SHORT">Short (Sell)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="entry_price">Entry Price</Label>
-                  <Input
-                    id="entry_price"
-                    type="number"
-                    step="0.00001"
-                    value={newEntry.entry_price}
-                    onChange={(e) => setNewEntry({...newEntry, entry_price: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="exit_price">Exit Price (if closed)</Label>
-                  <Input
-                    id="exit_price"
-                    type="number"
-                    step="0.00001"
-                    value={newEntry.exit_price}
-                    onChange={(e) => setNewEntry({...newEntry, exit_price: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="entry_time">Entry Time</Label>
-                  <Input
-                    id="entry_time"
-                    type="datetime-local"
-                    value={newEntry.entry_time}
-                    onChange={(e) => setNewEntry({...newEntry, entry_time: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="exit_time">Exit Time (if closed)</Label>
-                  <Input
-                    id="exit_time"
-                    type="datetime-local"
-                    value={newEntry.exit_time}
-                    onChange={(e) => setNewEntry({...newEntry, exit_time: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="strategy">Strategy</Label>
-                  <Select value={newEntry.strategy} onValueChange={(value) => setNewEntry({...newEntry, strategy: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select strategy" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="SMC">Smart Money Concepts</SelectItem>
-                      <SelectItem value="ICT">Inner Circle Trader</SelectItem>
-                      <SelectItem value="Scalping">Scalping</SelectItem>
-                      <SelectItem value="Swing">Swing Trading</SelectItem>
-                      <SelectItem value="Breakout">Breakout</SelectItem>
-                      <SelectItem value="Support/Resistance">Support/Resistance</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={newEntry.status} onValueChange={(value: 'OPEN' | 'CLOSED') => setNewEntry({...newEntry, status: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="OPEN">Open</SelectItem>
-                      <SelectItem value="CLOSED">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="col-span-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Trade notes and observations..."
-                    value={newEntry.notes}
-                    onChange={(e) => setNewEntry({...newEntry, notes: e.target.value})}
-                    rows={3}
-                  />
-                </div>
+                ))}
               </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddEntry} className="bg-primary hover:bg-primary/90 text-black">
-                  Add Trade
+
+              {/* Calendar Grid */}
+              <div className="grid grid-cols-7 gap-2">
+                {calendarDays.map((date, index) => {
+                  const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+                  const isSelected = date.toDateString() === selectedDate.toDateString();
+                  const isToday = date.toDateString() === new Date().toDateString();
+                  
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedDate(date)}
+                      className={`
+                        aspect-square rounded-md text-xs font-medium transition-all relative
+                        ${isCurrentMonth ? 'text-white' : 'text-zinc-600'}
+                        ${isSelected ? 'ring-2 ring-white' : ''}
+                        ${isToday && !isSelected ? 'ring-1 ring-zinc-400' : ''}
+                        ${getDayColor(date)}
+                        hover:opacity-80
+                      `}
+                    >
+                      {date.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Daily Summary */}
+          <Card className="bg-zinc-900/50 border-zinc-700 mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm text-zinc-400">
+                  Today - {formatSelectedDate().split(',')[0]}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAddDialog(true)}
+                  className="text-white hover:bg-zinc-800"
+                >
+                  <Plus className="h-4 w-4" />
                 </Button>
               </div>
-            </DialogContent>
-          </Dialog>
+              
+              <div className={`text-3xl font-bold mb-2 ${
+                selectedDayPnL >= 0 ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {selectedDayPnL >= 0 ? '+' : ''}{selectedDayPnL.toFixed(1)} pips
+              </div>
+              
+              {selectedDayTrades.length > 0 && (
+                <div className="text-sm text-zinc-400">
+                  {selectedDayTrades.length} trade{selectedDayTrades.length !== 1 ? 's' : ''}
+                </div>
+              )}
+              
+              {selectedDayTrades.length === 0 && (
+                <div className="text-sm text-zinc-500">
+                  No trades on this day
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Trade Feed - Battle Log */}
-          <div className="space-y-4">
-            {entries.length === 0 ? (
-              <Card className="bg-zinc-900/50 border-zinc-800">
-                <CardContent className="p-8 text-center">
-                  <div className="text-zinc-400 mb-4">No trades recorded yet</div>
-                  <Button 
-                    onClick={() => setShowAddDialog(true)}
-                    className="bg-primary hover:bg-primary/90 text-black"
-                  >
-                    Add Your First Trade
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              entries.map((entry) => {
+          {/* Trade List for Selected Day */}
+          {selectedDayTrades.length > 0 && (
+            <div className="space-y-2">
+              {selectedDayTrades.map((entry) => {
                 const isWin = entry.status === 'CLOSED' && (entry.result_pips || 0) > 0;
                 const isLoss = entry.status === 'CLOSED' && (entry.result_pips || 0) < 0;
-                const resultBadge = entry.status === 'OPEN' ? '⏳ OPEN' : isWin ? '✅ WIN' : isLoss ? '❌ LOSS' : '⚪ BE';
                 
                 return (
-                  <Card 
-                    key={entry.id} 
-                    className={`bg-zinc-900/30 border-l-4 hover:bg-zinc-800/30 transition-all ${
-                      entry.direction === 'LONG' ? 'border-l-emerald-400' : 'border-l-red-400'
-                    }`}
-                  >
-                    <CardContent className="p-5">
-                      {/* Header Row */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xl font-bold text-white">{entry.pair}</span>
-                          <Badge 
-                            className={`font-semibold ${
-                              entry.direction === 'LONG' 
-                                ? 'bg-emerald-500/20 text-emerald-400' 
-                                : 'bg-red-500/20 text-red-400'
-                            }`}
-                          >
+                  <Card key={entry.id} className="bg-zinc-900/30 border-zinc-700">
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium">{entry.pair}</span>
+                          <Badge className={`text-xs ${
+                            entry.direction === 'LONG' 
+                              ? 'bg-green-500/20 text-green-400' 
+                              : 'bg-red-500/20 text-red-400'
+                          }`}>
                             {entry.direction}
                           </Badge>
-                          <Badge 
-                            className={`font-semibold ${
-                              entry.status === 'OPEN' 
-                                ? 'bg-blue-500/20 text-blue-400'
-                                : isWin 
-                                  ? 'bg-emerald-500/20 text-emerald-400' 
-                                  : isLoss
-                                    ? 'bg-red-500/20 text-red-400'
-                                    : 'bg-zinc-500/20 text-zinc-400'
-                            }`}
-                          >
-                            {resultBadge}
-                          </Badge>
-                        </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteEntry(entry.id)}
-                          className="text-zinc-400 hover:text-red-400 hover:bg-red-500/10 p-2"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      {/* Main Price Info */}
-                      <div className="mb-3">
-                        <div className="flex items-center gap-2 text-white">
-                          <span className="text-lg">Entry → Exit:</span>
-                          <span className="text-xl font-mono">
-                            {entry.entry_price}
-                            {entry.exit_price && (
-                              <> → {entry.exit_price}</>
-                            )}
-                          </span>
-                        </div>
-                        
-                        {entry.result_pips !== undefined && entry.result_pips !== null && (
-                          <div className={`text-2xl font-bold mt-1 ${
-                            entry.result_pips >= 0 ? 'text-emerald-400' : 'text-red-400'
-                          }`}>
-                            {entry.result_pips >= 0 ? '+' : ''}{entry.result_pips} pips
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Bottom Row - Meta Info */}
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-4">
-                          <Badge variant="secondary" className="bg-zinc-800 text-zinc-300">
-                            {entry.strategy}
-                          </Badge>
-                          
-                          {entry.notes && (
-                            <details className="text-zinc-400 cursor-pointer">
-                              <summary className="hover:text-white italic">
-                                View notes...
-                              </summary>
-                              <div className="mt-2 p-2 bg-zinc-800/50 rounded text-xs text-zinc-300">
-                                {entry.notes}
-                              </div>
-                            </details>
+                          {entry.status === 'CLOSED' && (
+                            <span className="text-xs">
+                              {isWin ? '✅' : isLoss ? '❌' : '⚪'}
+                            </span>
                           )}
                         </div>
                         
-                        <span className="text-zinc-500 text-xs">
-                          {formatDate(entry.created_at)}
-                        </span>
+                        {entry.status === 'CLOSED' && (
+                          <span className={`text-sm font-medium ${
+                            isWin ? 'text-green-400' : isLoss ? 'text-red-400' : 'text-zinc-400'
+                          }`}>
+                            {(entry.result_pips || 0) >= 0 ? '+' : ''}{entry.result_pips} pips
+                          </span>
+                        )}
                       </div>
-
-                      {/* AI Insights Hook */}
-                      {!isPremium && (
-                        <div className="mt-4 p-3 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded">
-                          <div className="flex items-center gap-2">
-                            <Brain className="h-4 w-4 text-blue-400" />
-                            <span className="text-blue-400 text-sm font-medium">💡 AI Insight locked</span>
-                          </div>
-                          <p className="text-zinc-400 text-xs mt-1">
-                            Upgrade to Premium to see trade feedback and analysis.
-                          </p>
-                          <Button
-                            size="sm"
-                            onClick={() => setShowUpgradeDialog(true)}
-                            className="mt-2 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border-blue-500/30"
-                            variant="outline"
-                          >
-                            Upgrade to Premium
-                          </Button>
-                        </div>
-                      )}
-
-                      {isPremium && !entry.ai_feedback && (
-                        <div className="mt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => generateAIFeedback(entry.id)}
-                            disabled={generatingAI === entry.id}
-                            className="text-xs border-zinc-700 hover:bg-zinc-800"
-                          >
-                            {generatingAI === entry.id ? (
-                              <>
-                                <div className="animate-spin rounded-full h-3 w-3 border-b border-zinc-400 mr-2"></div>
-                                Analyzing...
-                              </>
-                            ) : (
-                              <>
-                                <Brain className="h-3 w-3 mr-1" />
-                                Get AI Analysis
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      )}
-
-                      {entry.ai_feedback && (
-                        <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Brain className="h-4 w-4 text-emerald-400" />
-                            <span className="text-emerald-400 text-sm font-medium">AI Analysis</span>
-                          </div>
-                          <div className="text-zinc-300 text-sm leading-relaxed">
-                            {entry.ai_feedback}
-                          </div>
-                        </div>
+                      
+                      {entry.notes && (
+                        <p className="text-xs text-zinc-400 mt-2">{entry.notes}</p>
                       )}
                     </CardContent>
                   </Card>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
         </div>
       </main>
 
-      {/* Premium Upgrade Dialog */}
-      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-        <DialogContent className="max-w-md">
+      {/* Add Trade Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-md mx-4 bg-zinc-900 border-zinc-700">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="h-5 w-5" />
-              Upgrade to Premium
-            </DialogTitle>
+            <DialogTitle className="text-white">Add New Trade</DialogTitle>
           </DialogHeader>
-          <div className="p-4 text-center">
-            <p className="text-zinc-300 mb-4">
-              Unlock AI trade analysis and advanced features with Premium
-            </p>
-            <Button className="bg-primary hover:bg-primary/90 text-black">
-              Upgrade Now
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="pair" className="text-white">Currency Pair</Label>
+                <Input
+                  id="pair"
+                  placeholder="EURUSD"
+                  value={newEntry.pair}
+                  onChange={(e) => setNewEntry({...newEntry, pair: e.target.value.toUpperCase()})}
+                  className="bg-zinc-800 border-zinc-600 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="direction" className="text-white">Direction</Label>
+                <Select value={newEntry.direction} onValueChange={(value: 'LONG' | 'SHORT') => setNewEntry({...newEntry, direction: value})}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-800 border-zinc-600">
+                    <SelectItem value="LONG">Long (Buy)</SelectItem>
+                    <SelectItem value="SHORT">Short (Sell)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="entry_price" className="text-white">Entry Price</Label>
+                <Input
+                  id="entry_price"
+                  type="number"
+                  step="0.00001"
+                  value={newEntry.entry_price}
+                  onChange={(e) => setNewEntry({...newEntry, entry_price: e.target.value})}
+                  className="bg-zinc-800 border-zinc-600 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="exit_price" className="text-white">Exit Price (if closed)</Label>
+                <Input
+                  id="exit_price"
+                  type="number"
+                  step="0.00001"
+                  value={newEntry.exit_price}
+                  onChange={(e) => setNewEntry({...newEntry, exit_price: e.target.value})}
+                  className="bg-zinc-800 border-zinc-600 text-white"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="entry_time" className="text-white">Entry Time</Label>
+                <Input
+                  id="entry_time"
+                  type="datetime-local"
+                  value={newEntry.entry_time}
+                  onChange={(e) => setNewEntry({...newEntry, entry_time: e.target.value})}
+                  className="bg-zinc-800 border-zinc-600 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="exit_time" className="text-white">Exit Time (if closed)</Label>
+                <Input
+                  id="exit_time"
+                  type="datetime-local"
+                  value={newEntry.exit_time}
+                  onChange={(e) => setNewEntry({...newEntry, exit_time: e.target.value})}
+                  className="bg-zinc-800 border-zinc-600 text-white"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="strategy" className="text-white">Strategy</Label>
+                <Select value={newEntry.strategy} onValueChange={(value) => setNewEntry({...newEntry, strategy: value})}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
+                    <SelectValue placeholder="Select strategy" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-800 border-zinc-600">
+                    <SelectItem value="SMC">Smart Money Concepts</SelectItem>
+                    <SelectItem value="ICT">Inner Circle Trader</SelectItem>
+                    <SelectItem value="Scalping">Scalping</SelectItem>
+                    <SelectItem value="Swing">Swing Trading</SelectItem>
+                    <SelectItem value="Breakout">Breakout</SelectItem>
+                    <SelectItem value="Support/Resistance">Support/Resistance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="status" className="text-white">Status</Label>
+                <Select value={newEntry.status} onValueChange={(value: 'OPEN' | 'CLOSED') => setNewEntry({...newEntry, status: value})}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-800 border-zinc-600">
+                    <SelectItem value="OPEN">Open</SelectItem>
+                    <SelectItem value="CLOSED">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="notes" className="text-white">Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Trade notes and observations..."
+                value={newEntry.notes}
+                onChange={(e) => setNewEntry({...newEntry, notes: e.target.value})}
+                rows={3}
+                className="bg-zinc-800 border-zinc-600 text-white"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={() => setShowAddDialog(false)} className="border-zinc-600 text-white hover:bg-zinc-800">
+              Cancel
+            </Button>
+            <Button onClick={handleAddEntry} className="bg-primary hover:bg-primary/90 text-black">
+              Add Trade
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+        
+      {/* Upgrade Dialog */}
+      <PremiumUpgrade 
+        open={showUpgradeDialog} 
+        onOpenChange={setShowUpgradeDialog} 
+      />
     </div>
   );
 };
