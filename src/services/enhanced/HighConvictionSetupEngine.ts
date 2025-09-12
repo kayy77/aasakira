@@ -166,11 +166,13 @@ class HighConvictionSetupEngine {
         console.log(`📡 Getting LIVE data for ${symbol}...`);
         const data = await marketDataService.fetchMarketData(symbol);
         
-        if (data.currentPrice > 0 && data.candles.length >= 10) { // Reduced requirement
+        const lastTs = data.candles[data.candles.length - 1]?.timestamp || 0;
+        const isRecent = Date.now() - lastTs < 45 * 60 * 1000; // last candle within 45 minutes
+        if (data.currentPrice > 0 && data.candles.length >= 10 && isRecent) { // Require recency
           marketData[symbol] = data;
-          console.log(`✅ ${symbol}: REAL PRICE ${data.currentPrice} (${data.candles.length} candles)`);
+          console.log(`✅ ${symbol}: REAL PRICE ${data.currentPrice} (${data.candles.length} candles, last ${Math.round((Date.now()-lastTs)/60000)}m ago)`);
         } else {
-          console.log(`⚠️ ${symbol}: Invalid data - Price: ${data.currentPrice}, Candles: ${data.candles.length}`);
+          console.log(`⚠️ ${symbol}: Invalid/stale data - Price: ${data.currentPrice}, Candles: ${data.candles.length}, Recent: ${isRecent}`);
         }
       } catch (error) {
         console.error(`❌ Failed to fetch REAL data for ${symbol}:`, error);

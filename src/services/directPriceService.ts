@@ -6,14 +6,48 @@ export class DirectPriceService {
   async fetchDirectPrice(pair: string): Promise<MarketData | null> {
     console.log(`🎯 Direct price fetch for ${pair}...`);
     
-    // Based on network logs, TwelveData was working for EURUSD, GBPUSD, USDJPY, XAUUSD
-    // Let's use a simpler approach with the working API
+    // Prefer dedicated crypto path for BTC/ETH to ensure accurate spot prices
+    if (pair === 'BTCUSD' || pair === 'ETHUSD') {
+      return this.fetchCrypto(pair);
+    }
+    
+    // For FX and metals, TwelveData time_series is preferred
     const data = await this.fetchFromTwelveDataSimple(pair);
     if (data) return data;
     
     return null;
   }
   
+  private async fetchCrypto(pair: string): Promise<MarketData | null> {
+    // Get candles from TwelveData and spot price from TwelveData/CoinGecko to avoid stale prices
+    const candlesData = await this.fetchFromTwelveDataSimple(pair);
+    if (!candlesData) return null;
+
+    // Prefer TwelveData spot; fallback to CoinGecko
+    const tdSpot = await this.fetchSpotFromTwelveData(pair);
+    const cgSpot = tdSpot == null ? await this.fetchFromCoinGecko(pair) : null;
+    const currentPrice = (tdSpot ?? cgSpot ?? candlesData.currentPrice);
+
+    // Sanity bounds for BTC/ETH
+    const min = pair === 'BTCUSD' ? 1000 : 100;
+    const max = pair === 'BTCUSD' ? 500000 : 50000;
+    if (currentPrice < min || currentPrice > max) {
+      console.log(`❌ ${pair} spot sanity check failed: ${currentPrice}`);
+      return null;
+    }
+
+    // Validate recency: last candle within 45 minutes
+    const lastTs = candlesData.candles[candlesData.candles.length - 1]?.timestamp || 0;
+    const isRecent = Date.now() - lastTs < 45 * 60 * 1000;
+    if (!isRecent) {
+      console.log(`❌ ${pair} candles are stale (${Math.round((Date.now()-lastTs)/60000)}m). Skipping.`);
+      return null;
+    }
+
+    console.log(`✅ ${pair} SPOT ${currentPrice} (last candle ${Math.round((Date.now()-lastTs)/60000)}m ago)`);
+    return { pair, candles: candlesData.candles, currentPrice };
+  }
+
   private async fetchFromTwelveDataSimple(pair: string): Promise<MarketData | null> {
     try {
       const symbol = this.formatSymbolForTwelveData(pair);
@@ -100,6 +134,23 @@ export class DirectPriceService {
     };
     
     return mapping[pair] || `${pair.substring(0, 3)}/${pair.substring(3)}`;
+  }
+
+  private async fetchFromCoinGecko(pair: string): Promise<number | null> {
+    try {
+      const id = pair === 'BTCUSD' ? 'bitcoin' : pair === 'ETHUSD' ? 'ethereum' : null;
+      if (!id) return null;
+      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd&t=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store', headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache' }});
+      if (!res.ok) return null;
+      const data = await res.json();
+      const price = data?.[id]?.usd;
+      if (typeof price !== 'number' || price <= 0) return null;
+      return price;
+    } catch (e) {
+      console.log(`❌ CoinGecko error for ${pair}:`, e);
+      return null;
+    }
   }
 }
 
