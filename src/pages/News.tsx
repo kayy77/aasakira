@@ -103,6 +103,16 @@ const News = () => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      
+      // First fetch fresh events from Trading Economics API
+      try {
+        const { data } = await supabase.functions.invoke('fetch-economic-events');
+        console.log('Auto-fetched economic events:', data);
+      } catch (error) {
+        console.log('Auto-fetch failed, loading existing events:', error);
+      }
+      
+      // Then load events from database
       await fetchEvents();
       setLoading(false);
     };

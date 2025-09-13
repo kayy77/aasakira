@@ -22,75 +22,51 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Fetch economic events from Investing.com Economic Calendar API (free tier)
-    const today = new Date();
-    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    // Fetch economic events from Trading Economics API
+    console.log('📡 Fetching events from Trading Economics API...');
     
-    // Mock economic events data for development (replace with real API)
-    const mockEvents = [
-      {
-        event_name: "US CPI (Consumer Price Index) MoM",
-        country: "United States",
-        currency: "USD",
-        forecast: "0.2%",
-        previous: "0.1%",
-        actual: null,
-        event_time: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
-        importance: "HIGH",
-        category: "Inflation"
-      },
-      {
-        event_name: "EUR ECB Interest Rate Decision",
-        country: "Eurozone",
-        currency: "EUR",
-        forecast: "4.50%",
-        previous: "4.50%",
-        actual: null,
-        event_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 1 day from now
-        importance: "HIGH",
-        category: "Interest Rates"
-      },
-      {
-        event_name: "GBP GDP Growth Rate QoQ",
-        country: "United Kingdom",
-        currency: "GBP",
-        forecast: "0.3%",
-        previous: "0.2%",
-        actual: null,
-        event_time: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
-        importance: "MEDIUM",
-        category: "GDP"
-      },
-      {
-        event_name: "JPY Bank of Japan Interest Rate Decision",
-        country: "Japan",
-        currency: "JPY",
-        forecast: "-0.10%",
-        previous: "-0.10%",
-        actual: null,
-        event_time: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days from now
-        importance: "HIGH",
-        category: "Interest Rates"
-      },
-      {
-        event_name: "USD Non-Farm Payrolls",
-        country: "United States",
-        currency: "USD",
-        forecast: "180K",
-        previous: "175K",
-        actual: null,
-        event_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-        importance: "HIGH",
-        category: "Employment"
-      }
-    ];
+    const apiResponse = await fetch('https://api.tradingeconomics.com/calendar?c=guest:guest&f=json');
+    
+    if (!apiResponse.ok) {
+      console.error('❌ Trading Economics API error:', apiResponse.status, apiResponse.statusText);
+      throw new Error(`Trading Economics API failed: ${apiResponse.status}`);
+    }
 
-    console.log(`📊 Processing ${mockEvents.length} economic events...`);
+    const rawEvents = await apiResponse.json();
+    console.log(`📊 Received ${rawEvents.length} raw events from Trading Economics`);
+
+    // Filter and transform events (today + next 7 days)
+    const now = new Date();
+    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    const processedEvents = rawEvents
+      .filter((event: any) => {
+        if (!event.Date) return false;
+        const eventDate = new Date(event.Date);
+        return eventDate >= now && eventDate <= nextWeek;
+      })
+      .map((event: any) => ({
+        event_name: event.Event || 'Unknown Event',
+        country: event.Country || 'Unknown',
+        currency: event.Currency || 'USD',
+        forecast: event.Forecast ? String(event.Forecast) : null,
+        previous: event.Previous ? String(event.Previous) : null,
+        actual: event.Actual ? String(event.Actual) : null,
+        event_time: new Date(event.Date).toISOString(),
+        importance: event.Impact === 'Low' ? 'LOW' : 
+                   event.Impact === 'Medium' ? 'MEDIUM' : 
+                   event.Impact === 'High' ? 'HIGH' : 'MEDIUM',
+        category: event.Category || 'Economic',
+        source: 'trading_economics'
+      }))
+      .slice(0, 50); // Limit to 50 most relevant events
+
+    console.log(`📊 Processing ${processedEvents.length} economic events...`);
 
     // Insert events into database
     const { data: insertedEvents, error: insertError } = await supabase
       .from('economic_events')
-      .upsert(mockEvents, { 
+      .upsert(processedEvents, { 
         onConflict: 'event_name,event_time',
         ignoreDuplicates: false 
       })
