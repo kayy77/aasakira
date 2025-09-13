@@ -63,13 +63,10 @@ serve(async (req) => {
 
     console.log(`📊 Processing ${processedEvents.length} economic events...`);
 
-    // Insert events into database
+    // Insert events into database (use insert with ignore duplicates since we don't have a unique constraint)
     const { data: insertedEvents, error: insertError } = await supabase
       .from('economic_events')
-      .upsert(processedEvents, { 
-        onConflict: 'event_name,event_time',
-        ignoreDuplicates: false 
-      })
+      .insert(processedEvents)
       .select();
 
     if (insertError) {
