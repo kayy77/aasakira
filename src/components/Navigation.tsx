@@ -22,6 +22,7 @@ const Navigation = () => {
     { name: 'Home', href: '/', icon: Home },
     { name: 'AI Setup Scanner', href: '/signals', icon: Signal },
     { name: 'Trading Journal', href: '/journal', icon: BookOpen },
+    { name: 'News', href: '/news', icon: MessageCircle },
     { name: 'Affiliate', href: '/affiliate', icon: DollarSign },
   ];
 

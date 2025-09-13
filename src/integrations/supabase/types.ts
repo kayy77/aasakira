@@ -94,6 +94,101 @@ export type Database = {
           },
         ]
       }
+      economic_events: {
+        Row: {
+          actual: string | null
+          category: string | null
+          country: string
+          created_at: string
+          currency: string
+          event_name: string
+          event_time: string
+          forecast: string | null
+          id: string
+          importance: string
+          previous: string | null
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual?: string | null
+          category?: string | null
+          country: string
+          created_at?: string
+          currency: string
+          event_name: string
+          event_time: string
+          forecast?: string | null
+          id?: string
+          importance: string
+          previous?: string | null
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual?: string | null
+          category?: string | null
+          country?: string
+          created_at?: string
+          currency?: string
+          event_name?: string
+          event_time?: string
+          forecast?: string | null
+          id?: string
+          importance?: string
+          previous?: string | null
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      event_analysis: {
+        Row: {
+          affected_pairs: string[] | null
+          ai_summary: string
+          confidence_score: number | null
+          created_at: string
+          event_id: string
+          id: string
+          market_sentiment: string
+          trade_opportunity: string | null
+          updated_at: string
+          volatility_level: string | null
+        }
+        Insert: {
+          affected_pairs?: string[] | null
+          ai_summary: string
+          confidence_score?: number | null
+          created_at?: string
+          event_id: string
+          id?: string
+          market_sentiment: string
+          trade_opportunity?: string | null
+          updated_at?: string
+          volatility_level?: string | null
+        }
+        Update: {
+          affected_pairs?: string[] | null
+          ai_summary?: string
+          confidence_score?: number | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          market_sentiment?: string
+          trade_opportunity?: string | null
+          updated_at?: string
+          volatility_level?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_analysis_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "economic_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incoming_signals: {
         Row: {
           created_at: string
