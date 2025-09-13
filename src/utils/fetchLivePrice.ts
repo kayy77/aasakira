@@ -11,12 +11,47 @@ let wsConnectionPromise: Promise<void> | null = null;
 let wsPrice: { [symbol: string]: number } = {};
 
 export async function fetchLivePrice(symbol: string): Promise<number> {
-  // Normalize symbol (accepts "EUR/USD" or "EURUSD")
+  // First try to get the latest price from Supabase (updated by edge function)
+  try {
+    const supabaseUrl = "https://tnfxxtnfpoavnsabjrii.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRuZnh4dG5mcG9hdm5zYWJqcmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzMTIwNzYsImV4cCI6MjA2Nzg4ODA3Nn0.0JbXi8IRlBNr-UEpPEFIQ8Q4ivxrKLpgKxahOrXjNkE";
+    
+    const normalizedSymbol = symbol.includes('/') ? symbol : `${symbol.slice(0, 3)}/${symbol.slice(3)}`;
+    
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/live_prices?symbol=eq.${encodeURIComponent(normalizedSymbol)}&order=timestamp.desc&limit=1`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const latestPrice = data[0];
+        const age = Date.now() - new Date(latestPrice.timestamp).getTime();
+        
+        // If price is less than 2 minutes old, use it
+        if (age < 120000) {
+          console.log(`✅ Using cached price from Supabase: ${normalizedSymbol} = ${latestPrice.price} (${Math.floor(age/1000)}s old)`);
+          return parseFloat(latestPrice.price);
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to fetch from Supabase, falling back to direct APIs:', error);
+  }
+
+  // Fallback to direct API calls with the existing chain
   const normalized = symbol.replace('/', '').toUpperCase();
   const from = normalized.slice(0, 3);
   const to = normalized.slice(3);
   
-  console.log(`🎯 Fetching LIVE price for ${symbol} with PRIORITY FALLBACK CHAIN...`);
+  console.log(`🎯 Fetching LIVE price for ${symbol} with DIRECT API FALLBACK CHAIN...`);
 
   // PRIORITY 1: TwelveData (fastest, most reliable)
   try {
@@ -40,18 +75,7 @@ export async function fetchLivePrice(symbol: string): Promise<number> {
     console.warn(`❌ Polygon failed for ${symbol}:`, error);
   }
 
-  // PRIORITY 3: Deriv WebSocket (real-time)
-  try {
-    const price = await tryDerivWebSocket(normalized);
-    if (price > 0) {
-      console.log(`✅ Deriv WebSocket SUCCESS: ${symbol} = ${price}`);
-      return price;
-    }
-  } catch (error) {
-    console.warn(`❌ Deriv WebSocket failed for ${symbol}:`, error);
-  }
-
-  // PRIORITY 4: Alpha Vantage (backup)
+  // PRIORITY 3: Alpha Vantage (backup)
   try {
     const price = await tryAlphaVantage(from, to);
     if (price > 0) {

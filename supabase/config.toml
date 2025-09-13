@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.manychat]
 verify_jwt = false
+
+[functions.fetch-economic-events]
+verify_jwt = false
+
+[functions.fetch-live-prices]
+verify_jwt = false

@@ -34,39 +34,137 @@ serve(async (req) => {
 
     const rawEvents = await apiResponse.json();
     console.log(`📊 Received ${rawEvents.length} raw events from Trading Economics`);
+    
+    // Log first few events to debug structure
+    if (rawEvents.length > 0) {
+      console.log(`🔍 Sample raw event:`, JSON.stringify(rawEvents[0], null, 2));
+    }
 
-    // Filter and transform events (today + next 7 days)
+    // Filter and transform events (today + next 30 days for broader capture)
     const now = new Date();
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    now.setHours(0, 0, 0, 0); // Start of today
+    const futureLimit = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // Next 30 days
+    
+    console.log(`📅 Filtering events from ${now.toISOString()} to ${futureLimit.toISOString()}`);
     
     const processedEvents = rawEvents
       .filter((event: any) => {
-        if (!event.Date) return false;
-        const eventDate = new Date(event.Date);
-        return eventDate >= now && eventDate <= nextWeek;
+        if (!event.Date) {
+          console.log(`⚠️ Event missing date:`, event);
+          return false;
+        }
+        
+        // Try multiple date parsing approaches
+        let eventDate;
+        try {
+          // Trading Economics often uses formats like "2025-01-13T15:30:00" or "2025-01-13 15:30:00"
+          if (typeof event.Date === 'string') {
+            // Handle various formats
+            const dateStr = event.Date.replace(' ', 'T'); // Convert space to T if needed
+            eventDate = new Date(dateStr);
+          } else {
+            eventDate = new Date(event.Date);
+          }
+          
+          // Validate the date
+          if (isNaN(eventDate.getTime())) {
+            console.log(`❌ Invalid date for event: ${event.Date}`, event);
+            return false;
+          }
+          
+          const isInRange = eventDate >= now && eventDate <= futureLimit;
+          console.log(`📊 Event "${event.Event}" - Date: ${eventDate.toISOString()}, InRange: ${isInRange}`);
+          
+          return isInRange;
+          
+        } catch (dateError) {
+          console.error(`❌ Date parsing error for event:`, event, dateError);
+          return false;
+        }
       })
-      .map((event: any) => ({
-        event_name: event.Event || 'Unknown Event',
-        country: event.Country || 'Unknown',
-        currency: event.Currency || 'USD',
-        forecast: event.Forecast ? String(event.Forecast) : null,
-        previous: event.Previous ? String(event.Previous) : null,
-        actual: event.Actual ? String(event.Actual) : null,
-        event_time: new Date(event.Date).toISOString(),
-        importance: event.Impact === 'Low' ? 'LOW' : 
-                   event.Impact === 'Medium' ? 'MEDIUM' : 
-                   event.Impact === 'High' ? 'HIGH' : 'MEDIUM',
-        category: event.Category || 'Economic',
-        source: 'trading_economics'
-      }))
+      .map((event: any) => {
+        // Use the same robust date parsing as in the filter
+        let eventDate;
+        try {
+          if (typeof event.Date === 'string') {
+            const dateStr = event.Date.replace(' ', 'T');
+            eventDate = new Date(dateStr);
+          } else {
+            eventDate = new Date(event.Date);
+          }
+          
+          if (isNaN(eventDate.getTime())) {
+            eventDate = new Date(); // Fallback to now if parsing fails
+          }
+        } catch (error) {
+          eventDate = new Date(); // Fallback to now if parsing fails
+        }
+        
+        return {
+          event_name: event.Event || 'Unknown Event',
+          country: event.Country || 'Unknown',
+          currency: event.Currency || 'USD',
+          forecast: event.Forecast ? String(event.Forecast) : null,
+          previous: event.Previous ? String(event.Previous) : null,
+          actual: event.Actual ? String(event.Actual) : null,
+          event_time: eventDate.toISOString(),
+          importance: event.Impact === 'Low' ? 'LOW' : 
+                     event.Impact === 'Medium' ? 'MEDIUM' : 
+                     event.Impact === 'High' ? 'HIGH' : 'MEDIUM',
+          category: event.Category || 'Economic',
+          source: 'trading_economics'
+        };
+      })
       .slice(0, 50); // Limit to 50 most relevant events
 
     console.log(`📊 Processing ${processedEvents.length} economic events...`);
 
-    // Insert events into database (use insert with ignore duplicates since we don't have a unique constraint)
+    if (processedEvents.length === 0) {
+      console.log('⚠️ No events to process after filtering');
+      return new Response(JSON.stringify({ 
+        success: true, 
+        eventsProcessed: 0,
+        message: 'No new events found'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check for existing events to avoid duplicates
+    const existingEventsQuery = await supabase
+      .from('economic_events')
+      .select('event_name, event_time, country')
+      .gte('event_time', now.toISOString())
+      .lte('event_time', futureLimit.toISOString());
+
+    const existingEvents = existingEventsQuery.data || [];
+    const existingKeys = new Set(
+      existingEvents.map(e => `${e.event_name}-${e.event_time}-${e.country}`)
+    );
+
+    // Filter out events that already exist
+    const newEvents = processedEvents.filter(event => {
+      const key = `${event.event_name}-${event.event_time}-${event.country}`;
+      return !existingKeys.has(key);
+    });
+
+    console.log(`📊 ${newEvents.length} new events to insert (${processedEvents.length - newEvents.length} duplicates filtered)`);
+
+    if (newEvents.length === 0) {
+      console.log('✅ All events already exist in database');
+      return new Response(JSON.stringify({ 
+        success: true, 
+        eventsProcessed: 0,
+        message: 'All events already exist'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Insert events into database
     const { data: insertedEvents, error: insertError } = await supabase
       .from('economic_events')
-      .insert(processedEvents)
+      .insert(newEvents)
       .select();
 
     if (insertError) {
