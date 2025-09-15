@@ -387,6 +387,48 @@ export type Database = {
         }
         Relationships: []
       }
+      news_events: {
+        Row: {
+          actual: string | null
+          country: string | null
+          created_at: string | null
+          date: string | null
+          event_id: string | null
+          forecast: string | null
+          id: number
+          impact: string | null
+          previous: string | null
+          source: string | null
+          title: string | null
+        }
+        Insert: {
+          actual?: string | null
+          country?: string | null
+          created_at?: string | null
+          date?: string | null
+          event_id?: string | null
+          forecast?: string | null
+          id?: number
+          impact?: string | null
+          previous?: string | null
+          source?: string | null
+          title?: string | null
+        }
+        Update: {
+          actual?: string | null
+          country?: string | null
+          created_at?: string | null
+          date?: string | null
+          event_id?: string | null
+          forecast?: string | null
+          id?: number
+          impact?: string | null
+          previous?: string | null
+          source?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       signal_outcomes: {
         Row: {
           ai_votes: Json

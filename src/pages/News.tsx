@@ -13,16 +13,16 @@ import { format, isToday, isTomorrow, addDays, formatDistanceToNow } from 'date-
 import AINewsAnalyzer from '@/components/news/AINewsAnalyzer';
 
 interface EconomicEvent {
-  id: string;
-  event_name: string;
+  id: number;
+  event_id: string;
+  title: string;
   country: string;
-  currency: string;
+  impact: 'LOW' | 'MEDIUM' | 'HIGH';
+  date: string;
   forecast: string | null;
   previous: string | null;
   actual: string | null;
-  event_time: string;
-  importance: 'LOW' | 'MEDIUM' | 'HIGH';
-  category: string | null;
+  source: string;
 }
 
 interface EventAnalysis {
@@ -63,12 +63,12 @@ const News = () => {
 
   const fetchEvents = async () => {
     try {
-      // Fetch economic events - try today first
+      // Fetch news events - try today first
       let { data: eventsData, error: eventsError } = await supabase
-        .from('economic_events')
+        .from('news_events')
         .select('*')
-        .gte('event_time', new Date().toISOString().split('T')[0])
-        .order('event_time', { ascending: true });
+        .gte('date', new Date().toISOString().split('T')[0])
+        .order('date', { ascending: true });
 
       if (eventsError) throw eventsError;
 
@@ -76,10 +76,10 @@ const News = () => {
       if (!eventsData || eventsData.length === 0) {
         console.log('No events for today, fetching last 7 days...');
         const fallback = await supabase
-          .from('economic_events')
+          .from('news_events')
           .select('*')
-          .gte('event_time', new Date(Date.now() - 7*24*60*60*1000).toISOString())
-          .order('event_time', { ascending: true });
+          .gte('date', new Date(Date.now() - 7*24*60*60*1000).toISOString())
+          .order('date', { ascending: true });
           
         eventsData = fallback.data || [];
       }
@@ -121,7 +121,7 @@ const News = () => {
     try {
       // Refresh both events and news in parallel
       const [eventsResult, newsResult] = await Promise.allSettled([
-        supabase.functions.invoke('fetch-economic-events'),
+        supabase.functions.invoke('fetch-news'),
         supabase.functions.invoke('fetch-ai-news')
       ]);
       
@@ -149,7 +149,7 @@ const News = () => {
       // First fetch fresh data from APIs
       try {
         const [eventsResult, newsResult] = await Promise.allSettled([
-          supabase.functions.invoke('fetch-economic-events'),
+          supabase.functions.invoke('fetch-news'),
           supabase.functions.invoke('fetch-ai-news')
         ]);
         console.log('Auto-fetched data - events:', eventsResult, 'news:', newsResult);
@@ -164,8 +164,8 @@ const News = () => {
     loadData();
   }, []);
 
-  const getEventAnalysis = (eventId: string) => {
-    return analyses.find(a => a.event_id === eventId);
+  const getEventAnalysis = (eventId: number) => {
+    return analyses.find(a => a.event_id === eventId.toString());
   };
 
   const getImportanceColor = (importance: string) => {
@@ -203,18 +203,18 @@ const News = () => {
   };
 
   const filteredEvents = events.filter(event => {
-    const eventDate = new Date(event.event_time);
+    const eventDate = new Date(event.date);
     const today = new Date();
     const tomorrow = addDays(today, 1);
     const thisWeek = addDays(today, 7);
 
-    // Currency filter
-    if (selectedCurrency !== 'ALL' && event.currency !== selectedCurrency) {
-      return false;
-    }
+    // Currency filter - skip for now since new table doesn't have currency
+    // if (selectedCurrency !== 'ALL' && event.currency !== selectedCurrency) {
+    //   return false;
+    // }
 
     // Importance filter
-    if (selectedImportance !== 'ALL' && event.importance !== selectedImportance) {
+    if (selectedImportance !== 'ALL' && event.impact !== selectedImportance) {
       return false;
     }
 
@@ -368,25 +368,22 @@ const News = () => {
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                           {/* Event Info */}
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <Badge className={`${getImportanceColor(event.importance)} border`}>
-                                {event.importance}
-                              </Badge>
-                              <Badge variant="outline" className="text-primary border-primary/30">
-                                {event.currency}
-                              </Badge>
-                              <span className="text-sm text-zinc-400">{event.country}</span>
-                            </div>
-                            
-                            <h3 className="text-lg font-semibold text-white mb-2">
-                              {event.event_name}
-                            </h3>
-                            
-                            <div className="flex items-center gap-4 text-sm text-zinc-400">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {getTimeLabel(event.event_time)} at {format(new Date(event.event_time), 'HH:mm')}
-                              </div>
+                             <div className="flex items-center gap-3 mb-2">
+                               <Badge className={`${getImportanceColor(event.impact)} border`}>
+                                 {event.impact}
+                               </Badge>
+                               <span className="text-sm text-zinc-400">{event.country}</span>
+                             </div>
+                             
+                             <h3 className="text-lg font-semibold text-white mb-2">
+                               {event.title}
+                             </h3>
+                             
+                             <div className="flex items-center gap-4 text-sm text-zinc-400">
+                               <div className="flex items-center gap-1">
+                                 <Clock className="h-4 w-4" />
+                                 {getTimeLabel(event.date)} at {format(new Date(event.date), 'HH:mm')}
+                               </div>
                               
                               {event.forecast && (
                                 <div>
@@ -526,9 +523,9 @@ const News = () => {
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="bg-zinc-900 border-zinc-700">
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-white mb-1">
-                  {events.filter(e => e.importance === 'HIGH').length}
-                </div>
+                 <div className="text-2xl font-bold text-white mb-1">
+                   {events.filter(e => e.impact === 'HIGH').length}
+                 </div>
                 <div className="text-sm text-red-400">High Impact Events</div>
               </CardContent>
             </Card>
