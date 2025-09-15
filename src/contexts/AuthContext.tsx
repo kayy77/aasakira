@@ -47,33 +47,34 @@ const DAILY_LIMITS = {
 const ADMIN_EMAILS = ['khaijwh@gmail.com', 'Konejunior09@outlook.com'];
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  // Use error boundary-safe state initialization
-  const [user, setUser] = useState<UserData | null>(() => {
-    try {
-      return null;
-    } catch (error) {
-      console.error('State initialization error:', error);
-      return null;
-    }
-  });
+  // Add HMR error protection
+  let hookState;
   
-  const [loading, setLoading] = useState<boolean>(() => {
-    try {
-      return true;
-    } catch (error) {
-      console.error('Loading state initialization error:', error);
-      return true;
-    }
-  });
-  
-  // Safely access toast hook
-  let toast;
   try {
-    toast = useToast()?.toast;
+    hookState = {
+      user: useState<UserData | null>(null),
+      loading: useState<boolean>(true),
+      toast: useToast()
+    };
   } catch (error) {
-    console.error('Toast hook error:', error);
-    toast = () => {}; // Fallback function
+    console.error('React hooks failed during HMR:', error);
+    // Force reload when hooks fail
+    if (typeof window !== 'undefined') {
+      setTimeout(() => window.location.reload(), 100);
+    }
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Reloading application...</p>
+        </div>
+      </div>
+    );
   }
+
+  const [user, setUser] = hookState.user;
+  const [loading, setLoading] = hookState.loading;
+  const { toast } = hookState.toast || { toast: () => {} };
 
   // Memoize the initialization function to prevent unnecessary re-renders
   const initializeAuth = useCallback(async () => {
