@@ -47,6 +47,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_news: {
+        Row: {
+          author: string | null
+          content: string | null
+          created_at: string | null
+          description: string | null
+          id: number
+          published_at: string | null
+          source: string | null
+          title: string | null
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          author?: string | null
+          content?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          published_at?: string | null
+          source?: string | null
+          title?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          author?: string | null
+          content?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          published_at?: string | null
+          source?: string | null
+          title?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: []
+      }
       consensus_audit: {
         Row: {
           created_at: string | null

@@ -4,12 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, TrendingUp, TrendingDown, Minus, AlertTriangle, RefreshCw, Zap, Target } from 'lucide-react';
+import { Calendar, Clock, TrendingUp, TrendingDown, Minus, AlertTriangle, RefreshCw, Zap, Target, Newspaper, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { format, isToday, isTomorrow, addDays } from 'date-fns';
+import { format, isToday, isTomorrow, addDays, formatDistanceToNow } from 'date-fns';
+import AINewsAnalyzer from '@/components/news/AINewsAnalyzer';
 
 interface EconomicEvent {
   id: string;
@@ -35,16 +36,30 @@ interface EventAnalysis {
   confidence_score: number | null;
 }
 
+interface AINews {
+  id: number;
+  title: string;
+  description: string | null;
+  source: string | null;
+  author: string | null;
+  url: string;
+  content: string | null;
+  published_at: string;
+  created_at: string;
+}
+
 const News = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [events, setEvents] = useState<EconomicEvent[]>([]);
   const [analyses, setAnalyses] = useState<EventAnalysis[]>([]);
+  const [aiNews, setAiNews] = useState<AINews[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('ALL');
   const [selectedImportance, setSelectedImportance] = useState<string>('ALL');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('TODAY');
+  const [activeTab, setActiveTab] = useState('events');
 
   const fetchEvents = async () => {
     try {
@@ -66,33 +81,48 @@ const News = () => {
 
       setEvents((eventsData as EconomicEvent[]) || []);
       setAnalyses((analysesData as EventAnalysis[]) || []);
+      
+      // Fetch AI news
+      const { data: newsData, error: newsError } = await supabase
+        .from('ai_news')
+        .select('*')
+        .order('published_at', { ascending: false })
+        .limit(50);
+
+      if (newsError) {
+        console.error('Error fetching AI news:', newsError);
+      } else {
+        setAiNews((newsData as AINews[]) || []);
+      }
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error('Error fetching data:', error);
       toast({
-        title: "Error loading events",
-        description: "Failed to load economic calendar data",
+        title: "Error loading data",
+        description: "Failed to load news and events data",
         variant: "destructive"
       });
     }
   };
 
-  const refreshEvents = async () => {
+  const refreshData = async () => {
     setRefreshing(true);
     try {
-      // Call edge function to fetch fresh events
-      const { error } = await supabase.functions.invoke('fetch-economic-events');
-      if (error) throw error;
+      // Refresh both events and news in parallel
+      const [eventsResult, newsResult] = await Promise.allSettled([
+        supabase.functions.invoke('fetch-economic-events'),
+        supabase.functions.invoke('fetch-ai-news')
+      ]);
       
       await fetchEvents();
       toast({
-        title: "Events updated",
-        description: "Economic calendar refreshed with latest data",
+        title: "Data updated",
+        description: "News and events refreshed with latest data",
       });
     } catch (error) {
-      console.error('Error refreshing events:', error);
+      console.error('Error refreshing data:', error);
       toast({
         title: "Refresh failed",
-        description: "Unable to fetch latest events",
+        description: "Unable to fetch latest data",
         variant: "destructive"
       });
     } finally {
@@ -104,12 +134,15 @@ const News = () => {
     const loadData = async () => {
       setLoading(true);
       
-      // First fetch fresh events from Trading Economics API
+      // First fetch fresh data from APIs
       try {
-        const { data } = await supabase.functions.invoke('fetch-economic-events');
-        console.log('Auto-fetched economic events:', data);
+        const [eventsResult, newsResult] = await Promise.allSettled([
+          supabase.functions.invoke('fetch-economic-events'),
+          supabase.functions.invoke('fetch-ai-news')
+        ]);
+        console.log('Auto-fetched data - events:', eventsResult, 'news:', newsResult);
       } catch (error) {
-        console.log('Auto-fetch failed, loading existing events:', error);
+        console.log('Auto-fetch failed, loading existing data:', error);
       }
       
       // Then load events from database
@@ -214,7 +247,7 @@ const News = () => {
               </p>
             </div>
             <Button 
-              onClick={refreshEvents}
+              onClick={refreshData}
               disabled={refreshing}
               variant="outline"
               className="bg-zinc-800 border-zinc-600 text-white hover:bg-zinc-700"
@@ -265,105 +298,194 @@ const News = () => {
           </div>
         </div>
 
-        {/* Events List */}
-        <div className="space-y-4">
-          {filteredEvents.length === 0 ? (
-            <Card className="bg-zinc-900 border-zinc-700">
-              <CardContent className="p-8 text-center">
-                <Calendar className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">No Events Found</h3>
-                <p className="text-zinc-400">
-                  No economic events match your current filters
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredEvents.map((event) => {
-              const analysis = getEventAnalysis(event.id);
-              
-              return (
-                <Card key={event.id} className="bg-zinc-900 border-zinc-700">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                      {/* Event Info */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Badge className={`${getImportanceColor(event.importance)} border`}>
-                            {event.importance}
-                          </Badge>
-                          <Badge variant="outline" className="text-primary border-primary/30">
-                            {event.currency}
-                          </Badge>
-                          <span className="text-sm text-zinc-400">{event.country}</span>
-                        </div>
-                        
-                        <h3 className="text-lg font-semibold text-white mb-2">
-                          {event.event_name}
-                        </h3>
-                        
-                        <div className="flex items-center gap-4 text-sm text-zinc-400">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {getTimeLabel(event.event_time)} at {format(new Date(event.event_time), 'HH:mm')}
-                          </div>
-                          
-                          {event.forecast && (
-                            <div>
-                              Forecast: <span className="text-white">{event.forecast}</span>
-                            </div>
-                          )}
-                          
-                          {event.previous && (
-                            <div>
-                              Previous: <span className="text-white">{event.previous}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+        {/* Tabs for Events and AI News */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="bg-zinc-800 border-zinc-600">
+            <TabsTrigger value="events" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Economic Events
+            </TabsTrigger>
+            <TabsTrigger value="ai-news" className="flex items-center gap-2">
+              <Newspaper className="h-4 w-4" />
+              AI Market News
+            </TabsTrigger>
+          </TabsList>
 
-                      {/* AI Analysis */}
-                      {analysis && (
-                        <div className="lg:w-96 bg-zinc-800 rounded-lg p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Zap className="h-4 w-4 text-yellow-400" />
-                            <span className="text-sm font-medium text-yellow-400">AI Analysis</span>
-                            {getSentimentIcon(analysis.market_sentiment)}
-                            <span className={`text-sm font-medium ${getVolatilityColor(analysis.volatility_level)}`}>
-                              {analysis.volatility_level} Volatility
+          <TabsContent value="events">
+            {/* Events List */}
+            <div className="space-y-4">
+              {filteredEvents.length === 0 ? (
+                <Card className="bg-zinc-900 border-zinc-700">
+                  <CardContent className="p-8 text-center">
+                    <Calendar className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">No Events Found</h3>
+                    <p className="text-zinc-400">
+                      No economic events match your current filters
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredEvents.map((event) => {
+                  const analysis = getEventAnalysis(event.id);
+                  
+                  return (
+                    <Card key={event.id} className="bg-zinc-900 border-zinc-700">
+                      <CardContent className="p-6">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                          {/* Event Info */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <Badge className={`${getImportanceColor(event.importance)} border`}>
+                                {event.importance}
+                              </Badge>
+                              <Badge variant="outline" className="text-primary border-primary/30">
+                                {event.currency}
+                              </Badge>
+                              <span className="text-sm text-zinc-400">{event.country}</span>
+                            </div>
+                            
+                            <h3 className="text-lg font-semibold text-white mb-2">
+                              {event.event_name}
+                            </h3>
+                            
+                            <div className="flex items-center gap-4 text-sm text-zinc-400">
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {getTimeLabel(event.event_time)} at {format(new Date(event.event_time), 'HH:mm')}
+                              </div>
+                              
+                              {event.forecast && (
+                                <div>
+                                  Forecast: <span className="text-white">{event.forecast}</span>
+                                </div>
+                              )}
+                              
+                              {event.previous && (
+                                <div>
+                                  Previous: <span className="text-white">{event.previous}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* AI Analysis */}
+                          {analysis && (
+                            <div className="lg:w-96 bg-zinc-800 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Zap className="h-4 w-4 text-yellow-400" />
+                                <span className="text-sm font-medium text-yellow-400">AI Analysis</span>
+                                {getSentimentIcon(analysis.market_sentiment)}
+                                <span className={`text-sm font-medium ${getVolatilityColor(analysis.volatility_level)}`}>
+                                  {analysis.volatility_level} Volatility
+                                </span>
+                              </div>
+                              
+                              <p className="text-sm text-zinc-300 mb-3">
+                                {analysis.ai_summary}
+                              </p>
+                              
+                              {analysis.trade_opportunity && (
+                                <div className="flex items-start gap-2">
+                                  <Target className="h-4 w-4 text-blue-400 mt-0.5" />
+                                  <p className="text-sm text-blue-300">
+                                    {analysis.trade_opportunity}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {analysis.affected_pairs && analysis.affected_pairs.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {analysis.affected_pairs.map((pair) => (
+                                    <Badge key={pair} variant="outline" className="text-xs text-blue-400 border-blue-400/30">
+                                      {pair}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ai-news">
+            {/* AI News Analysis */}
+            <AINewsAnalyzer articles={aiNews} />
+            
+            {/* AI News List */}
+            <div className="space-y-4 mt-6">
+              {aiNews.length === 0 ? (
+                <Card className="bg-zinc-900 border-zinc-700">
+                  <CardContent className="p-8 text-center">
+                    <Newspaper className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">No News Found</h3>
+                    <p className="text-zinc-400 mb-4">
+                      No AI market news available. Try refreshing to fetch latest articles.
+                    </p>
+                    <Button 
+                      onClick={refreshData}
+                      disabled={refreshing}
+                      variant="outline"
+                      className="bg-zinc-800 border-zinc-600 text-white hover:bg-zinc-700"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                      Fetch News
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                aiNews.map((article) => (
+                  <Card key={article.id} className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 transition-colors">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Badge variant="outline" className="text-blue-400 border-blue-400/30">
+                              {article.source}
+                            </Badge>
+                            <span className="text-sm text-zinc-400">
+                              {formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}
                             </span>
                           </div>
                           
-                          <p className="text-sm text-zinc-300 mb-3">
-                            {analysis.ai_summary}
-                          </p>
+                          <h3 className="text-lg font-semibold text-white mb-2 leading-tight">
+                            {article.title}
+                          </h3>
                           
-                          {analysis.trade_opportunity && (
-                            <div className="flex items-start gap-2">
-                              <Target className="h-4 w-4 text-blue-400 mt-0.5" />
-                              <p className="text-sm text-blue-300">
-                                {analysis.trade_opportunity}
-                              </p>
-                            </div>
+                          {article.description && (
+                            <p className="text-zinc-300 text-sm mb-3 line-clamp-2">
+                              {article.description}
+                            </p>
                           )}
                           
-                          {analysis.affected_pairs && analysis.affected_pairs.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {analysis.affected_pairs.map((pair) => (
-                                <Badge key={pair} variant="outline" className="text-xs text-blue-400 border-blue-400/30">
-                                  {pair}
-                                </Badge>
-                              ))}
-                            </div>
+                          {article.author && (
+                            <p className="text-xs text-zinc-500">
+                              By {article.author}
+                            </p>
                           )}
                         </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </div>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-zinc-400 hover:text-white"
+                          onClick={() => window.open(article.url, '_blank')}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Stats Summary */}
         {events.length > 0 && (
