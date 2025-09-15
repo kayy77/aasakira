@@ -7,10 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const fcsApiKey = Deno.env.get('FCS_API_KEY')!;
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -20,12 +16,19 @@ serve(async (req) => {
   try {
     console.log('🚀 Starting economic events fetch...');
     
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const fcsApiKey = Deno.env.get('FCS_API_KEY')!;
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Fetch economic events from FCS API
     console.log('📡 Fetching events from FCS API...');
     
-    const apiResponse = await fetch(`https://fcsapi.com/api-v3/forex/calendar?access_key=${fcsApiKey}&date=today,tomorrow,week`);
+    const apiUrl = `https://fcsapi.com/api-v3/forex/calendar?access_key=${fcsApiKey}&date=today`;
+    console.log('📍 API URL:', apiUrl);
+    
+    const apiResponse = await fetch(apiUrl);
     
     if (!apiResponse.ok) {
       console.error('❌ FCS API error:', apiResponse.status, apiResponse.statusText);
@@ -33,139 +36,75 @@ serve(async (req) => {
     }
 
     const apiData = await apiResponse.json();
+    console.log('📊 FCS API Response:', apiData);
+    
+    if (!apiData || !apiData.response) {
+      console.log('⚠️ No response data from FCS API');
+      return new Response(JSON.stringify({ 
+        success: true, 
+        eventsProcessed: 0,
+        message: 'No events returned from FCS API'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     const rawEvents = apiData.response || [];
     console.log(`📊 Received ${rawEvents.length} raw events from FCS API`);
     
-    // Log first few events to debug structure
-    if (rawEvents.length > 0) {
-      console.log(`🔍 Sample raw event:`, JSON.stringify(rawEvents[0], null, 2));
+    if (rawEvents.length === 0) {
+      console.log('⚠️ No events in response array');
+      return new Response(JSON.stringify({ 
+        success: true, 
+        eventsProcessed: 0,
+        message: 'No events found in FCS API response'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Filter and transform events (today + next 30 days for broader capture)
-    const now = new Date();
-    now.setHours(0, 0, 0, 0); // Start of today
-    const futureLimit = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // Next 30 days
-    
-    console.log(`📅 Filtering events from ${now.toISOString()} to ${futureLimit.toISOString()}`);
-    
-    const processedEvents = rawEvents
-      .filter((event: any) => {
-        if (!event.date) {
-          console.log(`⚠️ Event missing date:`, event);
-          return false;
-        }
-        
-        // FCS API uses Unix timestamp
-        let eventDate;
+    // Transform events for database
+    const processedEvents = rawEvents.map((event: any) => {
+      // Parse date - FCS API may use different formats
+      let eventDate = new Date();
+      if (event.date) {
         try {
-          if (typeof event.date === 'number') {
-            eventDate = new Date(event.date * 1000); // Convert Unix timestamp to milliseconds
-          } else if (typeof event.date === 'string') {
-            eventDate = new Date(event.date);
-          } else {
-            eventDate = new Date(event.date);
-          }
-          
-          // Validate the date
-          if (isNaN(eventDate.getTime())) {
-            console.log(`❌ Invalid date for event: ${event.date}`, event);
-            return false;
-          }
-          
-          const isInRange = eventDate >= now && eventDate <= futureLimit;
-          console.log(`📊 Event "${event.event}" - Date: ${eventDate.toISOString()}, InRange: ${isInRange}`);
-          
-          return isInRange;
-          
-        } catch (dateError) {
-          console.error(`❌ Date parsing error for event:`, event, dateError);
-          return false;
-        }
-      })
-      .map((event: any) => {
-        // Use the same robust date parsing as in the filter
-        let eventDate;
-        try {
+          // Try parsing as Unix timestamp first, then as string
           if (typeof event.date === 'number') {
             eventDate = new Date(event.date * 1000);
-          } else if (typeof event.date === 'string') {
-            eventDate = new Date(event.date);
           } else {
             eventDate = new Date(event.date);
           }
           
           if (isNaN(eventDate.getTime())) {
-            eventDate = new Date(); // Fallback to now if parsing fails
+            eventDate = new Date();
           }
         } catch (error) {
-          eventDate = new Date(); // Fallback to now if parsing fails
+          console.log(`⚠️ Date parsing failed for event: ${event.event}`);
+          eventDate = new Date();
         }
-        
-        return {
-          event_name: event.event || 'Unknown Event',
-          country: event.country || 'Unknown',
-          currency: event.currency || 'USD',
-          forecast: event.forecast ? String(event.forecast) : null,
-          previous: event.previous ? String(event.previous) : null,
-          actual: event.actual ? String(event.actual) : null,
-          event_time: eventDate.toISOString(),
-          importance: event.impact === '1' ? 'LOW' : 
-                     event.impact === '2' ? 'MEDIUM' : 
-                     event.impact === '3' ? 'HIGH' : 'MEDIUM',
-          category: event.category || 'Economic',
-          source: 'fcs_api'
-        };
-      })
-      .slice(0, 50); // Limit to 50 most relevant events
-
-    console.log(`📊 Processing ${processedEvents.length} economic events...`);
-
-    if (processedEvents.length === 0) {
-      console.log('⚠️ No events to process after filtering');
-      return new Response(JSON.stringify({ 
-        success: true, 
-        eventsProcessed: 0,
-        message: 'No new events found'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Check for existing events to avoid duplicates
-    const existingEventsQuery = await supabase
-      .from('economic_events')
-      .select('event_name, event_time, country')
-      .gte('event_time', now.toISOString())
-      .lte('event_time', futureLimit.toISOString());
-
-    const existingEvents = existingEventsQuery.data || [];
-    const existingKeys = new Set(
-      existingEvents.map(e => `${e.event_name}-${e.event_time}-${e.country}`)
-    );
-
-    // Filter out events that already exist
-    const newEvents = processedEvents.filter(event => {
-      const key = `${event.event_name}-${event.event_time}-${event.country}`;
-      return !existingKeys.has(key);
+      }
+      
+      return {
+        event_name: event.event || 'Unknown Event',
+        country: event.country || 'Unknown',
+        currency: event.currency || 'USD',
+        forecast: event.forecast ? String(event.forecast) : null,
+        previous: event.previous ? String(event.previous) : null,
+        actual: event.actual ? String(event.actual) : null,
+        event_time: eventDate.toISOString(),
+        importance: event.impact === '1' ? 'LOW' : 
+                   event.impact === '2' ? 'MEDIUM' : 
+                   event.impact === '3' ? 'HIGH' : 'MEDIUM',
+        category: event.category || 'Economic',
+        source: 'fcs_api'
+      };
     });
-
-    console.log(`📊 ${newEvents.length} new events to insert (${processedEvents.length - newEvents.length} duplicates filtered)`);
-
-    if (newEvents.length === 0) {
-      console.log('✅ All events already exist in database');
-      return new Response(JSON.stringify({ 
-        success: true, 
-        eventsProcessed: 0,
-        message: 'All events already exist'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     // Insert events into database
     const { data: insertedEvents, error: insertError } = await supabase
       .from('economic_events')
-      .insert(newEvents)
+      .insert(processedEvents)
       .select();
 
     if (insertError) {

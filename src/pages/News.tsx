@@ -63,14 +63,26 @@ const News = () => {
 
   const fetchEvents = async () => {
     try {
-      // Fetch economic events
-      const { data: eventsData, error: eventsError } = await supabase
+      // Fetch economic events - try today first
+      let { data: eventsData, error: eventsError } = await supabase
         .from('economic_events')
         .select('*')
-        .gte('event_time', new Date().toISOString())
+        .gte('event_time', new Date().toISOString().split('T')[0])
         .order('event_time', { ascending: true });
 
       if (eventsError) throw eventsError;
+
+      // If no events for today, fallback to last 7 days
+      if (!eventsData || eventsData.length === 0) {
+        console.log('No events for today, fetching last 7 days...');
+        const fallback = await supabase
+          .from('economic_events')
+          .select('*')
+          .gte('event_time', new Date(Date.now() - 7*24*60*60*1000).toISOString())
+          .order('event_time', { ascending: true });
+          
+        eventsData = fallback.data || [];
+      }
 
       // Fetch analyses
       const { data: analysesData, error: analysesError } = await supabase
