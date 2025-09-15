@@ -198,6 +198,26 @@ const Journal = () => {
   const handleAddEntry = async () => {
     if (!user) return;
 
+    // Validate required fields
+    if (!newEntry.pair || !newEntry.entry_price || !newEntry.entry_time || !newEntry.strategy) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields: Currency Pair, Entry Price, Entry Time, and Strategy",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate exit price if status is closed
+    if (newEntry.status === 'CLOSED' && !newEntry.exit_price) {
+      toast({
+        title: "Validation Error",
+        description: "Exit price is required for closed trades",
+        variant: "destructive"
+      });
+      return;
+    }
+
     console.log('🔄 Adding journal entry...', { newEntry, user: user.id });
 
     try {
@@ -864,13 +884,14 @@ const Journal = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="pair" className="text-white">Currency Pair</Label>
+                <Label htmlFor="pair" className="text-white">Currency Pair *</Label>
                 <Input
                   id="pair"
                   placeholder="EURUSD"
                   value={newEntry.pair}
                   onChange={(e) => setNewEntry({...newEntry, pair: e.target.value.toUpperCase()})}
                   className="bg-zinc-800 border-zinc-600 text-white"
+                  required
                 />
               </div>
               <div>
@@ -888,7 +909,7 @@ const Journal = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="entry_price" className="text-white">Entry Price</Label>
+                <Label htmlFor="entry_price" className="text-white">Entry Price *</Label>
                 <Input
                   id="entry_price"
                   type="number"
@@ -896,6 +917,7 @@ const Journal = () => {
                   value={newEntry.entry_price}
                   onChange={(e) => setNewEntry({...newEntry, entry_price: e.target.value})}
                   className="bg-zinc-800 border-zinc-600 text-white"
+                  required
                 />
               </div>
               <div>
@@ -912,13 +934,14 @@ const Journal = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="entry_time" className="text-white">Entry Time</Label>
+                <Label htmlFor="entry_time" className="text-white">Entry Time *</Label>
                 <Input
                   id="entry_time"
                   type="datetime-local"
                   value={newEntry.entry_time}
                   onChange={(e) => setNewEntry({...newEntry, entry_time: e.target.value})}
                   className="bg-zinc-800 border-zinc-600 text-white"
+                  required
                 />
               </div>
               <div>
@@ -962,10 +985,10 @@ const Journal = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="strategy" className="text-white">Strategy</Label>
+                <Label htmlFor="strategy" className="text-white">Strategy *</Label>
                 <Select value={newEntry.strategy} onValueChange={(value) => setNewEntry({...newEntry, strategy: value})}>
                   <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
-                    <SelectValue placeholder="Select strategy" />
+                    <SelectValue placeholder="Select strategy *" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-800 border-zinc-600 z-50">
                     <SelectItem value="SMC">Smart Money Concepts</SelectItem>
@@ -1016,7 +1039,11 @@ const Journal = () => {
             <Button variant="outline" onClick={() => setShowAddDialog(false)} className="border-zinc-600 text-white hover:bg-zinc-800">
               Cancel
             </Button>
-            <Button onClick={handleAddEntry} className="bg-primary hover:bg-primary/90 text-black">
+            <Button 
+              onClick={handleAddEntry} 
+              className="bg-primary hover:bg-primary/90 text-black"
+              disabled={!newEntry.pair || !newEntry.entry_price || !newEntry.entry_time || !newEntry.strategy}
+            >
               Add Trade
             </Button>
           </div>
