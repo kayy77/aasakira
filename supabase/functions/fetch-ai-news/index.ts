@@ -20,47 +20,50 @@ serve(async (req) => {
   try {
     console.log('Starting AI news fetch...');
     
-    // Try NewsAPI first
     let articles = [];
-    const newsApiKey = Deno.env.get("NEWSAPI_KEY");
+    const fcsApiKey = Deno.env.get("FCS_API_KEY");
     
-    if (newsApiKey) {
-      console.log('Fetching from NewsAPI...');
-      const newsRes = await fetch(
-        `https://newsapi.org/v2/everything?q=forex OR stocks OR crypto OR economy OR trading OR market OR fed OR inflation OR gdp&language=en&sortBy=publishedAt&pageSize=20&apiKey=${newsApiKey}`
+    if (fcsApiKey) {
+      console.log('Fetching forex news from FCS API...');
+      const fcsNewsRes = await fetch(
+        `https://fcsapi.com/api-v3/forex/news?access_key=${fcsApiKey}&limit=30`
       );
       
-      if (newsRes.ok) {
-        const newsData = await newsRes.json();
-        articles = newsData.articles || [];
-        console.log(`Fetched ${articles.length} articles from NewsAPI`);
+      if (fcsNewsRes.ok) {
+        const fcsData = await fcsNewsRes.json();
+        const fcsArticles = fcsData.response || [];
+        
+        // Transform FCS format to standard format
+        articles = fcsArticles.map((item: any) => ({
+          title: item.title,
+          description: item.content || item.description || '',
+          source: { name: 'FCS Financial News' },
+          author: null,
+          url: item.url || '#',
+          publishedAt: new Date(item.date * 1000).toISOString(), // Convert Unix timestamp
+          content: item.content || item.description || ''
+        }));
+        console.log(`Fetched ${articles.length} articles from FCS API`);
       } else {
-        console.log(`NewsAPI failed: ${newsRes.status}`);
+        console.log(`FCS API failed: ${fcsNewsRes.status}`);
       }
     }
     
-    // Fallback to Finnhub if NewsAPI failed
+    // Try NewsAPI as backup if available
     if (articles.length === 0) {
-      const finnhubKey = Deno.env.get("FINNHUB_KEY");
-      if (finnhubKey) {
-        console.log('Falling back to Finnhub...');
-        const finnhubRes = await fetch(
-          `https://finnhub.io/api/v1/news?category=forex&token=${finnhubKey}`
+      const newsApiKey = Deno.env.get("NEWSAPI_KEY");
+      if (newsApiKey) {
+        console.log('Falling back to NewsAPI...');
+        const newsRes = await fetch(
+          `https://newsapi.org/v2/everything?q=forex OR trading OR market OR economy&language=en&sortBy=publishedAt&pageSize=20&apiKey=${newsApiKey}`
         );
         
-        if (finnhubRes.ok) {
-          const finnhubData = await finnhubRes.json();
-          // Transform Finnhub format to match NewsAPI
-          articles = finnhubData.map((item: any) => ({
-            title: item.headline,
-            description: item.summary,
-            source: { name: item.source },
-            author: null,
-            url: item.url,
-            publishedAt: new Date(item.datetime * 1000).toISOString(),
-            content: item.summary
-          }));
-          console.log(`Fetched ${articles.length} articles from Finnhub`);
+        if (newsRes.ok) {
+          const newsData = await newsRes.json();
+          articles = newsData.articles || [];
+          console.log(`Fetched ${articles.length} articles from NewsAPI`);
+        } else {
+          console.log(`NewsAPI failed: ${newsRes.status}`);
         }
       }
     }

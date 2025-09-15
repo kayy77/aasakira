@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
+const fcsApiKey = Deno.env.get('FCS_API_KEY')!;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -22,18 +22,19 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Fetch economic events from Trading Economics API
-    console.log('📡 Fetching events from Trading Economics API...');
+    // Fetch economic events from FCS API
+    console.log('📡 Fetching events from FCS API...');
     
-    const apiResponse = await fetch('https://api.tradingeconomics.com/calendar?c=guest:guest&f=json');
+    const apiResponse = await fetch(`https://fcsapi.com/api-v3/forex/calendar?access_key=${fcsApiKey}&date=today,tomorrow,week`);
     
     if (!apiResponse.ok) {
-      console.error('❌ Trading Economics API error:', apiResponse.status, apiResponse.statusText);
-      throw new Error(`Trading Economics API failed: ${apiResponse.status}`);
+      console.error('❌ FCS API error:', apiResponse.status, apiResponse.statusText);
+      throw new Error(`FCS API failed: ${apiResponse.status}`);
     }
 
-    const rawEvents = await apiResponse.json();
-    console.log(`📊 Received ${rawEvents.length} raw events from Trading Economics`);
+    const apiData = await apiResponse.json();
+    const rawEvents = apiData.response || [];
+    console.log(`📊 Received ${rawEvents.length} raw events from FCS API`);
     
     // Log first few events to debug structure
     if (rawEvents.length > 0) {
@@ -49,31 +50,30 @@ serve(async (req) => {
     
     const processedEvents = rawEvents
       .filter((event: any) => {
-        if (!event.Date) {
+        if (!event.date) {
           console.log(`⚠️ Event missing date:`, event);
           return false;
         }
         
-        // Try multiple date parsing approaches
+        // FCS API uses Unix timestamp
         let eventDate;
         try {
-          // Trading Economics often uses formats like "2025-01-13T15:30:00" or "2025-01-13 15:30:00"
-          if (typeof event.Date === 'string') {
-            // Handle various formats
-            const dateStr = event.Date.replace(' ', 'T'); // Convert space to T if needed
-            eventDate = new Date(dateStr);
+          if (typeof event.date === 'number') {
+            eventDate = new Date(event.date * 1000); // Convert Unix timestamp to milliseconds
+          } else if (typeof event.date === 'string') {
+            eventDate = new Date(event.date);
           } else {
-            eventDate = new Date(event.Date);
+            eventDate = new Date(event.date);
           }
           
           // Validate the date
           if (isNaN(eventDate.getTime())) {
-            console.log(`❌ Invalid date for event: ${event.Date}`, event);
+            console.log(`❌ Invalid date for event: ${event.date}`, event);
             return false;
           }
           
           const isInRange = eventDate >= now && eventDate <= futureLimit;
-          console.log(`📊 Event "${event.Event}" - Date: ${eventDate.toISOString()}, InRange: ${isInRange}`);
+          console.log(`📊 Event "${event.event}" - Date: ${eventDate.toISOString()}, InRange: ${isInRange}`);
           
           return isInRange;
           
@@ -86,11 +86,12 @@ serve(async (req) => {
         // Use the same robust date parsing as in the filter
         let eventDate;
         try {
-          if (typeof event.Date === 'string') {
-            const dateStr = event.Date.replace(' ', 'T');
-            eventDate = new Date(dateStr);
+          if (typeof event.date === 'number') {
+            eventDate = new Date(event.date * 1000);
+          } else if (typeof event.date === 'string') {
+            eventDate = new Date(event.date);
           } else {
-            eventDate = new Date(event.Date);
+            eventDate = new Date(event.date);
           }
           
           if (isNaN(eventDate.getTime())) {
@@ -101,18 +102,18 @@ serve(async (req) => {
         }
         
         return {
-          event_name: event.Event || 'Unknown Event',
-          country: event.Country || 'Unknown',
-          currency: event.Currency || 'USD',
-          forecast: event.Forecast ? String(event.Forecast) : null,
-          previous: event.Previous ? String(event.Previous) : null,
-          actual: event.Actual ? String(event.Actual) : null,
+          event_name: event.event || 'Unknown Event',
+          country: event.country || 'Unknown',
+          currency: event.currency || 'USD',
+          forecast: event.forecast ? String(event.forecast) : null,
+          previous: event.previous ? String(event.previous) : null,
+          actual: event.actual ? String(event.actual) : null,
           event_time: eventDate.toISOString(),
-          importance: event.Impact === 'Low' ? 'LOW' : 
-                     event.Impact === 'Medium' ? 'MEDIUM' : 
-                     event.Impact === 'High' ? 'HIGH' : 'MEDIUM',
-          category: event.Category || 'Economic',
-          source: 'trading_economics'
+          importance: event.impact === '1' ? 'LOW' : 
+                     event.impact === '2' ? 'MEDIUM' : 
+                     event.impact === '3' ? 'HIGH' : 'MEDIUM',
+          category: event.category || 'Economic',
+          source: 'fcs_api'
         };
       })
       .slice(0, 50); // Limit to 50 most relevant events
@@ -174,79 +175,22 @@ serve(async (req) => {
 
     console.log(`✅ Inserted ${insertedEvents?.length} events into database`);
 
-    // Generate AI analysis for each new event
+    // Generate basic analysis for each new event (simplified for now)
     for (const event of insertedEvents || []) {
       try {
-        console.log(`🤖 Generating AI analysis for: ${event.event_name}`);
+        console.log(`🤖 Generating basic analysis for: ${event.event_name}`);
         
-        const analysisPrompt = `
-        You are an elite trading mentor analyzing economic events for their market impact.
-        
-        Event: ${event.event_name}
-        Country: ${event.country}
-        Currency: ${event.currency}
-        Forecast: ${event.forecast}
-        Previous: ${event.previous}
-        Importance: ${event.importance}
-        Category: ${event.category}
-        
-        Provide a concise analysis (max 80 words) including:
-        1. Market sentiment (BULLISH/BEARISH/NEUTRAL for ${event.currency})
-        2. Key affected currency pairs
-        3. Expected volatility level (LOW/MEDIUM/HIGH)
-        4. Trade opportunity type (scalp/swing/avoid)
-        
-        Format your response as JSON:
-        {
-          "summary": "Brief market impact explanation",
-          "sentiment": "BULLISH|BEARISH|NEUTRAL",
-          "affected_pairs": ["EUR/USD", "GBP/USD"],
-          "volatility": "LOW|MEDIUM|HIGH", 
-          "trade_opportunity": "Specific trading advice",
-          "confidence": 0.85
-        }
-        `;
-
-        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: 'You are an expert forex market analyst. Always respond with valid JSON.' },
-              { role: 'user', content: analysisPrompt }
-            ],
-            temperature: 0.7,
-            max_tokens: 300,
-          }),
-        });
-
-        if (!aiResponse.ok) {
-          console.error('❌ OpenAI API error:', await aiResponse.text());
-          continue;
-        }
-
-        const aiData = await aiResponse.json();
-        const aiContent = aiData.choices[0].message.content;
-        
-        let analysis;
-        try {
-          analysis = JSON.parse(aiContent);
-        } catch (parseError) {
-          console.error('❌ Failed to parse AI response as JSON:', aiContent);
-          // Fallback analysis
-          analysis = {
-            summary: `${event.importance} impact event for ${event.currency}. Monitor closely.`,
-            sentiment: event.importance === 'HIGH' ? 'BULLISH' : 'NEUTRAL',
-            affected_pairs: [`${event.currency}/USD`],
-            volatility: event.importance,
-            trade_opportunity: event.importance === 'HIGH' ? 'Monitor for breakouts' : 'Low impact expected',
-            confidence: 0.70
-          };
-        }
+        // Create a simple analysis without OpenAI for now
+        const analysis = {
+          summary: `${event.importance} impact ${event.event_name} event for ${event.currency}. Expected impact on ${event.currency} pairs.`,
+          sentiment: event.importance === 'HIGH' ? 'BULLISH' : 
+                    event.importance === 'MEDIUM' ? 'NEUTRAL' : 'NEUTRAL',
+          affected_pairs: [`${event.currency}/USD`, `EUR/${event.currency}`].filter(pair => pair !== 'USD/USD'),
+          volatility: event.importance,
+          trade_opportunity: event.importance === 'HIGH' ? 'Monitor for volatility spikes around event time' : 
+                           event.importance === 'MEDIUM' ? 'Moderate impact expected' : 'Low impact expected',
+          confidence: event.importance === 'HIGH' ? 0.80 : 0.65
+        };
 
         // Insert analysis into database
         const { error: analysisError } = await supabase
@@ -264,7 +208,7 @@ serve(async (req) => {
         if (analysisError) {
           console.error('❌ Error inserting analysis:', analysisError);
         } else {
-          console.log(`✅ AI analysis saved for ${event.event_name}`);
+          console.log(`✅ Basic analysis saved for ${event.event_name}`);
         }
 
       } catch (analysisError) {

@@ -219,6 +219,11 @@ const News = () => {
     }
   });
 
+  // If no filtered events but we have events in database, show upcoming events
+  const hasUpcomingEvents = events.length > 0 && filteredEvents.length === 0;
+  const displayEvents = filteredEvents.length > 0 ? filteredEvents : 
+                       hasUpcomingEvents ? events.slice(0, 10) : [];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950">
@@ -314,18 +319,35 @@ const News = () => {
           <TabsContent value="events">
             {/* Events List */}
             <div className="space-y-4">
-              {filteredEvents.length === 0 ? (
+              {displayEvents.length === 0 ? (
                 <Card className="bg-zinc-900 border-zinc-700">
                   <CardContent className="p-8 text-center">
                     <Calendar className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-white mb-2">No Events Found</h3>
-                    <p className="text-zinc-400">
-                      No economic events match your current filters
+                    <h3 className="text-lg font-semibold text-white mb-2">
+                      {events.length === 0 ? 'Loading Economic Events...' : 'No Events Found'}
+                    </h3>
+                    <p className="text-zinc-400 mb-4">
+                      {events.length === 0 
+                        ? 'Fetching the latest economic calendar data...' 
+                        : hasUpcomingEvents 
+                        ? 'No events match your current filters. Showing upcoming events below.'
+                        : 'No economic events scheduled for the selected timeframe.'}
                     </p>
+                    {events.length === 0 && (
+                      <Button 
+                        onClick={refreshData} 
+                        disabled={refreshing}
+                        variant="outline"
+                        className="bg-zinc-800 border-zinc-600 text-white hover:bg-zinc-700"
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                        Refresh Data
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ) : (
-                filteredEvents.map((event) => {
+                displayEvents.map((event) => {
                   const analysis = getEventAnalysis(event.id);
                   
                   return (
