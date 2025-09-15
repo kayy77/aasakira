@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -47,40 +47,105 @@ const DAILY_LIMITS = {
 const ADMIN_EMAILS = ['khaijwh@gmail.com', 'Konejunior09@outlook.com'];
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  // Use error boundary-safe state initialization
+  const [user, setUser] = useState<UserData | null>(() => {
+    try {
+      return null;
+    } catch (error) {
+      console.error('State initialization error:', error);
+      return null;
+    }
+  });
+  
+  const [loading, setLoading] = useState<boolean>(() => {
+    try {
+      return true;
+    } catch (error) {
+      console.error('Loading state initialization error:', error);
+      return true;
+    }
+  });
+  
+  // Safely access toast hook
+  let toast;
+  try {
+    toast = useToast()?.toast;
+  } catch (error) {
+    console.error('Toast hook error:', error);
+    toast = () => {}; // Fallback function
+  }
+
+  // Memoize the initialization function to prevent unnecessary re-renders
+  const initializeAuth = useCallback(async () => {
+    try {
+      // Get initial session
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Auth session error:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (session?.user) {
+        try {
+          const userData = initializeUserData(session.user);
+          setUser(userData);
+        } catch (userError) {
+          console.error('User data initialization error:', userError);
+        }
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const userData = initializeUserData(session.user);
-        setUser(userData);
-      }
-      setLoading(false);
-    });
+    let subscription: any;
+    
+    try {
+      // Initialize auth state
+      initializeAuth();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const userData = initializeUserData(session.user);
-        setUser(userData);
-        
-        if (event === 'SIGNED_IN') {
-          toast({
-            title: "Welcome back!",
-            description: "You're successfully signed in.",
-          });
+      // Listen for auth changes with error handling
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        try {
+          if (session?.user) {
+            const userData = initializeUserData(session.user);
+            setUser(userData);
+            
+            if (event === 'SIGNED_IN' && toast) {
+              toast({
+                title: "Welcome back!",
+                description: "You're successfully signed in.",
+              });
+            }
+          } else {
+            setUser(null);
+          }
+          setLoading(false);
+        } catch (error) {
+          console.error('Auth state change error:', error);
+          setLoading(false);
         }
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
+      });
 
-    return () => subscription.unsubscribe();
-  }, [toast]);
+      subscription = data?.subscription;
+    } catch (error) {
+      console.error('Auth setup error:', error);
+      setLoading(false);
+    }
+
+    return () => {
+      try {
+        subscription?.unsubscribe();
+      } catch (error) {
+        console.error('Auth cleanup error:', error);
+      }
+    };
+  }, [initializeAuth]);
 
   const initializeUserData = (authUser: User): UserData => {
     const today = new Date().toDateString();

@@ -13,29 +13,32 @@ import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import AuthGuard from '@/components/AuthGuard';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 function App() {
   return (
-    <AuthProvider>
-      <SubscriptionProvider>
-        <BrowserRouter>
-          <div className="min-h-screen bg-black text-white">
-            <Toaster />
-            <AuthGuard>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/signals" element={<Signals />} />
-                <Route path="/journal" element={<Journal />} />
-                <Route path="/news" element={<News />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/affiliate" element={<Affiliate />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AuthGuard>
-          </div>
-        </BrowserRouter>
-      </SubscriptionProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <SubscriptionProvider>
+          <BrowserRouter>
+            <div className="min-h-screen bg-black text-white">
+              <Toaster />
+              <AuthGuard>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/signals" element={<Signals />} />
+                  <Route path="/journal" element={<Journal />} />
+                  <Route path="/news" element={<News />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/affiliate" element={<Affiliate />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AuthGuard>
+            </div>
+          </BrowserRouter>
+        </SubscriptionProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
