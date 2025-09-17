@@ -590,6 +590,7 @@ const Journal = () => {
 
   const generateProgressChartData = () => {
     const filtered = getFilteredEntries() as JournalEntry[];
+    console.log('🔍 Filtered entries for chart:', filtered.length, filtered);
     const dailyPnL: { [key: string]: number } = {};
     
     // Group entries by date and calculate daily P&L with validation
@@ -605,6 +606,7 @@ const Journal = () => {
         const date = new Date(entry.entry_time).toISOString().split('T')[0];
         // Convert pips to USD using lot size
         const usdPnL = calculateRealPnL(pips, entry.lot_size || 1, entry.fees || 0);
+        console.log(`💰 Trade P&L: ${pips} pips = $${usdPnL} (lot: ${entry.lot_size || 1}, fees: ${entry.fees || 0})`);
         dailyPnL[date] = (dailyPnL[date] || 0) + usdPnL;
       }
     });
@@ -886,8 +888,20 @@ const Journal = () => {
                                 const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
                                 return entryDate === dateStr;
                               });
-                              if (dayTrades.length === 1) {
-                                handleEditEntry(dayTrades[0]);
+                              if (dayTrades.length > 0) {
+                                // If multiple trades, edit the most recent one
+                                const latestTrade = dayTrades.sort((a, b) => 
+                                  new Date(b.entry_time).getTime() - new Date(a.entry_time).getTime()
+                                )[0];
+                                handleEditEntry(latestTrade);
+                              } else {
+                                // No trades on this day, open add dialog with this date pre-filled
+                                const dateTimeStr = date.toISOString().slice(0, 16);
+                                setNewEntry({
+                                  ...newEntry,
+                                  entry_time: dateTimeStr
+                                });
+                                setShowAddDialog(true);
                               }
                             }}
                             className={`
@@ -1237,7 +1251,24 @@ const Journal = () => {
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setShowAddDialog(false)} className="border-zinc-600 text-white hover:bg-zinc-800">
+            <Button variant="outline" onClick={() => {
+              setShowAddDialog(false);
+              setEditingEntry(null);
+              setNewEntry({
+                pair: '',
+                entry_price: '',
+                exit_price: '',
+                entry_time: '',
+                direction: 'LONG',
+                strategy: '',
+                lot_size: '',
+                fees: '',
+                feelings: '',
+                mistakes: '',
+                notes: '',
+                status: 'OPEN'
+              });
+            }} className="border-zinc-600 text-white hover:bg-zinc-800">
               Cancel
             </Button>
             <Button 

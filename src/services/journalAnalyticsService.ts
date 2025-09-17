@@ -10,6 +10,8 @@ interface JournalEntry {
   exit_time?: string;
   direction: 'LONG' | 'SHORT';
   strategy: string;
+  lot_size?: number;
+  fees?: number;
   risk_reward_ratio?: number;
   result_pips?: number;
   result_percentage?: number;
