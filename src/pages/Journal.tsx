@@ -272,8 +272,10 @@ const Journal = () => {
       }
 
       console.log('✅ Trade saved successfully:', data);
-      // Update state and calendar view
-      setEntries([data as JournalEntry, ...entries]);
+      
+      // Force reload entries from database to ensure fresh data
+      await loadEntries();
+      
       const entryDate = new Date((data as any).entry_time);
       setCurrentDate(entryDate);
       setSelectedDate(entryDate);
