@@ -248,11 +248,24 @@ const Journal = () => {
         let pips = 0;
         let percentage = 0;
 
+        // Calculate pips based on instrument type
+        let pipMultiplier = 10000; // Default for most forex pairs
+        
+        if (newEntry.pair.includes('JPY')) {
+          pipMultiplier = 100; // JPY pairs
+        } else if (newEntry.pair.includes('XAU') || newEntry.pair.includes('GOLD')) {
+          pipMultiplier = 10; // Gold: 1 pip = 0.1
+        } else if (newEntry.pair.includes('XAG') || newEntry.pair.includes('SILVER')) {
+          pipMultiplier = 1000; // Silver: 1 pip = 0.001
+        } else if (newEntry.pair.includes('BTC') || newEntry.pair.includes('ETH')) {
+          pipMultiplier = 1; // Crypto: 1 pip = 1 point
+        }
+
         if (direction === 'LONG') {
-          pips = (exitPrice - entryPrice) * (newEntry.pair.includes('JPY') ? 100 : 10000);
+          pips = (exitPrice - entryPrice) * pipMultiplier;
           percentage = ((exitPrice - entryPrice) / entryPrice) * 100;
         } else {
-          pips = (entryPrice - exitPrice) * (newEntry.pair.includes('JPY') ? 100 : 10000);
+          pips = (entryPrice - exitPrice) * pipMultiplier;
           percentage = ((entryPrice - exitPrice) / entryPrice) * 100;
         }
 
