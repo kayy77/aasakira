@@ -58,6 +58,7 @@ const Journal = () => {
   const [customEndDate, setCustomEndDate] = useState('');
   const [aiSummary, setAiSummary] = useState<string>('');
   const [generatingAISummary, setGeneratingAISummary] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
 
   // Display settings - Calculate actual P&L using lot size
   const calculateRealPnL = (pips: number, lotSize: number = 1, fees: number = 0) => {
@@ -87,7 +88,7 @@ const Journal = () => {
     feelings: '',
     mistakes: '',
     notes: '',
-    status: 'OPEN' as 'OPEN' | 'CLOSED'
+    status: 'OPEN' as 'OPEN' | 'CLOSED' | 'CANCELLED'
   });
 
   useEffect(() => {
@@ -322,6 +323,139 @@ const Journal = () => {
     }
   };
 
+  const handleEditEntry = (entry: JournalEntry) => {
+    setEditingEntry(entry);
+    setNewEntry({
+      pair: entry.pair,
+      entry_price: entry.entry_price.toString(),
+      exit_price: entry.exit_price?.toString() || '',
+      entry_time: entry.entry_time.slice(0, 16), // Format for datetime-local input
+      direction: entry.direction,
+      strategy: entry.strategy,
+      lot_size: entry.lot_size?.toString() || '',
+      fees: entry.fees?.toString() || '',
+      feelings: entry.feelings || '',
+      mistakes: entry.mistakes || '',
+      notes: entry.notes || '',
+      status: entry.status
+    });
+    setShowAddDialog(true);
+  };
+
+  const handleUpdateEntry = async () => {
+    if (!user || !editingEntry) return;
+
+    // Validate required fields
+    if (!newEntry.pair || !newEntry.entry_price || !newEntry.entry_time || !newEntry.strategy) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields: Currency Pair, Entry Price, Entry Time, and Strategy",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate exit price if status is closed
+    if (newEntry.status === 'CLOSED' && !newEntry.exit_price) {
+      toast({
+        title: "Validation Error",
+        description: "Exit price is required for closed trades",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const entryData: any = {
+        pair: newEntry.pair,
+        entry_price: parseFloat(newEntry.entry_price),
+        exit_price: newEntry.exit_price ? parseFloat(newEntry.exit_price) : null,
+        entry_time: newEntry.entry_time,
+        direction: newEntry.direction,
+        strategy: newEntry.strategy,
+        lot_size: newEntry.lot_size ? parseFloat(newEntry.lot_size) : null,
+        fees: newEntry.fees ? parseFloat(newEntry.fees) : 0,
+        feelings: newEntry.feelings || null,
+        mistakes: newEntry.mistakes || null,
+        status: newEntry.status,
+        notes: newEntry.notes || null,
+      };
+
+      // Calculate metrics if trade is closed
+      if (newEntry.status === 'CLOSED' && newEntry.exit_price) {
+        const entryPrice = parseFloat(newEntry.entry_price);
+        const exitPrice = parseFloat(newEntry.exit_price);
+        const direction = newEntry.direction;
+        
+        let pips = 0;
+        let percentage = 0;
+
+        // Calculate pips based on instrument type
+        let pipMultiplier = 10000; // Default for most forex pairs
+        
+        if (newEntry.pair.includes('JPY')) {
+          pipMultiplier = 100; // JPY pairs
+        } else if (newEntry.pair.includes('XAU') || newEntry.pair.includes('GOLD')) {
+          pipMultiplier = 10; // Gold: 1 pip = 0.1
+        } else if (newEntry.pair.includes('XAG') || newEntry.pair.includes('SILVER')) {
+          pipMultiplier = 1000; // Silver: 1 pip = 0.001
+        } else if (newEntry.pair.includes('BTC') || newEntry.pair.includes('ETH')) {
+          pipMultiplier = 1; // Crypto: 1 pip = 1 point
+        }
+
+        if (direction === 'LONG') {
+          pips = (exitPrice - entryPrice) * pipMultiplier;
+          percentage = ((exitPrice - entryPrice) / entryPrice) * 100;
+        } else {
+          pips = (entryPrice - exitPrice) * pipMultiplier;
+          percentage = ((entryPrice - exitPrice) / entryPrice) * 100;
+        }
+
+        entryData.result_pips = Math.round(pips * 10) / 10;
+        entryData.result_percentage = Math.round(percentage * 100) / 100;
+      }
+
+      const { error } = await supabase
+        .from('journal_entries')
+        .update(entryData)
+        .eq('id', editingEntry.id);
+
+      if (error) throw error;
+
+      // Force reload entries from database
+      await loadEntries();
+      
+      setShowAddDialog(false);
+      setEditingEntry(null);
+      setNewEntry({
+        pair: '',
+        entry_price: '',
+        exit_price: '',
+        entry_time: '',
+        direction: 'LONG',
+        strategy: '',
+        lot_size: '',
+        fees: '',
+        feelings: '',
+        mistakes: '',
+        notes: '',
+        status: 'OPEN'
+      });
+
+      toast({
+        title: "Trade Updated",
+        description: "Journal entry updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update journal entry",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleDeleteEntry = async (entryId: string) => {
     try {
       const { error } = await supabase
@@ -438,18 +572,28 @@ const Journal = () => {
     return analyticsService['filterEntriesByTime'](sanitizedEntries, filter);
   };
 
-  const stats = analyticsService.calculateStats(sanitizedEntries, {
+  const statsData = analyticsService.calculateStats(sanitizedEntries, {
     type: timeFilter,
     startDate: customStartDate ? new Date(customStartDate) : undefined,
     endDate: customEndDate ? new Date(customEndDate) : undefined
   });
 
+  // Convert pip-based stats to USD for display
+  const stats = {
+    ...statsData,
+    totalPnL: calculateRealPnL(statsData.totalPnL, 1, 0), // Convert total pips to USD
+    avgWin: calculateRealPnL(statsData.avgWin, 1, 0),
+    avgLoss: calculateRealPnL(statsData.avgLoss, 1, 0),
+    bestDay: calculateRealPnL(statsData.bestDay, 1, 0),
+    worstDay: calculateRealPnL(statsData.worstDay, 1, 0)
+  };
+
   const generateProgressChartData = () => {
-    const filtered = getFilteredEntries();
+    const filtered = getFilteredEntries() as JournalEntry[];
     const dailyPnL: { [key: string]: number } = {};
     
     // Group entries by date and calculate daily P&L with validation
-    filtered.forEach(entry => {
+    filtered.forEach((entry: JournalEntry) => {
       if (entry.status === 'CLOSED' && entry.result_pips) {
         // Filter out unrealistic pip values (should be between -1000 and +1000 pips for most trades)
         const pips = entry.result_pips;
@@ -459,21 +603,23 @@ const Journal = () => {
         }
         
         const date = new Date(entry.entry_time).toISOString().split('T')[0];
-        dailyPnL[date] = (dailyPnL[date] || 0) + pips;
+        // Convert pips to USD using lot size
+        const usdPnL = calculateRealPnL(pips, entry.lot_size || 1, entry.fees || 0);
+        dailyPnL[date] = (dailyPnL[date] || 0) + usdPnL;
       }
     });
     
     // Debug: Log the daily P&L values
-    console.log('Daily P&L data:', dailyPnL);
+    console.log('Daily P&L data (USD):', dailyPnL);
     
     // Convert to chart data format and sort by date
     const chartData = Object.entries(dailyPnL)
       .map(([dateStr, pnl]) => ({
         date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        pnl: Math.round(pnl * 10), // Convert to dollars (10 pip = $1 for standard lot)
+        pnl: Math.round(pnl), // Already in USD
         originalDate: dateStr
       }))
-      .filter(entry => Math.abs(entry.pnl) <= 10000) // Cap at $10,000 per day
+      .filter(entry => Math.abs(entry.pnl) <= 50000) // Cap at $50,000 per day
       .sort((a, b) => new Date(a.originalDate).getTime() - new Date(b.originalDate).getTime())
       .slice(-15); // Show last 15 days for better visibility
     
@@ -732,7 +878,18 @@ const Journal = () => {
                         return (
                           <button
                             key={index}
-                            onClick={() => setSelectedDate(date)}
+                            onClick={() => {
+                              setSelectedDate(date);
+                              // If there are trades on this day, show edit dialog for the most recent one
+                              const dateStr = date.toISOString().split('T')[0];
+                              const dayTrades = entries.filter(entry => {
+                                const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
+                                return entryDate === dateStr;
+                              });
+                              if (dayTrades.length === 1) {
+                                handleEditEntry(dayTrades[0]);
+                              }
+                            }}
                             className={`
                               aspect-square rounded-md text-xs font-medium transition-all relative flex flex-col items-center justify-center
                               ${isCurrentMonth ? 'text-white' : 'text-zinc-600'}
@@ -747,7 +904,7 @@ const Journal = () => {
                               <span className={`text-[8px] font-bold ${
                                 pnl > 0 ? 'text-green-200' : 'text-red-200'
                               }`}>
-                                {formatPnLUSD(pnl)}
+                                {pnl > 0 ? '+' : ''}${Math.abs(pnl).toLocaleString()}
                               </span>
                             )}
                             {pnl === 0 && hasTrades && isCurrentMonth && (
@@ -781,7 +938,7 @@ const Journal = () => {
                   <div className={`text-3xl font-bold mb-2 ${
                     selectedDayPnL >= 0 ? 'text-green-400' : 'text-red-400'
                   }`}>
-                    {formatPnLUSD(selectedDayPnL)}
+                    {selectedDayPnL >= 0 ? '+' : ''}${Math.abs(selectedDayPnL).toLocaleString()}
                   </div>
                   
                   {selectedDayTrades.length > 0 && (
@@ -826,38 +983,48 @@ const Journal = () => {
                      const isWin = entry.status === 'CLOSED' && realPnL > 0;
                      const isLoss = entry.status === 'CLOSED' && realPnL < 0;
                     
-                    return (
-                      <Card key={entry.id} className="bg-zinc-900/30 border-zinc-700">
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-white font-medium">{entry.pair}</span>
-                              <Badge className={`text-xs ${
-                                entry.direction === 'LONG' 
-                                  ? 'bg-green-500/20 text-green-400' 
-                                  : 'bg-red-500/20 text-red-400'
-                              }`}>
-                                {entry.direction}
-                              </Badge>
-                              {entry.status === 'CLOSED' && (
-                                <span className="text-xs">
-                                  {isWin ? '✅' : isLoss ? '❌' : '⚪'}
-                                </span>
-                              )}
-                            </div>
-                            
-                              {entry.status === 'CLOSED' && (
-                                <span className={`text-sm font-bold px-2 py-1 rounded ${
-                                  isWin 
-                                    ? 'bg-green-500/20 text-green-400' 
-                                    : isLoss 
-                                      ? 'bg-red-500/20 text-red-400' 
-                                      : 'text-zinc-400'
-                                }`}>
-                                  {formatPnLUSD(entry.result_pips || 0, entry.lot_size || 1, entry.fees || 0)}
-                                </span>
-                              )}
-                          </div>
+                     return (
+                       <Card key={entry.id} className="bg-zinc-900/30 border-zinc-700">
+                         <CardContent className="p-3">
+                           <div className="flex items-center justify-between">
+                             <div className="flex items-center gap-2">
+                               <span className="text-white font-medium">{entry.pair}</span>
+                               <Badge className={`text-xs ${
+                                 entry.direction === 'LONG' 
+                                   ? 'bg-green-500/20 text-green-400' 
+                                   : 'bg-red-500/20 text-red-400'
+                               }`}>
+                                 {entry.direction}
+                               </Badge>
+                               {entry.status === 'CLOSED' && (
+                                 <span className="text-xs">
+                                   {isWin ? '✅' : isLoss ? '❌' : '⚪'}
+                                 </span>
+                               )}
+                             </div>
+                             
+                             <div className="flex items-center gap-2">
+                               {entry.status === 'CLOSED' && (
+                                 <span className={`text-sm font-bold px-2 py-1 rounded ${
+                                   isWin 
+                                     ? 'bg-green-500/20 text-green-400' 
+                                     : isLoss 
+                                       ? 'bg-red-500/20 text-red-400' 
+                                       : 'text-zinc-400'
+                                 }`}>
+                                   {formatPnLUSD(entry.result_pips || 0, entry.lot_size || 1, entry.fees || 0)}
+                                 </span>
+                               )}
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => handleEditEntry(entry)}
+                                 className="text-zinc-400 hover:text-white"
+                               >
+                                 Edit
+                               </Button>
+                             </div>
+                           </div>
                           
                            {entry.notes && (
                              <p className="text-xs text-zinc-400 mt-2">{entry.notes}</p>
@@ -891,10 +1058,29 @@ const Journal = () => {
       </main>
 
       {/* Add Trade Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      <Dialog open={showAddDialog} onOpenChange={(open) => {
+        setShowAddDialog(open);
+        if (!open) {
+          setEditingEntry(null);
+          setNewEntry({
+            pair: '',
+            entry_price: '',
+            exit_price: '',
+            entry_time: '',
+            direction: 'LONG',
+            strategy: '',
+            lot_size: '',
+            fees: '',
+            feelings: '',
+            mistakes: '',
+            notes: '',
+            status: 'OPEN'
+          });
+        }
+      }}>
         <DialogContent className="max-w-md mx-4 max-h-[85vh] overflow-y-auto bg-zinc-900 border-zinc-700">
           <DialogHeader>
-            <DialogTitle className="text-white">Add New Trade</DialogTitle>
+            <DialogTitle className="text-white">{editingEntry ? 'Edit Trade' : 'Add New Trade'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -1055,11 +1241,11 @@ const Journal = () => {
               Cancel
             </Button>
             <Button 
-              onClick={handleAddEntry} 
+              onClick={editingEntry ? handleUpdateEntry : handleAddEntry} 
               className="bg-primary hover:bg-primary/90 text-black"
               disabled={!newEntry.pair || !newEntry.entry_price || !newEntry.entry_time || !newEntry.strategy}
             >
-              Add Trade
+              {editingEntry ? 'Update Trade' : 'Add Trade'}
             </Button>
           </div>
         </DialogContent>
