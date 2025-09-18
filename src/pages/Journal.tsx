@@ -62,11 +62,14 @@ const Journal = () => {
 
   // Display settings - Calculate actual P&L using lot size
   const calculateRealPnL = (pips: number, lotSize: number = 1, fees: number = 0) => {
-    // Standard lot = 100,000 units, Mini lot = 10,000 units, Micro lot = 1,000 units
-    const pipValue = lotSize * 10; // $10 per pip for standard lot
+    // Handle lot size 0 as micro lot (0.01)
+    const actualLotSize = lotSize === 0 ? 0.01 : lotSize;
+    
+    // Standard lot (1.0) = $10 per pip, Mini lot (0.1) = $1 per pip, Micro lot (0.01) = $0.10 per pip
+    const pipValue = actualLotSize * 10;
     const grossProfit = pips * pipValue;
     const netProfit = grossProfit - fees;
-    return netProfit;
+    return Math.round(netProfit * 100) / 100; // Round to 2 decimal places
   };
 
   const formatPnLUSD = (pips: number, lotSize: number = 1, fees: number = 0) => {
