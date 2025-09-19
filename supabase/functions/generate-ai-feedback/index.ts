@@ -32,24 +32,88 @@ serve(async (req) => {
 
     const { entry } = await req.json();
 
-    // Prepare trade analysis prompt
+    // Get user's trading history for context
+    const { data: userTrades } = await supabaseClient
+      .from('journal_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('entry_time', { ascending: false })
+      .limit(10);
+
+    // Calculate performance metrics
+    const closedTrades = userTrades?.filter(t => t.status === 'CLOSED') || [];
+    const winRate = closedTrades.length > 0 ? 
+      (closedTrades.filter(t => (t.result_pips || 0) > 0).length / closedTrades.length * 100) : 0;
+    
+    const totalPips = closedTrades.reduce((sum, t) => sum + (t.result_pips || 0), 0);
+    const avgWin = closedTrades.filter(t => (t.result_pips || 0) > 0)
+      .reduce((sum, t, _, arr) => sum + (t.result_pips || 0) / arr.length, 0);
+    const avgLoss = closedTrades.filter(t => (t.result_pips || 0) < 0)
+      .reduce((sum, t, _, arr) => sum + Math.abs(t.result_pips || 0) / arr.length, 0);
+
+    // Calculate real P&L
+    const calculateRealPnL = (pips, lotSize, fees) => {
+      if (!pips || !lotSize) return 0;
+      
+      let pipValue = 1; // Default pip value
+      if (entry.pair?.includes('JPY')) {
+        pipValue = lotSize * 1000; // JPY pairs
+      } else if (entry.pair?.includes('XAU') || entry.pair?.includes('GOLD')) {
+        pipValue = lotSize * 100; // Gold
+      } else if (entry.pair?.includes('XAG') || entry.pair?.includes('SILVER')) {
+        pipValue = lotSize * 5000; // Silver  
+      } else {
+        pipValue = lotSize * 10; // Standard forex
+      }
+      
+      return (pips * pipValue) - (fees || 0);
+    };
+
+    const realPnL = entry.result_pips && entry.lot_size ? 
+      calculateRealPnL(entry.result_pips, entry.lot_size, entry.fees || 0) : null;
+
+    // Risk analysis
+    const riskAnalysis = entry.lot_size ? 
+      (entry.lot_size > 1 ? 'HIGH RISK' : entry.lot_size > 0.1 ? 'MODERATE RISK' : 'LOW RISK') : 'UNKNOWN RISK';
+
+    // Prepare comprehensive analysis prompt
     const tradeAnalysis = `
-Trade Analysis Request:
+TRADE PERFORMANCE ANALYSIS - BE BRUTALLY HONEST
+
+Current Trade:
 - Pair: ${entry.pair}
 - Direction: ${entry.direction}
-- Entry: ${entry.entry_price}
-- Exit: ${entry.exit_price || 'Still Open'}
-- Strategy: ${entry.strategy}
-- Result: ${entry.result_pips ? `${entry.result_pips} pips` : 'Pending'}
-- Notes: ${entry.notes || 'No notes provided'}
+- Entry: $${entry.entry_price}
+- Exit: ${entry.exit_price ? `$${entry.exit_price}` : 'STILL OPEN'}
+- Strategy: ${entry.strategy || 'NO STRATEGY SPECIFIED'}
+- Result: ${entry.result_pips ? `${entry.result_pips} pips` : 'PENDING'}
+- Lot Size: ${entry.lot_size || 'NOT SPECIFIED'}
+- Real P&L: ${realPnL ? `$${realPnL.toFixed(2)}` : 'UNKNOWN'}
+- Risk Level: ${riskAnalysis}
+- Fees: $${entry.fees || 0}
+- Notes: ${entry.notes || 'NO NOTES'}
+- Feelings: ${entry.feelings || 'NOT RECORDED'}
+- Lessons: ${entry.mistakes || 'NONE NOTED'}
 
-Please provide concise feedback covering:
-1. Trade setup quality (1-2 sentences)
-2. Risk management assessment (1-2 sentences) 
-3. One key improvement suggestion
-4. Overall rating: Excellent/Good/Average/Poor
+Trader Performance Context:
+- Total Closed Trades: ${closedTrades.length}
+- Win Rate: ${winRate.toFixed(1)}%
+- Total Pips: ${totalPips > 0 ? '+' : ''}${totalPips}
+- Avg Win: ${avgWin.toFixed(1)} pips
+- Avg Loss: ${avgLoss.toFixed(1)} pips
+- Risk:Reward Ratio: ${avgLoss > 0 ? (avgWin/avgLoss).toFixed(2) : 'N/A'}
 
-Keep response under 150 words and focus on actionable insights.
+ANALYSIS REQUIREMENTS:
+1. 🚨 HARSH REALITY CHECK: Point out obvious mistakes, poor risk management, or bad habits
+2. 📊 PERFORMANCE CRITIQUE: How does this trade fit their overall performance pattern?
+3. 💰 RISK ASSESSMENT: Is their position sizing appropriate? Are they risking too much?
+4. 🎯 EXECUTION ANALYSIS: Was entry/exit timing optimal? Strategy followed correctly?
+5. 🧠 PSYCHOLOGICAL ASSESSMENT: Based on notes/feelings, what mental state issues exist?
+6. 📈 SPECIFIC IMPROVEMENTS: 3 concrete actions they must take
+7. ⭐ RATING: Grade this trade A-F and justify why
+
+Be direct, critical, and focus on real improvement. Don't sugarcoat poor performance.
+Maximum 300 words. No fluff.
 `;
 
     // Call OpenAI API for analysis
@@ -64,15 +128,15 @@ Keep response under 150 words and focus on actionable insights.
         messages: [
           {
             role: 'system',
-            content: 'You are an expert forex trading mentor. Provide concise, actionable feedback on trades to help traders improve. Be encouraging but honest about areas for improvement.'
+            content: 'You are a ruthlessly honest elite trading mentor. Your job is to identify weaknesses, call out mistakes, and provide brutal but constructive feedback. Traders need harsh reality checks to improve, not false encouragement. Be direct, specific, and critical when performance is poor.'
           },
           {
             role: 'user',
             content: tradeAnalysis
           }
         ],
-        max_tokens: 200,
-        temperature: 0.7,
+        max_tokens: 400,
+        temperature: 0.3,
       }),
     });
 
