@@ -131,7 +131,7 @@ const Journal = () => {
     return dayTrades.reduce((sum, entry) => {
       const pips = entry.result_pips || 0;
       if (Math.abs(pips) > 1000) return sum; // Skip unrealistic values
-      return sum + calculateRealPnL(pips, entry.lot_size || 1, entry.fees || 0);
+      return sum + calculateRealPnL(pips, entry.lot_size, entry.fees || 0);
     }, 0);
   };
 
@@ -608,8 +608,8 @@ const Journal = () => {
         
         const date = new Date(entry.entry_time).toISOString().split('T')[0];
         // Convert pips to USD using lot size
-        const usdPnL = calculateRealPnL(pips, entry.lot_size || 1, entry.fees || 0);
-        console.log(`💰 Trade P&L: ${pips} pips = $${usdPnL} (lot: ${entry.lot_size || 1}, fees: ${entry.fees || 0})`);
+        const usdPnL = calculateRealPnL(pips, entry.lot_size, entry.fees || 0);
+        console.log(`💰 Trade P&L: ${pips} pips = $${usdPnL} (lot: ${entry.lot_size}, fees: ${entry.fees || 0})`);
         dailyPnL[date] = (dailyPnL[date] || 0) + usdPnL;
       }
     });
@@ -996,7 +996,7 @@ const Journal = () => {
                      Trades for {formatSelectedDate()}
                    </h3>
                    {selectedDayTrades.map((entry) => {
-                     const realPnL = entry.status === 'CLOSED' ? calculateRealPnL(entry.result_pips || 0, entry.lot_size || 1, entry.fees || 0) : 0;
+                     const realPnL = entry.status === 'CLOSED' ? calculateRealPnL(entry.result_pips || 0, entry.lot_size, entry.fees || 0) : 0;
                      const isWin = entry.status === 'CLOSED' && realPnL > 0;
                      const isLoss = entry.status === 'CLOSED' && realPnL < 0;
                     
@@ -1029,7 +1029,7 @@ const Journal = () => {
                                        ? 'bg-red-500/20 text-red-400' 
                                        : 'text-zinc-400'
                                  }`}>
-                                   {formatPnLUSD(entry.result_pips || 0, entry.lot_size || 1, entry.fees || 0)}
+                                   {formatPnLUSD(entry.result_pips || 0, entry.lot_size, entry.fees || 0)}
                                  </span>
                                )}
                                <Button
