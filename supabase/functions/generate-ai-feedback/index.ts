@@ -76,45 +76,85 @@ serve(async (req) => {
     const riskAnalysis = entry.lot_size ? 
       (entry.lot_size > 1 ? 'HIGH RISK' : entry.lot_size > 0.1 ? 'MODERATE RISK' : 'LOW RISK') : 'UNKNOWN RISK';
 
+    // Enhanced risk-reward calculation
+    const calculateRiskReward = () => {
+      if (!entry.entry_price || !entry.exit_price || !entry.result_pips) return 'N/A';
+      
+      const entryPrice = parseFloat(entry.entry_price);
+      const exitPrice = parseFloat(entry.exit_price);
+      const pips = parseFloat(entry.result_pips);
+      
+      // Estimate stop loss distance (assume 2:1 RR target)
+      const estimatedStopDistance = Math.abs(pips) / 2;
+      const actualRR = Math.abs(pips) / estimatedStopDistance;
+      
+      return actualRR.toFixed(2);
+    };
+
+    // Market context analysis
+    const getMarketContext = () => {
+      const hour = new Date(entry.entry_time).getHours();
+      if (hour >= 2 && hour < 5) return 'SYDNEY SESSION - Lower liquidity';
+      if (hour >= 8 && hour < 12) return 'LONDON SESSION - High volatility';
+      if (hour >= 13 && hour < 17) return 'LONDON/NY OVERLAP - Peak activity';
+      if (hour >= 17 && hour < 21) return 'NEW YORK SESSION - Good liquidity';
+      return 'OFF-HOURS - Reduced activity';
+    };
+
+    // Recent pattern analysis
+    const recentTrades = userTrades?.slice(0, 5) || [];
+    const recentWins = recentTrades.filter(t => (t.result_pips || 0) > 0).length;
+    const recentLosses = recentTrades.filter(t => (t.result_pips || 0) < 0).length;
+    const streak = recentWins > recentLosses ? `${recentWins} wins` : `${recentLosses} losses`;
+
     // Prepare comprehensive analysis prompt
     const tradeAnalysis = `
-TRADE PERFORMANCE ANALYSIS - BE BRUTALLY HONEST
+ELITE TRADING PERFORMANCE AUDIT - BRUTAL HONESTY REQUIRED
 
-Current Trade:
-- Pair: ${entry.pair}
+═══ CURRENT TRADE BREAKDOWN ═══
+📊 Trade Details:
+- Asset: ${entry.pair} (${getMarketContext()})
 - Direction: ${entry.direction}
-- Entry: $${entry.entry_price}
-- Exit: ${entry.exit_price ? `$${entry.exit_price}` : 'STILL OPEN'}
-- Strategy: ${entry.strategy || 'NO STRATEGY SPECIFIED'}
-- Result: ${entry.result_pips ? `${entry.result_pips} pips` : 'PENDING'}
-- Lot Size: ${entry.lot_size || 'NOT SPECIFIED'}
-- Real P&L: ${realPnL ? `$${realPnL.toFixed(2)}` : 'UNKNOWN'}
-- Risk Level: ${riskAnalysis}
-- Fees: $${entry.fees || 0}
-- Notes: ${entry.notes || 'NO NOTES'}
-- Feelings: ${entry.feelings || 'NOT RECORDED'}
-- Lessons: ${entry.mistakes || 'NONE NOTED'}
+- Entry: $${entry.entry_price} | Exit: ${entry.exit_price ? `$${entry.exit_price}` : 'STILL OPEN'}
+- Strategy: ${entry.strategy || '❌ NO STRATEGY DEFINED - RED FLAG'}
+- Result: ${entry.result_pips ? `${entry.result_pips > 0 ? '+' : ''}${entry.result_pips} pips` : 'PENDING'}
+- Position Size: ${entry.lot_size || '❌ UNSPECIFIED - RISK MANAGEMENT FAILURE'}
+- Risk:Reward: ${calculateRiskReward()}
+- Real P&L: ${realPnL ? `$${realPnL.toFixed(2)}` : '❌ UNKNOWN - POOR TRACKING'}
+- Risk Category: ${riskAnalysis}
+- Trading Costs: $${entry.fees || 0}
 
-Trader Performance Context:
-- Total Closed Trades: ${closedTrades.length}
-- Win Rate: ${winRate.toFixed(1)}%
-- Total Pips: ${totalPips > 0 ? '+' : ''}${totalPips}
-- Avg Win: ${avgWin.toFixed(1)} pips
-- Avg Loss: ${avgLoss.toFixed(1)} pips
-- Risk:Reward Ratio: ${avgLoss > 0 ? (avgWin/avgLoss).toFixed(2) : 'N/A'}
+🧠 Psychology & Execution:
+- Mental State: ${entry.feelings || '❌ EMOTIONS NOT TRACKED'}
+- Trade Notes: ${entry.notes || '❌ NO DOCUMENTATION - UNPROFESSIONAL'}
+- Identified Mistakes: ${entry.mistakes || '❌ NO SELF-REFLECTION RECORDED'}
 
-ANALYSIS REQUIREMENTS:
-1. 🚨 HARSH REALITY CHECK: Point out obvious mistakes, poor risk management, or bad habits
-2. 📊 PERFORMANCE CRITIQUE: How does this trade fit their overall performance pattern?
-3. 💰 RISK ASSESSMENT: Is their position sizing appropriate? Are they risking too much?
-4. 🎯 EXECUTION ANALYSIS: Was entry/exit timing optimal? Strategy followed correctly?
-5. 🧠 PSYCHOLOGICAL ASSESSMENT: Based on notes/feelings, what mental state issues exist?
-6. 📈 SPECIFIC IMPROVEMENTS: 3 concrete actions they must take
-7. ⭐ RATING: Grade this trade A-F and justify why
+═══ TRADER PROFILE ANALYSIS ═══
+📈 Performance Metrics:
+- Total Trades Completed: ${closedTrades.length}
+- Win Rate: ${winRate.toFixed(1)}% ${winRate < 50 ? '❌ BELOW BREAK-EVEN' : winRate > 60 ? '✅ SOLID' : '⚠️ MARGINAL'}
+- Net Pips: ${totalPips > 0 ? '+' : ''}${totalPips} ${totalPips < 0 ? '❌ LOSING MONEY' : '✅'}
+- Average Win: ${avgWin.toFixed(1)} pips | Average Loss: ${avgLoss.toFixed(1)} pips
+- Risk:Reward Ratio: ${avgLoss > 0 ? (avgWin/avgLoss).toFixed(2) + (avgWin/avgLoss < 1.5 ? ' ❌ TERRIBLE RR' : ' ✅') : 'INSUFFICIENT DATA'}
+- Recent Pattern (Last 5): ${streak} ${recentLosses > 3 ? '❌ LOSING STREAK' : ''}
 
-Be direct, critical, and focus on real improvement. Don't sugarcoat poor performance.
-Maximum 300 words. No fluff.
-`;
+═══ MANDATORY ANALYSIS FRAMEWORK ═══
+Your analysis must address ALL 7 areas with brutal honesty:
+
+1. 🚨 REALITY CHECK: What went wrong? Poor execution, bad timing, emotion-driven decisions?
+2. 📊 PATTERN ANALYSIS: Does this trade show improvement or regression in their skills?
+3. 💰 RISK EVALUATION: Is position sizing destroying their account? Too aggressive/conservative?
+4. 🎯 EXECUTION GRADE: Entry/exit quality, strategy adherence, timing
+5. 🧠 PSYCHOLOGY AUDIT: Mental state issues, emotional control, discipline failures
+6. 📈 ACTION PLAN: 3 specific, measurable improvements they MUST implement immediately
+7. ⭐ TRADE GRADE: A-F rating with harsh justification
+
+CRITICAL INSTRUCTIONS:
+- Be ruthlessly honest - losing traders need harsh reality, not comfort
+- Focus on actionable improvements, not generic advice
+- Call out specific failures and bad habits
+- Maximum 350 words - every word must add value
+- Use direct, professional language that forces self-reflection`;
 
     // Call OpenAI API for analysis
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -124,30 +164,50 @@ Maximum 300 words. No fluff.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini-2025-08-07',
         messages: [
           {
             role: 'system',
-            content: 'You are a ruthlessly honest elite trading mentor. Your job is to identify weaknesses, call out mistakes, and provide brutal but constructive feedback. Traders need harsh reality checks to improve, not false encouragement. Be direct, specific, and critical when performance is poor.'
+            content: 'You are an elite institutional trading mentor with 20+ years experience. Your analysis combines brutal honesty with actionable insights. You identify patterns, expose weaknesses, and provide specific solutions. Your feedback has helped thousands of traders achieve consistent profitability through disciplined execution and proper risk management. Be direct, analytical, and focus on measurable improvements.'
           },
           {
             role: 'user',
             content: tradeAnalysis
           }
         ],
-        max_tokens: 400,
-        temperature: 0.3,
+        max_completion_tokens: 450,
+        top_p: 0.95,
       }),
     });
 
     if (!openAIResponse.ok) {
-      throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+      const errorText = await openAIResponse.text();
+      console.error('OpenAI API Error:', {
+        status: openAIResponse.status,
+        statusText: openAIResponse.statusText,
+        error: errorText
+      });
+      throw new Error(`OpenAI API error: ${openAIResponse.status} - ${errorText}`);
     }
 
     const aiResponse = await openAIResponse.json();
+    console.log('AI Analysis Generated:', {
+      trade_id: entry.id,
+      pair: entry.pair,
+      result_pips: entry.result_pips,
+      feedback_length: aiResponse.choices[0].message.content.length
+    });
+
     const feedback = aiResponse.choices[0].message.content;
 
-    return new Response(JSON.stringify({ feedback }), {
+    return new Response(JSON.stringify({ 
+      feedback,
+      analysis_metadata: {
+        trade_pair: entry.pair,
+        performance_context: `${winRate.toFixed(1)}% win rate, ${totalPips} total pips`,
+        model_used: 'gpt-5-mini-2025-08-07'
+      }
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
