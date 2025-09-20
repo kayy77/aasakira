@@ -385,14 +385,13 @@ const Journal = () => {
       const entryDate = new Date((data as any).entry_time);
       setCurrentDate(entryDate);
       setSelectedDate(entryDate);
-      setShowAddDialog(false);
       
-      // Reset form
+      // Reset form for next trade (keep dialog open)
       setNewEntry({
         pair: '',
         entry_price: '',
         exit_price: '',
-        entry_time: '',
+        entry_time: newEntry.entry_time, // Keep the same date
         direction: 'LONG',
         strategy: '',
         lot_size: '',
@@ -405,7 +404,7 @@ const Journal = () => {
 
       toast({
         title: "Trade Added Successfully!",
-        description: `${entryData.pair} ${entryData.direction} trade added to your journal`,
+        description: `${entryData.pair} ${entryData.direction} trade added. Add another or close to finish.`,
       });
 
     } catch (error: any) {
@@ -1651,15 +1650,52 @@ const Journal = () => {
                 status: 'OPEN'
               });
             }} className="border-zinc-600 text-white hover:bg-zinc-800">
-              Cancel
+              {editingEntry ? 'Cancel' : 'Close'}
             </Button>
-            <Button 
-              onClick={editingEntry ? handleUpdateEntry : handleAddEntry} 
-              className="bg-primary hover:bg-primary/90 text-black"
-              disabled={!newEntry.pair || !newEntry.entry_price || !newEntry.entry_time || !newEntry.strategy}
-            >
-              {editingEntry ? 'Update Trade' : 'Add Trade'}
-            </Button>
+            {editingEntry ? (
+              <Button 
+                onClick={handleUpdateEntry} 
+                className="bg-primary hover:bg-primary/90 text-black"
+                disabled={!newEntry.pair || !newEntry.entry_price || !newEntry.entry_time || !newEntry.strategy}
+              >
+                Update Trade
+              </Button>
+            ) : (
+              <>
+                <Button 
+                  onClick={handleAddEntry} 
+                  variant="outline"
+                  className="border-primary text-primary hover:bg-primary/10"
+                  disabled={!newEntry.pair || !newEntry.entry_price || !newEntry.entry_time || !newEntry.strategy}
+                >
+                  Add & Continue
+                </Button>
+                <Button 
+                  onClick={async () => {
+                    await handleAddEntry();
+                    setShowAddDialog(false);
+                    setNewEntry({
+                      pair: '',
+                      entry_price: '',
+                      exit_price: '',
+                      entry_time: '',
+                      direction: 'LONG',
+                      strategy: '',
+                      lot_size: '',
+                      fees: '',
+                      feelings: '',
+                      mistakes: '',
+                      notes: '',
+                      status: 'OPEN'
+                    });
+                  }}
+                  className="bg-primary hover:bg-primary/90 text-black"
+                  disabled={!newEntry.pair || !newEntry.entry_price || !newEntry.entry_time || !newEntry.strategy}
+                >
+                  Add & Close
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
