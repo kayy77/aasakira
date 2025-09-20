@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, BarChart3, Brain, Filter } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, BarChart3, Brain, Filter, MoreVertical, Edit, Trash2, Loader2 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, Cell } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -200,20 +201,36 @@ const Journal = () => {
   };
 
   const handleAddEntry = async () => {
-    if (!user) return;
-
-    // Validate required fields
-    if (!newEntry.pair || !newEntry.entry_price || !newEntry.entry_time || !newEntry.strategy) {
+    if (!user) {
+      console.error('❌ No user found');
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields: Currency Pair, Entry Price, Entry Time, and Strategy",
+        title: "Authentication Error",
+        description: "Please log in to add trades",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // More detailed validation with specific field checks
+    const requiredFields = [];
+    if (!newEntry.pair.trim()) requiredFields.push("Currency Pair");
+    if (!newEntry.entry_price.trim()) requiredFields.push("Entry Price");
+    if (!newEntry.entry_time.trim()) requiredFields.push("Entry Time");
+    if (!newEntry.strategy.trim()) requiredFields.push("Strategy");
+
+    if (requiredFields.length > 0) {
+      console.error('❌ Validation failed:', { requiredFields, newEntry });
+      toast({
+        title: "Validation Error", 
+        description: `Please fill in: ${requiredFields.join(', ')}`,
         variant: "destructive"
       });
       return;
     }
 
     // Validate exit price if status is closed
-    if (newEntry.status === 'CLOSED' && !newEntry.exit_price) {
+    if (newEntry.status === 'CLOSED' && !newEntry.exit_price.trim()) {
+      console.error('❌ Exit price required for closed trade');
       toast({
         title: "Validation Error",
         description: "Exit price is required for closed trades",
@@ -222,23 +239,38 @@ const Journal = () => {
       return;
     }
 
-    console.log('🔄 Adding journal entry...', { newEntry, user: user.id });
+    // Validate numeric fields
+    if (isNaN(parseFloat(newEntry.entry_price))) {
+      toast({
+        title: "Validation Error",
+        description: "Entry price must be a valid number",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('🔄 Adding journal entry...', { 
+      newEntry, 
+      user: user.id,
+      timestamp: new Date().toISOString()
+    });
 
     try {
       const entryData: any = {
         user_id: user.id,
-        pair: newEntry.pair,
+        pair: newEntry.pair.trim().toUpperCase(),
         entry_price: parseFloat(newEntry.entry_price),
         exit_price: newEntry.exit_price ? parseFloat(newEntry.exit_price) : null,
         entry_time: newEntry.entry_time,
+        exit_time: newEntry.status === 'CLOSED' ? new Date().toISOString() : null,
         direction: newEntry.direction,
-        strategy: newEntry.strategy,
+        strategy: newEntry.strategy.trim(),
         lot_size: newEntry.lot_size ? parseFloat(newEntry.lot_size) : null,
         fees: newEntry.fees ? parseFloat(newEntry.fees) : 0,
-        feelings: newEntry.feelings || null,
-        mistakes: newEntry.mistakes || null,
+        feelings: newEntry.feelings?.trim() || null,
+        mistakes: newEntry.mistakes?.trim() || null,
         status: newEntry.status,
-        notes: newEntry.notes || null,
+        notes: newEntry.notes?.trim() || null,
       };
 
       console.log('📤 Sending to database:', entryData);
@@ -275,6 +307,12 @@ const Journal = () => {
 
         entryData.result_pips = Math.round(pips * 10) / 10;
         entryData.result_percentage = Math.round(percentage * 100) / 100;
+
+        console.log('📊 Calculated metrics:', {
+          pips: entryData.result_pips,
+          percentage: entryData.result_percentage,
+          pipMultiplier
+        });
       }
 
       const { data, error } = await supabase
@@ -285,7 +323,12 @@ const Journal = () => {
 
       if (error) {
         console.error('❌ Database error:', error);
-        throw error;
+        toast({
+          title: "Database Error",
+          description: error.message || "Failed to save trade to database",
+          variant: "destructive"
+        });
+        return;
       }
 
       console.log('✅ Trade saved successfully:', data);
@@ -297,6 +340,8 @@ const Journal = () => {
       setCurrentDate(entryDate);
       setSelectedDate(entryDate);
       setShowAddDialog(false);
+      
+      // Reset form
       setNewEntry({
         pair: '',
         entry_price: '',
@@ -313,14 +358,15 @@ const Journal = () => {
       });
 
       toast({
-        title: "Trade Added",
-        description: "Journal entry created successfully",
+        title: "Trade Added Successfully!",
+        description: `${entryData.pair} ${entryData.direction} trade added to your journal`,
       });
-    } catch (error) {
-      console.error('Error adding entry:', error);
+
+    } catch (error: any) {
+      console.error('❌ Unexpected error adding entry:', error);
       toast({
         title: "Error",
-        description: "Failed to add journal entry",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive"
       });
     }
@@ -989,84 +1035,214 @@ const Journal = () => {
                 </Card>
               )}
 
-              {/* Trade List for Selected Day */}
+              {/* Enhanced Trade List for Selected Day */}
               {selectedDayTrades.length > 0 && (
-                 <div className="space-y-2">
-                   <h3 className="text-white font-medium text-sm mb-3">
-                     Trades for {formatSelectedDate()}
-                   </h3>
-                   {selectedDayTrades.map((entry) => {
-                     const realPnL = entry.status === 'CLOSED' ? calculateRealPnL(entry.result_pips || 0, entry.lot_size, entry.fees || 0) : 0;
-                     const isWin = entry.status === 'CLOSED' && realPnL > 0;
-                     const isLoss = entry.status === 'CLOSED' && realPnL < 0;
-                    
-                     return (
-                       <Card key={entry.id} className="bg-zinc-900/30 border-zinc-700">
-                         <CardContent className="p-3">
-                           <div className="flex items-center justify-between">
-                             <div className="flex items-center gap-2">
-                               <span className="text-white font-medium">{entry.pair}</span>
-                               <Badge className={`text-xs ${
-                                 entry.direction === 'LONG' 
-                                   ? 'bg-green-500/20 text-green-400' 
-                                   : 'bg-red-500/20 text-red-400'
-                               }`}>
-                                 {entry.direction}
-                               </Badge>
-                               {entry.status === 'CLOSED' && (
-                                 <span className="text-xs">
-                                   {isWin ? '✅' : isLoss ? '❌' : '⚪'}
-                                 </span>
-                               )}
-                             </div>
-                             
-                             <div className="flex items-center gap-2">
-                               {entry.status === 'CLOSED' && (
-                                 <span className={`text-sm font-bold px-2 py-1 rounded ${
-                                   isWin 
-                                     ? 'bg-green-500/20 text-green-400' 
-                                     : isLoss 
-                                       ? 'bg-red-500/20 text-red-400' 
-                                       : 'text-zinc-400'
-                                 }`}>
-                                   {formatPnLUSD(entry.result_pips || 0, entry.lot_size, entry.fees || 0)}
-                                 </span>
-                               )}
-                               <Button
-                                 variant="ghost"
-                                 size="sm"
-                                 onClick={() => handleEditEntry(entry)}
-                                 className="text-zinc-400 hover:text-white"
-                               >
-                                 Edit
-                               </Button>
-                             </div>
-                           </div>
+                <Card className="bg-zinc-900/50 border-zinc-700">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-white flex items-center gap-2">
+                        Trades on {formatSelectedDate()}
+                        <Badge variant="secondary" className="bg-zinc-800 text-white ml-2">
+                          {selectedDayTrades.length} trade{selectedDayTrades.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </CardTitle>
+                      <Button
+                        onClick={() => {
+                          const dateTimeStr = selectedDate.toISOString().slice(0, 16);
+                          setNewEntry({
+                            ...newEntry,
+                            entry_time: dateTimeStr
+                          });
+                          setShowAddDialog(true);
+                        }}
+                        className="bg-primary hover:bg-primary/90 text-black"
+                        size="sm"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Trade
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {selectedDayTrades.map((entry) => {
+                      const realPnL = entry.status === 'CLOSED' ? calculateRealPnL(entry.result_pips || 0, entry.lot_size, entry.fees || 0) : 0;
+                      const isWin = entry.status === 'CLOSED' && realPnL > 0;
+                      const isLoss = entry.status === 'CLOSED' && realPnL < 0;
+                     
+                      return (
+                        <div key={entry.id} className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700 hover:border-zinc-600 transition-colors">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant={entry.direction === 'LONG' ? 'default' : 'secondary'}
+                                className={entry.direction === 'LONG' 
+                                  ? 'bg-green-600 hover:bg-green-700 text-white' 
+                                  : 'bg-red-600 hover:bg-red-700 text-white'
+                                }
+                              >
+                                {entry.pair} {entry.direction}
+                              </Badge>
+                              <Badge variant="outline" className="border-zinc-600 text-zinc-300">
+                                {entry.strategy}
+                              </Badge>
+                              <Badge 
+                                variant="outline" 
+                                className={`border-zinc-600 ${
+                                  entry.status === 'OPEN' ? 'text-blue-400' : 
+                                  entry.status === 'CLOSED' ? 'text-green-400' : 'text-gray-400'
+                                }`}
+                              >
+                                {entry.status}
+                              </Badge>
+                              {entry.status === 'CLOSED' && (
+                                <span className="text-lg">
+                                  {isWin ? '✅' : isLoss ? '❌' : '⚪'}
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {entry.status === 'CLOSED' && (
+                                <div className={`font-mono text-base font-bold px-3 py-1 rounded ${
+                                  isWin 
+                                    ? 'bg-green-500/20 text-green-400' 
+                                    : isLoss 
+                                      ? 'bg-red-500/20 text-red-400' 
+                                      : 'bg-zinc-600/20 text-zinc-400'
+                                }`}>
+                                  {formatPnLUSD(entry.result_pips || 0, entry.lot_size, entry.fees || 0)}
+                                </div>
+                              )}
+                              
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-zinc-800 border-zinc-700">
+                                  <DropdownMenuItem 
+                                    onClick={() => handleEditEntry(entry)}
+                                    className="text-white hover:bg-zinc-700"
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => generateAIFeedback(entry.id)}
+                                    disabled={generatingAI === entry.id || !isPremium}
+                                    className="text-white hover:bg-zinc-700"
+                                  >
+                                    {generatingAI === entry.id ? (
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                      <Brain className="h-4 w-4 mr-2" />
+                                    )}
+                                    {!isPremium ? 'AI Analysis (Premium)' : 'AI Analysis'}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleDeleteEntry(entry.id)}
+                                    className="text-red-400 hover:bg-red-900/20"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
                           
-                           {entry.notes && (
-                             <p className="text-xs text-zinc-400 mt-2">{entry.notes}</p>
-                           )}
-                           
-                           {/* Display lot size, fees, feelings, and mistakes */}
-                           <div className="mt-3 space-y-1">
-                             {entry.lot_size && (
-                               <p className="text-xs text-zinc-500">Lot Size: {entry.lot_size}</p>
-                             )}
-                             {entry.fees && entry.fees > 0 && (
-                               <p className="text-xs text-zinc-500">Fees: ${entry.fees}</p>
-                             )}
-                             {entry.feelings && (
-                               <p className="text-xs text-amber-400">Feelings: {entry.feelings}</p>
-                             )}
-                             {entry.mistakes && (
-                               <p className="text-xs text-blue-400">Lessons: {entry.mistakes}</p>
-                             )}
-                           </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+                          <div className="grid grid-cols-4 gap-3 text-sm">
+                            <div>
+                              <span className="text-zinc-500">Entry:</span>
+                              <div className="text-white font-mono">{entry.entry_price}</div>
+                            </div>
+                            {entry.exit_price && (
+                              <div>
+                                <span className="text-zinc-500">Exit:</span>
+                                <div className="text-white font-mono">{entry.exit_price}</div>
+                              </div>
+                            )}
+                            <div>
+                              <span className="text-zinc-500">Size:</span>
+                              <div className="text-white">{entry.lot_size || 'N/A'}</div>
+                            </div>
+                            {entry.result_pips && (
+                              <div>
+                                <span className="text-zinc-500">Pips:</span>
+                                <div className={`font-mono font-bold ${entry.result_pips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {entry.result_pips >= 0 ? '+' : ''}{entry.result_pips}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {(entry.notes || entry.feelings || entry.mistakes) && (
+                            <div className="mt-3 space-y-1 text-sm">
+                              {entry.notes && (
+                                <div>
+                                  <span className="text-zinc-500">Notes:</span>
+                                  <div className="text-zinc-300 mt-1">{entry.notes}</div>
+                                </div>
+                              )}
+                              {entry.feelings && (
+                                <div>
+                                  <span className="text-zinc-500">Feelings:</span>
+                                  <div className="text-zinc-300 mt-1">{entry.feelings}</div>
+                                </div>
+                              )}
+                              {entry.mistakes && (
+                                <div>
+                                  <span className="text-zinc-500">Mistakes:</span>
+                                  <div className="text-red-300 mt-1">{entry.mistakes}</div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {entry.ai_feedback && (
+                            <div className="mt-3 p-3 bg-zinc-900/50 rounded border border-purple-500/30">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Brain className="h-4 w-4 text-purple-400" />
+                                <span className="text-sm font-medium text-purple-400">AI Analysis</span>
+                              </div>
+                              <p className="text-sm text-zinc-300 whitespace-pre-line">{entry.ai_feedback}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Daily Summary Stats */}
+                    <div className="bg-zinc-800/30 rounded-lg p-4 border border-zinc-700 mt-4">
+                      <div className="text-center">
+                        <div className="text-sm text-zinc-400 mb-3">Daily Summary</div>
+                        <div className="grid grid-cols-3 gap-6">
+                          <div>
+                            <div className="text-xl font-mono font-bold text-white">
+                              {selectedDayTrades.filter(e => e.status === 'CLOSED').length}
+                            </div>
+                            <div className="text-xs text-zinc-500">Closed Trades</div>
+                          </div>
+                          <div>
+                            <div className={`text-xl font-mono font-bold ${
+                              selectedDayPnL >= 0 ? 'text-green-400' : 'text-red-400'
+                            }`}>
+                              {selectedDayPnL >= 0 ? '+' : ''}${Math.abs(selectedDayPnL).toLocaleString()}
+                            </div>
+                            <div className="text-xs text-zinc-500">Day P&L</div>
+                          </div>
+                          <div>
+                            <div className="text-xl font-mono font-bold text-blue-400">
+                              {selectedDayTrades.filter(e => e.status === 'OPEN').length}
+                            </div>
+                            <div className="text-xs text-zinc-500">Open Trades</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           </div>
