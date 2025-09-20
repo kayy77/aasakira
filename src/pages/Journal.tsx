@@ -110,7 +110,21 @@ const Journal = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setEntries((data || []) as JournalEntry[]);
+      
+      // Filter out any remaining entries with unrealistic values
+      const validEntries = (data || []).filter(entry => {
+        const isValid = entry.pair && entry.pair.trim() !== '' && 
+                       entry.entry_price > 0 && 
+                       (entry.result_pips === null || Math.abs(entry.result_pips) <= 500);
+        
+        if (!isValid) {
+          console.warn('⚠️ Filtering out invalid entry:', entry);
+        }
+        return isValid;
+      });
+      
+      setEntries(validEntries as JournalEntry[]);
+      console.log(`✅ Loaded ${validEntries.length} valid journal entries`);
     } catch (error) {
       console.error('Error loading journal entries:', error);
       toast({
@@ -127,13 +141,19 @@ const Journal = () => {
     const dateStr = date.toISOString().split('T')[0];
     const dayTrades = entries.filter(entry => {
       const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
-      return entryDate === dateStr && entry.status === 'CLOSED';
+      return entryDate === dateStr && entry.status === 'CLOSED' && entry.result_pips !== null;
     });
     
     return dayTrades.reduce((sum, entry) => {
       const pips = entry.result_pips || 0;
-      if (Math.abs(pips) > 1000) return sum; // Skip unrealistic values
-      return sum + calculateRealPnL(pips, entry.lot_size, entry.fees || 0);
+      // Skip unrealistic values (over 500 pips for most pairs)
+      if (Math.abs(pips) > 500) {
+        console.warn(`⚠️ Skipping unrealistic pip value: ${pips} for ${entry.pair}`);
+        return sum;
+      }
+      const pnl = calculateRealPnL(pips, entry.lot_size, entry.fees || 0);
+      console.log(`💰 Trade P&L: ${pips} pips = $${pnl} (lot: ${entry.lot_size}, fees: ${entry.fees || 0})`);
+      return sum + pnl;
     }, 0);
   };
 
@@ -318,13 +338,26 @@ const Journal = () => {
           percentage = ((entryPrice - exitPrice) / entryPrice) * 100;
         }
 
+        // Validate calculated pips to prevent unrealistic values
+        if (Math.abs(pips) > 500) {
+          console.warn(`⚠️ Calculated pips seem unrealistic: ${pips} for ${newEntry.pair}`);
+          toast({
+            title: "Warning",
+            description: `Calculated pips (${Math.round(pips)}) seem high. Please verify your entry and exit prices.`,
+            variant: "destructive"
+          });
+        }
+
         entryData.result_pips = Math.round(pips * 10) / 10;
         entryData.result_percentage = Math.round(percentage * 100) / 100;
 
         console.log('📊 Calculated metrics:', {
           pips: entryData.result_pips,
           percentage: entryData.result_percentage,
-          pipMultiplier
+          pipMultiplier,
+          entryPrice,
+          exitPrice,
+          direction
         });
       }
 
