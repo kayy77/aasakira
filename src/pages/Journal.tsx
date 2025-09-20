@@ -837,48 +837,59 @@ const Journal = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <main className="pt-20 pb-8">
         <div className="max-w-6xl mx-auto px-6">
           {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-green-400 mb-1">Stop emotional</h1>
-            <h2 className="text-2xl font-bold text-white mb-2">trading</h2>
-            <p className="text-zinc-400 text-sm">Eliminate losses on bad days</p>
+          <div className="text-center mb-8 animate-fade-in">
+            <h1 className="text-4xl font-bold gradient-text mb-2">Trading Journal</h1>
+            <h2 className="text-xl font-zen-maru text-muted-foreground mb-2">Master Your Trading Psychology</h2>
+            <p className="text-muted-foreground text-sm">Track performance • Analyze patterns • Eliminate emotional trading</p>
           </div>
 
-          {/* Overall P/L and Filter Controls */}
-          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="bg-zinc-900/50 border-zinc-700">
-              <CardContent className="p-4">
+          {/* Performance Overview */}
+          <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up">
+            <Card className="glass-card hover-lift overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyber-purple-500/10 to-cyber-blue-500/10 pointer-events-none" />
+              <CardContent className="p-6 relative">
                 <div className="text-center">
-                  <p className="text-sm text-zinc-400 mb-1">P/L ({timeFilter})</p>
-                   <p className={`text-3xl font-bold ${
-                     stats.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'
-                   }`}>
-                     ${stats.totalPnL >= 0 ? '+' : ''}${Math.abs(stats.totalPnL).toLocaleString()}
-                   </p>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    {stats.totalTrades} trades • {stats.winRate}% win rate
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    <p className="text-sm text-muted-foreground font-medium">Total P/L ({timeFilter})</p>
+                  </div>
+                  <p className={`text-4xl font-bold font-zen-maru mb-2 ${
+                    stats.totalPnL >= 0 
+                      ? 'text-neon-green-400 neon-text' 
+                      : 'text-red-400 neon-text'
+                  }`}>
+                    ${stats.totalPnL >= 0 ? '+' : ''}${Math.abs(stats.totalPnL).toLocaleString()}
                   </p>
+                  <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+                    <span>{stats.totalTrades} trades</span>
+                    <div className="h-4 w-px bg-border" />
+                    <span className={stats.winRate >= 50 ? 'text-neon-green-400' : 'text-amber-400'}>
+                      {stats.winRate}% win rate
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900/50 border-zinc-700">
-              <CardContent className="p-4">
-                <div className="space-y-3">
+            <Card className="glass-card hover-lift overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyber-pink-500/10 to-cyber-purple-500/10 pointer-events-none" />
+              <CardContent className="p-6 relative">
+                <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-zinc-400" />
-                    <Label className="text-sm text-zinc-300">Time Period</Label>
+                    <Filter className="h-5 w-5 text-primary" />
+                    <Label className="text-base font-medium">Time Period</Label>
                   </div>
                   <Select value={timeFilter} onValueChange={(value: any) => setTimeFilter(value)}>
-                    <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
+                    <SelectTrigger className="bg-card/50 border-border backdrop-blur text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-800 border-zinc-600">
+                    <SelectContent className="bg-popover/90 backdrop-blur border-border">
                       <SelectItem value="daily">Today</SelectItem>
                       <SelectItem value="weekly">This Week</SelectItem>
                       <SelectItem value="monthly">This Month</SelectItem>
@@ -887,18 +898,18 @@ const Journal = () => {
                   </Select>
                   
                   {timeFilter === 'custom' && (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3 animate-fade-in">
                       <Input
                         type="date"
                         value={customStartDate}
                         onChange={(e) => setCustomStartDate(e.target.value)}
-                        className="bg-zinc-800 border-zinc-600 text-white text-xs"
+                        className="bg-card/50 border-border backdrop-blur text-foreground text-sm"
                       />
                       <Input
                         type="date"
                         value={customEndDate}
                         onChange={(e) => setCustomEndDate(e.target.value)}
-                        className="bg-zinc-800 border-zinc-600 text-white text-xs"
+                        className="bg-card/50 border-border backdrop-blur text-foreground text-sm"
                       />
                     </div>
                   )}
@@ -908,18 +919,19 @@ const Journal = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Left Sidebar - Progress Chart */}
-            <div className="lg:col-span-1">
-              <Card className="bg-zinc-900/50 border-zinc-700">
+            {/* Left Sidebar - Analytics */}
+            <div className="lg:col-span-1 space-y-6">
+              <Card className="glass-card hover-lift overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-cyber-blue-500/5 to-cyber-purple-500/5 pointer-events-none" />
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-white text-sm flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" />
-                    Progress Chart
+                  <CardTitle className="text-foreground text-base flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                    Performance Chart
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
                   {progressData.length === 0 ? (
-                    <div className="h-48 flex items-center justify-center text-xs text-zinc-400">
+                    <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
                       No closed trades in this period.
                     </div>
                   ) : (
@@ -927,7 +939,7 @@ const Journal = () => {
                       <BarChart data={progressData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
                         <XAxis 
                           dataKey="date" 
-                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                           axisLine={false}
                           tickLine={false}
                         />
@@ -935,7 +947,7 @@ const Journal = () => {
                         <ChartTooltip content={<ChartTooltipContent />} />
                         <Bar dataKey="pnl" barSize={12} radius={[3, 3, 0, 0]}>
                           {progressData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#10b981' : '#ef4444'} />
+                            <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? 'hsl(142 76% 36%)' : 'hsl(0 84% 60%)'} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -944,55 +956,60 @@ const Journal = () => {
                 </CardContent>
               </Card>
 
-              {/* Quick Stats */}
-              <Card className="bg-zinc-900/50 border-zinc-700 mt-4">
+              {/* Advanced Stats */}
+              <Card className="glass-card hover-lift overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-neon-green-400/5 to-cyber-purple-500/5 pointer-events-none" />
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-white text-sm">Quick Stats</CardTitle>
+                  <CardTitle className="text-foreground text-base flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    Trading Metrics
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 space-y-3">
-                   <div className="flex justify-between text-sm">
-                     <span className="text-zinc-400">Best Day</span>
-                     <span className="text-green-400">+${Math.abs(stats.bestDay).toLocaleString()}</span>
+                <CardContent className="p-4 space-y-4">
+                   <div className="flex justify-between items-center text-sm">
+                     <span className="text-muted-foreground">Best Day</span>
+                     <span className="text-neon-green-400 font-semibold">+${Math.abs(stats.bestDay).toLocaleString()}</span>
                    </div>
-                   <div className="flex justify-between text-sm">
-                     <span className="text-zinc-400">Worst Day</span>
-                     <span className="text-red-400">-${Math.abs(stats.worstDay).toLocaleString()}</span>
+                   <div className="flex justify-between items-center text-sm">
+                     <span className="text-muted-foreground">Worst Day</span>
+                     <span className="text-red-400 font-semibold">-${Math.abs(stats.worstDay).toLocaleString()}</span>
                    </div>
-                   <div className="flex justify-between text-sm">
-                     <span className="text-zinc-400">Avg Win</span>
-                     <span className="text-green-400">+${Math.abs(stats.avgWin).toLocaleString()}</span>
+                   <div className="flex justify-between items-center text-sm">
+                     <span className="text-muted-foreground">Avg Win</span>
+                     <span className="text-neon-green-400 font-semibold">+${Math.abs(stats.avgWin).toLocaleString()}</span>
                    </div>
-                   <div className="flex justify-between text-sm">
-                     <span className="text-zinc-400">Avg Loss</span>
-                     <span className="text-red-400">-${Math.abs(stats.avgLoss).toLocaleString()}</span>
+                   <div className="flex justify-between items-center text-sm">
+                     <span className="text-muted-foreground">Avg Loss</span>
+                     <span className="text-red-400 font-semibold">-${Math.abs(stats.avgLoss).toLocaleString()}</span>
                    </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-400">Streak</span>
-                    <span className={stats.currentStreak >= 0 ? 'text-green-400' : 'text-red-400'}>
+                  <div className="flex justify-between items-center text-sm pt-2 border-t border-border">
+                    <span className="text-muted-foreground">Current Streak</span>
+                    <Badge variant={stats.currentStreak >= 0 ? "default" : "destructive"} className="font-semibold">
                       {stats.currentStreak >= 0 ? '+' : ''}{stats.currentStreak}
-                    </span>
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
 
               {/* AI Analysis Button */}
               {isPremium && (
-                <Card className="bg-zinc-900/50 border-zinc-700 mt-4">
+                <Card className="glass-card hover-lift overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-cyber-purple-500/10 to-cyber-pink-500/10 pointer-events-none" />
                   <CardContent className="p-4">
                     <Button
                       onClick={generateProgressSummary}
                       disabled={generatingAISummary}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                      className="w-full bg-gradient-to-r from-cyber-purple-600 to-cyber-pink-600 hover:from-cyber-purple-700 hover:to-cyber-pink-700 text-white font-medium cyber-glow"
                     >
                       {generatingAISummary ? (
                         <div className="flex items-center gap-2">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          Analyzing...
+                          <span>Generating Analysis...</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
                           <Brain className="h-4 w-4" />
-                          AI Analysis
+                          <span>AI Deep Analysis</span>
                         </div>
                       )}
                     </Button>
@@ -1003,42 +1020,54 @@ const Journal = () => {
 
             {/* Main Content Area */}
             <div className="lg:col-span-3 space-y-6">
-              {/* Calendar Section */}
-              <div className="max-w-md mx-auto">
-                <Card className="bg-zinc-900/50 border-zinc-700">
-                  <CardContent className="p-4">
+              {/* Advanced Trading Calendar */}
+              <div className="max-w-lg mx-auto">
+                <Card className="glass-card hover-lift overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-sakura-500/5 to-cyber-blue-500/5 pointer-events-none" />
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-foreground text-lg font-zen-maru">Trading Calendar</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {entries.filter(e => e.status === 'CLOSED').length} closed trades
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6">
 
-                    {/* Month Navigation */}
-                    <div className="flex items-center justify-between mb-4">
+                    {/* Enhanced Month Navigation */}
+                    <div className="flex items-center justify-between mb-6">
                       <Button 
                         variant="ghost" 
                         size="sm" 
                         onClick={() => navigateMonth('prev')}
-                        className="text-white hover:bg-zinc-800"
+                        className="hover-lift text-foreground hover:bg-accent/50"
                       >
-                        <ChevronLeft className="h-4 w-4" />
+                        <ChevronLeft className="h-5 w-5" />
                       </Button>
-                      <h3 className="text-white font-semibold">{monthYearText}</h3>
+                      <h3 className="text-foreground font-zen-maru font-bold text-xl neon-text">{monthYearText}</h3>
                       <Button 
                         variant="ghost" 
                         size="sm" 
                         onClick={() => navigateMonth('next')}
-                        className="text-white hover:bg-zinc-800"
+                        className="hover-lift text-foreground hover:bg-accent/50"
                       >
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-5 w-5" />
                       </Button>
                     </div>
 
-                    {/* Weekday Headers */}
-                    <div className="grid grid-cols-7 gap-2 mb-2">
+                    {/* Styled Weekday Headers */}
+                    <div className="grid grid-cols-7 gap-2 mb-4">
                       {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="text-xs text-zinc-400 text-center p-1">
+                        <div key={day} className="text-sm text-muted-foreground text-center py-2 font-medium">
                           {day}
                         </div>
                       ))}
                     </div>
 
-                    {/* Calendar Grid */}
+                    {/* Enhanced Calendar Grid */}
                     <div className="grid grid-cols-7 gap-2">
                       {calendarDays.map((date, index) => {
                         const isCurrentMonth = date.getMonth() === currentDate.getMonth();
@@ -1050,6 +1079,22 @@ const Journal = () => {
                           const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
                           return entryDate === dateStr;
                         });
+                        
+                        let dayBgClass = 'bg-card/30 hover:bg-accent/50';
+                        let dayTextClass = isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50';
+                        
+                        if (hasTrades && isCurrentMonth) {
+                          if (pnl > 0) {
+                            dayBgClass = 'bg-gradient-to-br from-neon-green-400/20 to-neon-green-500/10 hover:from-neon-green-400/30 hover:to-neon-green-500/20 border border-neon-green-400/30';
+                            dayTextClass = 'text-neon-green-400 font-bold';
+                          } else if (pnl < 0) {
+                            dayBgClass = 'bg-gradient-to-br from-red-400/20 to-red-500/10 hover:from-red-400/30 hover:to-red-500/20 border border-red-400/30';
+                            dayTextClass = 'text-red-400 font-bold';
+                          } else {
+                            dayBgClass = 'bg-gradient-to-br from-amber-400/20 to-amber-500/10 hover:from-amber-400/30 hover:to-amber-500/20 border border-amber-400/30';
+                            dayTextClass = 'text-amber-400 font-bold';
+                          }
+                        }
                         
                         return (
                           <button
@@ -1079,65 +1124,98 @@ const Journal = () => {
                                }
                             }}
                             className={`
-                              aspect-square rounded-md text-xs font-medium transition-all relative flex flex-col items-center justify-center
-                              ${isCurrentMonth ? 'text-white' : 'text-zinc-600'}
-                              ${isSelected ? 'ring-2 ring-white' : ''}
-                              ${isToday && !isSelected ? 'ring-1 ring-zinc-400' : ''}
-                              ${getDayColor(date)}
-                              hover:opacity-80
+                              aspect-square rounded-xl text-sm font-medium transition-all duration-300 relative flex flex-col items-center justify-center gap-1 hover-lift
+                              ${dayBgClass}
+                              ${dayTextClass}
+                              ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' : ''}
+                              ${isToday && !isSelected ? 'ring-1 ring-accent shadow-md' : ''}
                             `}
                           >
-                            <span>{date.getDate()}</span>
+                            <span className="text-base">{date.getDate()}</span>
                             {pnl !== 0 && isCurrentMonth && (
-                              <span className={`text-[8px] font-bold ${
-                                pnl > 0 ? 'text-green-200' : 'text-red-200'
+                              <span className={`text-[10px] font-bold ${
+                                pnl > 0 ? 'text-neon-green-300' : 'text-red-300'
                               }`}>
-                                {pnl > 0 ? '+' : ''}${Math.abs(pnl).toLocaleString()}
+                                {pnl > 0 ? '+' : ''}${Math.abs(pnl) > 999 ? 
+                                  `${(Math.abs(pnl)/1000).toFixed(1)}k` : 
+                                  Math.abs(pnl).toLocaleString()
+                                }
                               </span>
                             )}
                             {pnl === 0 && hasTrades && isCurrentMonth && (
-                              <span className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-zinc-300" />
+                              <div className="absolute bottom-2 h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            )}
+                            {isToday && (
+                              <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary animate-pulse" />
                             )}
                           </button>
                         );
                       })}
                     </div>
+                    
+                    {/* Calendar Legend */}
+                    <div className="flex items-center justify-center gap-4 mt-6 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <div className="h-3 w-3 rounded bg-gradient-to-br from-neon-green-400/30 to-neon-green-500/20 border border-neon-green-400/50"></div>
+                        <span>Profit</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="h-3 w-3 rounded bg-gradient-to-br from-red-400/30 to-red-500/20 border border-red-400/50"></div>
+                        <span>Loss</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="h-3 w-3 rounded bg-gradient-to-br from-amber-400/30 to-amber-500/20 border border-amber-400/50"></div>
+                        <span>Breakeven</span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Daily Summary */}
-              <Card className="bg-zinc-900/50 border-zinc-700">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm text-zinc-400">
-                      Today - {formatSelectedDate().split(',')[0]}
+              {/* Enhanced Daily Summary */}
+              <Card className="glass-card hover-lift overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-cyber-blue-500/5 to-cyber-purple-500/5 pointer-events-none" />
+                <CardContent className="p-6 relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-zen-maru font-semibold text-foreground">{formatSelectedDate()}</h3>
+                      <p className="text-sm text-muted-foreground">Daily Performance</p>
                     </div>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => setShowAddDialog(true)}
-                      className="text-white hover:bg-zinc-800"
+                      className="hover-lift bg-primary/10 border-primary/20 hover:bg-primary/20"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Trade
                     </Button>
                   </div>
                   
-                  <div className={`text-3xl font-bold mb-2 ${
-                    selectedDayPnL >= 0 ? 'text-green-400' : 'text-red-400'
+                  <div className={`text-4xl font-bold font-zen-maru mb-3 ${
+                    selectedDayPnL >= 0 ? 'text-neon-green-400 neon-text' : 'text-red-400 neon-text'
                   }`}>
                     {selectedDayPnL >= 0 ? '+' : ''}${Math.abs(selectedDayPnL).toLocaleString()}
                   </div>
                   
-                  {selectedDayTrades.length > 0 && (
-                    <div className="text-sm text-zinc-400">
-                      {selectedDayTrades.length} trade{selectedDayTrades.length !== 1 ? 's' : ''}
+                  {selectedDayTrades.length > 0 ? (
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <BarChart3 className="h-4 w-4" />
+                        <span>{selectedDayTrades.length} trade{selectedDayTrades.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="h-4 w-px bg-border" />
+                      <div className="flex items-center gap-1">
+                        <TrendingUp className="h-4 w-4" />
+                        <span>
+                          {selectedDayTrades.filter(t => (t.result_pips || 0) > 0).length} wins
+                        </span>
+                      </div>
                     </div>
-                  )}
-                  
-                  {selectedDayTrades.length === 0 && (
-                    <div className="text-sm text-zinc-500">
-                      No trades on this day
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>No trades recorded for this day</span>
                     </div>
                   )}
                 </CardContent>
