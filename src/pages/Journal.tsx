@@ -26,6 +26,7 @@ interface JournalEntry {
   entry_price: number;
   exit_price?: number;
   entry_time: string;
+  exit_time?: string;
   direction: 'LONG' | 'SHORT';
   strategy: string;
   lot_size?: number;
@@ -373,12 +374,19 @@ const Journal = () => {
   };
 
   const handleEditEntry = (entry: JournalEntry) => {
+    console.log('🔄 Editing entry:', entry);
+    
     setEditingEntry(entry);
+    
+    // Better date handling - preserve the original date without timezone conversion
+    const entryDate = new Date(entry.entry_time);
+    const localDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}-${String(entryDate.getDate()).padStart(2, '0')}T${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}`;
+    
     setNewEntry({
       pair: entry.pair,
       entry_price: entry.entry_price.toString(),
       exit_price: entry.exit_price?.toString() || '',
-      entry_time: entry.entry_time.slice(0, 16), // Format for datetime-local input
+      entry_time: localDateStr,
       direction: entry.direction,
       strategy: entry.strategy,
       lot_size: entry.lot_size?.toString() || '',
@@ -388,24 +396,44 @@ const Journal = () => {
       notes: entry.notes || '',
       status: entry.status
     });
+    
+    console.log('📝 Form populated with:', {
+      original_time: entry.entry_time,
+      formatted_time: localDateStr,
+      pair: entry.pair,
+      entry_price: entry.entry_price,
+      exit_price: entry.exit_price
+    });
+    
     setShowAddDialog(true);
   };
 
   const handleUpdateEntry = async () => {
-    if (!user || !editingEntry) return;
+    if (!user || !editingEntry) {
+      console.error('❌ No user or editing entry found');
+      return;
+    }
 
-    // Validate required fields
-    if (!newEntry.pair || !newEntry.entry_price || !newEntry.entry_time || !newEntry.strategy) {
+    // More detailed validation with specific field checks
+    const requiredFields = [];
+    if (!newEntry.pair.trim()) requiredFields.push("Currency Pair");
+    if (!newEntry.entry_price.trim()) requiredFields.push("Entry Price");
+    if (!newEntry.entry_time.trim()) requiredFields.push("Entry Time");
+    if (!newEntry.strategy.trim()) requiredFields.push("Strategy");
+
+    if (requiredFields.length > 0) {
+      console.error('❌ Validation failed:', { requiredFields, newEntry });
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields: Currency Pair, Entry Price, Entry Time, and Strategy",
+        title: "Validation Error", 
+        description: `Please fill in: ${requiredFields.join(', ')}`,
         variant: "destructive"
       });
       return;
     }
 
     // Validate exit price if status is closed
-    if (newEntry.status === 'CLOSED' && !newEntry.exit_price) {
+    if (newEntry.status === 'CLOSED' && !newEntry.exit_price.trim()) {
+      console.error('❌ Exit price required for closed trade');
       toast({
         title: "Validation Error",
         description: "Exit price is required for closed trades",
@@ -414,21 +442,51 @@ const Journal = () => {
       return;
     }
 
+    // Validate numeric fields
+    if (isNaN(parseFloat(newEntry.entry_price))) {
+      toast({
+        title: "Validation Error",
+        description: "Entry price must be a valid number",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newEntry.exit_price && isNaN(parseFloat(newEntry.exit_price))) {
+      toast({
+        title: "Validation Error",
+        description: "Exit price must be a valid number",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('🔄 Updating journal entry...', { 
+      editingEntry: editingEntry.id,
+      newEntry, 
+      user: user.id,
+      timestamp: new Date().toISOString()
+    });
+
     try {
       const entryData: any = {
-        pair: newEntry.pair,
+        pair: newEntry.pair.trim().toUpperCase(),
         entry_price: parseFloat(newEntry.entry_price),
         exit_price: newEntry.exit_price ? parseFloat(newEntry.exit_price) : null,
         entry_time: newEntry.entry_time,
+        exit_time: newEntry.status === 'CLOSED' && editingEntry.status !== 'CLOSED' ? new Date().toISOString() : editingEntry.exit_time,
         direction: newEntry.direction,
-        strategy: newEntry.strategy,
+        strategy: newEntry.strategy.trim(),
         lot_size: newEntry.lot_size ? parseFloat(newEntry.lot_size) : null,
         fees: newEntry.fees ? parseFloat(newEntry.fees) : 0,
-        feelings: newEntry.feelings || null,
-        mistakes: newEntry.mistakes || null,
+        feelings: newEntry.feelings?.trim() || null,
+        mistakes: newEntry.mistakes?.trim() || null,
         status: newEntry.status,
-        notes: newEntry.notes || null,
+        notes: newEntry.notes?.trim() || null,
+        updated_at: new Date().toISOString()
       };
+
+      console.log('📤 Sending update to database:', entryData);
 
       // Calculate metrics if trade is closed
       if (newEntry.status === 'CLOSED' && newEntry.exit_price) {
@@ -462,6 +520,15 @@ const Journal = () => {
 
         entryData.result_pips = Math.round(pips * 10) / 10;
         entryData.result_percentage = Math.round(percentage * 100) / 100;
+
+        console.log('📊 Calculated metrics:', {
+          pips: entryData.result_pips,
+          percentage: entryData.result_percentage,
+          pipMultiplier,
+          entryPrice,
+          exitPrice,
+          direction
+        });
       }
 
       const { error } = await supabase
@@ -469,13 +536,25 @@ const Journal = () => {
         .update(entryData)
         .eq('id', editingEntry.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Database error:', error);
+        toast({
+          title: "Database Error",
+          description: error.message || "Failed to update trade in database",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('✅ Trade updated successfully');
 
       // Force reload entries from database
       await loadEntries();
       
       setShowAddDialog(false);
       setEditingEntry(null);
+      
+      // Reset form
       setNewEntry({
         pair: '',
         entry_price: '',
@@ -492,14 +571,15 @@ const Journal = () => {
       });
 
       toast({
-        title: "Trade Updated",
-        description: "Journal entry updated successfully",
+        title: "Trade Updated Successfully!",
+        description: `${entryData.pair} ${entryData.direction} trade has been updated`,
       });
-    } catch (error) {
-      console.error('Error updating entry:', error);
+
+    } catch (error: any) {
+      console.error('❌ Unexpected error updating entry:', error);
       toast({
         title: "Error",
-        description: "Failed to update journal entry",
+        description: error.message || "An unexpected error occurred while updating",
         variant: "destructive"
       });
     }
