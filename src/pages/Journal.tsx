@@ -212,6 +212,18 @@ const Journal = () => {
       return;
     }
 
+    // Check if user is actually authenticated in Supabase
+    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+    if (!supabaseUser) {
+      console.error('❌ User not authenticated in Supabase');
+      toast({
+        title: "Authentication Error",
+        description: "Please log in again to continue",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // More detailed validation with specific field checks
     const requiredFields = [];
     if (!newEntry.pair.trim()) requiredFields.push("Currency Pair");
@@ -380,7 +392,7 @@ const Journal = () => {
     
     // Better date handling - preserve the original date without timezone conversion
     const entryDate = new Date(entry.entry_time);
-    const localDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}-${String(entryDate.getDate()).padStart(2, '0')}T${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}`;
+    const localDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}-${String(entryDate.getDate()).padStart(2, '0')}T12:00`;
     
     setNewEntry({
       pair: entry.pair,
@@ -1023,15 +1035,15 @@ const Journal = () => {
                                   new Date(b.entry_time).getTime() - new Date(a.entry_time).getTime()
                                 )[0];
                                 handleEditEntry(latestTrade);
-                              } else {
-                                // No trades on this day, open add dialog with this date pre-filled
-                                const dateTimeStr = date.toISOString().slice(0, 16);
-                                setNewEntry({
-                                  ...newEntry,
-                                  entry_time: dateTimeStr
-                                });
-                                setShowAddDialog(true);
-                              }
+                               } else {
+                                 // No trades on this day, open add dialog with this date pre-filled
+                                 const dateStr = date.toISOString().split('T')[0];
+                                 setNewEntry({
+                                   ...newEntry,
+                                   entry_time: dateStr + 'T12:00'
+                                 });
+                                 setShowAddDialog(true);
+                               }
                             }}
                             className={`
                               aspect-square rounded-md text-xs font-medium transition-all relative flex flex-col items-center justify-center
@@ -1127,14 +1139,14 @@ const Journal = () => {
                         </Badge>
                       </CardTitle>
                       <Button
-                        onClick={() => {
-                          const dateTimeStr = selectedDate.toISOString().slice(0, 16);
-                          setNewEntry({
-                            ...newEntry,
-                            entry_time: dateTimeStr
-                          });
-                          setShowAddDialog(true);
-                        }}
+                       onClick={() => {
+                         const dateStr = selectedDate.toISOString().split('T')[0];
+                         setNewEntry({
+                           ...newEntry,
+                           entry_time: dateStr + 'T12:00'
+                         });
+                         setShowAddDialog(true);
+                       }}
                         className="bg-primary hover:bg-primary/90 text-black"
                         size="sm"
                       >
@@ -1408,12 +1420,12 @@ const Journal = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="entry_time" className="text-white">Entry Time *</Label>
+                <Label htmlFor="entry_time" className="text-white">Entry Date *</Label>
                 <Input
                   id="entry_time"
-                  type="datetime-local"
-                  value={newEntry.entry_time}
-                  onChange={(e) => setNewEntry({...newEntry, entry_time: e.target.value})}
+                  type="date"
+                  value={newEntry.entry_time ? newEntry.entry_time.split('T')[0] : ''}
+                  onChange={(e) => setNewEntry({...newEntry, entry_time: e.target.value + 'T12:00'})}
                   className="bg-zinc-800 border-zinc-600 text-white"
                   required
                 />
