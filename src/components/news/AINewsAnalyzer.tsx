@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Brain, TrendingUp, TrendingDown, AlertTriangle, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { groqService } from '@/services/groqService';
 import { useToast } from '@/hooks/use-toast';
 
 interface AINewsAnalyzerProps {
@@ -63,24 +63,20 @@ Format your response as JSON with this structure:
 }
 `;
 
-      // Call Gemini AI service for analysis
-      const { data, error } = await supabase.functions.invoke('gpt4o-chat', {
-        body: { 
-          messages: [{ role: 'user', content: prompt }],
-          model: 'gpt-4o-mini',
-          temperature: 0.3
-        }
+      // Use Groq AI service for analysis
+      const response = await groqService.generateResponse(prompt, {
+        model: 'mixtral-8x7b-32768',
+        temperature: 0.3,
+        max_tokens: 2000
       });
 
-      if (error) throw error;
-
       try {
-        const analysis = JSON.parse(data.response);
+        const analysis = JSON.parse(response);
         setInsight(analysis);
       } catch (parseError) {
         // Fallback if JSON parsing fails
         setInsight({
-          summary: data.response,
+          summary: response,
           sentiment: 'NEUTRAL',
           keyPoints: ['Market analysis generated'],
           tradingOpportunities: ['Monitor key developments'],
