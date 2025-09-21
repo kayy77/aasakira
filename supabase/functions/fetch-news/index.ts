@@ -146,29 +146,27 @@ serve(async (req) => {
       source = 'sample';
     }
 
-    const apiData = await apiResponse.json();
-    console.log('📊 FCS API Response:', apiData);
-    
+    // Check if we got any data
     if (!apiData || !apiData.response) {
-      console.log('⚠️ No response data from FCS API');
+      console.log('⚠️ No response data from any API source');
       return new Response(JSON.stringify({ 
         success: true, 
         eventsProcessed: 0,
-        message: 'No events returned from FCS API'
+        message: 'No events returned from any source'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
     const rawEvents = apiData.response || [];
-    console.log(`📊 Received ${rawEvents.length} raw events from FCS API`);
+    console.log(`📊 Processing ${rawEvents.length} events from source: ${source}`);
     
     if (rawEvents.length === 0) {
       console.log('⚠️ No events in response array');
       return new Response(JSON.stringify({ 
         success: true, 
         eventsProcessed: 0,
-        message: 'No events found in FCS API response'
+        message: 'No events found in response'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
