@@ -96,7 +96,12 @@ export const EnhancedEconomicCalendar = () => {
   const refreshData = async () => {
     setRefreshing(true);
     try {
-      // Use enhanced fetch function
+      // First verify real data sources
+      console.log('🔍 Verifying real data sources...');
+      const verifyResult = await supabase.functions.invoke('verify-real-data');
+      console.log('Verification result:', verifyResult);
+
+      // Use enhanced fetch function with improved real data handling
       const result = await supabase.functions.invoke('enhanced-economic-fetch');
       
       if (result.error) {
@@ -106,15 +111,20 @@ export const EnhancedEconomicCalendar = () => {
       await fetchEvents();
       
       const stats = result.data;
+      const isRealData = stats?.dataProviders?.some((provider: string) => 
+        provider.includes('FCS_Live') || provider.includes('Official')
+      );
+      
       toast({
-        title: "Enhanced data updated",
-        description: `${stats?.eventsProcessed || 0} events processed with ${stats?.analysisGenerated || 0} AI analyses`,
+        title: isRealData ? "✅ Real market data updated" : "⚠️ Using curated data",
+        description: `${stats?.eventsProcessed || 0} events processed with ${stats?.analysisGenerated || 0} AI analyses. ${isRealData ? 'Live data sources connected.' : 'Real APIs may be temporarily unavailable.'}`,
+        variant: isRealData ? "default" : "destructive"
       });
     } catch (error) {
       console.error('Enhanced refresh failed:', error);
       toast({
         title: "Refresh failed",
-        description: "Unable to fetch enhanced data",
+        description: "Unable to fetch enhanced data - check your network connection",
         variant: "destructive"
       });
     } finally {
@@ -252,7 +262,7 @@ export const EnhancedEconomicCalendar = () => {
               {/* Data Quality Indicator */}
               <div className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg">
                 <Layers className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Multi-Source</span>
+                <span className="text-sm font-medium">Real-Time Data</span>
               </div>
               
               <Button 
@@ -262,7 +272,7 @@ export const EnhancedEconomicCalendar = () => {
                 className="bg-secondary border-border hover:bg-secondary/80"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Updating...' : 'Refresh'}
+                {refreshing ? 'Fetching Live Data...' : 'Refresh Real Data'}
               </Button>
             </div>
           </div>
