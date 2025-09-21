@@ -6,8 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, TrendingUp, TrendingDown, Activity, Brain, Target, Zap } from 'lucide-react';
+import { 
+  Loader2, TrendingUp, TrendingDown, Activity, Brain, Target, Zap, 
+  Shield, CheckCircle, AlertTriangle, Clock, ExternalLink
+} from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import DataVerificationStatus from './DataVerificationStatus';
 
 interface EnhancedEconomicEvent {
   id: string;
@@ -281,7 +285,21 @@ const SuperiorEconomicCalendar: React.FC = () => {
       </Card>
 
       {/* Events Grid */}
-      <div className="grid gap-4">
+      <Tabs defaultValue="events" className="space-y-6">
+        <TabsList className="grid grid-cols-2 w-fit">
+          <TabsTrigger value="events" className="flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Economic Events
+          </TabsTrigger>
+          <TabsTrigger value="verification" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Data Verification
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="events" className="space-y-4">
+          {/* Events List */}
+          <div className="grid gap-4">
         {filteredEvents.map((event) => {
           const analysis = getEventAnalysis(event.id);
           const eventTime = new Date(event.event_time);
@@ -424,22 +442,28 @@ const SuperiorEconomicCalendar: React.FC = () => {
             </Card>
           );
         })}
-      </div>
+          </div>
 
-      {filteredEvents.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No events match your filters</h3>
-            <p className="text-muted-foreground mb-4">
-              Try adjusting your filter criteria or refresh the data
-            </p>
-            <Button onClick={refreshWithMultiProvider} variant="outline">
-              Refresh Data
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+          {filteredEvents.length === 0 && (
+            <Card>
+              <CardContent className="text-center py-12">
+                <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">No events match your filters</h3>
+                <p className="text-muted-foreground mb-4">
+                  Try adjusting your filter criteria or refresh the data
+                </p>
+                <Button onClick={refreshWithMultiProvider} variant="outline">
+                  Refresh Data
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="verification">
+          <DataVerificationStatus />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

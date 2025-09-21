@@ -86,6 +86,48 @@ export type Database = {
         }
         Relationships: []
       }
+      api_response_audit: {
+        Row: {
+          endpoint_url: string
+          error_details: string | null
+          events_parsed: number | null
+          http_status: number | null
+          id: string
+          raw_sample: Json | null
+          response_size_bytes: number | null
+          response_time_ms: number | null
+          source_name: string
+          success: boolean
+          timestamp: string
+        }
+        Insert: {
+          endpoint_url: string
+          error_details?: string | null
+          events_parsed?: number | null
+          http_status?: number | null
+          id?: string
+          raw_sample?: Json | null
+          response_size_bytes?: number | null
+          response_time_ms?: number | null
+          source_name: string
+          success?: boolean
+          timestamp?: string
+        }
+        Update: {
+          endpoint_url?: string
+          error_details?: string | null
+          events_parsed?: number | null
+          http_status?: number | null
+          id?: string
+          raw_sample?: Json | null
+          response_size_bytes?: number | null
+          response_time_ms?: number | null
+          source_name?: string
+          success?: boolean
+          timestamp?: string
+        }
+        Relationships: []
+      }
       consensus_audit: {
         Row: {
           created_at: string | null
@@ -132,6 +174,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      data_source_heartbeat: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          events_count: number | null
+          id: string
+          last_check: string
+          response_time_ms: number | null
+          source_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          events_count?: number | null
+          id?: string
+          last_check?: string
+          response_time_ms?: number | null
+          source_name: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          events_count?: number | null
+          id?: string
+          last_check?: string
+          response_time_ms?: number | null
+          source_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       economic_events: {
         Row: {
@@ -227,6 +305,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      event_verification: {
+        Row: {
+          actual_value: string | null
+          conflicts: string[] | null
+          consensus_score: number
+          created_at: string
+          event_currency: string
+          event_time: string
+          event_title: string
+          forecast_value: string | null
+          id: string
+          matches_count: number
+          previous_value: string | null
+          sources: string[]
+          verified_at: string
+        }
+        Insert: {
+          actual_value?: string | null
+          conflicts?: string[] | null
+          consensus_score?: number
+          created_at?: string
+          event_currency: string
+          event_time: string
+          event_title: string
+          forecast_value?: string | null
+          id?: string
+          matches_count?: number
+          previous_value?: string | null
+          sources?: string[]
+          verified_at?: string
+        }
+        Update: {
+          actual_value?: string | null
+          conflicts?: string[] | null
+          consensus_score?: number
+          created_at?: string
+          event_currency?: string
+          event_time?: string
+          event_title?: string
+          forecast_value?: string | null
+          id?: string
+          matches_count?: number
+          previous_value?: string | null
+          sources?: string[]
+          verified_at?: string
+        }
+        Relationships: []
       }
       incoming_signals: {
         Row: {
