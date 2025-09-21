@@ -4,13 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, TrendingUp, TrendingDown, Minus, AlertTriangle, RefreshCw, Zap, Target, Newspaper, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, TrendingUp, TrendingDown, Minus, AlertTriangle, RefreshCw, Zap, Target, Newspaper, ExternalLink, Brain } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { format, isToday, isTomorrow, addDays, formatDistanceToNow } from 'date-fns';
 import AINewsAnalyzer from '@/components/news/AINewsAnalyzer';
+import { EnhancedEconomicCalendar } from '@/components/enhanced/EnhancedEconomicCalendar';
 
 interface EconomicEvent {
   id: number;
@@ -59,7 +60,7 @@ const News = () => {
   const [selectedCurrency, setSelectedCurrency] = useState<string>('ALL');
   const [selectedImportance, setSelectedImportance] = useState<string>('ALL');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('TODAY');
-  const [activeTab, setActiveTab] = useState('events');
+  const [activeTab, setActiveTab] = useState('enhanced-events');
 
   const fetchEvents = async () => {
     try {
@@ -318,15 +319,23 @@ const News = () => {
         {/* Tabs for Events and AI News */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-zinc-800 border-zinc-600">
+            <TabsTrigger value="enhanced-events" className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              Enhanced Calendar
+            </TabsTrigger>
             <TabsTrigger value="events" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Economic Events
+              Basic Events
             </TabsTrigger>
             <TabsTrigger value="ai-news" className="flex items-center gap-2">
               <Newspaper className="h-4 w-4" />
               AI Market News
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="enhanced-events">
+            <EnhancedEconomicCalendar />
+          </TabsContent>
 
           <TabsContent value="events">
             {/* Events List */}
