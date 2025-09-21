@@ -5,6 +5,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface DataProvider {
+  name: string;
+  priority: number;
+  fetchEvents: (params?: any) => Promise<EconomicEventRaw[]>;
+}
+
+interface MarketReaction {
+  pair: string;
+  priceChange: number;
+  percentChange: number;
+  volatility: number;
+  timestamp: string;
+}
+
+interface AIAnalysis {
+  preEventForecast: {
+    prediction: string;
+    confidence: number;
+    bias: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+    reasoning: string;
+  };
+  postEventReaction?: {
+    summary: string;
+    marketImpact: string;
+    tradeSetup: string;
+  };
+}
+
 interface EconomicEventRaw {
   id: string;
   title: string;

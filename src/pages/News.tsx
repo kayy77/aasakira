@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { format, isToday, isTomorrow, addDays, formatDistanceToNow } from 'date-fns';
 import AINewsAnalyzer from '@/components/news/AINewsAnalyzer';
-import { EnhancedEconomicCalendar } from '@/components/enhanced/EnhancedEconomicCalendar';
+import SuperiorEconomicCalendar from '@/components/enhanced/SuperiorEconomicCalendar';
 
 interface EconomicEvent {
   id: number;
@@ -334,7 +334,7 @@ const News = () => {
           </TabsList>
 
           <TabsContent value="enhanced-events">
-            <EnhancedEconomicCalendar />
+            <SuperiorEconomicCalendar />
           </TabsContent>
 
           <TabsContent value="events">
