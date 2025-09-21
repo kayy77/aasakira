@@ -258,23 +258,60 @@ export const EnhancedEconomicCalendar = () => {
               </p>
             </div>
             
-            <div className="flex items-center gap-3">
-              {/* Data Quality Indicator */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg">
-                <Layers className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Real-Time Data</span>
-              </div>
-              
-              <Button 
-                onClick={refreshData}
-                disabled={refreshing}
-                variant="outline"
-                className="bg-secondary border-border hover:bg-secondary/80"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Fetching Live Data...' : 'Refresh Real Data'}
-              </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={async () => {
+                setRefreshing(true);
+                try {
+                  const testResult = await supabase.functions.invoke('test-fcs-api');
+                  console.log('🔍 FCS API Test Results:', testResult.data);
+                  
+                  if (testResult.data?.realEventsFound) {
+                    toast({
+                      title: "✅ Real data connection verified",
+                      description: `FCS API is working with ${testResult.data.summary.workingTests} endpoints active`,
+                    });
+                  } else {
+                    toast({
+                      title: "⚠️ No real events found", 
+                      description: "FCS API connects but returns no events - may be API limits or date issues",
+                      variant: "destructive"
+                    });
+                  }
+                } catch (error) {
+                  console.error('Test failed:', error);
+                  toast({
+                    title: "❌ API test failed",
+                    description: "Cannot connect to FCS API - check logs for details",
+                    variant: "destructive"
+                  });
+                } finally {
+                  setRefreshing(false);
+                }
+              }}
+              variant="outline"
+              size="sm"
+              disabled={refreshing}
+            >
+              Test Real APIs
+            </Button>
+            
+            {/* Data Quality Indicator */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg">
+              <Layers className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Real-Time Data</span>
             </div>
+            
+            <Button 
+              onClick={refreshData}
+              disabled={refreshing}
+              variant="outline"
+              className="bg-secondary border-border hover:bg-secondary/80"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Fetching Live Data...' : 'Refresh Real Data'}
+            </Button>
+          </div>
           </div>
 
           {/* Enhanced Filters */}
