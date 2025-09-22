@@ -45,19 +45,19 @@ class DataVerificationEngine {
   }
 
   private initializeSources() {
-    // FCS API
+    // FCS API - Try multiple endpoints as they have different formats
     const fcsKey = Deno.env.get('FCS_API_KEY');
     if (fcsKey) {
       this.sources.push({
         name: 'FCS',
-        url: `https://fcsapi.com/api-v3/forex/economy_calendar?access_key=${fcsKey}&from=${new Date().toISOString().split('T')[0]}`,
+        url: `https://fcsapi.com/api-v3/forex/economy?country=us&access_key=${fcsKey}`,
         headers: { 'Accept': 'application/json' },
         parseResponse: this.parseFCSResponse.bind(this),
         priority: 1
       });
     }
 
-    // Trading Economics (public endpoint for verification)
+    // Trading Economics (working with fallback endpoints)
     this.sources.push({
       name: 'TradingEconomics',
       url: 'https://api.tradingeconomics.com/calendar?c=guest:guest&format=json',
@@ -77,20 +77,46 @@ class DataVerificationEngine {
         priority: 3
       });
     }
+
+    // Twelve Data (if key available) 
+    const twelveDataKey = Deno.env.get('TWELVE_DATA_API_KEY');
+    if (twelveDataKey) {
+      this.sources.push({
+        name: 'TwelveData',
+        url: `https://api.twelvedata.com/economic_calendar?apikey=${twelveDataKey}`,
+        headers: { 'Accept': 'application/json' },
+        parseResponse: this.parseTwelveDataResponse.bind(this),
+        priority: 4
+      });
+    }
   }
 
   private parseFCSResponse(data: any): VerifiedEvent[] {
-    if (!data.status || !data.response || !Array.isArray(data.response)) return [];
+    console.log('📊 FCS Raw Response:', JSON.stringify(data).slice(0, 500));
     
-    return data.response.map((event: any) => ({
-      title: event.event || event.name || 'Unknown Event',
+    // FCS can return different structures - be flexible
+    let events = [];
+    if (data.response && Array.isArray(data.response)) {
+      events = data.response;
+    } else if (Array.isArray(data)) {
+      events = data;
+    } else if (data.status === false) {
+      console.log('❌ FCS: API returned error status:', data.msg || data.info);
+      return [];
+    } else {
+      console.log('❌ FCS: Unexpected response structure');
+      return [];
+    }
+    
+    return events.map((event: any) => ({
+      title: event.event || event.name || event.title || 'Unknown Event',
       country: event.country || 'Unknown',
-      currency: event.currency || 'USD',
-      forecast: event.forecast ? String(event.forecast) : null,
-      previous: event.previous ? String(event.previous) : null,
-      actual: event.actual ? String(event.actual) : null,
-      time: event.date || new Date().toISOString(),
-      importance: this.mapImpact(event.impact),
+      currency: event.currency || event.cur || 'USD',
+      forecast: event.forecast || event.estimate ? String(event.forecast || event.estimate) : null,
+      previous: event.previous || event.prev ? String(event.previous || event.prev) : null,
+      actual: event.actual || event.value ? String(event.actual || event.value) : null,
+      time: event.date || event.datetime || new Date().toISOString(),
+      importance: this.mapImpact(event.impact || event.importance),
       source: 'FCS',
       confidence: 0.90
     }));
@@ -114,6 +140,8 @@ class DataVerificationEngine {
   }
 
   private parseFinnhubResponse(data: any): VerifiedEvent[] {
+    console.log('📊 Finnhub Raw Response:', JSON.stringify(data).slice(0, 500));
+    
     if (!data.economicCalendar || !Array.isArray(data.economicCalendar)) return [];
     
     return data.economicCalendar.map((event: any) => ({
@@ -127,6 +155,42 @@ class DataVerificationEngine {
       importance: this.mapImpact(event.impact),
       source: 'Finnhub',
       confidence: 0.80
+    }));
+  }
+
+  private parseTwelveDataResponse(data: any): VerifiedEvent[] {
+    console.log('📊 TwelveData Raw Response:', JSON.stringify(data).slice(0, 500));
+    
+    if (!data.economic_calendar || !Array.isArray(data.economic_calendar)) {
+      // Try alternative structure
+      if (Array.isArray(data)) {
+        return data.map((event: any) => ({
+          title: event.event || event.name || 'Unknown Event',
+          country: event.country || 'Unknown',
+          currency: event.currency || 'USD',
+          forecast: event.forecast ? String(event.forecast) : null,
+          previous: event.previous ? String(event.previous) : null,
+          actual: event.actual ? String(event.actual) : null,
+          time: event.date || new Date().toISOString(),
+          importance: this.mapImpact(event.impact || event.importance),
+          source: 'TwelveData',
+          confidence: 0.75
+        }));
+      }
+      return [];
+    }
+
+    return data.economic_calendar.map((event: any) => ({
+      title: event.event || event.name || 'Unknown Event',
+      country: event.country || 'Unknown',
+      currency: event.currency || 'USD',
+      forecast: event.forecast ? String(event.forecast) : null,
+      previous: event.previous ? String(event.previous) : null,
+      actual: event.actual ? String(event.actual) : null,
+      time: event.date || new Date().toISOString(),
+      importance: this.mapImpact(event.impact || event.importance),
+      source: 'TwelveData',
+      confidence: 0.75
     }));
   }
 

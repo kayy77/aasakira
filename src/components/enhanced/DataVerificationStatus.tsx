@@ -215,10 +215,16 @@ const DataVerificationStatus: React.FC = () => {
                     {getStatusIcon(source.status)}
                     <div>
                       <div className="font-medium">{source.source_name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {source.events_count} events
-                        {source.response_time_ms && ` • ${source.response_time_ms}ms`}
-                      </div>
+                        <div className="text-sm text-muted-foreground">
+                          {source.events_count} events • 
+                          Last checked: {formatLastUpdate(source.last_check)}
+                          {source.response_time_ms && ` • ${source.response_time_ms}ms response`}
+                        </div>
+                        {source.error_message && (
+                          <div className="text-xs text-destructive mt-1">
+                            ❌ {source.error_message}
+                          </div>
+                        )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -271,20 +277,15 @@ const DataVerificationStatus: React.FC = () => {
                   
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <div className="flex items-center gap-4">
-                      <span>{verification.matches_count} sources matched</span>
+                      <span>Sources: {verification.sources.join(', ')}</span>
+                      <span>{verification.matches_count} matches</span>
                       <span>{verification.event_currency}</span>
+                      <span>Verified: {formatLastUpdate(verification.verified_at)}</span>
                       {verification.conflicts.length > 0 && (
                         <Badge variant="destructive" className="text-xs">
                           {verification.conflicts.length} conflicts
                         </Badge>
                       )}
-                    </div>
-                    <div className="flex gap-1">
-                      {verification.sources.map((source) => (
-                        <Badge key={source} variant="secondary" className="text-xs">
-                          {source}
-                        </Badge>
-                      ))}
                     </div>
                   </div>
 
