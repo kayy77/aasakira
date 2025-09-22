@@ -48,12 +48,23 @@ class DataVerificationEngine {
     // FCS API - Try multiple endpoints as they have different formats
     const fcsKey = Deno.env.get('FCS_API_KEY');
     if (fcsKey) {
-      this.sources.push({
-        name: 'FCS',
-        url: `https://fcsapi.com/api-v3/forex/economy?country=us&access_key=${fcsKey}`,
-        headers: { 'Accept': 'application/json' },
-        parseResponse: this.parseFCSResponse.bind(this),
-        priority: 1
+      // Add multiple FCS endpoints to try
+      const today = new Date().toISOString().split('T')[0];
+      const fcsEndpoints = [
+        `https://fcsapi.com/api-v3/forex/calendar?access_key=${fcsKey}&date=${today}`,
+        `https://fcsapi.com/api-v3/forex/calendar?access_key=${fcsKey}&country=US&date=${today}`,
+        `https://fcsapi.com/api-v3/forex/economy?country=US&access_key=${fcsKey}`,
+        `https://fcsapi.com/api-v3/forex/economy?country=USD&access_key=${fcsKey}`,
+      ];
+      
+      fcsEndpoints.forEach((url, index) => {
+        this.sources.push({
+          name: `FCS-${index + 1}`,
+          url: url,
+          headers: { 'Accept': 'application/json', 'User-Agent': 'DataVerificationEngine/1.0' },
+          parseResponse: this.parseFCSResponse.bind(this),
+          priority: 1
+        });
       });
     }
 
@@ -61,7 +72,7 @@ class DataVerificationEngine {
     this.sources.push({
       name: 'TradingEconomics',
       url: 'https://api.tradingeconomics.com/calendar?c=guest:guest&format=json',
-      headers: { 'Accept': 'application/json' },
+      headers: { 'Accept': 'application/json', 'User-Agent': 'DataVerificationEngine/1.0' },
       parseResponse: this.parseTEResponse.bind(this),
       priority: 2
     });
@@ -69,10 +80,11 @@ class DataVerificationEngine {
     // Finnhub (if key available)
     const finnhubKey = Deno.env.get('FINNHUB_API_KEY');
     if (finnhubKey) {
+      const today = new Date().toISOString().split('T')[0];
       this.sources.push({
         name: 'Finnhub',
-        url: `https://finnhub.io/api/v1/calendar/economic?token=${finnhubKey}`,
-        headers: { 'Accept': 'application/json' },
+        url: `https://finnhub.io/api/v1/calendar/economic?from=${today}&to=${today}&token=${finnhubKey}`,
+        headers: { 'Accept': 'application/json', 'User-Agent': 'DataVerificationEngine/1.0' },
         parseResponse: this.parseFinnhubResponse.bind(this),
         priority: 3
       });
@@ -83,8 +95,8 @@ class DataVerificationEngine {
     if (twelveDataKey) {
       this.sources.push({
         name: 'TwelveData',
-        url: `https://api.twelvedata.com/economic_calendar?apikey=${twelveDataKey}`,
-        headers: { 'Accept': 'application/json' },
+        url: `https://api.twelvedata.com/news?symbol=USD&apikey=${twelveDataKey}`,
+        headers: { 'Accept': 'application/json', 'User-Agent': 'DataVerificationEngine/1.0' },
         parseResponse: this.parseTwelveDataResponse.bind(this),
         priority: 4
       });
@@ -161,37 +173,39 @@ class DataVerificationEngine {
   private parseTwelveDataResponse(data: any): VerifiedEvent[] {
     console.log('📊 TwelveData Raw Response:', JSON.stringify(data).slice(0, 500));
     
-    if (!data.economic_calendar || !Array.isArray(data.economic_calendar)) {
-      // Try alternative structure
-      if (Array.isArray(data)) {
-        return data.map((event: any) => ({
-          title: event.event || event.name || 'Unknown Event',
-          country: event.country || 'Unknown',
-          currency: event.currency || 'USD',
-          forecast: event.forecast ? String(event.forecast) : null,
-          previous: event.previous ? String(event.previous) : null,
-          actual: event.actual ? String(event.actual) : null,
-          time: event.date || new Date().toISOString(),
-          importance: this.mapImpact(event.impact || event.importance),
-          source: 'TwelveData',
-          confidence: 0.75
-        }));
-      }
-      return [];
+    // TwelveData news API structure
+    if (data.data && Array.isArray(data.data)) {
+      return data.data.slice(0, 5).map((item: any, idx: number) => ({
+        title: item.title || 'Market News',
+        country: 'US',
+        currency: 'USD',
+        forecast: null,
+        previous: null,
+        actual: null,
+        time: item.published_date || new Date().toISOString(),
+        importance: 'MEDIUM', // News items are typically medium importance
+        source: 'TwelveData',
+        confidence: 0.70
+      }));
+    }
+    
+    // Alternative structure for economic calendar (if they add it)
+    if (data.economic_calendar && Array.isArray(data.economic_calendar)) {
+      return data.economic_calendar.map((event: any) => ({
+        title: event.event || event.name || 'Unknown Event',
+        country: event.country || 'Unknown',
+        currency: event.currency || 'USD',
+        forecast: event.forecast ? String(event.forecast) : null,
+        previous: event.previous ? String(event.previous) : null,
+        actual: event.actual ? String(event.actual) : null,
+        time: event.date || new Date().toISOString(),
+        importance: this.mapImpact(event.impact || event.importance),
+        source: 'TwelveData',
+        confidence: 0.75
+      }));
     }
 
-    return data.economic_calendar.map((event: any) => ({
-      title: event.event || event.name || 'Unknown Event',
-      country: event.country || 'Unknown',
-      currency: event.currency || 'USD',
-      forecast: event.forecast ? String(event.forecast) : null,
-      previous: event.previous ? String(event.previous) : null,
-      actual: event.actual ? String(event.actual) : null,
-      time: event.date || new Date().toISOString(),
-      importance: this.mapImpact(event.impact || event.importance),
-      source: 'TwelveData',
-      confidence: 0.75
-    }));
+    return [];
   }
 
   private mapImpact(impact: any): string {
@@ -237,7 +251,10 @@ class DataVerificationEngine {
     });
 
     const results = await Promise.all(sourcePromises);
-    const successfulSources = results.filter(r => r.success);
+    
+    // Consolidate FCS results (since we have multiple FCS endpoints)
+    const consolidatedResults = this.consolidateFCSResults(results);
+    const successfulSources = consolidatedResults.filter(r => r.success);
 
     if (successfulSources.length === 0) {
       throw new Error('No sources available for cross-verification');
@@ -247,10 +264,36 @@ class DataVerificationEngine {
     const crossCheckResults = this.performEventMatching(successfulSources);
     
     // Store verification results
-    await this.storeVerificationResults(crossCheckResults, results);
+    await this.storeVerificationResults(crossCheckResults, consolidatedResults);
 
     console.log(`🎯 Cross-verification complete: ${crossCheckResults.length} events verified`);
     return crossCheckResults;
+  }
+
+  private consolidateFCSResults(results: any[]): any[] {
+    const fcsResults = results.filter(r => r.source.startsWith('FCS-'));
+    const otherResults = results.filter(r => !r.source.startsWith('FCS-'));
+    
+    if (fcsResults.length === 0) {
+      return otherResults;
+    }
+
+    // Find the best FCS result (most events and successful)
+    const bestFCS = fcsResults
+      .filter(r => r.success && r.events.length > 0)
+      .sort((a, b) => b.events.length - a.events.length)[0];
+    
+    if (bestFCS) {
+      return [{ ...bestFCS, source: 'FCS' }, ...otherResults];
+    } else {
+      // Return failed FCS status if all failed
+      return [{
+        source: 'FCS',
+        events: [],
+        success: false,
+        error: fcsResults[0]?.error || 'All FCS endpoints failed'
+      }, ...otherResults];
+    }
   }
 
   private performEventMatching(sources: any[]): CrossCheckResult[] {

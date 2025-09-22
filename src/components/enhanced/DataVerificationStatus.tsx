@@ -14,7 +14,8 @@ import {
   RefreshCw, 
   ExternalLink,
   Target,
-  Zap
+  Zap,
+  Loader2
 } from 'lucide-react';
 
 interface SourceStatus {
@@ -41,6 +42,7 @@ const DataVerificationStatus: React.FC = () => {
   const [verifications, setVerifications] = useState<VerificationResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
+  const [debugging, setDebugging] = useState(false);
   const [stats, setStats] = useState({
     sourcesActive: 0,
     totalSources: 0,
@@ -105,6 +107,32 @@ const DataVerificationStatus: React.FC = () => {
     }
   };
 
+  const runFCSDebug = async () => {
+    try {
+      setDebugging(true);
+      
+      const { data, error } = await supabase.functions.invoke('test-fcs-debug');
+
+      if (error) throw error;
+
+      toast({
+        title: "🔍 FCS Debug Complete",
+        description: `${data.summary?.totalTests} endpoints tested, ${data.summary?.workingEndpoints} working`,
+      });
+
+      console.log('FCS Debug Results:', data);
+    } catch (error) {
+      console.error('FCS debug failed:', error);
+      toast({
+        title: "FCS Debug Failed",
+        description: "Unable to test FCS endpoints",
+        variant: "destructive"
+      });
+    } finally {
+      setDebugging(false);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'ACTIVE': return <CheckCircle className="w-4 h-4 text-green-400" />;
@@ -164,11 +192,25 @@ const DataVerificationStatus: React.FC = () => {
               className="gap-2"
             >
               {verifying ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Target className="w-4 h-4" />
               )}
               Cross-Verify Now
+            </Button>
+            <Button 
+              onClick={runFCSDebug}
+              disabled={debugging}
+              size="sm"
+              variant="outline"
+              className="gap-2"
+            >
+              {debugging ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4" />
+              )}
+              Test FCS
             </Button>
           </div>
           <div className="grid grid-cols-3 gap-4 mt-4">
