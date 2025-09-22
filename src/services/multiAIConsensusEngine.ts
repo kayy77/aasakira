@@ -73,7 +73,8 @@ class MultiAIConsensusEngine {
     openrouter: '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',
     cohere: 'wTX42tk4eKfBGoXNmRVIPrIukl01yKCn0VsaCjjf',
     together: '8b0103657b0290f0a815723af49c8ed66af6f5df882de5acc1de32e02311bb79',
-    newsdata: 'pub_5cf95a64279c4e63b30a66fc9f2518fa'
+    newsdata: 'pub_5cf95a64279c4e63b30a66fc9f2518fa',
+    fcs: 'y4xERka7Pi3Flz3a87NnA'
   };
 
   private buildInstitutionalPrompt(context: SignalContext, modelRole: string): string {
@@ -161,8 +162,9 @@ Be brutally honest. If it's a weak setup, grade it accordingly. Focus on LOGIC o
       const baseCurrency = pair.substring(0, 3);
       const quoteCurrency = pair.substring(3, 6);
       
+      // Fetch economic events from FCS API
       const response = await fetch(
-        `https://newsdata.io/api/1/news?apikey=${this.API_KEYS.newsdata}&q=${baseCurrency} OR ${quoteCurrency} OR forex&category=business&language=en&size=3`,
+        `https://fcsapi.com/api-v3/forex/economic_calendar?access_key=${this.API_KEYS.fcs}&country=${this.getCurrencyCountry(baseCurrency)},${this.getCurrencyCountry(quoteCurrency)}&period=today`,
         {
           method: 'GET',
           headers: {
@@ -172,20 +174,46 @@ Be brutally honest. If it's a weak setup, grade it accordingly. Focus on LOGIC o
       );
 
       if (!response.ok) {
-        return 'No major news events detected';
+        return 'Economic calendar data unavailable.';
       }
 
       const data = await response.json();
-      const headlines = (data.results || []).slice(0, 2).map((article: any) => article.title);
       
-      return headlines.length > 0 ? 
-        `Recent news: ${headlines.join('. ')}` : 
-        'Clean news environment - no major events';
+      if (!data.response || data.response.length === 0) {
+        return 'No significant economic events affecting this pair currently.';
+      }
 
+      const events = data.response.slice(0, 3).map((event: any) => {
+        const impact = this.mapImpact(event.impact);
+        return `${event.event} (${event.country}) - Impact: ${impact}, Forecast: ${event.forecast || 'N/A'}, Previous: ${event.previous || 'N/A'}`;
+      }).join(' | ');
+
+      return `Economic events: ${events}`;
     } catch (error) {
-      console.error('News fetch failed:', error);
-      return 'News analysis unavailable';
+      console.log('Economic data fetch failed:', error);
+      return 'Economic calendar unavailable.';
     }
+  }
+
+  private getCurrencyCountry(currency: string): string {
+    const currencyMap: { [key: string]: string } = {
+      'USD': 'us',
+      'EUR': 'eu', 
+      'GBP': 'gb',
+      'JPY': 'jp',
+      'AUD': 'au',
+      'CAD': 'ca',
+      'CHF': 'ch',
+      'NZD': 'nz'
+    };
+    return currencyMap[currency] || 'us';
+  }
+
+  private mapImpact(impact: string | number): string {
+    if (typeof impact === 'number') {
+      return impact >= 3 ? 'High' : impact >= 2 ? 'Medium' : 'Low';
+    }
+    return impact || 'Medium';
   }
 
   private async callGroqAI(prompt: string): Promise<AIModelResponse> {
