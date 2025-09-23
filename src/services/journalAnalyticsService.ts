@@ -103,19 +103,26 @@ export class JournalAnalyticsService {
   private filterEntriesByTime(entries: JournalEntry[], filter: TimeFilter): JournalEntry[] {
     const now = new Date();
     let startDate: Date;
-    let endDate = filter.endDate || now;
+    let endDate = filter.endDate || new Date();
 
     switch (filter.type) {
       case 'daily':
-        startDate = new Date(now.setHours(0, 0, 0, 0));
-        endDate = new Date(now.setHours(23, 59, 59, 999));
+        // Create separate Date objects to avoid mutation issues
+        startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
+        console.log('🔍 Daily filter range:', { startDate: startDate.toISOString(), endDate: endDate.toISOString() });
         break;
       case 'weekly':
-        startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - startDate.getDay());
         startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
         break;
       case 'monthly':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date();
         break;
       case 'custom':
         startDate = filter.startDate || new Date(0);
@@ -124,10 +131,27 @@ export class JournalAnalyticsService {
         return entries;
     }
 
-    return entries.filter(entry => {
+    const filtered = entries.filter(entry => {
       const entryDate = new Date(entry.entry_time);
-      return entryDate >= startDate && entryDate <= endDate;
+      const inRange = entryDate >= startDate && entryDate <= endDate;
+      if (filter.type === 'daily') {
+        console.log('🔍 Checking entry:', { 
+          pair: entry.pair, 
+          entryDate: entryDate.toISOString(), 
+          status: entry.status,
+          inRange,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        });
+      }
+      return inRange;
     });
+
+    if (filter.type === 'daily') {
+      console.log('🔍 Filtered entries for today:', filtered.length, filtered.map(e => ({ pair: e.pair, status: e.status, pips: e.result_pips })));
+    }
+
+    return filtered;
   }
 
   private getDailyPnL(entries: JournalEntry[]): Record<string, number> {
@@ -145,8 +169,6 @@ export class JournalAnalyticsService {
       dailyPnL[date] += usdPnL;
     });
     
-    return dailyPnL;
-
     return dailyPnL;
   }
 
