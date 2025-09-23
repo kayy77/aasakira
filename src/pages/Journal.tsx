@@ -146,13 +146,12 @@ const Journal = () => {
     
     return dayTrades.reduce((sum, entry) => {
       const pips = entry.result_pips || 0;
-      // Skip unrealistic values (over 500 pips for most pairs)
-      if (Math.abs(pips) > 500) {
+      // Skip unrealistic values (over 1000 pips to match chart filtering)
+      if (Math.abs(pips) > 1000) {
         console.warn(`⚠️ Skipping unrealistic pip value: ${pips} for ${entry.pair}`);
         return sum;
       }
       const pnl = calculateRealPnL(pips, entry.lot_size, entry.fees || 0);
-      console.log(`💰 Trade P&L: ${pips} pips = $${pnl} (lot: ${entry.lot_size}, fees: ${entry.fees || 0})`);
       return sum + pnl;
     }, 0);
   };
@@ -751,15 +750,8 @@ const Journal = () => {
     endDate: customEndDate ? new Date(customEndDate) : undefined
   });
 
-  // Convert pip-based stats to USD for display
-  const stats = {
-    ...statsData,
-    totalPnL: calculateRealPnL(statsData.totalPnL, 1, 0), // Convert total pips to USD
-    avgWin: calculateRealPnL(statsData.avgWin, 1, 0),
-    avgLoss: calculateRealPnL(statsData.avgLoss, 1, 0),
-    bestDay: calculateRealPnL(statsData.bestDay, 1, 0),
-    worstDay: calculateRealPnL(statsData.worstDay, 1, 0)
-  };
+  // Stats are now already in USD from analytics service
+  const stats = statsData;
 
   const generateProgressChartData = () => {
     const filtered = getFilteredEntries() as JournalEntry[];

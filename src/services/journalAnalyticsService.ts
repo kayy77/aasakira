@@ -43,7 +43,8 @@ export class JournalAnalyticsService {
   
   calculateStats(entries: JournalEntry[], filter: TimeFilter): TradingStats {
     const closedTrades = this.filterEntriesByTime(entries, filter)
-      .filter(entry => entry.status === 'CLOSED');
+      .filter(entry => entry.status === 'CLOSED')
+      .filter(entry => Math.abs(entry.result_pips || 0) <= 1000); // Filter unrealistic values
     
     if (closedTrades.length === 0) {
       return {
@@ -59,16 +60,26 @@ export class JournalAnalyticsService {
       };
     }
 
+    // Calculate USD P&L using lot sizes
+    const calculateUSDPnL = (entry: JournalEntry): number => {
+      const pips = entry.result_pips || 0;
+      const lotSize = entry.lot_size || 1;
+      const fees = entry.fees || 0;
+      const actualLotSize = lotSize === 0 ? 0.01 : lotSize;
+      const pipValue = actualLotSize * 10;
+      return (pips * pipValue) - fees;
+    };
+
     const wins = closedTrades.filter(t => (t.result_pips || 0) > 0);
     const losses = closedTrades.filter(t => (t.result_pips || 0) < 0);
     
-    const totalPnL = closedTrades.reduce((sum, t) => sum + (t.result_pips || 0), 0);
+    const totalPnL = closedTrades.reduce((sum, t) => sum + calculateUSDPnL(t), 0);
     const winRate = (wins.length / closedTrades.length) * 100;
     
-    const avgWin = wins.length > 0 ? wins.reduce((sum, t) => sum + (t.result_pips || 0), 0) / wins.length : 0;
-    const avgLoss = losses.length > 0 ? losses.reduce((sum, t) => sum + (t.result_pips || 0), 0) / losses.length : 0;
+    const avgWin = wins.length > 0 ? wins.reduce((sum, t) => sum + calculateUSDPnL(t), 0) / wins.length : 0;
+    const avgLoss = losses.length > 0 ? losses.reduce((sum, t) => sum + calculateUSDPnL(t), 0) / losses.length : 0;
 
-    // Calculate daily P/L for best/worst day
+    // Calculate daily P/L for best/worst day (in USD)
     const dailyPnL = this.getDailyPnL(closedTrades);
     const bestDay = Math.max(...Object.values(dailyPnL), 0);
     const worstDay = Math.min(...Object.values(dailyPnL), 0);
@@ -79,11 +90,11 @@ export class JournalAnalyticsService {
     return {
       totalTrades: closedTrades.length,
       winRate: Math.round(winRate * 100) / 100,
-      totalPnL: Math.round(totalPnL * 10) / 10,
-      avgWin: Math.round(avgWin * 10) / 10,
-      avgLoss: Math.round(Math.abs(avgLoss) * 10) / 10,
-      bestDay: Math.round(bestDay * 10) / 10,
-      worstDay: Math.round(worstDay * 10) / 10,
+      totalPnL: Math.round(totalPnL * 100) / 100, // Already in USD
+      avgWin: Math.round(avgWin * 100) / 100,
+      avgLoss: Math.round(Math.abs(avgLoss) * 100) / 100,
+      bestDay: Math.round(bestDay * 100) / 100,
+      worstDay: Math.round(worstDay * 100) / 100,
       currentStreak,
       longestWinStreak
     };
@@ -124,9 +135,17 @@ export class JournalAnalyticsService {
     
     entries.forEach(entry => {
       const date = new Date(entry.entry_time).toISOString().split('T')[0];
+      const pips = entry.result_pips || 0;
+      const lotSize = entry.lot_size || 1;
+      const fees = entry.fees || 0;
+      const actualLotSize = lotSize === 0 ? 0.01 : lotSize;
+      const pipValue = actualLotSize * 10;
+      const usdPnL = (pips * pipValue) - fees;
       if (!dailyPnL[date]) dailyPnL[date] = 0;
-      dailyPnL[date] += (entry.result_pips || 0);
+      dailyPnL[date] += usdPnL;
     });
+    
+    return dailyPnL;
 
     return dailyPnL;
   }
