@@ -107,12 +107,13 @@ export class JournalAnalyticsService {
 
     switch (filter.type) {
       case 'daily':
-        // Create separate Date objects to avoid mutation issues
-        startDate = new Date();
-        startDate.setHours(0, 0, 0, 0);
-        endDate = new Date();
-        endDate.setHours(23, 59, 59, 999);
-        console.log('🔍 Daily filter range:', { startDate: startDate.toISOString(), endDate: endDate.toISOString() });
+        // Use UTC boundaries to match stored UTC timestamps
+        const nowUTC = new Date();
+        const todayStartUTC = new Date(nowUTC.getFullYear(), nowUTC.getMonth(), nowUTC.getDate());
+        const todayEndUTC = new Date(nowUTC.getFullYear(), nowUTC.getMonth(), nowUTC.getDate(), 23, 59, 59, 999);
+        startDate = todayStartUTC;
+        endDate = todayEndUTC;
+        console.log('🔍 Daily filter range (UTC):', { startDate: startDate.toISOString(), endDate: endDate.toISOString() });
         break;
       case 'weekly':
         startDate = new Date();
