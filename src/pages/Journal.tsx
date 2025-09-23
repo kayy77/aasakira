@@ -138,10 +138,12 @@ const Journal = () => {
   };
 
   const getDailyPnL = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local date string to avoid timezone issues
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const dayTrades = entries.filter(entry => {
-      const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
-      return entryDate === dateStr && entry.status === 'CLOSED' && entry.result_pips !== null;
+      const entryDate = new Date(entry.entry_time);
+      const entryDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}-${String(entryDate.getDate()).padStart(2, '0')}`;
+      return entryDateStr === dateStr && entry.status === 'CLOSED' && entry.result_pips !== null;
     });
     
     return dayTrades.reduce((sum, entry) => {
@@ -162,10 +164,11 @@ const Journal = () => {
     if (pnl < 0) return 'bg-red-500';
     
     // Check if there are any trades this day
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const hasTrades = entries.some(entry => {
-      const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
-      return entryDate === dateStr;
+      const entryDate = new Date(entry.entry_time);
+      const entryDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}-${String(entryDate.getDate()).padStart(2, '0')}`;
+      return entryDateStr === dateStr;
     });
     
     return hasTrades ? 'bg-gray-500' : 'bg-gray-700';
@@ -804,9 +807,10 @@ const Journal = () => {
 
   const selectedDayPnL = getDailyPnL(selectedDate);
   const selectedDayTrades = entries.filter(entry => {
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
-    return entryDate === dateStr;
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+    const entryDate = new Date(entry.entry_time);
+    const entryDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}-${String(entryDate.getDate()).padStart(2, '0')}`;
+    return entryDateStr === dateStr;
   });
 
   const calendarDays = generateCalendarDays();
@@ -1064,10 +1068,11 @@ const Journal = () => {
                         const isSelected = date.toDateString() === selectedDate.toDateString();
                         const isToday = date.toDateString() === new Date().toDateString();
                         const pnl = getDailyPnL(date);
-                        const dateStr = date.toISOString().split('T')[0];
+                        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                         const hasTrades = entries.some(entry => {
-                          const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
-                          return entryDate === dateStr;
+                          const entryDate = new Date(entry.entry_time);
+                          const entryDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}-${String(entryDate.getDate()).padStart(2, '0')}`;
+                          return entryDateStr === dateStr;
                         });
                         
                         let dayBgClass = 'bg-card/30 hover:bg-accent/50';
@@ -1092,10 +1097,11 @@ const Journal = () => {
                             onClick={() => {
                               setSelectedDate(date);
                               // If there are trades on this day, show edit dialog for the most recent one
-                              const dateStr = date.toISOString().split('T')[0];
+                              const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                               const dayTrades = entries.filter(entry => {
-                                const entryDate = new Date(entry.entry_time).toISOString().split('T')[0];
-                                return entryDate === dateStr;
+                                const entryDate = new Date(entry.entry_time);
+                                const entryDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}-${String(entryDate.getDate()).padStart(2, '0')}`;
+                                return entryDateStr === dateStr;
                               });
                               if (dayTrades.length > 0) {
                                 // If multiple trades, edit the most recent one
