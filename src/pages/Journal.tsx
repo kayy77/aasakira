@@ -102,6 +102,81 @@ const Journal = () => {
     }
   }, [user]);
 
+  const fixDateShift = async () => {
+    try {
+      const { data: entries, error } = await supabase
+        .from('journal_entries')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      const updates = [];
+      const toDelete = [];
+
+      for (const entry of entries || []) {
+        // Add 1 day to the entry time
+        const currentDate = new Date(entry.entry_time);
+        const newDate = new Date(currentDate);
+        newDate.setDate(currentDate.getDate() + 1);
+        
+        // If it lands on September 22nd, mark for deletion
+        const newDateStr = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`;
+        if (newDateStr === '2025-09-22') {
+          toDelete.push(entry.id);
+          continue;
+        }
+
+        updates.push({
+          id: entry.id,
+          entry_time: newDate.toISOString(),
+          exit_time: entry.exit_time ? new Date(new Date(entry.exit_time).getTime() + 24 * 60 * 60 * 1000).toISOString() : entry.exit_time
+        });
+      }
+
+      // Delete entries on Sept 22nd
+      if (toDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('journal_entries')
+          .delete()
+          .in('id', toDelete);
+        
+        if (deleteError) throw deleteError;
+        console.log(`🗑️ Deleted ${toDelete.length} entries from Sept 22nd`);
+      }
+
+      // Update remaining entries
+      for (const update of updates) {
+        const { error: updateError } = await supabase
+          .from('journal_entries')
+          .update({ 
+            entry_time: update.entry_time,
+            exit_time: update.exit_time 
+          })
+          .eq('id', update.id);
+        
+        if (updateError) throw updateError;
+      }
+
+      console.log(`✅ Updated ${updates.length} entries, deleted ${toDelete.length} entries`);
+      
+      toast({
+        title: "Success",
+        description: `Fixed ${updates.length} trade dates and removed ${toDelete.length} trades from Sept 22nd`,
+      });
+
+      // Reload entries
+      loadEntries();
+    } catch (error) {
+      console.error('Error fixing date shift:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fix date shift",
+        variant: "destructive"
+      });
+    }
+  };
+
   const loadEntries = async () => {
     try {
       const { data, error } = await supabase
@@ -1177,15 +1252,25 @@ const Journal = () => {
                       <h3 className="text-lg font-zen-maru font-semibold text-foreground">{formatSelectedDate()}</h3>
                       <p className="text-sm text-muted-foreground">Daily Performance</p>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowAddDialog(true)}
-                      className="hover-lift bg-primary/10 border-primary/20 hover:bg-primary/20"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Trade
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={fixDateShift}
+                        variant="outline"
+                        size="sm"
+                        className="bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border-orange-500/20"
+                      >
+                        Fix Date Shift
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAddDialog(true)}
+                        className="hover-lift bg-primary/10 border-primary/20 hover:bg-primary/20"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Trade
+                      </Button>
+                    </div>
                   </div>
                   
                   <div className={`text-4xl font-bold font-zen-maru mb-3 ${
