@@ -247,7 +247,6 @@ const Journal = () => {
     const requiredFields = [];
     if (!newEntry.pair.trim()) requiredFields.push("Currency Pair");
     if (!newEntry.entry_price.trim()) requiredFields.push("Entry Price");
-    if (!newEntry.entry_time.trim()) requiredFields.push("Entry Time");
     if (!newEntry.strategy.trim()) requiredFields.push("Strategy");
 
     if (requiredFields.length > 0) {
@@ -293,7 +292,7 @@ const Journal = () => {
         pair: newEntry.pair.trim().toUpperCase(),
         entry_price: parseFloat(newEntry.entry_price),
         exit_price: newEntry.exit_price ? parseFloat(newEntry.exit_price) : null,
-        entry_time: newEntry.entry_time,
+        entry_time: new Date().toISOString(), // Always use current time
         exit_time: newEntry.status === 'CLOSED' ? new Date().toISOString() : null,
         direction: newEntry.direction,
         strategy: newEntry.strategy.trim(),
@@ -390,7 +389,7 @@ const Journal = () => {
         pair: '',
         entry_price: '',
         exit_price: '',
-        entry_time: newEntry.entry_time, // Keep the same date
+        entry_time: '', // Will be auto-set to current time on save
         direction: 'LONG',
         strategy: '',
         lot_size: '',
@@ -1453,7 +1452,7 @@ const Journal = () => {
             pair: '',
             entry_price: '',
             exit_price: '',
-            entry_time: '',
+            entry_time: '', // Will be auto-set to current time on save
             direction: 'LONG',
             strategy: '',
             lot_size: '',
