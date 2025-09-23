@@ -1527,7 +1527,12 @@ const Journal = () => {
                   id="entry_time"
                   type="date"
                   value={newEntry.entry_time ? newEntry.entry_time.split('T')[0] : ''}
-                  onChange={(e) => setNewEntry({...newEntry, entry_time: e.target.value + 'T12:00'})}
+                  onChange={(e) => {
+                    const selectedDate = e.target.value;
+                    const isoDateTime = selectedDate + 'T12:00:00.000Z'; // Add explicit timezone
+                    console.log('📅 Date input changed:', { selectedDate, isoDateTime });
+                    setNewEntry({...newEntry, entry_time: isoDateTime});
+                  }}
                   className="bg-zinc-800 border-zinc-600 text-white"
                   required
                 />
