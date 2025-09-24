@@ -1035,9 +1035,13 @@ const Journal = () => {
                     <ChartContainer config={chartConfig} className="w-full" style={{ aspectRatio: 'auto', height: '192px' }}>
                       <AreaChart data={progressData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
                         <defs>
-                          <linearGradient id="cumulativePLGradient" x1="0" y1="0" x2="0" y2="1">
+                          <linearGradient id="positivePLGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="hsl(142 76% 36%)" stopOpacity={0.3}/>
                             <stop offset="95%" stopColor="hsl(142 76% 36%)" stopOpacity={0.05}/>
+                          </linearGradient>
+                          <linearGradient id="negativePLGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(0 84% 60%)" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="hsl(0 84% 60%)" stopOpacity={0.05}/>
                           </linearGradient>
                         </defs>
                         <XAxis 
@@ -1051,16 +1055,15 @@ const Journal = () => {
                           content={({ active, payload, label }) => {
                             if (active && payload && payload.length) {
                               const data = payload[0].payload;
-                              const latestValue = progressData[progressData.length - 1]?.cumulativePL || 0;
                               const currentValue = data.cumulativePL;
-                              const percentageChange = latestValue !== 0 ? ((currentValue / Math.abs(latestValue)) * 100).toFixed(2) : '0.00';
+                              const isPositive = currentValue >= 0;
                               
                               return (
                                 <div className="bg-popover/90 backdrop-blur border border-border rounded-lg p-3 shadow-lg">
                                   <p className="text-foreground font-medium">{label}</p>
                                   <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                    <span className="text-green-400 font-bold text-lg">
+                                    <div className={`w-3 h-3 rounded-full ${isPositive ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                    <span className={`font-bold text-lg ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
                                       {Math.abs(currentValue) > 0 ? `${currentValue >= 0 ? '+' : ''}$${Math.abs(currentValue).toLocaleString()}` : '$0'}
                                     </span>
                                   </div>
@@ -1080,11 +1083,32 @@ const Journal = () => {
                         <Area 
                           type="monotone" 
                           dataKey="cumulativePL" 
-                          stroke="hsl(142 76% 36%)" 
+                          stroke={(() => {
+                            const latestValue = progressData[progressData.length - 1]?.cumulativePL || 0;
+                            return latestValue >= 0 ? "hsl(142 76% 36%)" : "hsl(0 84% 60%)";
+                          })()}
                           strokeWidth={2.5}
-                          fill="url(#cumulativePLGradient)"
-                          dot={{ fill: 'hsl(142 76% 36%)', strokeWidth: 2, r: 3 }}
-                          activeDot={{ r: 5, fill: 'hsl(142 76% 36%)', strokeWidth: 2, stroke: '#fff' }}
+                          fill={(() => {
+                            const latestValue = progressData[progressData.length - 1]?.cumulativePL || 0;
+                            return latestValue >= 0 ? "url(#positivePLGradient)" : "url(#negativePLGradient)";
+                          })()}
+                          dot={(() => {
+                            const latestValue = progressData[progressData.length - 1]?.cumulativePL || 0;
+                            return { 
+                              fill: latestValue >= 0 ? 'hsl(142 76% 36%)' : 'hsl(0 84% 60%)', 
+                              strokeWidth: 2, 
+                              r: 3 
+                            };
+                          })()}
+                          activeDot={(() => {
+                            const latestValue = progressData[progressData.length - 1]?.cumulativePL || 0;
+                            return { 
+                              r: 5, 
+                              fill: latestValue >= 0 ? 'hsl(142 76% 36%)' : 'hsl(0 84% 60%)', 
+                              strokeWidth: 2, 
+                              stroke: '#fff' 
+                            };
+                          })()}
                         />
                       </AreaChart>
                     </ChartContainer>
