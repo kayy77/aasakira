@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { eachDayOfInterval, format, startOfMonth, startOfWeek, startOfDay, endOfDay } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -803,9 +804,41 @@ const Journal = () => {
   const generateProgressChartData = () => {
     const filtered = getFilteredEntries() as JournalEntry[];
     console.log('🔍 Filtered entries for chart:', filtered.length, filtered);
-    const dailyPnL: { [key: string]: number } = {};
     
-    // Group entries by date and calculate daily P&L with validation
+    // Determine the date range based on the current filter
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = now;
+
+    switch (timeFilter) {
+      case 'daily':
+        startDate = startOfDay(now);
+        endDate = endOfDay(now);
+        break;
+      case 'weekly':
+        startDate = startOfWeek(now);
+        break;
+      case 'monthly':
+        startDate = startOfMonth(now);
+        break;
+      case 'custom':
+        startDate = customStartDate ? new Date(customStartDate) : startOfMonth(now);
+        endDate = customEndDate ? new Date(customEndDate) : now;
+        break;
+      default:
+        startDate = startOfMonth(now);
+    }
+
+    // Generate complete date range
+    const allDays = eachDayOfInterval({ start: startDate, end: endDate }).map(date => ({
+      date: format(date, 'yyyy-MM-dd'),
+      dailyPL: 0,
+      hasTradesForDay: false
+    }));
+
+    // Calculate daily P&L for days with trades
+    const dailyPnL: { [key: string]: { pnl: number; hasTrades: boolean } } = {};
+    
     filtered.forEach((entry: JournalEntry) => {
       if (entry.status === 'CLOSED' && entry.result_pips) {
         // Filter out unrealistic pip values (should be between -1000 and +1000 pips for most trades)
@@ -819,23 +852,37 @@ const Journal = () => {
         // Convert pips to USD using lot size
         const usdPnL = calculateRealPnL(pips, entry.lot_size, entry.fees || 0);
         console.log(`💰 Trade P&L: ${pips} pips = $${usdPnL} (lot: ${entry.lot_size}, fees: ${entry.fees || 0})`);
-        dailyPnL[date] = (dailyPnL[date] || 0) + usdPnL;
+        
+        if (!dailyPnL[date]) {
+          dailyPnL[date] = { pnl: 0, hasTrades: false };
+        }
+        dailyPnL[date].pnl += usdPnL;
+        dailyPnL[date].hasTrades = true;
       }
     });
     
     // Debug: Log the daily P&L values
     console.log('Daily P&L data (USD):', dailyPnL);
     
-    // Convert to chart data format and sort by date
-    const chartData = Object.entries(dailyPnL)
-      .map(([dateStr, pnl]) => ({
-        date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        pnl: Math.round(pnl), // Already in USD
-        originalDate: dateStr
+    // Merge trade results into complete date range
+    const merged = allDays.map(d => ({
+      ...d,
+      dailyPL: dailyPnL[d.date]?.pnl ?? 0,
+      hasTradesForDay: dailyPnL[d.date]?.hasTrades ?? false
+    }));
+
+    // Convert to chart data format
+    const chartData = merged
+      .map(({ date: dateStr, dailyPL, hasTradesForDay }) => ({
+        date: format(new Date(dateStr), 'MMM d'),
+        pnl: Math.round(dailyPL), // Already in USD
+        originalDate: dateStr,
+        hasTradesForDay,
+        isNoTradeDay: !hasTradesForDay
       }))
       .filter(entry => Math.abs(entry.pnl) <= 50000) // Cap at $50,000 per day
       .sort((a, b) => new Date(a.originalDate).getTime() - new Date(b.originalDate).getTime())
-      .slice(-15); // Show last 15 days for better visibility
+      .slice(-30); // Show last 30 days for better visibility
     
     console.log('Chart data after processing:', chartData);
     return chartData;
@@ -983,10 +1030,39 @@ const Journal = () => {
                           tickLine={false}
                         />
                         <YAxis domain={[ 'auto', 'auto' ]} hide />
-                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <ChartTooltip 
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-popover/90 backdrop-blur border border-border rounded-lg p-3 shadow-lg">
+                                  <p className="text-foreground font-medium">{label}</p>
+                                  {data.isNoTradeDay ? (
+                                    <p className="text-muted-foreground text-sm">No trades</p>
+                                  ) : (
+                                    <p className={`font-semibold ${data.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                      {data.pnl >= 0 ? '+' : ''}${Math.abs(data.pnl).toLocaleString()}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
                         <Bar dataKey="pnl" barSize={12} radius={[3, 3, 0, 0]}>
                           {progressData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? 'hsl(142 76% 36%)' : 'hsl(0 84% 60%)'} />
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={
+                                entry.isNoTradeDay 
+                                  ? 'hsl(var(--muted-foreground) / 0.2)' // Faint grey for no-trade days
+                                  : entry.pnl >= 0 
+                                    ? 'hsl(142 76% 36%)' 
+                                    : 'hsl(0 84% 60%)'
+                              }
+                              opacity={entry.isNoTradeDay ? 0.4 : 1}
+                            />
                           ))}
                         </Bar>
                       </BarChart>
