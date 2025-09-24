@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import MultiStepSignupDialog from './MultiStepSignupDialog';
 
 interface LoginDialogProps {
   children: React.ReactNode;
@@ -14,11 +15,10 @@ interface LoginDialogProps {
 
 const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,19 +26,11 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
     setLoading(true);
 
     try {
-      if (isLogin) {
-        await signIn(email, password);
-        toast({
-          title: "Welcome back!",
-          description: "Successfully signed in.",
-        });
-      } else {
-        await signUp(email, password);
-        toast({
-          title: "Account created!",
-          description: "Welcome to AASAKIRA! You can start using all features immediately.",
-        });
-      }
+      await signIn(email, password);
+      toast({
+        title: "Welcome back!",
+        description: "Successfully signed in.",
+      });
       setIsOpen(false);
       setEmail('');
       setPassword('');
@@ -51,15 +43,9 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
           description: "Invalid email or password. Please try again.",
           variant: "destructive",
         });
-      } else if (error.message?.includes('User already registered')) {
-        toast({
-          title: "Account exists",
-          description: "This email is already registered. Please sign in instead.",
-          variant: "destructive",
-        });
       } else {
         toast({
-          title: isLogin ? "Login failed" : "Signup failed",
+          title: "Login failed",
           description: error.message || "An unexpected error occurred. Please try again.",
           variant: "destructive",
         });
@@ -77,7 +63,7 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
       <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
         <DialogHeader>
           <DialogTitle className="text-white text-center">
-            {isLogin ? 'Sign In to AASAKIRA' : 'Create Your Account'}
+            Sign In to AASAKIRA
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -107,13 +93,6 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
             />
           </div>
           
-          {!isLogin && (
-            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-              <p className="text-green-400 text-sm text-center">
-                ✅ No email confirmation required! Start trading immediately after signup.
-              </p>
-            </div>
-          )}
           
           <Button
             type="submit"
@@ -123,22 +102,23 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ children }) => {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isLogin ? 'Signing In...' : 'Creating Account...'}
+                Signing In...
               </>
             ) : (
-              isLogin ? 'Sign In' : 'Create Account'
+              'Sign In'
             )}
           </Button>
           
           <div className="text-center">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-gray-400 hover:text-white"
-            >
-              {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-            </Button>
+            <MultiStepSignupDialog>
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-gray-400 hover:text-white"
+              >
+                Don't have an account? Sign up
+              </Button>
+            </MultiStepSignupDialog>
           </div>
         </form>
       </DialogContent>

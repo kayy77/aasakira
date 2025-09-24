@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import MultiStepSignupDialog from './MultiStepSignupDialog';
 
 const Hero = () => {
   const { isAuthenticated } = useAuth();
@@ -61,14 +62,15 @@ const Hero = () => {
 
         {/* CTA Buttons */}
         <div className="mb-16 flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{animationDelay: '0.2s'}}>
-          <Button 
-            size="lg" 
-            onClick={handleJoinCommunity}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-4 text-lg hover-lift cyber-glow"
-          >
-            Join Community
-            <ArrowRight className="ml-2 w-5 h-5" />
-          </Button>
+          <MultiStepSignupDialog>
+            <Button 
+              size="lg" 
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-4 text-lg hover-lift cyber-glow"
+            >
+              Start Trading Journey
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+          </MultiStepSignupDialog>
           <Button 
             size="lg" 
             variant="outline" 
