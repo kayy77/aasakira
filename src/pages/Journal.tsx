@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Plus, ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, BarChart3, Brain, Filter, MoreVertical, Edit, Trash2, Loader2 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useToast } from '@/hooks/use-toast';
@@ -871,18 +871,29 @@ const Journal = () => {
       hasTradesForDay: dailyPnL[d.date]?.hasTrades ?? false
     }));
 
-    // Convert to chart data format
-    const chartData = merged
+    // Convert to chart data format with cumulative calculation
+    const sortedData = merged
       .map(({ date: dateStr, dailyPL, hasTradesForDay }) => ({
         date: format(new Date(dateStr), 'MMM d'),
-        pnl: Math.round(dailyPL), // Already in USD
+        dailyPnl: Math.round(dailyPL), // Daily P&L
         originalDate: dateStr,
         hasTradesForDay,
         isNoTradeDay: !hasTradesForDay
       }))
-      .filter(entry => Math.abs(entry.pnl) <= 50000) // Cap at $50,000 per day
+      .filter(entry => Math.abs(entry.dailyPnl) <= 50000) // Cap at $50,000 per day
       .sort((a, b) => new Date(a.originalDate).getTime() - new Date(b.originalDate).getTime())
       .slice(-30); // Show last 30 days for better visibility
+
+    // Calculate cumulative P&L for the squirt chart effect
+    let cumulativePL = 0;
+    const chartData = sortedData.map((entry, index) => {
+      cumulativePL += entry.dailyPnl;
+      return {
+        ...entry,
+        cumulativePL: Math.round(cumulativePL),
+        percentage: index === 0 ? 0 : Math.round(((cumulativePL / Math.abs(sortedData[0].dailyPnl || 1)) * 100) * 100) / 100
+      };
+    });
     
     console.log('Chart data after processing:', chartData);
     return chartData;
@@ -891,9 +902,9 @@ const Journal = () => {
   const progressData = React.useMemo(() => generateProgressChartData(), [entries, timeFilter, customStartDate, customEndDate]);
 
   const chartConfig = {
-    pnl: {
-      label: "P&L",
-      color: "hsl(var(--chart-1))",
+    cumulativePL: {
+      label: "Cumulative P&L",
+      color: "hsl(142 76% 36%)",
     },
   };
 
@@ -1022,26 +1033,42 @@ const Journal = () => {
                     </div>
                   ) : (
                     <ChartContainer config={chartConfig} className="w-full" style={{ aspectRatio: 'auto', height: '192px' }}>
-                      <BarChart data={progressData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                      <AreaChart data={progressData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                        <defs>
+                          <linearGradient id="cumulativePLGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(142 76% 36%)" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="hsl(142 76% 36%)" stopOpacity={0.05}/>
+                          </linearGradient>
+                        </defs>
                         <XAxis 
                           dataKey="date" 
                           tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                           axisLine={false}
                           tickLine={false}
                         />
-                        <YAxis domain={[ 'auto', 'auto' ]} hide />
+                        <YAxis domain={[ 'dataMin - 100', 'dataMax + 100' ]} hide />
                         <ChartTooltip 
                           content={({ active, payload, label }) => {
                             if (active && payload && payload.length) {
                               const data = payload[0].payload;
+                              const latestValue = progressData[progressData.length - 1]?.cumulativePL || 0;
+                              const currentValue = data.cumulativePL;
+                              const percentageChange = latestValue !== 0 ? ((currentValue / Math.abs(latestValue)) * 100).toFixed(2) : '0.00';
+                              
                               return (
                                 <div className="bg-popover/90 backdrop-blur border border-border rounded-lg p-3 shadow-lg">
                                   <p className="text-foreground font-medium">{label}</p>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                    <span className="text-green-400 font-bold text-lg">
+                                      {Math.abs(currentValue) > 0 ? `${currentValue >= 0 ? '+' : ''}$${Math.abs(currentValue).toLocaleString()}` : '$0'}
+                                    </span>
+                                  </div>
                                   {data.isNoTradeDay ? (
-                                    <p className="text-muted-foreground text-sm">No trades</p>
+                                    <p className="text-muted-foreground text-sm mt-1">No trades this day</p>
                                   ) : (
-                                    <p className={`font-semibold ${data.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                      {data.pnl >= 0 ? '+' : ''}${Math.abs(data.pnl).toLocaleString()}
+                                    <p className="text-muted-foreground text-sm mt-1">
+                                      Daily: {data.dailyPnl >= 0 ? '+' : ''}${Math.abs(data.dailyPnl).toLocaleString()}
                                     </p>
                                   )}
                                 </div>
@@ -1050,22 +1077,16 @@ const Journal = () => {
                             return null;
                           }}
                         />
-                        <Bar dataKey="pnl" barSize={12} radius={[3, 3, 0, 0]}>
-                          {progressData.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={
-                                entry.isNoTradeDay 
-                                  ? 'hsl(var(--muted-foreground) / 0.2)' // Faint grey for no-trade days
-                                  : entry.pnl >= 0 
-                                    ? 'hsl(142 76% 36%)' 
-                                    : 'hsl(0 84% 60%)'
-                              }
-                              opacity={entry.isNoTradeDay ? 0.4 : 1}
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
+                        <Area 
+                          type="monotone" 
+                          dataKey="cumulativePL" 
+                          stroke="hsl(142 76% 36%)" 
+                          strokeWidth={2.5}
+                          fill="url(#cumulativePLGradient)"
+                          dot={{ fill: 'hsl(142 76% 36%)', strokeWidth: 2, r: 3 }}
+                          activeDot={{ r: 5, fill: 'hsl(142 76% 36%)', strokeWidth: 2, stroke: '#fff' }}
+                        />
+                      </AreaChart>
                     </ChartContainer>
                   )}
                 </CardContent>
