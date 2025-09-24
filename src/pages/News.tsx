@@ -17,13 +17,15 @@ interface EconomicEvent {
   id: number;
   event_id: string;
   title: string;
-  country: string;
-  impact: 'LOW' | 'MEDIUM' | 'HIGH';
-  date: string;
+  country: string | null;
+  currency: string | null;
+  impact: 'Low' | 'Medium' | 'High';
+  event_time: string | null;
   forecast: string | null;
   previous: string | null;
   actual: string | null;
-  source: string;
+  source: string | null;
+  relevance: number | null;
 }
 
 interface EventAnalysis {
@@ -64,12 +66,12 @@ const News = () => {
 
   const fetchEvents = async () => {
     try {
-      // Fetch news events - try today first
+      // Fetch economic events - try today first
       let { data: eventsData, error: eventsError } = await supabase
-        .from('news_events')
+        .from('economic_events')
         .select('*')
-        .gte('date', new Date().toISOString().split('T')[0])
-        .order('date', { ascending: true });
+        .gte('event_time', new Date().toISOString().split('T')[0])
+        .order('event_time', { ascending: true });
 
       if (eventsError) throw eventsError;
 
@@ -77,10 +79,10 @@ const News = () => {
       if (!eventsData || eventsData.length === 0) {
         console.log('No events for today, fetching last 7 days...');
         const fallback = await supabase
-          .from('news_events')
+          .from('economic_events')
           .select('*')
-          .gte('date', new Date(Date.now() - 7*24*60*60*1000).toISOString())
-          .order('date', { ascending: true });
+          .gte('event_time', new Date(Date.now() - 7*24*60*60*1000).toISOString())
+          .order('event_time', { ascending: true });
           
         eventsData = fallback.data || [];
       }
@@ -122,7 +124,7 @@ const News = () => {
     try {
       // Refresh both events and news in parallel
       const [eventsResult, newsResult] = await Promise.allSettled([
-        supabase.functions.invoke('fetch-news'),
+        supabase.functions.invoke('fetch-economic-events'),
         supabase.functions.invoke('fetch-ai-news')
       ]);
       
@@ -150,7 +152,7 @@ const News = () => {
       // First fetch fresh data from APIs
       try {
         const [eventsResult, newsResult] = await Promise.allSettled([
-          supabase.functions.invoke('fetch-news'),
+          supabase.functions.invoke('fetch-economic-events'),
           supabase.functions.invoke('fetch-ai-news')
         ]);
         console.log('Auto-fetched data - events:', eventsResult, 'news:', newsResult);
@@ -171,9 +173,9 @@ const News = () => {
 
   const getImportanceColor = (importance: string) => {
     switch (importance) {
-      case 'HIGH': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'MEDIUM': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'LOW': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'High': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'Medium': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'Low': return 'bg-green-500/20 text-green-400 border-green-500/30';
       default: return 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30';
     }
   };
@@ -196,7 +198,8 @@ const News = () => {
     }
   };
 
-  const getTimeLabel = (eventTime: string) => {
+  const getTimeLabel = (eventTime: string | null) => {
+    if (!eventTime) return 'Unknown';
     const date = new Date(eventTime);
     if (isToday(date)) return 'Today';
     if (isTomorrow(date)) return 'Tomorrow';
@@ -204,15 +207,17 @@ const News = () => {
   };
 
   const filteredEvents = events.filter(event => {
-    const eventDate = new Date(event.date);
+    if (!event.event_time) return false;
+    
+    const eventDate = new Date(event.event_time);
     const today = new Date();
     const tomorrow = addDays(today, 1);
     const thisWeek = addDays(today, 7);
 
-    // Currency filter - skip for now since new table doesn't have currency
-    // if (selectedCurrency !== 'ALL' && event.currency !== selectedCurrency) {
-    //   return false;
-    // }
+    // Currency filter
+    if (selectedCurrency !== 'ALL' && event.currency !== selectedCurrency) {
+      return false;
+    }
 
     // Importance filter
     if (selectedImportance !== 'ALL' && event.impact !== selectedImportance) {
@@ -296,9 +301,9 @@ const News = () => {
               </SelectTrigger>
               <SelectContent className="bg-zinc-800 border-zinc-600">
                 <SelectItem value="ALL">All Impact</SelectItem>
-                <SelectItem value="HIGH">High Impact</SelectItem>
-                <SelectItem value="MEDIUM">Medium Impact</SelectItem>
-                <SelectItem value="LOW">Low Impact</SelectItem>
+                <SelectItem value="High">High Impact</SelectItem>
+                <SelectItem value="Medium">Medium Impact</SelectItem>
+                <SelectItem value="Low">Low Impact</SelectItem>
               </SelectContent>
             </Select>
 
@@ -389,10 +394,10 @@ const News = () => {
                              </h3>
                              
                              <div className="flex items-center gap-4 text-sm text-zinc-400">
-                               <div className="flex items-center gap-1">
-                                 <Clock className="h-4 w-4" />
-                                 {getTimeLabel(event.date)} at {format(new Date(event.date), 'HH:mm')}
-                               </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  {getTimeLabel(event.event_time)} {event.event_time && `at ${format(new Date(event.event_time), 'HH:mm')}`}
+                                </div>
                               
                               {event.forecast && (
                                 <div>
@@ -533,7 +538,7 @@ const News = () => {
             <Card className="bg-zinc-900 border-zinc-700">
               <CardContent className="p-4 text-center">
                  <div className="text-2xl font-bold text-white mb-1">
-                   {events.filter(e => e.impact === 'HIGH').length}
+                   {events.filter(e => e.impact === 'High').length}
                  </div>
                 <div className="text-sm text-red-400">High Impact Events</div>
               </CardContent>
