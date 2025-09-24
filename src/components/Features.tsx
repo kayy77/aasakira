@@ -16,43 +16,43 @@ const Features = () => {
   const features = [
     {
       icon: Brain,
-      title: 'AI-Powered Signals',
-      description: 'Advanced machine learning algorithms analyze market data in real-time to generate high-probability trading signals',
+      title: 'AI Trading Assistant',
+      description: 'Intelligent AI mentor that analyzes your trades, provides personalized feedback, and guides your learning journey',
       gradient: 'from-blue-500 to-purple-500',
       delay: '0s'
     },
     {
       icon: Target,
-      title: 'Precision Targeting',
-      description: 'Pinpoint entry and exit points with surgical precision using institutional-grade analysis tools',
+      title: 'Smart Trade Analysis',
+      description: 'Advanced pattern recognition and trade breakdown tools to identify your strengths and improvement areas',
       gradient: 'from-green-500 to-emerald-500',
       delay: '0.1s'
     },
     {
       icon: Shield,
-      title: 'Risk Management',
-      description: 'Intelligent risk assessment and position sizing to protect your capital and maximize returns',
+      title: 'Risk Management Tools',
+      description: 'Comprehensive position sizing calculators and risk assessment tools to protect your capital',
       gradient: 'from-red-500 to-pink-500',
       delay: '0.2s'
     },
     {
       icon: Zap,
-      title: 'Lightning Fast',
-      description: 'Real-time market analysis and instant signal delivery to never miss a profitable opportunity',
+      title: 'Real-Time Insights',
+      description: 'Instant market analysis and educational content delivered when you need it most',
       gradient: 'from-yellow-500 to-orange-500',
       delay: '0.3s'
     },
     {
       icon: BarChart3,
-      title: 'Advanced Analytics',
-      description: 'Comprehensive market analysis with technical indicators, sentiment data, and trend prediction',
+      title: 'Performance Analytics',
+      description: 'Deep dive into your trading performance with advanced analytics and visualization tools',
       gradient: 'from-purple-500 to-violet-500',
       delay: '0.4s'
     },
     {
       icon: Users,
-      title: 'Copy Trading',
-      description: 'Follow and copy successful traders automatically with intelligent position scaling',
+      title: 'Trading Community',
+      description: 'Connect with fellow traders, share insights, and learn from experienced professionals in our active community',
       gradient: 'from-cyan-500 to-blue-500',
       delay: '0.5s'
     }
@@ -64,11 +64,11 @@ const Features = () => {
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-6 gradient-text">
-            Cutting-Edge Features
+            AI-Powered Trading Tools
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Powered by advanced AI and machine learning to give you the 
-            competitive edge in trading
+            Comprehensive suite of AI tools and community resources designed to 
+            accelerate your trading education and performance
           </p>
         </div>
 
@@ -113,20 +113,21 @@ const Features = () => {
           <div className="glass-card p-8 max-w-4xl mx-auto">
             <div className="flex items-center justify-center mb-4">
               <Sparkles className="w-6 h-6 text-purple-400 mr-2" />
-              <span className="text-purple-400 font-semibold">Stop Guessing. Start Evolving.</span>
+              <span className="text-purple-400 font-semibold">Learn. Analyze. Excel.</span>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">
-              Ready to Transform Your Trading?
+              Ready to Master Trading with AI?
             </h3>
             <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
-              Join thousands of traders using Aasakira to develop consistency, reduce emotional trading,
-              and accelerate their journey to funded accounts.
+              Join our community of traders using cutting-edge AI tools to develop consistent profitability, 
+              master market psychology, and accelerate their path to trading success.
             </p>
             <Button 
               size="lg" 
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-4 hover-lift"
+              onClick={() => window.open('https://t.me/aasakirafree', '_blank')}
             >
-              Start Your Journey
+              Join Our Community
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </div>

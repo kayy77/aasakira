@@ -10,25 +10,25 @@ const Hero = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const handleStartTrading = () => {
-    // Open broker link in new tab
-    window.open('https://myaccountnew.fxlvls.com/registration?lang=en&campaignid=1000541&affiliateid=10812', '_blank');
+  const handleJoinCommunity = () => {
+    // Open Telegram community
+    window.open('https://t.me/aasakirafree', '_blank');
   };
 
-  const handleViewLiveDemo = () => {
+  const handleExploreTools = () => {
     if (!isAuthenticated) {
-      // Show login dialog by navigating to a route that triggers auth
-      navigate('/signals'); // This will trigger AuthGuard to show login
+      // Show login dialog by navigating to education
+      navigate('/education'); // This will trigger AuthGuard to show login
     } else {
-      navigate('/signals');
+      navigate('/education');
     }
   };
 
   const stats = [
-    { label: 'Signal Accuracy', value: '95%', icon: Target },
-    { label: 'Active Users', value: '10K+', icon: TrendingUp },
-    { label: 'Response Time', value: '<100ms', icon: Zap },
-    { label: 'Success Rate', value: '87%', icon: Sparkles },
+    { label: 'AI Tools Available', value: '15+', icon: Target },
+    { label: 'Community Members', value: '10K+', icon: TrendingUp },
+    { label: 'Analysis Speed', value: '<100ms', icon: Zap },
+    { label: 'Learning Resources', value: '200+', icon: Sparkles },
   ];
 
   return (
@@ -49,13 +49,13 @@ const Hero = () => {
         {/* Main Heading */}
         <div className="mb-8 animate-slide-up">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            The Future of{' '}
-            <span className="gradient-text neon-text">AI Trading</span>
+            Master Trading with{' '}
+            <span className="gradient-text neon-text">AI Tools</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto leading-relaxed">
-            Experience the power of advanced artificial intelligence combined with 
-            institutional-grade trading tools. Transform your trading with precision, 
-            speed, and intelligence.
+            Unlock your trading potential with cutting-edge AI analysis tools, 
+            comprehensive education, and a thriving community of traders. 
+            Level up your skills and build consistent profitability.
           </p>
         </div>
 
@@ -63,19 +63,19 @@ const Hero = () => {
         <div className="mb-16 flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{animationDelay: '0.2s'}}>
           <Button 
             size="lg" 
-            onClick={handleStartTrading}
+            onClick={handleJoinCommunity}
             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-4 text-lg hover-lift cyber-glow"
           >
-            Start Trading Now
+            Join Community
             <ArrowRight className="ml-2 w-5 h-5" />
           </Button>
           <Button 
             size="lg" 
             variant="outline" 
-            onClick={handleViewLiveDemo}
+            onClick={handleExploreTools}
             className="border-white/20 text-white hover:bg-white/10 px-8 py-4 text-lg hover-glow"
           >
-            View Live Demo
+            Explore AI Tools
             <Sparkles className="ml-2 w-5 h-5" />
           </Button>
         </div>
