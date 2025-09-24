@@ -14,17 +14,18 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import DataVerificationStatus from './DataVerificationStatus';
 
 interface EnhancedEconomicEvent {
-  id: string;
-  event_name: string;
+  id: number;
+  event_id: string;
+  title: string;
   country: string;
   currency: string;
   forecast: string | null;
   previous: string | null;
   actual: string | null;
   event_time: string;
-  importance: 'HIGH' | 'MEDIUM' | 'LOW';
-  category: string;
+  impact: 'High' | 'Medium' | 'Low';
   source: string;
+  relevance: number;
   created_at: string;
   updated_at: string;
 }
@@ -186,11 +187,11 @@ const SuperiorEconomicCalendar: React.FC = () => {
   };
 
   const filteredEvents = events.filter(event => {
-    const analysis = getEventAnalysis(event.id);
+    const analysis = getEventAnalysis(event.id.toString());
     
     return (
       (filters.currency === 'ALL' || event.currency === filters.currency) &&
-      (filters.importance === 'ALL' || event.importance === filters.importance) &&
+      (filters.importance === 'ALL' || event.impact === filters.importance) &&
       (filters.sentiment === 'ALL' || analysis?.market_sentiment === filters.sentiment)
     );
   });
@@ -301,7 +302,7 @@ const SuperiorEconomicCalendar: React.FC = () => {
           {/* Events List */}
           <div className="grid gap-4">
         {filteredEvents.map((event) => {
-          const analysis = getEventAnalysis(event.id);
+          const analysis = getEventAnalysis(event.id.toString());
           const eventTime = new Date(event.event_time);
           const reactionData = marketReactions[event.currency + 'USD'] || [];
 
@@ -314,15 +315,15 @@ const SuperiorEconomicCalendar: React.FC = () => {
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <Badge className={getImpactStyling(event.importance)}>
-                            {event.importance}
+                          <Badge className={getImpactStyling(event.impact)}>
+                            {event.impact}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
                             {eventTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                         <h3 className="font-semibold text-sm leading-tight">
-                          {event.event_name}
+                          {event.title}
                         </h3>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>{event.country}</span>

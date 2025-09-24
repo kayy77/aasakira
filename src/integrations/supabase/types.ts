@@ -214,48 +214,51 @@ export type Database = {
       economic_events: {
         Row: {
           actual: string | null
-          category: string | null
-          country: string
-          created_at: string
-          currency: string
-          event_name: string
-          event_time: string
+          country: string | null
+          created_at: string | null
+          currency: string | null
+          event_id: string | null
+          event_time: string | null
           forecast: string | null
-          id: string
-          importance: string
+          id: number
+          impact: string | null
           previous: string | null
+          relevance: number | null
           source: string | null
-          updated_at: string
+          title: string
+          updated_at: string | null
         }
         Insert: {
           actual?: string | null
-          category?: string | null
-          country: string
-          created_at?: string
-          currency: string
-          event_name: string
-          event_time: string
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          event_id?: string | null
+          event_time?: string | null
           forecast?: string | null
-          id?: string
-          importance: string
+          id?: never
+          impact?: string | null
           previous?: string | null
+          relevance?: number | null
           source?: string | null
-          updated_at?: string
+          title: string
+          updated_at?: string | null
         }
         Update: {
           actual?: string | null
-          category?: string | null
-          country?: string
-          created_at?: string
-          currency?: string
-          event_name?: string
-          event_time?: string
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          event_id?: string | null
+          event_time?: string | null
           forecast?: string | null
-          id?: string
-          importance?: string
+          id?: never
+          impact?: string | null
           previous?: string | null
+          relevance?: number | null
           source?: string | null
-          updated_at?: string
+          title?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -296,15 +299,7 @@ export type Database = {
           updated_at?: string
           volatility_level?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "event_analysis_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "economic_events"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       event_verification: {
         Row: {

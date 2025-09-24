@@ -14,17 +14,20 @@ import { useToast } from '@/hooks/use-toast';
 import { format, isToday, isTomorrow, addDays } from 'date-fns';
 
 interface EnhancedEconomicEvent {
-  id: string;
-  event_name: string;
+  id: number;
+  event_id: string;
+  title: string;
   country: string;
   currency: string;
-  importance: 'LOW' | 'MEDIUM' | 'HIGH';
+  impact: 'Low' | 'Medium' | 'High';
   event_time: string;
   forecast: string | null;
   previous: string | null;
   actual: string | null;
   source: string;
-  category: string;
+  relevance: number;
+  created_at: string;
+  updated_at: string;
 }
 
 interface EventAnalysis {
@@ -207,12 +210,12 @@ export const EnhancedEconomicCalendar = () => {
     }
 
     // Importance filter
-    if (selectedImportance !== 'ALL' && event.importance !== selectedImportance) {
+    if (selectedImportance !== 'ALL' && event.impact !== selectedImportance) {
       return false;
     }
 
     // Quality filter - only show events with AI analysis
-    if (qualityFilter && !getEventAnalysis(event.id)) {
+    if (qualityFilter && !getEventAnalysis(event.id.toString())) {
       return false;
     }
 
@@ -395,7 +398,7 @@ export const EnhancedEconomicCalendar = () => {
             </Card>
           ) : (
             displayEvents.map((event) => {
-              const analysis = getEventAnalysis(event.id);
+              const analysis = getEventAnalysis(event.id.toString());
               const hasAnalysis = !!analysis;
               
               return (
@@ -406,8 +409,8 @@ export const EnhancedEconomicCalendar = () => {
                       {/* Event Info */}
                       <div className="flex-1 space-y-4">
                         <div className="flex items-center gap-3 mb-3">
-                          <Badge className={getEnhancedImpactStyling(event.importance, hasAnalysis)}>
-                            {event.importance}
+                          <Badge className={getEnhancedImpactStyling(event.impact, hasAnalysis)}>
+                            {event.impact}
                           </Badge>
                           <span className="text-sm text-muted-foreground">{event.country}</span>
                           <Badge variant="outline" className="text-xs">
@@ -422,7 +425,7 @@ export const EnhancedEconomicCalendar = () => {
                         </div>
                         
                         <h3 className="text-xl font-semibold text-foreground leading-tight">
-                          {event.event_name}
+                          {event.title}
                         </h3>
                         
                         <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
@@ -549,7 +552,7 @@ export const EnhancedEconomicCalendar = () => {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-red-400">
-                    {events.filter(e => e.importance === 'HIGH').length}
+                    {events.filter(e => e.impact === 'High').length}
                   </div>
                   <div className="text-sm text-muted-foreground">High Impact</div>
                 </div>
