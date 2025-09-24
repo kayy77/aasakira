@@ -20,6 +20,11 @@ import { supabase } from '@/integrations/supabase/client';
 import Navigation from '@/components/Navigation';
 import PremiumUpgrade from '@/components/PremiumUpgrade';
 import { JournalAnalyticsService } from '@/services/journalAnalyticsService';
+import { TradeAnalyticsService } from '@/services/tradeAnalyticsService';
+import { PairHeatmap } from '@/components/journal/PairHeatmap';
+import { PositionSizeAnalysis } from '@/components/journal/PositionSizeAnalysis';
+import { RiskRewardConsistency } from '@/components/journal/RiskRewardConsistency';
+import { SetupClustering } from '@/components/journal/SetupClustering';
 
 interface JournalEntry {
   id: string;
@@ -62,6 +67,7 @@ const Journal = () => {
   const [aiSummary, setAiSummary] = useState<string>('');
   const [generatingAISummary, setGeneratingAISummary] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const [selectedTrades, setSelectedTrades] = useState<JournalEntry[]>([]);
 
   // Display settings - Calculate actual P&L using lot size
   const calculateRealPnL = (pips: number, lotSize: number = 1, fees: number = 0) => {
@@ -81,6 +87,7 @@ const Journal = () => {
   };
 
   const analyticsService = new JournalAnalyticsService();
+  const tradeAnalyticsService = new TradeAnalyticsService();
 
   const [newEntry, setNewEntry] = useState({
     pair: '',
@@ -1159,7 +1166,7 @@ const Journal = () => {
                     <Button
                       onClick={generateProgressSummary}
                       disabled={generatingAISummary}
-                      className="w-full bg-gradient-to-r from-cyber-purple-600 to-cyber-pink-600 hover:from-cyber-purple-700 hover:to-cyber-pink-700 text-white font-medium cyber-glow"
+                      className="w-full bg-gradient-to-r from-cyber-purple-600 to-cyber-pink-600 hover:from-cyber-purple-700 hover:to-cyber-pink-700 text-white font-medium cyber-glow mb-3"
                     >
                       {generatingAISummary ? (
                         <div className="flex items-center gap-2">
@@ -1173,8 +1180,26 @@ const Journal = () => {
                         </div>
                       )}
                     </Button>
+                    <Button
+                      onClick={() => setActiveCategory('patterns')}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      🧠 Pattern Discovery
+                    </Button>
                   </CardContent>
                 </Card>
+              )}
+
+              {/* Pattern Analysis Section */}
+              {activeCategory === 'patterns' && isPremium && (
+                <div className="lg:col-span-5 space-y-6">
+                  <PairHeatmap analytics={tradeAnalyticsService.analyzePairPerformance(entries)} />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <PositionSizeAnalysis analytics={tradeAnalyticsService.analyzePositionSizing(entries)} />
+                    <RiskRewardConsistency analysis={tradeAnalyticsService.analyzeRiskRewardConsistency(entries)} />
+                  </div>
+                </div>
               )}
             </div>
 
