@@ -20,7 +20,6 @@ const MobileNavigation = () => {
 
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
-    { name: 'AI Setup Scanner', href: '/signals', icon: Signal },
     { name: 'Trading Journal', href: '/journal', icon: BookOpen },
     { name: 'Affiliate', href: '/affiliate', icon: DollarSign },
   ];

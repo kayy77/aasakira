@@ -2,9 +2,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Index from '@/pages/Index';
-import Signals from '@/pages/Signals';
 import Journal from '@/pages/Journal';
-import News from '@/pages/News';
 import Pricing from '@/pages/Pricing';
 import Affiliate from '@/pages/Affiliate';
 import NotFound from '@/pages/NotFound';
@@ -26,9 +24,7 @@ function App() {
               <AuthGuard>
                 <Routes>
                   <Route path="/" element={<Index />} />
-                  <Route path="/signals" element={<Signals />} />
                   <Route path="/journal" element={<Journal />} />
-                  <Route path="/news" element={<News />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/affiliate" element={<Affiliate />} />
                   <Route path="*" element={<NotFound />} />
