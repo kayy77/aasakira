@@ -17,12 +17,11 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <SubscriptionProvider>
-          <BrowserRouter>
-            <div className="min-h-screen bg-black text-white">
-              <Toaster />
-              <AuthGuard>
+        <AuthProvider>
+          <SubscriptionProvider>
+            <BrowserRouter>
+              <div className="min-h-screen bg-black text-white">
+                <Toaster />
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/journal" element={<Journal />} />
@@ -31,11 +30,10 @@ function App() {
                   <Route path="/affiliate" element={<Affiliate />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </AuthGuard>
-            </div>
-          </BrowserRouter>
-        </SubscriptionProvider>
-      </AuthProvider>
+              </div>
+            </BrowserRouter>
+          </SubscriptionProvider>
+        </AuthProvider>
     </ErrorBoundary>
   );
 }
