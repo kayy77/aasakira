@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Signal, User, MessageCircle, Home, DollarSign, BookOpen } from 'lucide-react';
+import { Signal, User, MessageCircle, Home, DollarSign, BookOpen, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -20,6 +20,7 @@ const Navigation = () => {
 
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
+    { name: 'Setup Scanner', href: '/setup-scanner', icon: Camera },
     { name: 'Trading Journal', href: '/journal', icon: BookOpen },
     { name: 'Affiliate', href: '/affiliate', icon: DollarSign },
   ];

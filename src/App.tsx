@@ -5,6 +5,7 @@ import Index from '@/pages/Index';
 import Journal from '@/pages/Journal';
 import Pricing from '@/pages/Pricing';
 import Affiliate from '@/pages/Affiliate';
+import SetupScanner from '@/pages/SetupScanner';
 import NotFound from '@/pages/NotFound';
 
 import { Toaster } from "@/components/ui/toaster"
@@ -25,6 +26,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/journal" element={<Journal />} />
+                  <Route path="/setup-scanner" element={<SetupScanner />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/affiliate" element={<Affiliate />} />
                   <Route path="*" element={<NotFound />} />

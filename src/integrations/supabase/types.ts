@@ -802,6 +802,60 @@ export type Database = {
         }
         Relationships: []
       }
+      trade_setups: {
+        Row: {
+          ai_feedback: Json | null
+          ai_score: number | null
+          created_at: string
+          direction: string
+          entry_reason: string
+          id: string
+          pair: string
+          risk_percentage: number | null
+          screenshot_url: string | null
+          status: string | null
+          stop_loss: number
+          take_profit: number
+          timeframe: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_feedback?: Json | null
+          ai_score?: number | null
+          created_at?: string
+          direction: string
+          entry_reason: string
+          id?: string
+          pair: string
+          risk_percentage?: number | null
+          screenshot_url?: string | null
+          status?: string | null
+          stop_loss: number
+          take_profit: number
+          timeframe?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_feedback?: Json | null
+          ai_score?: number | null
+          created_at?: string
+          direction?: string
+          entry_reason?: string
+          id?: string
+          pair?: string
+          risk_percentage?: number | null
+          screenshot_url?: string | null
+          status?: string | null
+          stop_loss?: number
+          take_profit?: number
+          timeframe?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_activities: {
         Row: {
           activity_type: string
