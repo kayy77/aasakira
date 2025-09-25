@@ -15,10 +15,11 @@ serve(async (req) => {
 
   try {
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') || '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';
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!OPENAI_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Missing required environment variables');
     }
 
@@ -27,7 +28,7 @@ serve(async (req) => {
 
     console.log('Analyzing setup:', setup);
 
-    // Calculate risk-reward ratio
+    // Calculate risk-reward ratio using actual entry price
     const calculateRR = (entry: number, sl: number, tp: number, direction: string) => {
       if (direction === 'BUY') {
         const risk = Math.abs(entry - sl);
@@ -40,95 +41,167 @@ serve(async (req) => {
       }
     };
 
-    // Estimate entry price for RR calculation (midpoint between SL and TP)
-    const estimatedEntry = (setup.stop_loss + setup.take_profit) / 2;
-    const riskReward = calculateRR(estimatedEntry, setup.stop_loss, setup.take_profit, setup.direction);
+    const entryPrice = setup.entry_price || (setup.stop_loss + setup.take_profit) / 2;
+    const riskReward = calculateRR(entryPrice, setup.stop_loss, setup.take_profit, setup.direction);
 
-    // Prepare analysis prompt
-    const analysisPrompt = `Analyze this Forex trading setup and provide detailed feedback:
+    // Prepare Groq analysis prompt with military precision
+    const groqPrompt = `🎯 AASAKIRA ELITE SETUP ANALYSIS - MILITARY PRECISION REQUIRED
 
-Setup Details:
+MISSION: Interrogate this trade setup with ZERO tolerance for poor risk management.
+
+SETUP INTEL:
 - Pair: ${setup.pair}
 - Direction: ${setup.direction}
+- Entry Price: ${entryPrice}
 - Stop Loss: ${setup.stop_loss}
 - Take Profit: ${setup.take_profit}
-- Risk/Reward Ratio: ${riskReward.toFixed(2)}:1
+- Risk/Reward: ${riskReward.toFixed(2)}:1
 - Timeframe: ${setup.timeframe}
 - Risk %: ${setup.risk_percentage}%
-- Entry Reason: ${setup.entry_reason}
+- Trader's Reasoning: "${setup.entry_reason}"
 
-Please analyze this setup and return a JSON response with:
+INTERROGATION PROTOCOL:
+You are Aasakira - elite AI strategist. NO fluff. NO emojis. Pure tactical assessment.
+
+ANALYZE:
+1. RISK MANAGEMENT: Is R:R acceptable? (Minimum 1:1.5 for approval)
+2. FRAMEWORK COMPLIANCE: Does reasoning show proper SMC/ICT understanding?
+3. EXECUTION TIMING: Is entry positioned correctly vs SL/TP?
+4. INSTITUTIONAL THINKING: Would prop firms approve this setup?
+
+RESPONSE FORMAT (JSON ONLY):
 {
-  "score": 0-100 (overall setup quality),
-  "strengths": ["strength1", "strength2", ...],
-  "weaknesses": ["weakness1", "weakness2", ...],
-  "improvements": ["improvement1", "improvement2", ...],
-  "risk_reward": "X:1",
-  "probability": "High/Medium/Low",
-  "summary": "Brief overall assessment"
+  "score": 0-100,
+  "verdict": "APPROVED/REJECTED/CONDITIONAL", 
+  "strengths": ["specific strength 1", "strength 2"],
+  "critical_flaws": ["major issue 1", "issue 2"],
+  "tactical_improvements": ["fix 1", "fix 2"],
+  "risk_assessment": "LOW/MEDIUM/HIGH",
+  "institutional_grade": "A/B/C/D/F",
+  "execution_advice": "Direct guidance for trade execution"
 }
 
-Focus on:
-1. Risk management (RR ratio, position sizing)
-2. Technical analysis elements mentioned
-3. Market structure and confluences
-4. Timing and session considerations
-5. Overall trade probability
+CRITICAL: Be brutally honest. Call out amateur thinking. Demand institutional standards.`;
 
-Be constructive and educational in your feedback.`;
-
-    // Call OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are Aasakira, an expert Forex trading analyst. Provide detailed, constructive analysis of trading setups with specific actionable feedback. Always respond with valid JSON.'
+    // First: Get Groq elite analysis
+    let groqAnalysis = null;
+    if (GROQ_API_KEY) {
+      try {
+        console.log('🧠 CALLING GROQ FOR ELITE ANALYSIS...');
+        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${GROQ_API_KEY}`,
+            'Content-Type': 'application/json',
           },
-          {
-            role: 'user',
-            content: analysisPrompt
+          body: JSON.stringify({
+            model: 'llama-3.1-8b-instant',
+            messages: [{ role: 'user', content: groqPrompt }],
+            temperature: 0.2,
+            max_tokens: 800
+          }),
+        });
+
+        if (groqResponse.ok) {
+          const groqData = await groqResponse.json();
+          const groqText = groqData.choices[0].message.content;
+          console.log('🎯 GROQ RAW RESPONSE:', groqText);
+          
+          // Parse Groq JSON response
+          try {
+            const jsonMatch = groqText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              groqAnalysis = JSON.parse(jsonMatch[0]);
+              console.log('✅ GROQ ANALYSIS PARSED:', groqAnalysis);
+            }
+          } catch (e) {
+            console.error('❌ Failed to parse Groq JSON:', e);
           }
-        ],
-        max_tokens: 1500,
-        temperature: 0.7
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+        }
+      } catch (error) {
+        console.error('❌ Groq API failed:', error);
+      }
     }
 
-    const aiResponse = await response.json();
-    const analysisText = aiResponse.choices[0].message.content;
+    // Fallback: OpenAI analysis if Groq fails or unavailable
+    let analysisText = '';
+    if (!groqAnalysis && OPENAI_API_KEY) {
+      const openaiPrompt = `Analyze this Forex trading setup:
 
-    console.log('AI Analysis Response:', analysisText);
+Setup: ${setup.pair} ${setup.direction}
+Entry: ${entryPrice}
+SL: ${setup.stop_loss}
+TP: ${setup.take_profit}
+R:R: ${riskReward.toFixed(2)}:1
+Reason: ${setup.entry_reason}
 
-    // Parse AI response
+Return JSON with: score(0-100), strengths[], weaknesses[], improvements[], risk_reward, probability, summary`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are a Forex analyst. Always respond with valid JSON.' },
+            { role: 'user', content: openaiPrompt }
+          ],
+          max_tokens: 800,
+          temperature: 0.7
+        }),
+      });
+
+      if (response.ok) {
+        const aiResponse = await response.json();
+        analysisText = aiResponse.choices[0].message.content;
+      }
+    }
+
+    // Use Groq analysis if available, otherwise parse OpenAI response
     let aiAnalysis;
-    try {
-      aiAnalysis = JSON.parse(analysisText);
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError);
-      // Fallback analysis
+    if (groqAnalysis) {
+      console.log('✅ USING GROQ ELITE ANALYSIS');
       aiAnalysis = {
-        score: Math.floor(Math.random() * 40) + 40, // 40-80
-        strengths: ["Setup submitted for analysis"],
-        weaknesses: ["AI analysis temporarily unavailable"],
-        improvements: ["Please try again later"],
+        score: groqAnalysis.score || 50,
+        strengths: groqAnalysis.strengths || [],
+        weaknesses: groqAnalysis.critical_flaws || groqAnalysis.weaknesses || [],
+        improvements: groqAnalysis.tactical_improvements || groqAnalysis.improvements || [],
         risk_reward: `${riskReward.toFixed(2)}:1`,
-        probability: "Medium",
-        summary: "Analysis in progress"
+        probability: groqAnalysis.risk_assessment || groqAnalysis.probability || "Medium",
+        summary: groqAnalysis.execution_advice || groqAnalysis.summary || "Elite analysis complete",
+        verdict: groqAnalysis.verdict || "CONDITIONAL",
+        institutional_grade: groqAnalysis.institutional_grade || "C"
       };
+    } else {
+      // Parse OpenAI fallback
+      try {
+        const parsed = analysisText ? JSON.parse(analysisText) : null;
+        aiAnalysis = parsed || {
+          score: Math.floor(Math.random() * 30) + 40,
+          strengths: ["Setup recorded for analysis"],
+          weaknesses: ["Analysis system temporarily offline"],
+          improvements: ["Try again later for detailed feedback"],
+          risk_reward: `${riskReward.toFixed(2)}:1`,
+          probability: "Medium",
+          summary: "Backup analysis - limited functionality"
+        };
+      } catch (e) {
+        console.error('Failed to parse analysis:', e);
+        aiAnalysis = {
+          score: 45,
+          strengths: ["Setup submitted"],
+          weaknesses: ["Analysis parsing failed"],
+          improvements: ["Please retry analysis"],
+          risk_reward: `${riskReward.toFixed(2)}:1`,
+          probability: "Unknown",
+          summary: "Analysis failed - please try again"
+        };
+      }
     }
 
-    // Ensure risk_reward is properly formatted
     aiAnalysis.risk_reward = `${riskReward.toFixed(2)}:1`;
 
     // Update setup with analysis
@@ -162,7 +235,7 @@ Be constructive and educational in your feedback.`;
     console.error('Error in analyze-trading-setup function:', error);
 
     return new Response(JSON.stringify({
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       success: false
     }), {
       status: 500,

@@ -14,6 +14,7 @@ export interface TradeSetup {
   pair: string;
   direction: 'BUY' | 'SELL';
   entry_reason: string;
+  entry_price: number;
   stop_loss: number;
   take_profit: number;
   timeframe: string;

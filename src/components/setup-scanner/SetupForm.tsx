@@ -30,6 +30,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onAnalysisComplete }) => {
     pair: '',
     direction: 'BUY',
     entry_reason: '',
+    entry_price: 0,
     stop_loss: 0,
     take_profit: 0,
     timeframe: '1H',
@@ -70,7 +71,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onAnalysisComplete }) => {
     e.preventDefault();
     if (!user) return;
 
-    if (!formData.pair || !formData.entry_reason || !formData.stop_loss || !formData.take_profit) {
+    if (!formData.pair || !formData.entry_reason || !formData.entry_price || !formData.stop_loss || !formData.take_profit) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
@@ -93,6 +94,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onAnalysisComplete }) => {
         pair: formData.pair!,
         direction: formData.direction!,
         entry_reason: formData.entry_reason!,
+        entry_price: formData.entry_price!,
         stop_loss: formData.stop_loss!,
         take_profit: formData.take_profit!,
         timeframe: formData.timeframe!,
@@ -223,6 +225,19 @@ const SetupForm: React.FC<SetupFormProps> = ({ onAnalysisComplete }) => {
               value={formData.entry_reason}
               onChange={(e) => handleInputChange('entry_reason', e.target.value)}
               rows={3}
+            />
+          </div>
+
+          {/* Entry Price */}
+          <div className="space-y-2">
+            <Label htmlFor="entry_price">Entry Price *</Label>
+            <Input
+              id="entry_price"
+              type="number"
+              step="0.00001"
+              placeholder="1.2550"
+              value={formData.entry_price || ''}
+              onChange={(e) => handleInputChange('entry_price', parseFloat(e.target.value) || 0)}
             />
           </div>
 

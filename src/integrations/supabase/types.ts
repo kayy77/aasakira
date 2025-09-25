@@ -808,6 +808,7 @@ export type Database = {
           ai_score: number | null
           created_at: string
           direction: string
+          entry_price: number | null
           entry_reason: string
           id: string
           pair: string
@@ -825,6 +826,7 @@ export type Database = {
           ai_score?: number | null
           created_at?: string
           direction: string
+          entry_price?: number | null
           entry_reason: string
           id?: string
           pair: string
@@ -842,6 +844,7 @@ export type Database = {
           ai_score?: number | null
           created_at?: string
           direction?: string
+          entry_price?: number | null
           entry_reason?: string
           id?: string
           pair?: string
