@@ -43,7 +43,7 @@ serve(async (req) => {
         }
       }
     } catch (error) {
-      console.log('⚠️ Calendar endpoint failed:', error.message);
+      console.log('⚠️ Calendar endpoint failed:', error instanceof Error ? error.message : String(error));
     }
     
     // Try forex rates endpoint as fallback and generate events
@@ -110,7 +110,7 @@ serve(async (req) => {
           }
         }
       } catch (error) {
-        console.log('⚠️ Forex endpoint failed:', error.message);
+        console.log('⚠️ Forex endpoint failed:', error instanceof Error ? error.message : String(error));
       }
     }
     
@@ -232,7 +232,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('💥 Error in fetch-news function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       success: false 
     }), {
       status: 500,

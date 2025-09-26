@@ -34,7 +34,7 @@ serve(async (req) => {
     } catch (error) {
       testResults.push({
         test: 'Profile Check',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
 
@@ -66,7 +66,7 @@ serve(async (req) => {
       } catch (error) {
         testResults.push({
           test: `Economy Endpoint ${index + 1}`,
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
@@ -88,7 +88,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('💥 FCS debug error:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       success: false 
     }), {
       status: 500,

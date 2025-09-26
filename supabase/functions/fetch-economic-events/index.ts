@@ -209,8 +209,8 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Inserted/Updated ${inserted?.length ?? deduped.length} events`);
-    return new Response(JSON.stringify({ success: true, eventsProcessed: inserted?.length ?? deduped.length }), {
+    console.log(`Inserted/Updated ${(inserted as any)?.length ?? deduped.length} events`);
+    return new Response(JSON.stringify({ success: true, eventsProcessed: (inserted as any)?.length ?? deduped.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
 

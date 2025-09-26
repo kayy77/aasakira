@@ -205,15 +205,15 @@ class HeartbeatMonitor {
       throw new Error(`Failed to get system status: ${error.message}`);
     }
 
-    const activeSources = (heartbeats || []).filter(h => h.status === 'ACTIVE');
+    const activeSources = (heartbeats || []).filter((h: any) => h.status === 'ACTIVE');
     const avgResponseTime = activeSources.length > 0 
-      ? Math.round(activeSources.reduce((sum, h) => sum + (h.response_time_ms || 0), 0) / activeSources.length)
+      ? Math.round(activeSources.reduce((sum: number, h: any) => sum + (h.response_time_ms || 0), 0) / activeSources.length)
       : 0;
 
     return {
       totalSources: this.sources.length,
       activeSources: activeSources.length,
-      failedSources: (heartbeats || []).filter(h => h.status === 'FAILED').length,
+      failedSources: (heartbeats || []).filter((h: any) => h.status === 'FAILED').length,
       avgResponseTime,
       lastCheck: heartbeats?.[0]?.last_check || null,
       sources: heartbeats || []
@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
     console.error('❌ Heartbeat monitoring failed:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       message: 'Heartbeat monitoring failed'
     }), {
       status: 500,

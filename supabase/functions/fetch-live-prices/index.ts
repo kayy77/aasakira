@@ -71,8 +71,9 @@ async function tryTwelveData(symbol: string): Promise<PriceResult> {
     return { success: false, symbol, error: 'Invalid price data', timestamp: new Date().toISOString() };
 
   } catch (error) {
-    console.log(`❌ TwelveData failed for ${symbol}:`, error.message);
-    return { success: false, symbol, error: error.message, timestamp: new Date().toISOString() };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.log(`❌ TwelveData failed for ${symbol}:`, errorMessage);
+    return { success: false, symbol, error: errorMessage, timestamp: new Date().toISOString() };
   }
 }
 
@@ -121,8 +122,9 @@ async function tryPolygon(symbol: string): Promise<PriceResult> {
     return { success: false, symbol, error: 'Invalid price data', timestamp: new Date().toISOString() };
 
   } catch (error) {
-    console.log(`❌ Polygon failed for ${symbol}:`, error.message);
-    return { success: false, symbol, error: error.message, timestamp: new Date().toISOString() };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.log(`❌ Polygon failed for ${symbol}:`, errorMessage);
+    return { success: false, symbol, error: errorMessage, timestamp: new Date().toISOString() };
   }
 }
 
@@ -170,8 +172,9 @@ async function tryAlphaVantage(symbol: string): Promise<PriceResult> {
     return { success: false, symbol, error: 'Invalid price data', timestamp: new Date().toISOString() };
 
   } catch (error) {
-    console.log(`❌ AlphaVantage failed for ${symbol}:`, error.message);
-    return { success: false, symbol, error: error.message, timestamp: new Date().toISOString() };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.log(`❌ AlphaVantage failed for ${symbol}:`, errorMessage);
+    return { success: false, symbol, error: errorMessage, timestamp: new Date().toISOString() };
   }
 }
 
@@ -286,7 +289,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('💥 Error in fetch-live-prices function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       success: false 
     }), {
       status: 500,

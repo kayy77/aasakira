@@ -103,7 +103,7 @@ serve(async (req) => {
     console.error('Error in generate-chart-visual function:', error)
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Internal server error',
+        error: (error instanceof Error ? error.message : String(error)) || 'Internal server error',
         status: 'error' 
       }),
       { 

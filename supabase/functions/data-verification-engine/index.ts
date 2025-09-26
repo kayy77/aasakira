@@ -245,8 +245,9 @@ class DataVerificationEngine {
         
         return { source: source.name, events, success: true };
       } catch (error) {
-        console.log(`❌ ${source.name} verification failed: ${error.message}`);
-        return { source: source.name, events: [], success: false, error: error.message };
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log(`❌ ${source.name} verification failed: ${errorMessage}`);
+        return { source: source.name, events: [], success: false, error: errorMessage };
       }
     });
 
@@ -425,7 +426,7 @@ class DataVerificationEngine {
     return {
       heartbeats: heartbeats || [],
       verifications: verifications || [],
-      sourcesActive: (heartbeats || []).filter(h => h.status === 'ACTIVE').length,
+      sourcesActive: (heartbeats || []).filter((h: any) => h.status === 'ACTIVE').length,
       totalSources: this.sources.length,
       lastUpdate: heartbeats?.[0]?.last_check || null
     };
@@ -475,7 +476,7 @@ Deno.serve(async (req) => {
     console.error('❌ Data verification failed:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       message: 'Data verification engine failed'
     }), {
       status: 500,

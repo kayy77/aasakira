@@ -45,7 +45,7 @@ serve(async (req) => {
       verificationResults.push({
         provider: 'FCS_API',
         status: 'ERROR',
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         message: 'Connection failed completely'
       });
     }
@@ -69,7 +69,7 @@ serve(async (req) => {
       verificationResults.push({
         provider: 'FCS_API_WEEK',
         status: 'ERROR',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
 
@@ -92,7 +92,7 @@ serve(async (req) => {
       verificationResults.push({
         provider: 'FCS_API_KEY_TEST',
         status: 'ERROR',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
 
@@ -113,7 +113,7 @@ serve(async (req) => {
       verificationResults.push({
         provider: 'YAHOO_FINANCE',
         status: 'ERROR',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
 
@@ -143,7 +143,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('💥 Verification function error:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       success: false 
     }), {
       status: 500,

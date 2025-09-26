@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           message: 'Signal received and stored',
-          id: data?.[0]?.id 
+          id: (data as any)?.[0]?.id 
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Function error:', error)
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

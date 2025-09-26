@@ -47,7 +47,7 @@ serve(async (req) => {
     } catch (error) {
       testResults.push({
         test: 'Profile API',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
 
@@ -71,7 +71,7 @@ serve(async (req) => {
     } catch (error) {
       testResults.push({
         test: 'Calendar Today',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
 
@@ -99,7 +99,7 @@ serve(async (req) => {
     } catch (error) {
       testResults.push({
         test: 'Calendar Tomorrow',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
 
@@ -123,7 +123,7 @@ serve(async (req) => {
     } catch (error) {
       testResults.push({
         test: 'Calendar This Week',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
 
@@ -147,7 +147,7 @@ serve(async (req) => {
     } catch (error) {
       testResults.push({
         test: 'Calendar Date Range',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
 
@@ -174,7 +174,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('💥 FCS API test error:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       success: false 
     }), {
       status: 500,

@@ -124,7 +124,7 @@ class MultiProviderDataMesh {
           }
         }
       } catch (error) {
-        console.log(`FCS endpoint failed: ${error.message}`);
+        console.log(`FCS endpoint failed: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
     return [];
@@ -156,7 +156,7 @@ class MultiProviderDataMesh {
         }
       }
     } catch (error) {
-      console.log(`Trading Economics failed: ${error.message}`);
+      console.log(`Trading Economics failed: ${error instanceof Error ? error.message : String(error)}`);
     }
     return [];
   }
@@ -212,7 +212,7 @@ class MultiProviderDataMesh {
         console.log(`✅ ${provider.name}: ${events.length} events`);
         return { provider: provider.name, weight: provider.weight, events };
       } catch (error) {
-        console.log(`❌ ${provider.name} failed: ${error.message}`);
+        console.log(`❌ ${provider.name} failed: ${error instanceof Error ? error.message : String(error)}`);
         return { provider: provider.name, weight: provider.weight, events: [] };
       }
     });
@@ -275,7 +275,7 @@ class MultiProviderDataMesh {
         const aiAnalysis = await this.generateAIAnalysis(event);
         return { ...event, aiAnalysis };
       } catch (error) {
-        console.log(`AI analysis failed for ${event.title}: ${error.message}`);
+        console.log(`AI analysis failed for ${event.title}: ${error instanceof Error ? error.message : String(error)}`);
         return event;
       }
     });
@@ -362,7 +362,7 @@ Deno.serve(async (req) => {
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRuZnh4dG5mcG9hdm5zYWJqcmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzMTIwNzYsImV4cCI6MjA2Nzg4ODA3Nn0.0JbXi8IRlBNr-UEpPEFIQ8Q4ivxrKLpgKxahOrXjNkE'
     );
 
-    const openAiKey = Deno.env.get('OPENAI_API_KEY');
+    const openAiKey = Deno.env.get('OPENAI_API_KEY') || '';
     const mesh = new MultiProviderDataMesh(supabase, openAiKey);
     
     // Clear previous events
@@ -388,7 +388,7 @@ Deno.serve(async (req) => {
         event_time: event.date,
         importance: event.impact,
         category: 'Economic',
-        source: `Multi-Provider (${event.sources?.map(s => s.provider).join(', ') || event.source})`
+        source: `Multi-Provider (${(event as any).sources?.map((s: any) => s.provider).join(', ') || event.source})`
       }));
 
       const { data: insertedData, error: insertError } = await supabase
@@ -430,7 +430,7 @@ Deno.serve(async (req) => {
       eventsProcessed: insertedEvents,
       analysisGenerated: analysisCount,
       consensusQuality: qualityScore,
-      providersUsed: consensusEvents.length > 0 ? consensusEvents[0]?.sources?.length || 1 : 0,
+      providersUsed: consensusEvents.length > 0 ? (consensusEvents[0] as any)?.sources?.length || 1 : 0,
       message: consensusEvents.length > 0 ? 'Multi-provider consensus achieved' : 'No events available'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -440,7 +440,7 @@ Deno.serve(async (req) => {
     console.error('❌ Multi-provider fetch failed:', error);
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       message: 'Multi-provider economic data fetch failed'
     }), {
       status: 500,

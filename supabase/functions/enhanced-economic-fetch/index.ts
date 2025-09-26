@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
         .in('source', ['TradingEconomics', 'Federal_Reserve', 'BLS_Official', 'ECB_Official', 'Emergency_Fallback']);
       console.log('🧹 Cleaned up previous fake events');
     } catch (cleanupError) {
-      console.log('⚠️ Could not clean up previous events:', cleanupError.message);
+      console.log('⚠️ Could not clean up previous events:', cleanupError instanceof Error ? cleanupError.message : String(cleanupError));
     }
 
     const allEvents: EconomicEventRaw[] = [];
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
         
         return new Date().toISOString();
       } catch (error) {
-        console.log(`Date parsing error: ${error.message}`);
+        console.log(`Date parsing error: ${error instanceof Error ? error.message : String(error)}`);
         return new Date().toISOString();
       }
     }
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
               console.log(`FCS Error response: ${errorText.slice(0, 200)}`);
             }
           } catch (endpointError) {
-            console.log(`⚠️ FCS endpoint failed: ${endpointError.message}`);
+            console.log(`⚠️ FCS endpoint failed: ${endpointError instanceof Error ? endpointError.message : String(endpointError)}`);
           }
         }
         
@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
       }
     } catch (error) {
       console.error('❌ FCS API completely failed:', error);
-      providerErrors.push(`FCS API failed: ${error.message}`);
+      providerErrors.push(`FCS API failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // 2. Only if no real data: Try TradingEconomics (requires paid subscription for real-time)
@@ -201,8 +201,8 @@ Deno.serve(async (req) => {
         }
         providerErrors.push('TradingEconomics: Requires paid subscription for real data');
       } catch (error) {
-        console.log('⚠️ TradingEconomics backup failed:', error.message);
-        providerErrors.push(`TradingEconomics failed: ${error.message}`);
+        console.log('⚠️ TradingEconomics backup failed:', error instanceof Error ? error.message : String(error));
+        providerErrors.push(`TradingEconomics failed: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
@@ -308,7 +308,7 @@ Deno.serve(async (req) => {
     console.error('❌ Enhanced economic fetch failed:', error);
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       message: 'Enhanced economic data fetch failed'
     }), {
       status: 500,

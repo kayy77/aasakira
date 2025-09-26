@@ -52,7 +52,7 @@ serve(async (req) => {
       .reduce((sum, t, _, arr) => sum + Math.abs(t.result_pips || 0) / arr.length, 0);
 
     // Calculate real P&L
-    const calculateRealPnL = (pips, lotSize, fees) => {
+    const calculateRealPnL = (pips: number, lotSize: number, fees: number) => {
       if (!pips || !lotSize) return 0;
       
       let pipValue = 1; // Default pip value
@@ -214,7 +214,7 @@ CRITICAL INSTRUCTIONS:
   } catch (error) {
     console.error('Error in generate-ai-feedback function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to generate AI feedback' 
+      error: (error instanceof Error ? error.message : String(error)) || 'Failed to generate AI feedback' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
