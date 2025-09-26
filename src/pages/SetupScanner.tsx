@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AuthGuard from '@/components/AuthGuard';
 import SetupForm from '@/components/setup-scanner/SetupForm';
-import AnalysisResult from '@/components/setup-scanner/AnalysisResult';
+import EnhancedAnalysisResult from '@/components/setup-scanner/EnhancedAnalysisResult';
 
 export interface TradeSetup {
   id?: string;
@@ -63,7 +63,7 @@ const SetupScanner = () => {
               Setup Scanner
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Upload your trading setup and get AI-powered analysis with actionable feedback
+              Next-level AI analysis with live prices, macro context, and institutional-grade feedback
             </p>
           </div>
 
@@ -77,7 +77,7 @@ const SetupScanner = () => {
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-center">
-                    Get detailed risk-to-reward analysis and position sizing recommendations
+                    Live price validation with real-time risk/reward calculations using market data
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -89,7 +89,7 @@ const SetupScanner = () => {
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-center">
-                    AI analyzes your chart for confluence, support/resistance levels
+                    Multi-AI analysis with macro economic context and sentiment intelligence
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -101,7 +101,7 @@ const SetupScanner = () => {
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-center">
-                    Receive personalized suggestions to enhance your trading setups
+                    Institutional-grade feedback with pattern memory and community benchmarks
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -113,7 +113,7 @@ const SetupScanner = () => {
             {currentStep === 'form' ? (
               <SetupForm onAnalysisComplete={handleAnalysisComplete} />
             ) : (
-              <AnalysisResult 
+              <EnhancedAnalysisResult 
                 setup={analysisResult} 
                 onBackToForm={handleBackToForm}
               />
