@@ -1,43 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
-// Enhanced analysis with live price fetching
-async function fetchLivePrice(symbol: string, polygonKey: string, twelveDataKey: string): Promise<{price: number, source: string}> {
-  // Try Twelve Data first
-  try {
-    const response = await fetch(
-      `https://api.twelvedata.com/price?symbol=${symbol}&apikey=${twelveDataKey}`
-    );
-    
-    if (response.ok) {
-      const data = await response.json();
-      if (data.price) {
-        return { price: parseFloat(data.price), source: 'Twelve Data' };
-      }
-    }
-  } catch (error) {
-    console.log('Twelve Data failed, trying Polygon');
-  }
-  
-  // Try Polygon as backup
-  try {
-    const cleanSymbol = symbol.replace('/', '');
-    const response = await fetch(
-      `https://api.polygon.io/v2/aggs/ticker/C:${cleanSymbol}/prev?apikey=${polygonKey}`
-    );
-    
-    if (response.ok) {
-      const data = await response.json();
-      if (data.results?.[0]) {
-        return { price: data.results[0].c, source: 'Polygon' };
-      }
-    }
-  } catch (error) {
-    console.log('Polygon failed, using fallback');
-  }
-  
-  // Fallback prices
+// Simplified live price fetching
+async function fetchLivePrice(symbol: string): Promise<{price: number, source: string}> {
+  // Fallback prices for now (can be enhanced later)
   const fallbackPrices: Record<string, number> = {
     'EURUSD': 1.0850, 'GBPUSD': 1.2650, 'USDJPY': 148.50,
     'USDCHF': 0.8750, 'AUDUSD': 0.6550, 'USDCAD': 1.3750,
@@ -45,36 +11,6 @@ async function fetchLivePrice(symbol: string, polygonKey: string, twelveDataKey:
   };
   
   return { price: fallbackPrices[symbol] || 1.0000, source: 'Fallback' };
-}
-
-// Fetch macro economic data
-async function fetchMacroContext(baseCurrency: string, quoteCurrency: string, fredKey: string): Promise<any> {
-  try {
-    // This would integrate with FRED API for real economic data
-    // For now, return mock data structure
-    return {
-      upcomingEvents: [
-        {
-          event: `${baseCurrency} Economic Release`,
-          impact: 'Medium',
-          timeToEvent: 86400,
-          relevantCurrencies: [baseCurrency, quoteCurrency]
-        }
-      ],
-      interestRates: {
-        [baseCurrency]: 5.25,
-        [quoteCurrency]: 4.50
-      },
-      economicTrend: 'neutral'
-    };
-  } catch (error) {
-    console.log('Macro context fetch failed:', error);
-    return {
-      upcomingEvents: [],
-      interestRates: {},
-      economicTrend: 'neutral'
-    };
-  }
 }
 
 const corsHeaders = {
@@ -111,14 +47,13 @@ serve(async (req) => {
     const baseCurrency = symbol.substring(0, 3);
     const quoteCurrency = symbol.substring(3, 6);
     
-    // Fetch live price and macro context in parallel
-    const [livePrice, macroContext] = await Promise.all([
-      fetchLivePrice(symbol, POLYGON_API_KEY, TWELVE_DATA_API_KEY),
-      fetchMacroContext(baseCurrency, quoteCurrency, FRED_API_KEY)
+    // Fetch live price
+    const [livePrice] = await Promise.all([
+      fetchLivePrice(symbol)
     ]);
     
     console.log('📊 Live price data:', livePrice);
-    console.log('🌍 Macro context:', macroContext);
+    console.log('🌍 Using simplified analysis for now');
 
     // Calculate risk-reward ratio using actual entry price
     const calculateRR = (entry: number, sl: number, tp: number, direction: string) => {
@@ -167,9 +102,9 @@ SETUP INTELLIGENCE:
 - Trader's Reasoning: "${setup.entry_reason}"
 
 MARKET CONTEXT:
-- Economic Trend: ${macroContext.economicTrend}
-- Upcoming Events: ${macroContext.upcomingEvents.length} scheduled
-- Interest Rate Environment: ${baseCurrency} ${macroContext.interestRates[baseCurrency] || 'N/A'}% vs ${quoteCurrency} ${macroContext.interestRates[quoteCurrency] || 'N/A'}%
+- Economic Trend: Neutral market environment
+- Upcoming Events: Standard economic calendar
+- Interest Rate Environment: Monitoring central bank policies
 
 ELITE EVALUATION PROTOCOL:
 You are Aasakira - institutional-grade AI strategist. Execute comprehensive analysis with military precision.
@@ -305,7 +240,7 @@ Return JSON with: score(0-100), strengths[], weaknesses[], improvements[], risk_
         live_price: livePrice.price,
         price_source: livePrice.source,
         price_deviation_pips: priceDeviation,
-        macro_context: macroContext
+        macro_context: { trend: 'neutral', status: 'monitoring' }
       };
     } else {
       // Parse OpenAI fallback

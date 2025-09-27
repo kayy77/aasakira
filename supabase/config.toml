@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.test-fcs-debug]
 verify_jwt = false
+
+[functions.analyze-trading-setup]
+verify_jwt = false

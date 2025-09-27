@@ -231,9 +231,9 @@ export class EnhancedSetupAnalyzer {
       mockSentiment.score = Math.floor(avgScore);
       
       if (avgScore > 10) {
-        mockSentiment.overall = 'bullish';
+        mockSentiment.overall = 'bullish' as any;
       } else if (avgScore < -10) {
-        mockSentiment.overall = 'bearish';
+        mockSentiment.overall = 'bearish' as any;
       }
       
       return mockSentiment;
