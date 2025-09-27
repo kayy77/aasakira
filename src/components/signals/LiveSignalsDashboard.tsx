@@ -1,413 +1,363 @@
-
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { RefreshCw, TrendingUp, TrendingDown, Clock, Target, Shield, Zap } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Brain, 
-  Target, 
-  Shield, 
-  Zap, 
-  RefreshCw,
-  Trash2,
-  Activity,
-  AlertTriangle,
-  Crown,
-  Loader,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Wifi,
-  WifiOff
-} from 'lucide-react';
-import { EnhancedSignal, EnhancedSignalEngine } from '@/services/enhancedSignalEngine';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useSignalLimits } from '@/hooks/useSignalLimits';
-import { useSubscription } from '@/contexts/SubscriptionContext';
-import SignalStrengthFilter from './SignalStrengthFilter';
-import { SignalValidationStatus } from './SignalValidationStatus';
 
-interface LiveSignalsDashboardProps {
-  selectedStrength?: string;
-  onFeatureUse?: () => void;
+interface LiveSignal {
+  id: string;
+  pair: string;
+  direction: string;
+  entry_price: number;
+  stop_loss: number;
+  take_profit: number;
+  confidence: number;
+  created_at: string;
+  status: string;
+  consensus: any;
+  raw_ai_responses: any[];
+  risk_reward_ratio: number;
+  outcome?: string;
+  pips_result?: number;
 }
 
-const LiveSignalsDashboard: React.FC<LiveSignalsDashboardProps> = ({ 
-  selectedStrength = 'all',
-  onFeatureUse
-}) => {
-  const [signals, setSignals] = useState<EnhancedSignal[]>([]);
-  const [filteredSignals, setFilteredSignals] = useState<EnhancedSignal[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
-  const [filterStrength, setFilterStrength] = useState(selectedStrength);
-  
+interface SignalStats {
+  totalSignals: number;
+  winRate: number;
+  avgScore: number;
+  activeSignals: number;
+}
+
+const LiveSignalsDashboard = () => {
+  const [signals, setSignals] = useState<LiveSignal[]>([]);
+  const [stats, setStats] = useState<SignalStats>({
+    totalSignals: 0,
+    winRate: 0,
+    avgScore: 0,
+    activeSignals: 0
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const { toast } = useToast();
-  const isMobile = useIsMobile();
-  const { canGenerateSignal, checkAndIncrementSignal, signalsUsedToday, dailyLimit } = useSignalLimits();
-  const { subscription } = useSubscription();
-  
-  const isPremium = subscription?.tier === 'premium';
 
-  // Filter signals based on selected strength
   useEffect(() => {
-    if (filterStrength === 'all') {
-      setFilteredSignals(signals);
-    } else {
-      setFilteredSignals(
-        signals.filter((signal) => signal.strength.toLowerCase() === filterStrength.toLowerCase())
-      );
-    }
-  }, [filterStrength, signals]);
-
-  // Calculate signal counts for filter
-  const signalCounts = {
-    all: signals.length,
-    weak: signals.filter(s => s.strength === 'LOW').length,
-    decent: signals.filter(s => s.strength === 'MEDIUM').length,
-    strong: signals.filter(s => s.strength === 'HIGH').length
-  };
-
-  const handleGenerateSignal = async () => {
-    console.log('🎯 Generate signal clicked - checking limits...');
+    loadSignals();
     
-    // Check and increment usage first
-    const canProceed = await checkAndIncrementSignal();
-    if (!canProceed) {
-      console.log('❌ Signal generation blocked by limits');
-      return;
-    }
-
-    setIsGenerating(true);
-    setConnectionStatus('connected');
-    
-    if (onFeatureUse) {
-      onFeatureUse();
-    }
-    
-    try {
-      console.log('🚀 Starting enhanced signal generation...');
-      
-          const signal = await EnhancedSignalEngine.generateEnhancedSignal();
-      
-      if (signal) {
-        console.log('✅ Signal generated successfully:', signal);
-        
-        // HOTFIX: Apply validation gate to determine if signal should be shown
-        const { SignalValidationGate } = await import('@/services/signalValidationGate');
-        const shouldShow = SignalValidationGate.shouldShowToUsers(signal);
-        
-        if (shouldShow) {
-          setSignals(prev => [signal, ...prev.slice(0, 9)]);
-          toast({
-            title: `🎯 ${signal.strength} Signal Generated!`,
-            description: `${signal.pair} ${signal.type} | ${signal.confidence}% confidence | Live Price: ${signal.livePrice.toFixed(5)}`,
-          });
-        } else {
-          console.log('❌ Signal rejected for user display by validation gate');
-          toast({
-            title: "Signal Quality Check",
-            description: "Generated signal did not meet quality standards. Please try again.",
-            variant: "destructive",
-          });
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('live-signals')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'signals' },
+        (payload) => {
+          if (payload.new.signal_type === 'LIVE') {
+            setSignals(prev => [payload.new as LiveSignal, ...prev]);
+            toast({
+              title: "🎯 New Live Signal!",
+              description: `${payload.new.pair} ${payload.new.direction} @ ${payload.new.entry_price}`,
+            });
+          }
         }
-      } else {
-        console.log('❌ Signal generation returned null');
-        toast({
-          title: "Generation Failed",
-          description: "Unable to generate signal. Please try again.",
-          variant: "destructive",
-        });
-      }
-      
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const loadSignals = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('signals')
+        .select('*')
+        .eq('signal_type', 'LIVE')
+        .eq('status', 'APPROVED')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const signalsData = (data || []).map(signal => ({
+        ...signal,
+        raw_ai_responses: Array.isArray(signal.raw_ai_responses) ? signal.raw_ai_responses : []
+      }));
+      setSignals(signalsData);
+
+      // Calculate stats
+      const totalSignals = signalsData.length;
+      const completedSignals = signalsData.filter(s => s.outcome && s.outcome !== 'PENDING');
+      const winCount = completedSignals.filter(s => s.outcome === 'WIN').length;
+      const winRate = completedSignals.length > 0 ? (winCount / completedSignals.length) * 100 : 0;
+      const avgScore = signalsData.reduce((sum, s) => sum + (s.confidence || 0), 0) / (totalSignals || 1);
+      const activeSignals = signalsData.filter(s => !s.outcome || s.outcome === 'PENDING').length;
+
+      setStats({
+        totalSignals,
+        winRate,
+        avgScore,
+        activeSignals
+      });
+
     } catch (error) {
-      console.error('❌ Error generating enhanced signal:', error);
+      console.error('Error loading signals:', error);
       toast({
-        title: "Signal Generation Error",
-        description: "Failed to generate enhanced signal. Please try again.",
-        variant: "destructive",
+        title: "Error",
+        description: "Failed to load signals",
+        variant: "destructive"
       });
     } finally {
-      setIsGenerating(false);
-      setConnectionStatus('disconnected');
+      setIsLoading(false);
     }
   };
 
-  const handleRemoveSignal = (signalId: string) => {
-    setSignals(prev => prev.filter(signal => signal.id !== signalId));
-    toast({
-      title: "Signal Removed",
-      description: `Signal has been removed from the dashboard.`,
-    });
-  };
+  const triggerSignalScan = async () => {
+    setIsScanning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-live-signal', {
+        body: { symbols: ['XAUUSD', 'US30'] }
+      });
 
-  const clearAllSignals = () => {
-    setSignals([]);
-    toast({
-      title: "All Signals Cleared",
-      description: "Signal history has been cleared.",
-    });
-  };
+      if (error) throw error;
 
-  const getStrengthColor = (strength: string) => {
-    switch (strength) {
-      case 'STRONG': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'DECENT': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'WEAK': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      toast({
+        title: "🔄 Signal Scan Initiated",
+        description: "Analyzing live market data for signal opportunities...",
+      });
+
+      // Refresh signals after a delay
+      setTimeout(() => {
+        loadSignals();
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error triggering signal scan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to initiate signal scan",
+        variant: "destructive"
+      });
+    } finally {
+      setIsScanning(false);
     }
   };
 
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'LOW': return 'text-green-400';
-      case 'MEDIUM': return 'text-yellow-400';
-      case 'HIGH': return 'text-red-400';
-      default: return 'text-gray-400';
+  const formatPrice = (price: number, symbol: string) => {
+    const decimals = symbol === 'XAUUSD' ? 2 : 0;
+    return price.toFixed(decimals);
+  };
+
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${Math.floor(diffHours / 24)}d ago`;
+  };
+
+  const getOutcomeBadge = (signal: LiveSignal) => {
+    if (!signal.outcome || signal.outcome === 'PENDING') {
+      return <Badge variant="secondary">Active</Badge>;
     }
+    
+    if (signal.outcome === 'WIN') {
+      return (
+        <Badge variant="default" className="bg-green-500">
+          WIN {signal.pips_result ? `+${signal.pips_result} pips` : ''}
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge variant="destructive">
+        LOSS {signal.pips_result ? `${signal.pips_result} pips` : ''}
+      </Badge>
+    );
   };
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Signal Generator */}
-      <Card className="glass-card border-purple-500/20">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-purple-400" />
-              Enhanced FX Signal Engine
-            </div>
-            <div className="flex items-center gap-2">
-              {connectionStatus === 'connected' ? (
-                <Wifi className="w-4 h-4 text-green-400" />
-              ) : (
-                <WifiOff className="w-4 h-4 text-gray-400" />
-              )}
-              <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-                Multi-Strategy + Groq AI
-              </Badge>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">{signalCounts.strong}</div>
-              <div className="text-sm text-gray-400">Strong Signals</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-400">{signalCounts.decent}</div>
-              <div className="text-sm text-gray-400">Decent Signals</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-400">{signalCounts.weak}</div>
-              <div className="text-sm text-gray-400">Weak Signals</div>
-            </div>
-          </div>
-
-          <Button
-            onClick={handleGenerateSignal}
-            disabled={isGenerating}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-          >
-            {isGenerating ? (
-              <>
-                <Loader className="w-4 h-4 mr-2 animate-spin" />
-                Generating Enhanced Signal...
-              </>
-            ) : (
-              <>
-                <Brain className="w-4 h-4 mr-2" />
-                Generate Enhanced FX Signal
-              </>
-            )}
-          </Button>
-
-          {/* Usage Display */}
-          <div className="text-center text-sm">
-            {isPremium ? (
-              <div className="text-green-400">
-                ✨ Premium: Unlimited signals
-              </div>
-            ) : (
-              <div className="text-orange-400">
-                🔒 Free: {signalsUsedToday}/{dailyLimit} signals used today
-                {signalsUsedToday >= dailyLimit && (
-                  <div className="text-red-400 mt-1">
-                    Daily limit reached! Upgrade to Premium for unlimited signals.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Signal Strength Filter */}
-      <SignalStrengthFilter 
-        selectedStrength={filterStrength}
-        onChange={setFilterStrength}
-        signalCounts={signalCounts}
-      />
-
-      {/* Actions */}
-      {signals.length > 0 && (
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-white">
-            Live Signals ({filteredSignals.length})
-          </h3>
-          <Button
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Live Signal Engine</h1>
+          <p className="text-muted-foreground">
+            Real-time trading signals with institutional-grade analysis
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            onClick={loadSignals} 
+            disabled={isLoading}
             variant="outline"
-            size="sm"
-            onClick={clearAllSignals}
-            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
           >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Clear All
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button 
+            onClick={triggerSignalScan}
+            disabled={isScanning}
+          >
+            <Zap className={`h-4 w-4 mr-2 ${isScanning ? 'animate-pulse' : ''}`} />
+            {isScanning ? 'Scanning...' : 'Scan Now'}
           </Button>
         </div>
-      )}
-
-      {/* Enhanced Signals List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filteredSignals.map((signal) => (
-          <Card key={signal.id} className="glass-card border-purple-500/20 hover:border-purple-400/40 transition-all">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {signal.type === 'BUY' ? (
-                    <TrendingUp className="w-5 h-5 text-green-400" />
-                  ) : (
-                    <TrendingDown className="w-5 h-5 text-red-400" />
-                  )}
-                  <span className="font-bold text-white">{signal.pair}</span>
-                  <Badge className={getStrengthColor(signal.strength)}>
-                    {signal.strength}
-                  </Badge>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveSignal(signal.id)}
-                  className="text-gray-400 hover:text-red-400"
-                >
-                  <XCircle className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-4">
-              {/* Price and Confidence */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-gray-400">Live Entry Price</div>
-                  <div className="font-bold text-white">{signal.livePrice.toFixed(5)}</div>
-                  <div className="text-xs text-green-400">Live Validated</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-400">Confidence</div>
-                  <div className="font-bold text-white">{signal.confidence}%</div>
-                  <div className={`text-xs ${getRiskColor(signal.riskLevel)}`}>
-                    {signal.riskLevel} Risk
-                  </div>
-                </div>
-              </div>
-
-              {/* Levels */}
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <div>
-                  <div className="text-gray-400">Stop Loss</div>
-                  <div className="text-red-400 font-mono">{signal.stopLoss.toFixed(5)}</div>
-                </div>
-                <div>
-                  <div className="text-gray-400">Take Profit</div>
-                  <div className="text-green-400 font-mono">{signal.takeProfit.toFixed(5)}</div>
-                </div>
-                <div>
-                  <div className="text-gray-400">R:R</div>
-                  <div className="text-blue-400 font-mono">{signal.riskReward}:1</div>
-                </div>
-              </div>
-
-              {/* Strategy Breakdown */}
-              <div className="space-y-2">
-                <div className="text-sm font-semibold text-gray-300">Strategy Analysis:</div>
-                <div className="grid grid-cols-2 gap-1 text-xs">
-                  {Object.entries(signal.strategies || {}).map(([key, strategy]) => (
-                    <div key={key} className="flex items-center gap-1">
-                      {(strategy as boolean) ? (
-                        <CheckCircle2 className="w-3 h-3 text-green-400" />
-                      ) : (
-                        <XCircle className="w-3 h-3 text-red-400" />
-                      )}
-                      <span className={(strategy as boolean) ? 'text-green-400' : 'text-red-400'}>
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Groq Analysis */}
-              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Brain className="w-4 h-4 text-purple-400" />
-                  <span className="text-sm font-semibold text-purple-300">Groq AI Analysis:</span>
-                </div>
-                <p className="text-sm text-gray-300">{signal.groqAnalysis}</p>
-              </div>
-
-              {/* Session and Timestamp */}
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-3 h-3" />
-                  <span>{signal.sessionContext} Session</span>
-                </div>
-                <span>{new Date(signal.timestamp).toLocaleTimeString()}</span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
-      {/* Empty State */}
-      {filteredSignals.length === 0 && signals.length > 0 && (
-        <div className="text-center py-12">
-          <Target className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-400 mb-2">
-            No {filterStrength} signals available
-          </h3>
-          <p className="text-gray-500">
-            Try adjusting your filter or generate more signals
-          </p>
-        </div>
-      )}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Signals</p>
+                <p className="text-2xl font-bold">{stats.totalSignals}</p>
+              </div>
+              <Target className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
 
-      {filteredSignals.length === 0 && signals.length === 0 && (
-        <div className="text-center py-12">
-          <Target className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-400 mb-2">
-            No signals generated yet
-          </h3>
-          <p className="text-gray-500">
-            Click "Generate Enhanced FX Signal" to get started
-          </p>
-          {!isPremium && signalsUsedToday >= dailyLimit && (
-            <div className="mt-4">
-              <Button
-                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
-                onClick={() => {/* Add upgrade logic */}}
-              >
-                <Crown className="w-4 h-4 mr-2" />
-                Upgrade to Premium for Unlimited Signals
-              </Button>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Win Rate</p>
+                <p className="text-2xl font-bold">{stats.winRate.toFixed(1)}%</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Avg Score</p>
+                <p className="text-2xl font-bold">{stats.avgScore.toFixed(0)}</p>
+              </div>
+              <Shield className="h-8 w-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Active</p>
+                <p className="text-2xl font-bold">{stats.activeSignals}</p>
+              </div>
+              <Clock className="h-8 w-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Signals List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Signals</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {signals.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No signals available. Click "Scan Now" to generate new signals.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {signals.map((signal) => (
+                <Card key={signal.id} className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="text-center min-w-[80px]">
+                        <div className="text-lg font-bold">{signal.pair}</div>
+                        <div className="flex items-center gap-1 text-sm">
+                          {signal.direction === 'BUY' ? (
+                            <TrendingUp className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <TrendingDown className="h-4 w-4 text-red-500" />
+                          )}
+                          <span className={signal.direction === 'BUY' ? 'text-green-500' : 'text-red-500'}>
+                            {signal.direction}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Separator orientation="vertical" className="h-16" />
+
+                      <div className="space-y-1">
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Entry:</span>
+                            <span className="ml-2 font-mono">
+                              {formatPrice(signal.entry_price, signal.pair)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">SL:</span>
+                            <span className="ml-2 font-mono">
+                              {formatPrice(signal.stop_loss, signal.pair)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">TP:</span>
+                            <span className="ml-2 font-mono">
+                              {formatPrice(signal.take_profit, signal.pair)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          R:R {signal.risk_reward_ratio?.toFixed(2)} • 
+                          Score {signal.confidence} • 
+                          {getTimeAgo(signal.created_at)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right space-y-2">
+                      {getOutcomeBadge(signal)}
+                      {signal.consensus?.filters_passed && (
+                        <div className="text-xs text-muted-foreground">
+                          {signal.consensus.filters_passed}/{signal.consensus.total_filters} filters
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Filter Details */}
+                  {signal.raw_ai_responses && signal.raw_ai_responses.length > 0 && (
+                    <div className="mt-3 pt-3 border-t">
+                      <div className="text-xs text-muted-foreground mb-2">Filter Analysis:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {signal.raw_ai_responses.map((filter: any, index: number) => (
+                          <Badge 
+                            key={index}
+                            variant={filter.pass ? "default" : "secondary"}
+                            className="text-xs"
+                          >
+                            {filter.name.replace('_', ' ')} 
+                            {filter.confidence && ` (${Math.round(filter.confidence * 100)}%)`}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              ))}
             </div>
           )}
-        </div>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

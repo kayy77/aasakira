@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.analyze-trading-setup]
 verify_jwt = false
+
+[functions.generate-live-signal]
+verify_jwt = false
