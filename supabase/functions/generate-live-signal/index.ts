@@ -37,18 +37,39 @@ async function fetchLivePrice(symbol: string) {
   try {
     console.log(`Fetching live price for ${symbol}...`);
     
+    // Map symbols to correct API formats
+    let polygonSymbol: string;
+    let twelveDataSymbol: string;
+    
+    if (symbol === 'XAUUSD') {
+      polygonSymbol = 'C:XAUUSD';
+      twelveDataSymbol = 'XAU/USD';
+    } else if (symbol === 'US30') {
+      polygonSymbol = 'I:DJI'; // Dow Jones Industrial Average
+      twelveDataSymbol = 'DJI';
+    } else {
+      console.error(`Unsupported symbol: ${symbol}`);
+      return null;
+    }
+    
     // Try Polygon first
     if (Deno.env.get('POLYGON_API_KEY')) {
-      const polygonSymbol = symbol === 'XAUUSD' ? 'C:XAUUSD' : 'I:US30';
+      console.log(`Trying Polygon API with symbol: ${polygonSymbol}`);
       const response = await fetch(
         `https://api.polygon.io/v2/last/trade/${polygonSymbol}?apikey=${Deno.env.get('POLYGON_API_KEY')}`
       );
       
+      console.log(`Polygon response status: ${response.status}`);
+      
       if (response.ok) {
         const data = await response.json();
-        if (data.results) {
-          const price = data.results.p || data.results.price;
+        console.log('Polygon response:', JSON.stringify(data, null, 2));
+        
+        if (data.results && data.results.p) {
+          const price = data.results.p;
           const timestamp = data.results.t || Date.now();
+          console.log(`✅ Got price from Polygon: ${price} for ${symbol}`);
+          
           return {
             symbol,
             bid: price - (symbol === 'XAUUSD' ? 0.5 : 1),
@@ -58,21 +79,33 @@ async function fetchLivePrice(symbol: string) {
             source: 'polygon',
             age: Date.now() - timestamp
           };
+        } else {
+          console.log('No results in Polygon response');
         }
+      } else {
+        const error = await response.text();
+        console.error(`Polygon API error: ${response.status} - ${error}`);
       }
     }
     
     // Fallback to Twelve Data
     if (Deno.env.get('TWELVE_DATA_API_KEY')) {
+      console.log(`Trying Twelve Data API with symbol: ${twelveDataSymbol}`);
       const response = await fetch(
-        `https://api.twelvedata.com/price?symbol=${symbol}&apikey=${Deno.env.get('TWELVE_DATA_API_KEY')}`
+        `https://api.twelvedata.com/price?symbol=${twelveDataSymbol}&apikey=${Deno.env.get('TWELVE_DATA_API_KEY')}`
       );
+      
+      console.log(`Twelve Data response status: ${response.status}`);
       
       if (response.ok) {
         const data = await response.json();
-        if (data.price) {
+        console.log('Twelve Data response:', JSON.stringify(data, null, 2));
+        
+        if (data.price && !data.message) {
           const price = parseFloat(data.price);
           const now = Date.now();
+          console.log(`✅ Got price from Twelve Data: ${price} for ${symbol}`);
+          
           return {
             symbol,
             bid: price - (symbol === 'XAUUSD' ? 0.5 : 1),
@@ -82,10 +115,16 @@ async function fetchLivePrice(symbol: string) {
             source: 'twelvedata',
             age: 0
           };
+        } else {
+          console.log('No price in Twelve Data response or error:', data.message);
         }
+      } else {
+        const error = await response.text();
+        console.error(`Twelve Data API error: ${response.status} - ${error}`);
       }
     }
     
+    console.log(`❌ No price data available for ${symbol} from any source`);
     return null;
   } catch (error) {
     console.error(`Error fetching price for ${symbol}:`, error);
@@ -197,24 +236,32 @@ function calculateStopLossAndTakeProfit(entryPrice: number, direction: 'BUY' | '
 }
 
 async function generateSignal(symbol: string): Promise<SignalCandidate | null> {
-  console.log(`Generating signal for ${symbol}...`);
+  console.log(`🔄 Generating signal for ${symbol}...`);
   
   const priceData = await fetchLivePrice(symbol);
   if (!priceData) {
-    console.log(`No price data for ${symbol}`);
+    console.log(`❌ No price data for ${symbol}`);
     return null;
   }
 
+  console.log(`📊 Price data for ${symbol}: ${priceData.mid} (age: ${priceData.age}ms, source: ${priceData.source})`);
+
   if (priceData.age > 1000) {
-    console.log(`Price too stale for ${symbol}: ${priceData.age}ms`);
+    console.log(`⏰ Price too stale for ${symbol}: ${priceData.age}ms`);
     return null;
   }
 
   const filters = runFilters(priceData);
-  const passedFilters = filters.filter(f => f.pass).length;
+  const passedFilters = filters.filter(f => f.pass);
+  const passedCount = passedFilters.length;
   
-  if (passedFilters < 3) {
-    console.log(`Signal rejected: Only ${passedFilters}/6 filters passed`);
+  console.log(`🔍 Filter results for ${symbol}: ${passedCount}/6 passed`);
+  filters.forEach(f => {
+    console.log(`  - ${f.name}: ${f.pass ? '✅' : '❌'} (confidence: ${f.confidence.toFixed(2)})`);
+  });
+  
+  if (passedCount < 3) {
+    console.log(`🚫 Signal rejected: Only ${passedCount}/6 filters passed (need ≥3)`);
     return null;
   }
 
@@ -223,21 +270,25 @@ async function generateSignal(symbol: string): Promise<SignalCandidate | null> {
   
   const idempotencyKey = createIdempotencyKey(symbol, priceData.timestamp, priceData.mid, direction);
   
+  console.log(`🔑 Checking for duplicate signal with key: ${idempotencyKey}`);
+  
   // Check for duplicate
   const { data: existing } = await supabase
     .from('signals')
     .select('id')
     .eq('ui_label', idempotencyKey)
     .single();
-    
+     
   if (existing) {
-    console.log(`Duplicate signal prevented: ${idempotencyKey}`);
+    console.log(`⚠️ Duplicate signal prevented: ${idempotencyKey}`);
     return null;
   }
 
   const score = Math.round(
     filters.reduce((sum, f) => sum + (f.pass ? f.confidence * 100 : 0), 0) / filters.length
   );
+
+  console.log(`✨ Signal candidate created: ${symbol} ${direction} @ ${priceData.mid} (score: ${score})`);
 
   return {
     symbol,
@@ -301,20 +352,32 @@ serve(async (req) => {
     const { symbols = ['XAUUSD', 'US30'] } = await req.json();
     const results = [];
 
-    console.log(`Processing ${symbols.length} symbols...`);
+    console.log(`🚀 Starting signal generation for ${symbols.length} symbols: ${symbols.join(', ')}`);
+    console.log(`🔐 API Keys available: Polygon=${!!Deno.env.get('POLYGON_API_KEY')}, TwelveData=${!!Deno.env.get('TWELVE_DATA_API_KEY')}`);
 
     for (const symbol of symbols) {
       try {
+        console.log(`\n📈 Processing ${symbol}...`);
         const signal = await generateSignal(symbol);
+        
         if (signal) {
+          console.log(`💾 Saving signal for ${symbol}...`);
           const saved = await saveSignal(signal);
+          
           if (saved) {
             results.push({
               symbol,
               success: true,
               signal: saved
             });
-            console.log(`✅ Signal generated and saved: ${symbol} ${signal.direction} @ ${signal.entryPrice}`);
+            console.log(`✅ Signal generated and saved: ${symbol} ${signal.direction} @ ${signal.entryPrice} (ID: ${saved.id})`);
+          } else {
+            results.push({
+              symbol,
+              success: false,
+              reason: 'Failed to save signal to database'
+            });
+            console.log(`❌ Failed to save signal for ${symbol}`);
           }
         } else {
           results.push({
@@ -322,9 +385,10 @@ serve(async (req) => {
             success: false,
             reason: 'No valid signal generated'
           });
+          console.log(`⏭️ No signal generated for ${symbol}`);
         }
       } catch (error) {
-        console.error(`Error processing ${symbol}:`, error);
+        console.error(`💥 Error processing ${symbol}:`, error);
         results.push({
           symbol,
           success: false,
@@ -333,17 +397,20 @@ serve(async (req) => {
       }
     }
 
+    const successCount = results.filter(r => r.success).length;
+    console.log(`\n🏁 Generation complete: ${successCount}/${symbols.length} signals generated`);
+
     return new Response(JSON.stringify({
       success: true,
       results,
       processed: symbols.length,
-      generated: results.filter(r => r.success).length
+      generated: successCount
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in generate-live-signal function:', error);
+    console.error('💥 Error in generate-live-signal function:', error);
     return new Response(JSON.stringify({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error'
