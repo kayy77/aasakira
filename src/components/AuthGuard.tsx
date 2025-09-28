@@ -2,7 +2,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
-import LoginDialog from './LoginDialog';
+import AuthenticationDialog from './AuthenticationDialog';
 import Dashboard from './Dashboard';
 import { Button } from '@/components/ui/button';
 
@@ -43,11 +43,11 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
           <div className="text-white text-2xl font-bold mb-2">🚀 AASAKIRA</div>
           <div className="text-purple-400 text-lg font-semibold mb-4">Elite Trading Platform</div>
           <div className="text-gray-400 mb-6">Please sign in to access your trading dashboard</div>
-          <LoginDialog>
+          <AuthenticationDialog>
             <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 text-lg font-semibold">
-              Sign In / Sign Up
+              Get Started
             </Button>
-          </LoginDialog>
+          </AuthenticationDialog>
           <div className="mt-4 text-sm text-gray-500">
             ✅ No email confirmation required • Start trading immediately
           </div>
