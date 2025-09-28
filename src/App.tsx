@@ -6,6 +6,7 @@ import Journal from '@/pages/Journal';
 import Pricing from '@/pages/Pricing';
 import Affiliate from '@/pages/Affiliate';
 import SetupScanner from '@/pages/SetupScanner';
+import LiveSignals from '@/pages/LiveSignals';
 import NotFound from '@/pages/NotFound';
 
 import { Toaster } from "@/components/ui/toaster"
@@ -26,6 +27,7 @@ function App() {
                   <Route path="/" element={<Index />} />
                   <Route path="/journal" element={<Journal />} />
                   <Route path="/setup-scanner" element={<SetupScanner />} />
+                  <Route path="/live-signals" element={<LiveSignals />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/affiliate" element={<Affiliate />} />
                   <Route path="*" element={<NotFound />} />
