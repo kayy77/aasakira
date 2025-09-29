@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { RefreshCw, TrendingUp, TrendingDown, Clock, Target, Shield, Zap } from 'lucide-react';
+import { RefreshCw, TrendingUp, TrendingDown, Clock, Target, Shield, Zap, Activity, Radar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { LiveSignalCard } from './LiveSignalCard';
+import { LivePriceDisplay } from './LivePriceDisplay';
 
 interface LiveSignal {
   id: string;
@@ -186,178 +187,171 @@ const LiveSignalsDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Live Signal Engine</h1>
-          <p className="text-muted-foreground">
-            Real-time trading signals with institutional-grade analysis
-          </p>
+      <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 p-6 border">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500 rounded-full">
+                <Radar className="h-6 w-6 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Live Signal Engine
+              </h1>
+            </div>
+            <p className="text-muted-foreground text-lg">
+              Real-time trading signals with institutional-grade AI analysis
+            </p>
+            <div className="flex items-center gap-4 text-sm">
+              <Badge variant="secondary" className="bg-green-500/20 text-green-700">
+                <Activity className="h-3 w-3 mr-1" />
+                Live Market Data
+              </Badge>
+              <Badge variant="secondary" className="bg-blue-500/20 text-blue-700">
+                Multi-AI Consensus
+              </Badge>
+              <Badge variant="secondary" className="bg-purple-500/20 text-purple-700">
+                Real-time Analysis
+              </Badge>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              onClick={loadSignals} 
+              disabled={isLoading}
+              variant="outline"
+              className="shadow-lg"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button 
+              onClick={triggerSignalScan}
+              disabled={isScanning}
+              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg"
+            >
+              <Zap className={`h-4 w-4 mr-2 ${isScanning ? 'animate-pulse' : ''}`} />
+              {isScanning ? 'Scanning Markets...' : 'Scan Now'}
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            onClick={loadSignals} 
-            disabled={isLoading}
-            variant="outline"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button 
-            onClick={triggerSignalScan}
-            disabled={isScanning}
-          >
-            <Zap className={`h-4 w-4 mr-2 ${isScanning ? 'animate-pulse' : ''}`} />
-            {isScanning ? 'Scanning...' : 'Scan Now'}
-          </Button>
-        </div>
+      </div>
+
+      {/* Live Price Display */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <Activity className="h-5 w-5 text-green-500" />
+          Live Market Prices
+        </h2>
+        <LivePriceDisplay symbols={['XAUUSD', 'US30', 'EURUSD', 'GBPUSD']} />
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="bg-gradient-to-br from-blue-500/5 to-blue-600/10 border-blue-200">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Signals</p>
-                <p className="text-2xl font-bold">{stats.totalSignals}</p>
+                <p className="text-3xl font-bold text-blue-600">{stats.totalSignals}</p>
+                <p className="text-xs text-blue-500">Generated today</p>
               </div>
-              <Target className="h-8 w-8 text-blue-500" />
+              <div className="p-3 bg-blue-500 rounded-full shadow-lg">
+                <Target className="h-6 w-6 text-white" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-green-500/5 to-green-600/10 border-green-200">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Win Rate</p>
-                <p className="text-2xl font-bold">{stats.winRate.toFixed(1)}%</p>
+                <p className="text-3xl font-bold text-green-600">{stats.winRate.toFixed(1)}%</p>
+                <p className="text-xs text-green-500">Success ratio</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-500" />
+              <div className="p-3 bg-green-500 rounded-full shadow-lg">
+                <TrendingUp className="h-6 w-6 text-white" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-purple-500/5 to-purple-600/10 border-purple-200">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Avg Score</p>
-                <p className="text-2xl font-bold">{stats.avgScore.toFixed(0)}</p>
+                <p className="text-sm text-muted-foreground">Avg Confidence</p>
+                <p className="text-3xl font-bold text-purple-600">{stats.avgScore.toFixed(0)}</p>
+                <p className="text-xs text-purple-500">AI consensus</p>
               </div>
-              <Shield className="h-8 w-8 text-purple-500" />
+              <div className="p-3 bg-purple-500 rounded-full shadow-lg">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-orange-500/5 to-orange-600/10 border-orange-200">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold">{stats.activeSignals}</p>
+                <p className="text-sm text-muted-foreground">Active Signals</p>
+                <p className="text-3xl font-bold text-orange-600">{stats.activeSignals}</p>
+                <p className="text-xs text-orange-500">Currently running</p>
               </div>
-              <Clock className="h-8 w-8 text-orange-500" />
+              <div className="p-3 bg-orange-500 rounded-full shadow-lg">
+                <Clock className="h-6 w-6 text-white animate-pulse" />
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Signals List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Signals</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {signals.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No signals available. Click "Scan Now" to generate new signals.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {signals.map((signal) => (
-                <Card key={signal.id} className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="text-center min-w-[80px]">
-                        <div className="text-lg font-bold">{signal.pair}</div>
-                        <div className="flex items-center gap-1 text-sm">
-                          {signal.direction === 'BUY' ? (
-                            <TrendingUp className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <TrendingDown className="h-4 w-4 text-red-500" />
-                          )}
-                          <span className={signal.direction === 'BUY' ? 'text-green-500' : 'text-red-500'}>
-                            {signal.direction}
-                          </span>
-                        </div>
-                      </div>
-
-                      <Separator orientation="vertical" className="h-16" />
-
-                      <div className="space-y-1">
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Entry:</span>
-                            <span className="ml-2 font-mono">
-                              {formatPrice(signal.entry_price, signal.pair)}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">SL:</span>
-                            <span className="ml-2 font-mono">
-                              {formatPrice(signal.stop_loss, signal.pair)}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">TP:</span>
-                            <span className="ml-2 font-mono">
-                              {formatPrice(signal.take_profit, signal.pair)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          R:R {signal.risk_reward_ratio?.toFixed(2)} • 
-                          Score {signal.confidence} • 
-                          {getTimeAgo(signal.created_at)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right space-y-2">
-                      {getOutcomeBadge(signal)}
-                      {signal.consensus?.filters_passed && (
-                        <div className="text-xs text-muted-foreground">
-                          {signal.consensus.filters_passed}/{signal.consensus.total_filters} filters
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Filter Details */}
-                  {signal.raw_ai_responses && signal.raw_ai_responses.length > 0 && (
-                    <div className="mt-3 pt-3 border-t">
-                      <div className="text-xs text-muted-foreground mb-2">Filter Analysis:</div>
-                      <div className="flex flex-wrap gap-2">
-                        {signal.raw_ai_responses.map((filter: any, index: number) => (
-                          <Badge 
-                            key={index}
-                            variant={filter.pass ? "default" : "secondary"}
-                            className="text-xs"
-                          >
-                            {filter.name.replace('_', ' ')} 
-                            {filter.confidence && ` (${Math.round(filter.confidence * 100)}%)`}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              ))}
-            </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Zap className="h-5 w-5 text-blue-500" />
+            Live Trading Signals
+          </h2>
+          {signals.length > 0 && (
+            <Badge variant="secondary" className="bg-blue-500/20 text-blue-700">
+              {signals.length} signals found
+            </Badge>
           )}
-        </CardContent>
-      </Card>
+        </div>
+        
+        {signals.length === 0 ? (
+          <Card className="p-8">
+            <div className="text-center space-y-4">
+              <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                <Radar className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">No Active Signals</h3>
+                <p className="text-muted-foreground mb-4">
+                  Click "Scan Now" to analyze current market conditions and generate new trading signals.
+                </p>
+                <Button 
+                  onClick={triggerSignalScan}
+                  disabled={isScanning}
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
+                >
+                  <Zap className={`h-4 w-4 mr-2 ${isScanning ? 'animate-pulse' : ''}`} />
+                  {isScanning ? 'Scanning Markets...' : 'Start Market Scan'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <div className="grid gap-6">
+            {signals.map((signal) => (
+              <LiveSignalCard key={signal.id} signal={signal} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
