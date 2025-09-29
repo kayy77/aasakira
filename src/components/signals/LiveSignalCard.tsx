@@ -28,11 +28,14 @@ interface LiveSignalCardProps {
 export const LiveSignalCard = ({ signal }: LiveSignalCardProps) => {
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [priceAge, setPriceAge] = useState<number>(0);
+  const [isLiveFeed, setIsLiveFeed] = useState<boolean>(false);
   
   useEffect(() => {
     const unsubscribe = webSocketPriceService.subscribeToPrice(signal.pair, (update) => {
       setLivePrice(update.price);
-      setPriceAge(Math.floor((Date.now() - update.timestamp) / 1000));
+      const age = Math.floor((Date.now() - update.timestamp) / 1000);
+      setPriceAge(age);
+      setIsLiveFeed(age <= 3);
     });
     
     return unsubscribe;
@@ -111,9 +114,12 @@ export const LiveSignalCard = ({ signal }: LiveSignalCardProps) => {
             {livePrice && (
               <div className="text-sm">
                 <div className="font-mono text-lg">{formatPrice(livePrice)}</div>
-                <div className={`text-xs ${priceAge > 10 ? 'text-red-500' : 'text-green-500'}`}>
-                  {priceAge}s ago
-                </div>
+                <Badge 
+                  variant={isLiveFeed ? 'default' : 'destructive'}
+                  className="text-xs"
+                >
+                  {isLiveFeed ? 'LIVE' : 'NO FEED'}
+                </Badge>
               </div>
             )}
           </div>

@@ -38,18 +38,19 @@ export const LivePriceDisplay = ({ symbols }: LivePriceDisplayProps) => {
       unsubscribes.push(unsubscribe);
     });
     
-    // Check connection status periodically
+    // Check connection status periodically (strict 3-second freshness)
     const statusInterval = setInterval(() => {
       const now = Date.now();
       setConnectionStatus(prev => {
         const updated = new Map(prev);
         prices.forEach((priceData, symbol) => {
-          const ageSeconds = (now - priceData.timestamp) / 1000;
-          updated.set(symbol, ageSeconds < 30);
+          const ageMs = now - priceData.timestamp;
+          const isLive = ageMs <= 3000;
+          updated.set(symbol, isLive);
         });
         return updated;
       });
-    }, 5000);
+    }, 1000);
     
     return () => {
       unsubscribes.forEach(unsub => unsub());
@@ -97,7 +98,7 @@ export const LivePriceDisplay = ({ symbols }: LivePriceDisplayProps) => {
                         <WifiOff className="h-3 w-3 text-red-500" />
                       )}
                       <span className={`text-xs ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
-                        {isConnected ? 'LIVE' : 'DISCONNECTED'}
+                        {isConnected ? 'LIVE ONLY' : 'NO FEED'}
                       </span>
                     </div>
                   </div>
@@ -105,10 +106,10 @@ export const LivePriceDisplay = ({ symbols }: LivePriceDisplayProps) => {
                 
                 {priceData?.source && (
                   <Badge 
-                    variant={priceData.source === 'deriv' ? 'default' : 'secondary'}
+                    variant={priceData.source === 'deriv' ? 'default' : 'destructive'}
                     className="text-xs"
                   >
-                    {priceData.source.toUpperCase()}
+                    {priceData.source === 'deriv' ? 'LIVE' : 'STALE'}
                   </Badge>
                 )}
               </div>

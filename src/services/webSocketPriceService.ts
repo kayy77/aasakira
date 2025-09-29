@@ -3,17 +3,19 @@ interface LivePriceUpdate {
   symbol: string;
   price: number;
   timestamp: number;
-  source: 'deriv' | 'polygon' | 'fallback';
+  source: 'deriv' | 'polygon';
 }
 
 class WebSocketPriceService {
   private connections = new Map<string, WebSocket>();
   private prices = new Map<string, LivePriceUpdate>();
   private subscribers = new Map<string, Set<(update: LivePriceUpdate) => void>>();
-  private fallbackInterval: NodeJS.Timeout | null = null;
+  private connectionStatus = new Map<string, 'connected' | 'disconnected'>();
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private readonly MAX_PRICE_AGE_MS = 3000; // 3 seconds max age
 
   constructor() {
-    this.startFallbackMonitor();
+    this.startHeartbeatMonitor();
   }
 
   subscribeToPrice(symbol: string, callback: (update: LivePriceUpdate) => void): () => void {
@@ -28,9 +30,9 @@ class WebSocketPriceService {
       this.connectToSymbol(symbol);
     }
 
-    // Send current price if available
+    // Send current price if available and fresh
     const currentPrice = this.prices.get(symbol);
-    if (currentPrice) {
+    if (currentPrice && this.isPriceFresh(currentPrice)) {
       callback(currentPrice);
     }
 
@@ -52,6 +54,7 @@ class WebSocketPriceService {
       
       socket.onopen = () => {
         console.log(`✅ WebSocket connected for ${symbol}`);
+        this.connectionStatus.set(symbol, 'connected');
         
         // Subscribe to ticks - map our symbols to Deriv format
         const derivSymbol = this.mapToDerivSymbol(symbol);
@@ -88,12 +91,14 @@ class WebSocketPriceService {
       };
 
       socket.onerror = (error) => {
-        console.error(`WebSocket error for ${symbol}:`, error);
+        console.error(`❌ WebSocket error for ${symbol}:`, error);
+        this.connectionStatus.set(symbol, 'disconnected');
         this.handleConnectionError(symbol);
       };
 
       socket.onclose = () => {
-        console.log(`WebSocket closed for ${symbol}, attempting reconnect...`);
+        console.log(`🔌 WebSocket closed for ${symbol}, attempting reconnect...`);
+        this.connectionStatus.set(symbol, 'disconnected');
         setTimeout(() => this.reconnectSymbol(symbol), 5000);
       };
 
@@ -125,74 +130,14 @@ class WebSocketPriceService {
   }
 
   private handleConnectionError(symbol: string) {
-    // Use fallback price immediately
-    this.fetchFallbackPrice(symbol);
+    console.log(`⚠️ No fallback - connection must be live for ${symbol}`);
+    this.connectionStatus.set(symbol, 'disconnected');
+    
+    // Clear any stale price data
+    this.prices.delete(symbol);
     
     // Retry connection after delay
     setTimeout(() => this.reconnectSymbol(symbol), 10000);
-  }
-
-  private async fetchFallbackPrice(symbol: string) {
-    try {
-      console.log(`🔄 Fetching fallback price for ${symbol}...`);
-      
-      let price = 0;
-      
-      if (symbol === 'XAUUSD') {
-        // Get real-time gold price from metals-api.com (free tier)
-        const response = await fetch(`https://metals-api.com/api/latest?access_key=YOUR_API_KEY&base=USD&symbols=XAU`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.rates && data.rates.XAU) {
-            price = 1 / data.rates.XAU; // Convert to XAUUSD format
-          }
-        }
-        
-        // Fallback to approximate gold price if API fails
-        if (!price) {
-          price = 2650 + (Math.random() - 0.5) * 20; // Realistic gold price range
-        }
-      } else if (symbol === 'US30' || symbol === 'NAS100' || symbol === 'US100') {
-        // Approximate NASDAQ/Dow Jones price (would need real API in production)
-        price = symbol === 'US30' ? 43000 + (Math.random() - 0.5) * 1000 : 16000 + (Math.random() - 0.5) * 500;
-      } else {
-        // Regular forex pairs
-        const [base, quote] = this.parseCurrencyPair(symbol);
-        const response = await fetch(
-          `https://api.exchangerate.host/convert?from=${base}&to=${quote}&amount=1&_=${Date.now()}`
-        );
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.result && data.success) {
-            price = parseFloat(data.result);
-          }
-        }
-      }
-      
-      if (price > 0) {
-        const update: LivePriceUpdate = {
-          symbol,
-          price,
-          timestamp: Date.now(),
-          source: 'fallback'
-        };
-        
-        this.prices.set(symbol, update);
-        this.notifySubscribers(symbol, update);
-        
-        console.log(`🆘 FALLBACK PRICE: ${symbol} = ${update.price.toFixed(symbol === 'XAUUSD' ? 2 : 0)}`);
-      }
-    } catch (error) {
-      console.error(`Fallback price fetch failed for ${symbol}:`, error);
-    }
-  }
-
-  private parseCurrencyPair(symbol: string): [string, string] {
-    if (symbol.length === 6) {
-      return [symbol.substring(0, 3), symbol.substring(3, 6)];
-    }
-    return ['USD', 'EUR'];
   }
 
   private reconnectSymbol(symbol: string) {
@@ -217,25 +162,47 @@ class WebSocketPriceService {
     }
   }
 
-  private startFallbackMonitor() {
-    // Every 10 seconds, check if any prices are stale and refresh them
-    this.fallbackInterval = setInterval(() => {
+  private startHeartbeatMonitor() {
+    // Every 5 seconds, check for stale prices and remove them
+    this.heartbeatInterval = setInterval(() => {
       const now = Date.now();
       
       this.prices.forEach((priceData, symbol) => {
-        const ageSeconds = (now - priceData.timestamp) / 1000;
+        const ageMs = now - priceData.timestamp;
         
-        // If price is older than 30 seconds, fetch fallback
-        if (ageSeconds > 30) {
-          console.log(`⚠️ Price for ${symbol} is ${ageSeconds.toFixed(0)}s old, refreshing...`);
-          this.fetchFallbackPrice(symbol);
+        // If price is older than 3 seconds, remove it
+        if (ageMs > this.MAX_PRICE_AGE_MS) {
+          console.log(`🕐 REMOVING STALE PRICE: ${symbol} (${(ageMs / 1000).toFixed(1)}s old)`);
+          this.prices.delete(symbol);
+          this.connectionStatus.set(symbol, 'disconnected');
         }
       });
-    }, 10000);
+    }, 1000); // Check every second
+  }
+
+  private isPriceFresh(priceData: LivePriceUpdate): boolean {
+    const age = Date.now() - priceData.timestamp;
+    return age <= this.MAX_PRICE_AGE_MS;
+  }
+
+  getConnectionStatus(): 'connected' | 'disconnected' {
+    // Consider connected if we have at least one fresh price
+    const hasFreshPrice = Array.from(this.prices.values()).some(price => this.isPriceFresh(price));
+    return hasFreshPrice ? 'connected' : 'disconnected';
+  }
+
+  getSymbolStatus(symbol: string): 'connected' | 'disconnected' {
+    const price = this.prices.get(symbol);
+    if (!price) return 'disconnected';
+    return this.isPriceFresh(price) ? 'connected' : 'disconnected';
   }
 
   getCurrentPrice(symbol: string): LivePriceUpdate | null {
-    return this.prices.get(symbol) || null;
+    const price = this.prices.get(symbol);
+    if (!price || !this.isPriceFresh(price)) {
+      return null; // Only return fresh prices
+    }
+    return price;
   }
 
   disconnect() {
@@ -243,10 +210,12 @@ class WebSocketPriceService {
     this.connections.forEach(socket => socket.close());
     this.connections.clear();
     this.subscribers.clear();
+    this.prices.clear();
+    this.connectionStatus.clear();
     
-    if (this.fallbackInterval) {
-      clearInterval(this.fallbackInterval);
-      this.fallbackInterval = null;
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
   }
 }
