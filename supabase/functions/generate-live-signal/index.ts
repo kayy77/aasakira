@@ -163,11 +163,11 @@ function runFilters(priceData: any): FilterResult[] {
     details: { hour, isLondonSession, isNewYorkSession, isOverlapSession }
   });
 
-  // 2. Price Freshness Filter
+  // 2. Price Freshness Filter (strict 2-second requirement)
   filters.push({
     name: 'PRICE_FRESHNESS',
-    pass: priceData.age < 1000,
-    confidence: Math.max(0, 1 - priceData.age / 1000),
+    pass: priceData.age < 2000,
+    confidence: Math.max(0, 1 - priceData.age / 2000),
     details: { age: priceData.age }
   });
 
@@ -246,8 +246,25 @@ async function generateSignal(symbol: string): Promise<SignalCandidate | null> {
 
   console.log(`📊 Price data for ${symbol}: ${priceData.mid} (age: ${priceData.age}ms, source: ${priceData.source})`);
 
-  if (priceData.age > 1000) {
-    console.log(`⏰ Price too stale for ${symbol}: ${priceData.age}ms`);
+  // Strict 2-second freshness requirement
+  if (priceData.age > 2000) {
+    console.log(`⏰ Price too stale for ${symbol}: ${priceData.age}ms (max: 2000ms)`);
+    return null;
+  }
+
+  // Check for recent signals within 30 minutes (cooldown)
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const { data: recentSignal } = await supabase
+    .from('signals')
+    .select('id, created_at')
+    .eq('pair', symbol)
+    .gte('created_at', thirtyMinutesAgo)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  
+  if (recentSignal) {
+    console.log(`⏸️ Cooldown active: Signal for ${symbol} generated ${new Date(recentSignal.created_at).toLocaleTimeString()}`);
     return null;
   }
 
@@ -260,8 +277,9 @@ async function generateSignal(symbol: string): Promise<SignalCandidate | null> {
     console.log(`  - ${f.name}: ${f.pass ? '✅' : '❌'} (confidence: ${f.confidence.toFixed(2)})`);
   });
   
-  if (passedCount < 3) {
-    console.log(`🚫 Signal rejected: Only ${passedCount}/6 filters passed (need ≥3)`);
+  // Require 4/6+ filters to pass
+  if (passedCount < 4) {
+    console.log(`🚫 Signal rejected: Only ${passedCount}/6 filters passed (need ≥4)`);
     return null;
   }
 

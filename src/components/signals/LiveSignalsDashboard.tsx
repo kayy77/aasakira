@@ -141,6 +141,7 @@ const LiveSignalsDashboard = () => {
 
     setIsScanning(true);
     try {
+      // Only scan XAUUSD and US30
       const { data, error } = await supabase.functions.invoke('generate-live-signal', {
         body: { symbols: ['XAUUSD', 'US30'] }
       });
@@ -286,13 +287,13 @@ const LiveSignalsDashboard = () => {
         </div>
       </div>
 
-      {/* Live Price Display */}
+      {/* Live Price Display - Only XAUUSD and US30 */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <Activity className="h-5 w-5 text-green-500" />
           Live Market Prices
         </h2>
-        <LivePriceDisplay symbols={['XAUUSD', 'US30', 'EURUSD', 'GBPUSD']} />
+        <LivePriceDisplay symbols={['XAUUSD', 'US30']} />
       </div>
 
       {/* Stats Cards */}
