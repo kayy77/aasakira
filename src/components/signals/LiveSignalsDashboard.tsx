@@ -7,6 +7,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LiveSignalCard } from './LiveSignalCard';
 import { LivePriceDisplay } from './LivePriceDisplay';
+import BackButton from '@/components/common/BackButton';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 interface LiveSignal {
   id: string;
@@ -43,6 +46,8 @@ const LiveSignalsDashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { isPremium } = useSubscription();
 
   useEffect(() => {
     loadSignals();
@@ -116,6 +121,24 @@ const LiveSignalsDashboard = () => {
   };
 
   const triggerSignalScan = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to use the signal scanner",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!isPremium) {
+      toast({
+        title: "Premium Feature",
+        description: "Live signal scanning is available for premium members only. Upgrade your plan to unlock this feature.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsScanning(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-live-signal', {
@@ -143,6 +166,30 @@ const LiveSignalsDashboard = () => {
       });
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  const deleteSignal = async (signalId: string) => {
+    try {
+      const { error } = await supabase
+        .from('signals')
+        .delete()
+        .eq('id', signalId);
+
+      if (error) throw error;
+
+      setSignals(prev => prev.filter(s => s.id !== signalId));
+      toast({
+        title: "Signal Deleted",
+        description: "Signal has been removed successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting signal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete signal",
+        variant: "destructive"
+      });
     }
   };
 
@@ -186,6 +233,9 @@ const LiveSignalsDashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <BackButton />
+      
       {/* Header */}
       <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 p-6 border">
         <div className="flex items-center justify-between">
@@ -347,7 +397,11 @@ const LiveSignalsDashboard = () => {
         ) : (
           <div className="grid gap-6">
             {signals.map((signal) => (
-              <LiveSignalCard key={signal.id} signal={signal} />
+              <LiveSignalCard 
+                key={signal.id} 
+                signal={signal} 
+                onDelete={deleteSignal}
+              />
             ))}
           </div>
         )}

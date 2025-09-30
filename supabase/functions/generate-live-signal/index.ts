@@ -46,7 +46,7 @@ async function fetchLivePrice(symbol: string) {
       twelveDataSymbol = 'XAU/USD';
     } else if (symbol === 'US30') {
       polygonSymbol = 'I:DJI'; // Dow Jones Industrial Average
-      twelveDataSymbol = 'DJI';
+      twelveDataSymbol = 'US30'; // Try US30 directly instead of DJI
     } else {
       console.error(`Unsupported symbol: ${symbol}`);
       return null;

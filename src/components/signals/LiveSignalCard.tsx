@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Target, Shield, Clock, BarChart3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, TrendingDown, Target, Shield, Clock, BarChart3, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { webSocketPriceService } from '@/services/webSocketPriceService';
 
@@ -23,9 +24,10 @@ interface LiveSignal {
 
 interface LiveSignalCardProps {
   signal: LiveSignal;
+  onDelete?: (signalId: string) => void;
 }
 
-export const LiveSignalCard = ({ signal }: LiveSignalCardProps) => {
+export const LiveSignalCard = ({ signal, onDelete }: LiveSignalCardProps) => {
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [priceAge, setPriceAge] = useState<number>(0);
   const [isLiveFeed, setIsLiveFeed] = useState<boolean>(false);
@@ -77,6 +79,13 @@ export const LiveSignalCard = ({ signal }: LiveSignalCardProps) => {
     return `${Math.floor(diffHours / 24)}d ago`;
   };
   
+  const isOldSignal = () => {
+    const signalDate = new Date(signal.created_at);
+    const now = new Date();
+    const hoursDiff = (now.getTime() - signalDate.getTime()) / (1000 * 60 * 60);
+    return hoursDiff > 24;
+  };
+  
   const pipsMove = getPipsMove();
   const progressToTP = getProgressToTP();
   
@@ -89,7 +98,7 @@ export const LiveSignalCard = ({ signal }: LiveSignalCardProps) => {
           : 'bg-gradient-to-r from-red-500/10 to-red-600/5'
       }`}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             <div className={`p-2 rounded-full ${
               signal.direction === 'BUY' ? 'bg-green-500' : 'bg-red-500'
             }`}>
@@ -101,26 +110,46 @@ export const LiveSignalCard = ({ signal }: LiveSignalCardProps) => {
             </div>
             <div>
               <h3 className="text-xl font-bold">{signal.pair}</h3>
-              <p className="text-sm text-muted-foreground">
-                {signal.direction} • {getTimeAgo()}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">
+                  {signal.direction} • {getTimeAgo()}
+                </p>
+                {isOldSignal() && (
+                  <Badge variant="destructive" className="text-xs animate-pulse">
+                    Old
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
           
-          <div className="text-right">
+          <div className="flex items-center gap-2">
+            <div className="text-right">
             <Badge variant={signal.confidence > 70 ? 'default' : 'secondary'} className="mb-2">
               {signal.confidence}% Confidence
             </Badge>
-            {livePrice && (
-              <div className="text-sm">
-                <div className="font-mono text-lg">{formatPrice(livePrice)}</div>
-                <Badge 
-                  variant={isLiveFeed ? 'default' : 'destructive'}
-                  className="text-xs"
-                >
-                  {isLiveFeed ? 'LIVE' : 'NO FEED'}
-                </Badge>
-              </div>
+              {livePrice && (
+                <div className="text-sm">
+                  <div className="font-mono text-lg">{formatPrice(livePrice)}</div>
+                  <Badge 
+                    variant={isLiveFeed ? 'default' : 'destructive'}
+                    className="text-xs"
+                  >
+                    {isLiveFeed ? 'LIVE' : 'NO FEED'}
+                  </Badge>
+                </div>
+              )}
+            </div>
+            
+            {isOldSignal() && onDelete && (
+              <Button
+                onClick={() => onDelete(signal.id)}
+                variant="ghost"
+                size="sm"
+                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             )}
           </div>
         </div>
