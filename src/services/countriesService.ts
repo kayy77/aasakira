@@ -267,12 +267,12 @@ export const getBrokerUrl = (country: string): string => {
   
   switch (brokerGroup) {
     case 'B':
-      return 'https://blackbull.com/en/live-account/?cmp=5p0z2d3q&refid=6436';
+      return 'https://blackbull.com/en/live-account/?cmp=4s8k6y3r&refid=6436';
     case 'US':
-      return 'coming-soon'; // Placeholder for future US broker
+      return 'coming-soon';
     case 'A':
     default:
-      return 'https://ultgo.com/7f6bMz';
+      return 'https://ultgo.com/7f6bMzIB';
   }
 };
 

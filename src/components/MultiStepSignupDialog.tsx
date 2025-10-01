@@ -13,8 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { countries, getBrokerUrl, detectCountryFromIP, Country } from '@/services/countriesService';
 import BrokerModal from './BrokerModal';
+import CommunityInviteModal from './CommunityInviteModal';
 import { Loader2, CalendarIcon, ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { z } from 'zod';
 
@@ -46,8 +47,10 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showBrokerModal, setShowBrokerModal] = useState(false);
+  const [showCommunityModal, setShowCommunityModal] = useState(false);
   const [brokerUrl, setBrokerUrl] = useState('');
   const [selectedCountryName, setSelectedCountryName] = useState('');
+  const [dobInput, setDobInput] = useState('');
   
   // Step 1 form data
   const [email, setEmail] = useState('');
@@ -174,16 +177,19 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
           description: "Welcome to AASAKIRA! 🎉",
         });
 
+        setIsOpen(false);
+        resetForm();
+
         // Check if we should show broker modal
-        if (hasTraded === 'no' && hasAccount === 'no') {
+        if (hasTraded === 'no' || hasAccount === 'no') {
           const url = getBrokerUrl(country);
           setBrokerUrl(url);
           setSelectedCountryName(countryData?.name || 'your country');
           setShowBrokerModal(true);
+        } else {
+          // Show community modal directly if no broker modal needed
+          setShowCommunityModal(true);
         }
-
-        setIsOpen(false);
-        resetForm();
       }
     } catch (error: any) {
       console.error('Signup error:', error);
@@ -203,6 +209,7 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
     setPassword('');
     setUsername('');
     setDateOfBirth(undefined);
+    setDobInput('');
     setPhoneNumber('');
     setCountry('');
     setHasTraded('');
@@ -210,6 +217,22 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
     setReferralSource('');
     setReferralOther('');
     setErrors({});
+  };
+
+  const handleDobInputChange = (value: string) => {
+    setDobInput(value);
+    
+    // Try to parse DD/MM/YYYY format
+    if (value.length === 10 && value.includes('/')) {
+      try {
+        const parsedDate = parse(value, 'dd/MM/yyyy', new Date());
+        if (parsedDate instanceof Date && !isNaN(parsedDate.getTime())) {
+          setDateOfBirth(parsedDate);
+        }
+      } catch (error) {
+        // Invalid date format, keep input but don't set date
+      }
+    }
   };
 
   const handleBack = () => {
@@ -299,32 +322,44 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-gray-300">Date of Birth *</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal bg-gray-700 border-gray-600 text-white hover:bg-gray-600",
-                            !dateOfBirth && "text-gray-400"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateOfBirth ? format(dateOfBirth, "PPP") : "Pick a date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dateOfBirth}
-                          onSelect={setDateOfBirth}
-                          disabled={(date) =>
-                            date > new Date() || date < new Date("1900-01-01")
-                          }
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <div className="space-y-2">
+                      <Input
+                        type="text"
+                        placeholder="DD/MM/YYYY"
+                        value={dobInput}
+                        onChange={(e) => handleDobInputChange(e.target.value)}
+                        className="bg-gray-700 border-gray-600 text-white"
+                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal bg-gray-700 border-gray-600 text-white hover:bg-gray-600",
+                              !dateOfBirth && "text-gray-400"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateOfBirth ? format(dateOfBirth, "PPP") : "Or pick from calendar"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={dateOfBirth}
+                            onSelect={(date) => {
+                              setDateOfBirth(date);
+                              if (date) setDobInput(format(date, 'dd/MM/yyyy'));
+                            }}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                     {errors.dateOfBirth && <p className="text-red-400 text-sm">{errors.dateOfBirth}</p>}
                   </div>
                   
@@ -422,9 +457,7 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
                     <SelectContent className="bg-gray-700 border-gray-600">
                       <SelectItem value="telegram" className="text-white">Telegram</SelectItem>
                       <SelectItem value="google" className="text-white">Google</SelectItem>
-                      <SelectItem value="friend" className="text-white">Friend referral</SelectItem>
-                      <SelectItem value="youtube" className="text-white">YouTube</SelectItem>
-                      <SelectItem value="social-media" className="text-white">Social Media</SelectItem>
+                      <SelectItem value="friend" className="text-white">From a Friend</SelectItem>
                       <SelectItem value="other" className="text-white">Other</SelectItem>
                     </SelectContent>
                   </Select>
@@ -479,9 +512,17 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
 
       <BrokerModal
         isOpen={showBrokerModal}
-        onClose={() => setShowBrokerModal(false)}
+        onClose={() => {
+          setShowBrokerModal(false);
+          setShowCommunityModal(true);
+        }}
         brokerUrl={brokerUrl}
         countryName={selectedCountryName}
+      />
+
+      <CommunityInviteModal
+        isOpen={showCommunityModal}
+        onClose={() => setShowCommunityModal(false)}
       />
     </>
   );

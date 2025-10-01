@@ -32,23 +32,23 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
       <DialogContent className="sm:max-w-[500px] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-gray-700">
         <DialogHeader>
           <DialogTitle className="text-center text-white text-xl font-zen-maru mb-2">
-            💡 Don't have a trading account yet?
+            🚀 Don't have a trading account yet?
           </DialogTitle>
         </DialogHeader>
         
         <div className="text-center space-y-6 py-4">
           <p className="text-gray-300 text-lg">
-            Get tighter spreads & a deposit bonus with our trusted partner.
+            Want a deposit bonus on your first deposit? Get the best spreads and trading conditions.
           </p>
           
           {!isComingSoon ? (
             <div className="space-y-4">
               <div className="glass-card p-4 border-purple-500/20">
-                <p className="text-sm text-gray-400 mb-2">Recommended for {countryName}</p>
-                <div className="text-green-400 font-semibold">
+                <p className="text-sm text-gray-400 mb-2">Trusted broker for {countryName}</p>
+                <div className="text-green-400 font-semibold text-left">
                   ✅ Tight spreads from 0.0 pips<br/>
-                  ✅ Deposit bonus available<br/>
-                  ✅ Regulated & trusted broker
+                  ✅ Deposit bonus on first deposit<br/>
+                  ✅ Regulated & trusted worldwide
                 </div>
               </div>
               
@@ -57,8 +57,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                   onClick={handleSignUp}
                   className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 text-lg"
                 >
-                  <ExternalLink className="mr-2 h-5 w-5" />
-                  Sign Up & Claim Bonus
+                  Sign Up Now
                 </Button>
                 <Button
                   onClick={onClose}
@@ -73,10 +72,10 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
             <div className="space-y-4">
               <div className="glass-card p-4 border-yellow-500/20">
                 <p className="text-yellow-400 font-semibold text-lg mb-2">
-                  🇺🇸 Coming Soon for US residents
+                  🇺🇸 We are actively securing a trusted US broker deal. Stay tuned!
                 </p>
                 <p className="text-gray-400">
-                  We're working on partnerships with US-regulated brokers. Stay tuned!
+                  We're working hard to bring you the best trading conditions available for US residents.
                 </p>
               </div>
               
