@@ -97,8 +97,8 @@ export const LivePriceDisplay = ({ symbols }: LivePriceDisplayProps) => {
                       ) : (
                         <WifiOff className="h-3 w-3 text-red-500" />
                       )}
-                      <span className={`text-xs ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
-                        {isConnected ? 'LIVE ONLY' : 'NO FEED'}
+                      <span className={`text-xs font-semibold ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+                        {isConnected ? 'LIVE' : 'NO FEED'}
                       </span>
                     </div>
                   </div>
