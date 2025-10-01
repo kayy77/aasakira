@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
+import AuthenticationDialog from './AuthenticationDialog';
 
 const Navigation = () => {
   const location = useLocation();
@@ -100,14 +101,14 @@ const Navigation = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Link to="/auth">
+                <AuthenticationDialog>
                   <Button 
                     variant="outline" 
                     className="border-primary/30 text-primary hover:bg-primary/10"
                   >
                     Sign In
                   </Button>
-                </Link>
+                </AuthenticationDialog>
               )}
             </div>
           </div>
