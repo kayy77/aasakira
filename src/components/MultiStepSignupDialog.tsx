@@ -177,23 +177,19 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
           description: "Welcome to AASAKIRA! 🎉",
         });
 
-        // Close dialog first
+        // Hide signup dialog but don't reset yet
         setIsOpen(false);
-        resetForm();
 
-        // Use setTimeout to ensure modals show after dialog closes
-        setTimeout(() => {
-          // Check if we should show broker modal
-          if (hasTraded === 'no' || hasAccount === 'no') {
-            const url = getBrokerUrl(country);
-            setBrokerUrl(url);
-            setSelectedCountryName(countryData?.name || 'your country');
-            setShowBrokerModal(true);
-          } else {
-            // Show community modal directly if no broker modal needed
-            setShowCommunityModal(true);
-          }
-        }, 300);
+        // Show modals immediately - state is preserved
+        if (hasTraded === 'no' || hasAccount === 'no') {
+          const url = getBrokerUrl(country);
+          setBrokerUrl(url);
+          setSelectedCountryName(countryData?.name || 'your country');
+          setTimeout(() => setShowBrokerModal(true), 100);
+        } else {
+          // Show community modal directly if no broker modal needed
+          setTimeout(() => setShowCommunityModal(true), 100);
+        }
       }
     } catch (error: any) {
       console.error('Signup error:', error);
@@ -518,7 +514,7 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
         isOpen={showBrokerModal}
         onClose={() => {
           setShowBrokerModal(false);
-          setShowCommunityModal(true);
+          setTimeout(() => setShowCommunityModal(true), 100);
         }}
         brokerUrl={brokerUrl}
         countryName={selectedCountryName}
@@ -526,7 +522,10 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
 
       <CommunityInviteModal
         isOpen={showCommunityModal}
-        onClose={() => setShowCommunityModal(false)}
+        onClose={() => {
+          setShowCommunityModal(false);
+          resetForm(); // Reset form only after all modals are closed
+        }}
       />
     </>
   );
