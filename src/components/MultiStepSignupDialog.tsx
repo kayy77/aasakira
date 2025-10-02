@@ -248,10 +248,7 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) resetForm();
-      }}>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           {children}
         </DialogTrigger>
