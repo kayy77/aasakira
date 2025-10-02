@@ -13,7 +13,7 @@ const CommunityInviteModal: React.FC<CommunityInviteModalProps> = ({
   onClose 
 }) => {
   const handleJoinTelegram = () => {
-    window.open('https://t.me/aasakirafree', '_blank');
+    window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank');
     onClose();
   };
 

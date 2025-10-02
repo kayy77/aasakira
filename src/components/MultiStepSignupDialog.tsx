@@ -177,19 +177,23 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
           description: "Welcome to AASAKIRA! 🎉",
         });
 
+        // Close dialog first
         setIsOpen(false);
         resetForm();
 
-        // Check if we should show broker modal
-        if (hasTraded === 'no' || hasAccount === 'no') {
-          const url = getBrokerUrl(country);
-          setBrokerUrl(url);
-          setSelectedCountryName(countryData?.name || 'your country');
-          setShowBrokerModal(true);
-        } else {
-          // Show community modal directly if no broker modal needed
-          setShowCommunityModal(true);
-        }
+        // Use setTimeout to ensure modals show after dialog closes
+        setTimeout(() => {
+          // Check if we should show broker modal
+          if (hasTraded === 'no' || hasAccount === 'no') {
+            const url = getBrokerUrl(country);
+            setBrokerUrl(url);
+            setSelectedCountryName(countryData?.name || 'your country');
+            setShowBrokerModal(true);
+          } else {
+            // Show community modal directly if no broker modal needed
+            setShowCommunityModal(true);
+          }
+        }, 300);
       }
     } catch (error: any) {
       console.error('Signup error:', error);
