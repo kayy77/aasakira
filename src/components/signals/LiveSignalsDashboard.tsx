@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, TrendingUp, TrendingDown, Clock, Target, Shield, Zap, Activity, Radar } from 'lucide-react';
+import { RefreshCw, Target, Shield, Zap, Activity, Radar, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LiveSignalCard } from './LiveSignalCard';
@@ -194,165 +194,119 @@ const LiveSignalsDashboard = () => {
     }
   };
 
-  const formatPrice = (price: number, symbol: string) => {
-    const decimals = symbol === 'XAUUSD' ? 2 : 0;
-    return price.toFixed(decimals);
-  };
-
-  const getTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
-  };
-
-  const getOutcomeBadge = (signal: LiveSignal) => {
-    if (!signal.outcome || signal.outcome === 'PENDING') {
-      return <Badge variant="secondary">Active</Badge>;
-    }
-    
-    if (signal.outcome === 'WIN') {
-      return (
-        <Badge variant="default" className="bg-green-500">
-          WIN {signal.pips_result ? `+${signal.pips_result} pips` : ''}
-        </Badge>
-      );
-    }
-    
-    return (
-      <Badge variant="destructive">
-        LOSS {signal.pips_result ? `${signal.pips_result} pips` : ''}
-      </Badge>
-    );
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Back Button */}
+    <div className="space-y-4 p-4 max-w-7xl mx-auto">
       <BackButton />
       
-      {/* Header */}
-      <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 p-6 border">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500 rounded-full">
-                <Radar className="h-6 w-6 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+      {/* Compact Futuristic Header */}
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/5 via-purple-500/5 to-blue-500/5 border border-primary/20 p-4">
+        <div className="absolute inset-0 bg-grid-white/5" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-primary to-purple-600 rounded-lg shadow-lg">
+              <Radar className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent">
                 Live Signal Engine
               </h1>
-            </div>
-            <p className="text-muted-foreground text-lg">
-              Real-time trading signals with institutional-grade AI analysis
-            </p>
-            <div className="flex items-center gap-4 text-sm">
-              <Badge variant="secondary" className="bg-green-500/20 text-green-700">
-                <Activity className="h-3 w-3 mr-1" />
-                Live Market Data
-              </Badge>
-              <Badge variant="secondary" className="bg-blue-500/20 text-blue-700">
-                Multi-AI Consensus
-              </Badge>
-              <Badge variant="secondary" className="bg-purple-500/20 text-purple-700">
-                Real-time Analysis
-              </Badge>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="secondary" className="text-xs bg-green-500/10 text-green-600 border-green-500/20">
+                  <Activity className="h-2.5 w-2.5 mr-1" />
+                  Live
+                </Badge>
+                <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">
+                  AI Consensus
+                </Badge>
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
             <Button 
               onClick={loadSignals} 
               disabled={isLoading}
+              size="sm"
               variant="outline"
-              className="shadow-lg"
+              className="h-9"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button 
               onClick={triggerSignalScan}
               disabled={isScanning}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg"
+              size="sm"
+              className="h-9 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
             >
-              <Zap className={`h-4 w-4 mr-2 ${isScanning ? 'animate-pulse' : ''}`} />
-              {isScanning ? 'Scanning Markets...' : 'Scan Now'}
+              <Zap className={`h-3.5 w-3.5 mr-1.5 ${isScanning ? 'animate-pulse' : ''}`} />
+              {isScanning ? 'Scanning...' : 'Scan'}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Live Price Display - Only XAUUSD and US30 */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Activity className="h-5 w-5 text-green-500" />
+      {/* Live Prices */}
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
+          <Activity className="h-4 w-4 text-green-500" />
           Live Market Prices
         </h2>
         <LivePriceDisplay symbols={['XAUUSD', 'US30']} />
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-blue-500/5 to-blue-600/10 border-blue-200">
-          <CardContent className="p-4">
+      {/* Compact Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Signals</p>
-                <p className="text-3xl font-bold text-blue-600">{stats.totalSignals}</p>
-                <p className="text-xs text-blue-500">Generated today</p>
+                <p className="text-xs text-muted-foreground mb-0.5">Total</p>
+                <p className="text-2xl font-bold text-primary">{stats.totalSignals}</p>
               </div>
-              <div className="p-3 bg-blue-500 rounded-full shadow-lg">
-                <Target className="h-6 w-6 text-white" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Target className="h-4 w-4 text-primary" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500/5 to-green-600/10 border-green-200">
-          <CardContent className="p-4">
+        <Card className="border border-green-500/20 bg-gradient-to-br from-green-500/5 to-transparent">
+          <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Win Rate</p>
-                <p className="text-3xl font-bold text-green-600">{stats.winRate.toFixed(1)}%</p>
-                <p className="text-xs text-green-500">Success ratio</p>
+                <p className="text-xs text-muted-foreground mb-0.5">Win Rate</p>
+                <p className="text-2xl font-bold text-green-600">{stats.winRate.toFixed(0)}%</p>
               </div>
-              <div className="p-3 bg-green-500 rounded-full shadow-lg">
-                <TrendingUp className="h-6 w-6 text-white" />
+              <div className="p-2 bg-green-500/10 rounded-lg">
+                <Sparkles className="h-4 w-4 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500/5 to-purple-600/10 border-purple-200">
-          <CardContent className="p-4">
+        <Card className="border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent">
+          <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Avg Confidence</p>
-                <p className="text-3xl font-bold text-purple-600">{stats.avgScore.toFixed(0)}</p>
-                <p className="text-xs text-purple-500">AI consensus</p>
+                <p className="text-xs text-muted-foreground mb-0.5">Confidence</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.avgScore.toFixed(0)}</p>
               </div>
-              <div className="p-3 bg-purple-500 rounded-full shadow-lg">
-                <Shield className="h-6 w-6 text-white" />
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <Shield className="h-4 w-4 text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-500/5 to-orange-600/10 border-orange-200">
-          <CardContent className="p-4">
+        <Card className="border border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-transparent">
+          <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Active Signals</p>
-                <p className="text-3xl font-bold text-orange-600">{stats.activeSignals}</p>
-                <p className="text-xs text-orange-500">Currently running</p>
+                <p className="text-xs text-muted-foreground mb-0.5">Active</p>
+                <p className="text-2xl font-bold text-orange-600">{stats.activeSignals}</p>
               </div>
-              <div className="p-3 bg-orange-500 rounded-full shadow-lg">
-                <Clock className="h-6 w-6 text-white animate-pulse" />
+              <div className="p-2 bg-orange-500/10 rounded-lg">
+                <Activity className="h-4 w-4 text-orange-600 animate-pulse" />
               </div>
             </div>
           </CardContent>
@@ -360,43 +314,44 @@ const LiveSignalsDashboard = () => {
       </div>
 
       {/* Signals List */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Zap className="h-5 w-5 text-blue-500" />
-            Live Trading Signals
+          <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
+            <Zap className="h-4 w-4 text-primary" />
+            Trading Signals
           </h2>
           {signals.length > 0 && (
-            <Badge variant="secondary" className="bg-blue-500/20 text-blue-700">
-              {signals.length} signals found
+            <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
+              {signals.length} found
             </Badge>
           )}
         </div>
         
         {signals.length === 0 ? (
-          <Card className="p-8">
-            <div className="text-center space-y-4">
-              <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-                <Radar className="h-8 w-8 text-muted-foreground" />
+          <Card className="p-6 border-dashed">
+            <div className="text-center space-y-3">
+              <div className="mx-auto w-12 h-12 bg-muted/50 rounded-full flex items-center justify-center">
+                <Radar className="h-6 w-6 text-muted-foreground" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold mb-2">No Active Signals</h3>
-                <p className="text-muted-foreground mb-4">
-                  Click "Scan Now" to analyze current market conditions and generate new trading signals.
+                <h3 className="font-semibold mb-1">No Active Signals</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Click "Scan" to analyze markets and generate signals
                 </p>
                 <Button 
                   onClick={triggerSignalScan}
                   disabled={isScanning}
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
+                  size="sm"
+                  className="bg-gradient-to-r from-primary to-purple-600"
                 >
-                  <Zap className={`h-4 w-4 mr-2 ${isScanning ? 'animate-pulse' : ''}`} />
-                  {isScanning ? 'Scanning Markets...' : 'Start Market Scan'}
+                  <Zap className={`h-3.5 w-3.5 mr-1.5 ${isScanning ? 'animate-pulse' : ''}`} />
+                  {isScanning ? 'Scanning...' : 'Start Scan'}
                 </Button>
               </div>
             </div>
           </Card>
         ) : (
-          <div className="grid gap-6">
+          <div className="grid gap-3">
             {signals.map((signal) => (
               <LiveSignalCard 
                 key={signal.id} 

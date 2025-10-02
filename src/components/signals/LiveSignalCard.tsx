@@ -58,9 +58,9 @@ export const LiveSignalCard = ({ signal, onDelete }: LiveSignalCardProps) => {
     const diffHours = Math.floor(diffMins / 60);
     
     if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    return `${Math.floor(diffHours / 24)}d`;
   };
   
   const canDelete = () => {
@@ -93,39 +93,39 @@ export const LiveSignalCard = ({ signal, onDelete }: LiveSignalCardProps) => {
   const currentPrice = livePrice || signal.entry_price;
 
   return (
-    <Card className={`overflow-hidden border-l-4 ${isBuy ? 'border-l-green-500 bg-gradient-to-r from-green-50/30 to-transparent' : 'border-l-red-500 bg-gradient-to-r from-red-50/30 to-transparent'}`}>
-      <CardContent className="p-5">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isBuy ? 'bg-green-500' : 'bg-red-500'}`}>
+    <Card className={`overflow-hidden border-l-4 transition-all hover:shadow-lg ${isBuy ? 'border-l-green-500 bg-gradient-to-r from-green-500/5 to-transparent' : 'border-l-red-500 bg-gradient-to-r from-red-500/5 to-transparent'}`}>
+      <CardContent className="p-3">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className={`p-1.5 rounded-lg ${isBuy ? 'bg-green-500' : 'bg-red-500'}`}>
               {isBuy ? (
-                <TrendingUp className="h-5 w-5 text-white" />
+                <TrendingUp className="h-3.5 w-3.5 text-white" />
               ) : (
-                <TrendingDown className="h-5 w-5 text-white" />
+                <TrendingDown className="h-3.5 w-3.5 text-white" />
               )}
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold">{signal.pair}</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-lg font-bold">{signal.pair}</h3>
                 <Badge 
                   variant={isBuy ? 'default' : 'destructive'} 
-                  className={isBuy ? 'bg-green-500' : 'bg-red-500'}
+                  className={`text-xs h-5 ${isBuy ? 'bg-green-500' : 'bg-red-500'}`}
                 >
                   {signal.direction}
                 </Badge>
-                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300">
-                  {signal.confidence}% Confidence
+                <Badge variant="outline" className="text-xs h-5 bg-purple-50 text-purple-700 border-purple-300">
+                  {signal.confidence}%
                 </Badge>
               </div>
-              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
                 <Clock className="h-3 w-3" />
                 {getTimeAgo()}
                 {isLiveFeed && (
                   <>
                     <span>•</span>
                     <Activity className="h-3 w-3 text-green-500" />
-                    <span className="text-green-600">Live feed active</span>
+                    <span className="text-green-600">Live</span>
                   </>
                 )}
               </div>
@@ -137,75 +137,80 @@ export const LiveSignalCard = ({ signal, onDelete }: LiveSignalCardProps) => {
               variant="ghost"
               size="sm"
               onClick={() => onDelete(signal.id)}
-              className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-50"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>
 
-        {/* Price Grid */}
-        <div className="grid grid-cols-4 gap-3 mb-4">
+        {/* Compact Price Grid */}
+        <div className="grid grid-cols-4 gap-2 mb-3">
           <div className="text-center">
-            <div className="text-xs text-muted-foreground mb-1">Entry</div>
-            <div className="text-base font-mono font-bold">{formatPrice(signal.entry_price)}</div>
+            <div className="text-xs text-muted-foreground mb-0.5">Entry</div>
+            <div className="text-sm font-mono font-bold">{formatPrice(signal.entry_price)}</div>
           </div>
           
           <div className="text-center">
-            <div className="text-xs text-muted-foreground mb-1">Current</div>
-            <div className={`text-base font-mono font-bold ${!isLiveFeed ? 'text-orange-500' : isBuy ? 'text-green-600' : 'text-red-600'}`}>
+            <div className="text-xs text-muted-foreground mb-0.5">Current</div>
+            <div className={`text-sm font-mono font-bold ${!isLiveFeed ? 'text-orange-500' : isBuy ? 'text-green-600' : 'text-red-600'}`}>
               {formatPrice(currentPrice)}
             </div>
           </div>
           
-          <div className="text-center bg-green-50 rounded p-2">
-            <div className="text-xs text-green-700 mb-1">TP</div>
-            <div className="text-base font-mono font-bold text-green-700">
+          <div className="text-center bg-green-50 rounded p-1.5">
+            <div className="text-xs text-green-700 mb-0.5">TP</div>
+            <div className="text-sm font-mono font-bold text-green-700">
               {formatPrice(signal.take_profit)}
             </div>
           </div>
           
-          <div className="text-center bg-red-50 rounded p-2">
-            <div className="text-xs text-red-700 mb-1">SL</div>
-            <div className="text-base font-mono font-bold text-red-700">
+          <div className="text-center bg-red-50 rounded p-1.5">
+            <div className="text-xs text-red-700 mb-0.5">SL</div>
+            <div className="text-sm font-mono font-bold text-red-700">
               {formatPrice(signal.stop_loss)}
             </div>
           </div>
         </div>
 
-        {/* Progress Bars */}
+        {/* Compact Progress Bars */}
         {livePrice && (
-          <div className="space-y-2 mb-4">
+          <div className="space-y-1.5 mb-3">
             <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-green-600">Progress to TP</span>
+              <div className="flex justify-between text-xs mb-0.5">
+                <span className="text-green-600">TP</span>
                 <span className="font-mono text-green-600">{tpProgress.toFixed(0)}%</span>
               </div>
-              <Progress value={tpProgress} className="h-2 bg-green-100" />
+              <Progress value={tpProgress} className="h-1.5 bg-green-100" />
             </div>
             
             <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-red-600">Risk to SL</span>
+              <div className="flex justify-between text-xs mb-0.5">
+                <span className="text-red-600">SL</span>
                 <span className="font-mono text-red-600">{slProgress.toFixed(0)}%</span>
               </div>
-              <Progress value={slProgress} className="h-2 bg-red-100" />
+              <Progress value={slProgress} className="h-1.5 bg-red-100" />
             </div>
           </div>
         )}
 
-        {/* Filters */}
-        {signal.raw_ai_responses && (
-          <div className="flex flex-wrap gap-2">
-            {signal.raw_ai_responses.map((filter: any, idx: number) => (
+        {/* Compact Filters */}
+        {signal.raw_ai_responses && signal.raw_ai_responses.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {signal.raw_ai_responses.slice(0, 6).map((filter: any, idx: number) => (
               <Badge 
                 key={idx} 
                 variant="outline"
-                className={`text-xs ${filter.pass ? 'bg-green-50 text-green-700 border-green-300' : 'bg-red-50 text-red-700 border-red-300'}`}
+                className={`text-xs h-5 px-1.5 ${filter.pass ? 'bg-green-50 text-green-700 border-green-300' : 'bg-red-50 text-red-700 border-red-300'}`}
               >
-                {filter.pass ? '✓' : '✗'} {filter.name.replace(/_/g, ' ')}
+                {filter.pass ? '✓' : '✗'} {filter.name.replace(/_/g, ' ').substring(0, 12)}
               </Badge>
             ))}
+            {signal.raw_ai_responses.length > 6 && (
+              <Badge variant="outline" className="text-xs h-5 px-1.5">
+                +{signal.raw_ai_responses.length - 6}
+              </Badge>
+            )}
           </div>
         )}
       </CardContent>
