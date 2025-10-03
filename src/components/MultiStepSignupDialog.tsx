@@ -163,7 +163,7 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
         await supabase.from('user_profiles').insert({
           user_id: user.id,
           username: username || email.split('@')[0],
-          date_of_birth: dateOfBirth?.toISOString().split('T')[0], // Convert to YYYY-MM-DD format
+          date_of_birth: dateOfBirth?.toISOString().split('T')[0],
           phone_number: phoneNumber || null,
           country,
           has_traded_forex: hasTraded === 'yes',
@@ -177,21 +177,27 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
           description: "Welcome to AASAKIRA! 🎉",
         });
 
-        // Hide signup dialog
+        // CRITICAL: First set up the modal states BEFORE closing the dialog
+        // This ensures the state is captured before any unmounting happens
+        const shouldShowBroker = hasTraded === 'no' || hasAccount === 'no';
+        const url = getBrokerUrl(country);
+        const countryName = countryData?.name || 'your country';
+        
+        // Close the signup dialog
         setIsOpen(false);
 
-        // Show modals with proper delay - preserve state
-        setTimeout(() => {
-          if (hasTraded === 'no' || hasAccount === 'no') {
-            const url = getBrokerUrl(country);
-            setBrokerUrl(url);
-            setSelectedCountryName(countryData?.name || 'your country');
-            setShowBrokerModal(true);
-          } else {
-            // Show community modal directly if no broker modal needed
-            setShowCommunityModal(true);
-          }
-        }, 300);
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            if (shouldShowBroker) {
+              setBrokerUrl(url);
+              setSelectedCountryName(countryName);
+              setShowBrokerModal(true);
+            } else {
+              setShowCommunityModal(true);
+            }
+          }, 500); // Increased delay to ensure dialog is fully closed
+        });
       }
     } catch (error: any) {
       console.error('Signup error:', error);
