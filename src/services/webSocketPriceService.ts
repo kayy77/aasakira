@@ -121,9 +121,10 @@ class WebSocketPriceService {
       'EURGBP': 'frxEURGBP',
       'EURJPY': 'frxEURJPY',
       'XAUUSD': 'frxXAUUSD',  // Gold
-      'US30': 'WLDUSTECH',     // Deriv US Tech Index (Dow Jones equivalent)
-      'NAS100': 'WLDNASDAQ',   // Deriv NASDAQ
-      'US100': 'WLDNASDAQ'     // Alternative NASDAQ
+      'US30': 'WLDUS30',      // Wall Street 30 (Dow Jones)
+      'NAS100': 'WLDND100',   // US Tech 100 (NASDAQ-100)
+      'SPX500': 'WLDUS500',   // US 500 (S&P 500)
+      'US100': 'WLDND100'     // Alternative NASDAQ
     };
     
     return mapping[symbol] || 'frxEURUSD';
