@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { ArrowRight, Zap, Target, TrendingUp, Sparkles, MessageSquare } from 'lucide-react';
+import { ArrowRight, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import MultiStepSignupDialog from './MultiStepSignupDialog';
@@ -11,139 +10,70 @@ const Hero = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const handleJoinCommunity = () => {
-    // Open Telegram community
-    window.open('https://t.me/aasakirafree', '_blank');
-  };
-
   const handleExploreTools = () => {
     if (!isAuthenticated) {
-      // Show login dialog by navigating to education
-      navigate('/education'); // This will trigger AuthGuard to show login
+      navigate('/education');
     } else {
       navigate('/education');
     }
   };
 
-  const stats = [
-    { label: 'AI Tools Available', value: '15+', icon: Target },
-    { label: 'Community Members', value: '10K+', icon: TrendingUp },
-    { label: 'Analysis Speed', value: '<100ms', icon: Zap },
-    { label: 'Learning Resources', value: '200+', icon: Sparkles },
-  ];
-
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Optimized floating elements */}
-      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-float"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-float" style={{animationDelay: '2s'}}></div>
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden py-20">
+      {/* Subtle background accent */}
+      <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-        {/* Beta Notice */}
-        <div className="mb-8 animate-fade-in">
-          <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 px-4 py-2">
-            <Zap className="w-4 h-4 mr-2" />
-            Revolutionary Trading Technology
-          </Badge>
-        </div>
-
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
         {/* Main Heading */}
-        <div className="mb-8 animate-slide-up">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+        <div className="mb-12 animate-fade-in">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-foreground">
             Master Trading with{' '}
-            <span className="gradient-text neon-text">AI Tools</span>
+            <span className="text-primary">AI</span>
           </h1>
-          <p className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto leading-relaxed">
-            Unlock your trading potential with cutting-edge AI analysis tools, 
-            comprehensive education, and a thriving community of traders. 
-            Level up your skills and build consistent profitability.
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            AI-powered trading signals and real-time market insights
           </p>
         </div>
 
-        {/* CTA Buttons */}
-        <div className="mb-16 flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{animationDelay: '0.2s'}}>
+        {/* Single Primary CTA */}
+        <div className="mb-20 animate-slide-up">
           <MultiStepSignupDialog>
             <Button 
               size="lg" 
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-4 text-lg hover-lift cyber-glow"
+              className="bg-foreground text-background hover:bg-foreground/90 font-semibold px-12 py-6 text-lg rounded-md"
             >
               Start Trading Journey
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </MultiStepSignupDialog>
-          <Button 
-            size="lg" 
-            variant="outline" 
+          
+          <button
             onClick={handleExploreTools}
-            className="border-white/20 text-white hover:bg-white/10 px-8 py-4 text-lg hover-glow"
+            className="mt-4 text-muted-foreground hover:text-foreground transition-colors text-sm underline-offset-4 hover:underline"
           >
             Explore AI Tools
-            <Sparkles className="ml-2 w-5 h-5" />
-          </Button>
+          </button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 animate-slide-up" style={{animationDelay: '0.4s'}}>
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <div 
-                key={stat.label} 
-                className="glass-card p-6 hover-lift group"
-                style={{animationDelay: `${0.1 * index}s`}}
-              >
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-                <div className="text-2xl md:text-3xl font-bold text-white mb-2 gradient-text">
-                  {stat.value}
-                </div>
-                <div className="text-gray-400 text-sm">
-                  {stat.label}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Free Telegram Announcement */}
-        <div className="mt-12 mb-8 animate-fade-in" style={{animationDelay: '0.5s'}}>
-          <div className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-blue-500/30 rounded-2xl p-6 max-w-2xl mx-auto">
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-white mb-3 flex items-center justify-center gap-2">
-                <MessageSquare className="w-6 h-6 text-blue-400" />
-                Join Our FREE Telegram Community
-              </h3>
-              <p className="text-gray-300 mb-4">
-                Get exclusive trading insights, live market updates, and connect with fellow traders
-              </p>
-              <Button 
-                size="lg"
-                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold px-8 py-3 text-lg hover-lift"
-                onClick={() => window.open('https://t.me/aasakirafree', '_blank')}
-              >
-                <MessageSquare className="mr-2 w-5 h-5" />
-                Join FREE Telegram
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Trust Indicators */}
-        <div className="mt-16 animate-fade-in" style={{animationDelay: '0.6s'}}>
-          <div className="flex flex-wrap justify-center items-center gap-8 text-sm text-gray-400">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Used by traders in 30+ countries</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <span>Compatible with MetaTrader 4/5</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-              <span>99.9% Signal Accuracy Rate</span>
-            </div>
+        {/* Community Section */}
+        <div className="mt-32 animate-fade-in border-t border-border pt-16">
+          <div className="max-w-xl mx-auto">
+            <h3 className="text-2xl font-semibold text-foreground mb-4 flex items-center justify-center gap-3">
+              <MessageSquare className="w-6 h-6" />
+              Join the Community
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              Connect with traders worldwide and get exclusive market insights
+            </p>
+            <Button 
+              variant="outline"
+              size="lg"
+              className="border-border hover:bg-accent"
+              onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
+            >
+              <MessageSquare className="mr-2 w-5 h-5" />
+              Join Free Telegram
+            </Button>
           </div>
         </div>
       </div>
