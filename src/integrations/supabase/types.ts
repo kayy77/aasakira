@@ -451,63 +451,6 @@ export type Database = {
         }
         Relationships: []
       }
-      learning_metrics: {
-        Row: {
-          created_at: string
-          id: string
-          metrics: Json
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          metrics: Json
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          metrics?: Json
-        }
-        Relationships: []
-      }
-      learning_sessions: {
-        Row: {
-          created_at: string
-          duration_minutes: number | null
-          end_time: string | null
-          id: string
-          interactions_count: number | null
-          performance_score: number | null
-          session_type: string
-          start_time: string
-          topics_covered: string[] | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          duration_minutes?: number | null
-          end_time?: string | null
-          id?: string
-          interactions_count?: number | null
-          performance_score?: number | null
-          session_type: string
-          start_time?: string
-          topics_covered?: string[] | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          duration_minutes?: number | null
-          end_time?: string | null
-          id?: string
-          interactions_count?: number | null
-          performance_score?: number | null
-          session_type?: string
-          start_time?: string
-          topics_covered?: string[] | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       news_events: {
         Row: {
           actual: string | null
@@ -547,6 +490,42 @@ export type Database = {
           previous?: string | null
           source?: string | null
           title?: string | null
+        }
+        Relationships: []
+      }
+      Premium: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          stripe_customer_id: string | null
+          subscribed: boolean
+          subscription_end: string | null
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -724,41 +703,40 @@ export type Database = {
         }
         Relationships: []
       }
-      subscribers: {
+      subscription_events: {
         Row: {
-          created_at: string
-          email: string
+          created_at: string | null
+          event_type: string
           id: string
-          stripe_customer_id: string | null
-          subscribed: boolean
-          subscription_end: string | null
-          subscription_tier: string | null
-          updated_at: string
+          payload: Json
+          stripe_event_id: string | null
           user_id: string | null
         }
         Insert: {
-          created_at?: string
-          email: string
+          created_at?: string | null
+          event_type: string
           id?: string
-          stripe_customer_id?: string | null
-          subscribed?: boolean
-          subscription_end?: string | null
-          subscription_tier?: string | null
-          updated_at?: string
+          payload: Json
+          stripe_event_id?: string | null
           user_id?: string | null
         }
         Update: {
-          created_at?: string
-          email?: string
+          created_at?: string | null
+          event_type?: string
           id?: string
-          stripe_customer_id?: string | null
-          subscribed?: boolean
-          subscription_end?: string | null
-          subscription_tier?: string | null
-          updated_at?: string
+          payload?: Json
+          stripe_event_id?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "subscription_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -768,9 +746,12 @@ export type Database = {
           email: string
           id: string
           plan_name: string
+          plan_type: string | null
+          premium_expires_at: string | null
           status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          trial_end: string | null
           updated_at: string
           user_id: string | null
         }
@@ -781,9 +762,12 @@ export type Database = {
           email: string
           id?: string
           plan_name?: string
+          plan_type?: string | null
+          premium_expires_at?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          trial_end?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -794,9 +778,12 @@ export type Database = {
           email?: string
           id?: string
           plan_name?: string
+          plan_type?: string | null
+          premium_expires_at?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          trial_end?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -991,6 +978,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_usage: {
+        Row: {
+          created_at: string | null
+          feature: string
+          id: string
+          updated_at: string | null
+          usage_count: number
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          feature: string
+          id?: string
+          updated_at?: string | null
+          usage_count?: number
+          usage_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          feature?: string
+          id?: string
+          updated_at?: string | null
+          usage_count?: number
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       cron_job_status: {
@@ -1028,6 +1045,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_and_increment_usage: {
+        Args: { p_daily_limit: number; p_feature: string; p_user_id: string }
+        Returns: Json
+      }
       update_user_progress: {
         Args: {
           p_activity_type: string
