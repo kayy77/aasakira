@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Signal, User, MessageCircle, Home, DollarSign, BookOpen, Camera } from 'lucide-react';
+import { Signal, User, Zap, Home, DollarSign, BookOpen, Camera, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,12 +13,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import AuthenticationDialog from './AuthenticationDialog';
+import EnhancedPremiumUpgrade from './enhanced/EnhancedPremiumUpgrade';
 
 const Navigation = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { isPremium } = useSubscription();
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
@@ -64,14 +69,21 @@ const Navigation = () => {
               })}
             </div>
 
-            {/* Telegram Button */}
-            <Button
-              onClick={() => window.open('https://t.me/aasakirafree', '_blank')}
-              className="bg-blue-500 hover:bg-blue-600 text-white border-0 flex items-center gap-2"
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className="hidden lg:inline">Join Community</span>
-            </Button>
+            {/* Premium Upgrade Button */}
+            {isPremium ? (
+              <Badge className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 text-white border-0 px-4 py-2 flex items-center gap-2 cursor-default">
+                <Crown className="h-4 w-4" />
+                <span className="hidden lg:inline">Premium Active</span>
+              </Badge>
+            ) : (
+              <Button
+                onClick={() => setUpgradeModalOpen(true)}
+                className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 hover:from-primary/90 hover:via-purple-500/90 hover:to-pink-500/90 text-white border-0 flex items-center gap-2 animate-pulse shadow-lg shadow-primary/50"
+              >
+                <Zap className="h-4 w-4" />
+                <span className="hidden lg:inline">Upgrade to Premium</span>
+              </Button>
+            )}
 
             {/* User Profile */}
             <div className="flex items-center space-x-4">
@@ -114,6 +126,12 @@ const Navigation = () => {
           </div>
         </div>
       </nav>
+
+      {/* Premium Upgrade Modal */}
+      <EnhancedPremiumUpgrade 
+        open={upgradeModalOpen} 
+        onOpenChange={setUpgradeModalOpen} 
+      />
     </>
   );
 };
