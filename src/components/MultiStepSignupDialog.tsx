@@ -172,6 +172,21 @@ const MultiStepSignupDialog: React.FC<MultiStepSignupDialogProps> = ({ children 
           broker_group: brokerGroup,
         });
 
+        // Add contact to Brevo (async, don't block on it)
+        supabase.functions.invoke('add-brevo-contact', {
+          body: {
+            email,
+            attributes: {
+              FIRSTNAME: username || email.split('@')[0],
+              COUNTRY: countryData?.name || country,
+              SIGNUP_DATE: new Date().toISOString(),
+              HAS_TRADED: hasTraded === 'yes',
+              HAS_ACCOUNT: hasAccount === 'yes',
+            },
+            listIds: [] // Add your Brevo list IDs here
+          }
+        }).catch(err => console.error('Failed to add to Brevo:', err));
+
         toast({
           title: "Account created successfully!",
           description: "Welcome to AASAKIRA! 🎉",

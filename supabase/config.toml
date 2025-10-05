@@ -6,6 +6,9 @@ verify_jwt = true
 [functions.stripe-webhook]
 verify_jwt = false
 
+[functions.add-brevo-contact]
+verify_jwt = false
+
 [functions.manychat]
 verify_jwt = false
 

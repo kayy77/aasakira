@@ -192,13 +192,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       // Fallback to database check
       try {
-        const { data: subscriber } = await supabase
-          .from('subscribers')
-          .select('subscribed, subscription_tier')
-          .eq('email', email)
-          .single();
+        const { data: subscription } = await supabase
+          .from('subscriptions')
+          .select('status, plan_name')
+          .eq('user_id', user?.id)
+          .maybeSingle();
         
-        if (subscriber?.subscribed && user) {
+        if (subscription?.status === 'active' && user) {
           setUser(prev => prev ? { ...prev, role: 'premium' } : null);
         }
       } catch (dbError) {
