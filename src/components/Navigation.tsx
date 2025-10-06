@@ -77,11 +77,11 @@ const Navigation = () => {
               </Badge>
             ) : (
               <Button
-                onClick={() => setUpgradeModalOpen(true)}
-                className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 hover:from-primary/90 hover:via-purple-500/90 hover:to-pink-500/90 text-white border-0 flex items-center gap-2 animate-pulse shadow-lg shadow-primary/50"
+                onClick={() => window.open('https://buy.stripe.com/5kQ00k5Nud1G0AUaRSabK00', '_blank')}
+                className="bg-gradient-to-r from-[#ffb347] to-[#ff416c] hover:opacity-90 text-[#0b0b0b] border-0 flex items-center gap-2 font-bold shadow-[0_6px_18px_rgba(255,65,108,0.35)] hover:shadow-[0_8px_24px_rgba(255,65,108,0.5)] transition-all"
               >
                 <Zap className="h-4 w-4" />
-                <span className="hidden lg:inline">Upgrade to Premium</span>
+                <span className="hidden lg:inline">Upgrade</span>
               </Button>
             )}
 
