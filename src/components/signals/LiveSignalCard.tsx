@@ -21,6 +21,12 @@ interface LiveSignal {
   risk_reward_ratio: number;
   outcome?: string;
   pips_result?: number;
+  groqAnalysis?: {
+    reasoning: string;
+    confidence: number;
+    grade: string;
+    timestamp: number;
+  };
 }
 
 interface LiveSignalCardProps {
@@ -190,6 +196,24 @@ export const LiveSignalCard = ({ signal, onDelete }: LiveSignalCardProps) => {
                 <span className="font-mono text-red-600">{slProgress.toFixed(0)}%</span>
               </div>
               <Progress value={slProgress} className="h-1.5 bg-red-100" />
+            </div>
+          </div>
+        )}
+
+        {/* Groq AI Reasoning */}
+        {signal.groqAnalysis && (
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-2.5 mb-3 border border-purple-200">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0">
+                <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300 text-xs">
+                  🧠 AI Grade: {signal.groqAnalysis.grade}
+                </Badge>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-700 leading-relaxed">
+                  {signal.groqAnalysis.reasoning}
+                </p>
+              </div>
             </div>
           </div>
         )}

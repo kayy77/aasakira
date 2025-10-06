@@ -5,6 +5,13 @@ const TWELVE_DATA_KEY = '2058aa9ba1dd45c6b92d81fb16be89ad';
 const POLYGON_KEY = 'uLv02UJoiot4__GfXf0_v46dAxlrembt';
 const ALPHA_VANTAGE_KEY = 'UWQPDL73VSZSERTZ';
 
+// Symbol alias mapping for multi-API support
+const SYMBOL_ALIASES: { [key: string]: string[] } = {
+  'XAUUSD': ['XAU/USD', 'XAUUSD', 'GOLD'],
+  'US30': ['US30', 'DJI', 'Wall Street 30', 'YM=F'],
+  'NAS100': ['NAS100', 'NDX', 'NASDAQ100', 'US Tech 100', 'NQ=F', '^NDX']
+};
+
 // Deriv WebSocket for real-time prices
 let derivWS: WebSocket | null = null;
 let wsConnectionPromise: Promise<void> | null = null;
@@ -46,65 +53,80 @@ export async function fetchLivePrice(symbol: string): Promise<number> {
     console.warn('Failed to fetch from Supabase, falling back to direct APIs:', error);
   }
 
-  // Fallback to direct API calls with the existing chain
+  // Fallback to direct API calls with multi-alias support
   const normalized = symbol.replace('/', '').toUpperCase();
-  const from = normalized.slice(0, 3);
-  const to = normalized.slice(3);
+  const aliases = SYMBOL_ALIASES[normalized] || [symbol];
   
-  console.log(`🎯 Fetching LIVE price for ${symbol} with DIRECT API FALLBACK CHAIN...`);
+  console.log(`🎯 Fetching LIVE price for ${symbol} with ${aliases.length} alias variations...`);
 
-  // PRIORITY 1: TwelveData (fastest, most reliable)
-  try {
-    const price = await tryTwelveData(from, to);
-    if (price > 0) {
-      console.log(`✅ TwelveData SUCCESS: ${symbol} = ${price}`);
-      return price;
+  // Try each alias across all APIs
+  for (const alias of aliases) {
+    const from = alias.slice(0, 3);
+    const to = alias.slice(3);
+    
+    // PRIORITY 1: TwelveData (fastest, most reliable)
+    try {
+      const price = await tryTwelveData(from, to, alias);
+      if (price > 0) {
+        console.log(`✅ TwelveData SUCCESS: ${symbol} (${alias}) = ${price}`);
+        return price;
+      }
+    } catch (error) {
+      console.warn(`❌ TwelveData failed for ${alias}:`, error);
     }
-  } catch (error) {
-    console.warn(`❌ TwelveData failed for ${symbol}:`, error);
-  }
 
-  // PRIORITY 2: Polygon (institutional grade)
-  try {
-    const price = await tryPolygon(normalized);
-    if (price > 0) {
-      console.log(`✅ Polygon SUCCESS: ${symbol} = ${price}`);
-      return price;
+    // PRIORITY 2: Polygon (institutional grade)
+    try {
+      const price = await tryPolygon(alias);
+      if (price > 0) {
+        console.log(`✅ Polygon SUCCESS: ${symbol} (${alias}) = ${price}`);
+        return price;
+      }
+    } catch (error) {
+      console.warn(`❌ Polygon failed for ${alias}:`, error);
     }
-  } catch (error) {
-    console.warn(`❌ Polygon failed for ${symbol}:`, error);
-  }
 
-  // PRIORITY 3: Alpha Vantage (backup)
-  try {
-    const price = await tryAlphaVantage(from, to);
-    if (price > 0) {
-      console.log(`✅ AlphaVantage SUCCESS: ${symbol} = ${price}`);
-      return price;
+    // PRIORITY 3: Alpha Vantage (backup)
+    try {
+      const price = await tryAlphaVantage(from, to);
+      if (price > 0) {
+        console.log(`✅ AlphaVantage SUCCESS: ${symbol} (${alias}) = ${price}`);
+        return price;
+      }
+    } catch (error) {
+      console.warn(`❌ AlphaVantage failed for ${alias}:`, error);
     }
-  } catch (error) {
-    console.warn(`❌ AlphaVantage failed for ${symbol}:`, error);
   }
 
   // Final fallback
-  console.warn(`⚠️ ALL APIs failed for ${symbol}, using fallback`);
+  console.warn(`⚠️ ALL APIs and aliases failed for ${symbol}, using fallback`);
   return getFallbackPrice(normalized);
 }
 
-async function tryTwelveData(from: string, to: string): Promise<number> {
-  const response = await axios.get(
-    `https://api.twelvedata.com/price?symbol=${from}/${to}&apikey=${TWELVE_DATA_KEY}&_=${Date.now()}`,
-    {
-      timeout: 3000,
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      }
-    }
-  );
+async function tryTwelveData(from: string, to: string, fullSymbol?: string): Promise<number> {
+  // Try with full symbol first if provided (for indices like NDX)
+  const symbols = fullSymbol ? [fullSymbol, `${from}/${to}`] : [`${from}/${to}`];
   
-  if (response.data.price && !response.data.status) {
-    return parseFloat(response.data.price);
+  for (const symbol of symbols) {
+    try {
+      const response = await axios.get(
+        `https://api.twelvedata.com/price?symbol=${symbol}&apikey=${TWELVE_DATA_KEY}&_=${Date.now()}`,
+        {
+          timeout: 3000,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        }
+      );
+      
+      if (response.data.price && !response.data.status) {
+        return parseFloat(response.data.price);
+      }
+    } catch (error) {
+      // Try next symbol
+      continue;
+    }
   }
   
   return 0;
@@ -243,7 +265,10 @@ function getFallbackPrice(symbol: string): number {
     'NZDUSD': 0.5678,
     'EURGBP': 0.8310,
     'EURJPY': 162.85,
-    'GBPJPY': 195.75
+    'GBPJPY': 195.75,
+    'XAUUSD': 3933.89,
+    'US30': 42450.00,
+    'NAS100': 15320.50
   };
   
   const basePrice = fallbackPrices[symbol] || 1.0000;

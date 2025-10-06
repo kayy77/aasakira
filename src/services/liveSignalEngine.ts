@@ -27,16 +27,30 @@ interface SignalCandidate {
   priceAge: number;
   idempotencyKey: string;
   engineVersion: string;
+  groqAnalysis?: {
+    reasoning: string;
+    confidence: number;
+    grade: string;
+    timestamp: number;
+  };
 }
 
 class LiveSignalEngine {
   private readonly MAX_PRICE_AGE_MS = 500;
   private readonly FILTER_THRESHOLD = 3;
   private readonly ENGINE_VERSION = '1.0.0';
-  private readonly SUPPORTED_SYMBOLS = ['XAUUSD', 'US30'];
+  private readonly SUPPORTED_SYMBOLS = ['XAUUSD', 'US30', 'NAS100'];
   
   private recentSignals = new Map<string, number>();
   private lastTicks = new Map<string, LivePriceData>();
+  private groqService: any = null;
+
+  constructor() {
+    // Lazy load Groq service to avoid circular dependencies
+    import('@/services/groqSignalJudge').then(module => {
+      this.groqService = module.groqSignalJudge;
+    });
+  }
 
   async fetchLivePrice(symbol: string): Promise<LivePriceData | null> {
     try {
@@ -417,7 +431,48 @@ class LiveSignalEngine {
       engineVersion: this.ENGINE_VERSION
     };
 
-    console.log(`✅ Signal generated: ${symbol} ${direction} @ ${priceData.mid} (Score: ${score})`);
+    // Run Groq AI validation and analysis
+    if (this.groqService) {
+      try {
+        console.log('🧠 Running Groq AI validation...');
+        const groqValidation = await this.groqService.evaluateSignal({
+          symbol,
+          direction,
+          entry: priceData.mid,
+          stop: stopLoss,
+          target: takeProfit,
+          frameworks: filters.filter(f => f.pass).map(f => f.name),
+          session: this.getCurrentSession(),
+          confluence: passedFilters,
+          confidence: score
+        });
+
+        // Add Groq analysis to signal
+        signal.groqAnalysis = {
+          reasoning: groqValidation.reason,
+          confidence: groqValidation.confidence_adjustment || 0,
+          grade: groqValidation.institutional_grade,
+          timestamp: Date.now()
+        };
+
+        // Adjust confidence based on Groq feedback
+        if (groqValidation.confidence_adjustment) {
+          signal.score = Math.min(95, Math.max(60, score + groqValidation.confidence_adjustment));
+        }
+
+        console.log(`🏆 Groq Analysis: ${groqValidation.institutional_grade} | ${groqValidation.reason}`);
+
+        // Reject if Groq says NO
+        if (groqValidation.decision === 'reject' || ['C', 'FAIL'].includes(groqValidation.institutional_grade)) {
+          console.log(`🚫 Signal rejected by Groq: ${groqValidation.reason}`);
+          return null;
+        }
+      } catch (error) {
+        console.warn('⚠️ Groq validation failed, proceeding without AI analysis:', error);
+      }
+    }
+
+    console.log(`✅ Signal generated: ${symbol} ${direction} @ ${priceData.mid} (Score: ${signal.score})`);
     return signal;
   }
 
@@ -434,6 +489,14 @@ class LiveSignalEngine {
     // Default based on overall filter confidence
     const avgConfidence = filters.reduce((sum, f) => sum + f.confidence, 0) / filters.length;
     return avgConfidence > 0.6 ? 'BUY' : 'SELL';
+  }
+
+  private getCurrentSession(): string {
+    const hour = new Date().getUTCHours();
+    if (hour >= 8 && hour <= 16) return 'London';
+    if (hour >= 13 && hour <= 21) return 'New York';
+    if (hour >= 0 && hour <= 8) return 'Asian';
+    return 'Off-hours';
   }
 
   // Clean up old records
