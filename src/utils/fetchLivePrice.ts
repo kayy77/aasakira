@@ -24,12 +24,15 @@ export async function fetchLivePrice(symbol: string): Promise<number> {
   const normalized = symbol.replace('/', '').toUpperCase();
   const aliases = SYMBOL_ALIASES[normalized] || [symbol];
   
-  console.log(`🎯 Fetching LIVE price for ${symbol} with ${aliases.length} alias variations...`);
+  console.log(`🎯 [PRICE FETCH] Starting for ${symbol} with ${aliases.length} aliases:`, aliases);
 
   // Try all sources in parallel for each alias until we get a valid price
-  for (const alias of aliases) {
+  for (let i = 0; i < aliases.length; i++) {
+    const alias = aliases[i];
     const from = alias.slice(0, 3);
     const to = alias.slice(3, 6) || 'USD';
+    
+    console.log(`🔄 [PRICE FETCH] Trying alias ${i + 1}/${aliases.length}: ${alias}`);
     
     // Parallel fetch from all APIs
     const results = await Promise.allSettled([
@@ -38,19 +41,33 @@ export async function fetchLivePrice(symbol: string): Promise<number> {
       tryAlphaVantage(from, to)
     ]);
 
+    // Log all results for debugging
+    results.forEach((result, idx) => {
+      const source = ['TwelveData', 'Polygon', 'AlphaVantage'][idx];
+      if (result.status === 'fulfilled') {
+        if (result.value > 0) {
+          console.log(`✅ [${source}] Success for ${alias}: ${result.value}`);
+        } else {
+          console.log(`⚠️ [${source}] No price for ${alias}`);
+        }
+      } else {
+        console.error(`❌ [${source}] Error for ${alias}:`, result.reason);
+      }
+    });
+
     // Return first valid price from any source
     for (const result of results) {
       if (result.status === 'fulfilled' && result.value > 0) {
-        console.log(`✅ LIVE PRICE SUCCESS: ${symbol} (${alias}) = ${result.value}`);
+        console.log(`🎯 [PRICE FETCH] SUCCESS: ${symbol} (${alias}) = ${result.value}`);
         return result.value;
       }
     }
     
-    console.warn(`⚠️ All APIs failed for alias: ${alias}`);
+    console.warn(`⚠️ [PRICE FETCH] All APIs failed for alias: ${alias}`);
   }
 
   // Final fallback
-  console.warn(`⚠️ ALL APIs and aliases exhausted for ${symbol}, using fallback`);
+  console.error(`❌ [PRICE FETCH] ALL APIs and aliases exhausted for ${symbol}, using fallback`);
   return getFallbackPrice(normalized);
 }
 

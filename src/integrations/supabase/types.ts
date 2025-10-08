@@ -879,8 +879,15 @@ export type Database = {
           has_traded_forex: boolean | null
           has_trading_account: boolean | null
           id: string
+          is_premium: boolean | null
           phone_number: string | null
+          plan_type: string | null
+          premium_expires_at: string | null
           referral_source: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
+          trial_end: string | null
           updated_at: string
           user_id: string
           username: string | null
@@ -893,8 +900,15 @@ export type Database = {
           has_traded_forex?: boolean | null
           has_trading_account?: boolean | null
           id?: string
+          is_premium?: boolean | null
           phone_number?: string | null
+          plan_type?: string | null
+          premium_expires_at?: string | null
           referral_source?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          trial_end?: string | null
           updated_at?: string
           user_id: string
           username?: string | null
@@ -907,8 +921,15 @@ export type Database = {
           has_traded_forex?: boolean | null
           has_trading_account?: boolean | null
           id?: string
+          is_premium?: boolean | null
           phone_number?: string | null
+          plan_type?: string | null
+          premium_expires_at?: string | null
           referral_source?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          trial_end?: string | null
           updated_at?: string
           user_id?: string
           username?: string | null

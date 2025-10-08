@@ -53,11 +53,13 @@ serve(async (req) => {
       case 'checkout.session.completed':
         const session = event.data.object as Stripe.Checkout.Session;
         const customerEmail = session.customer_details?.email;
+        const customerId = session.customer as string;
+        const subscriptionId = session.subscription as string;
         
         if (customerEmail) {
-          logStep("Processing checkout completion", { email: customerEmail });
+          logStep("Processing checkout completion", { email: customerEmail, customerId, subscriptionId });
           
-          // Find user by email and update to premium status
+          // Find user by email
           const { data: users, error: userFetchError } = await supabaseAdmin.auth.admin.listUsers();
           
           if (userFetchError) {
@@ -68,7 +70,7 @@ serve(async (req) => {
           const user = users.users.find(u => u.email === customerEmail);
           
           if (user) {
-            // Update user metadata to premium
+            // Update user metadata
             const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
               user.id,
               { user_metadata: { ...user.user_metadata, role: 'premium', subscription_tier: 'premium' } }
@@ -86,12 +88,38 @@ serve(async (req) => {
                 email: customerEmail,
                 subscribed: true,
                 subscription_tier: 'premium',
+                stripe_customer_id: customerId,
                 updated_at: new Date().toISOString()
               }, { onConflict: 'email' });
 
             if (subscriberError) {
               logStep("Error updating subscribers table", { error: subscriberError });
             }
+
+            // Update user_profiles table
+            const { error: profileError } = await supabaseAdmin
+              .from('user_profiles')
+              .update({
+                is_premium: true,
+                plan_type: 'monthly',
+                stripe_customer_id: customerId,
+                stripe_subscription_id: subscriptionId,
+                subscription_status: 'active',
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', user.id);
+
+            if (profileError) {
+              logStep("Error updating user_profiles table", { error: profileError });
+            }
+
+            // Log event
+            await supabaseAdmin.from('subscription_events').insert({
+              user_id: user.id,
+              stripe_event_id: event.id,
+              event_type: event.type,
+              payload: event.data.object,
+            });
 
             logStep("User upgraded to premium", { email: customerEmail, userId: user.id });
           } else {
@@ -100,36 +128,94 @@ serve(async (req) => {
         }
         break;
 
-      case 'customer.subscription.deleted':
-        const subscription = event.data.object as Stripe.Subscription;
-        const customer = await stripe.customers.retrieve(subscription.customer as string);
+      case 'invoice.payment_succeeded':
+        const successInvoice = event.data.object as Stripe.Invoice;
+        const successCustomerId = successInvoice.customer as string;
         
-        if (customer && !customer.deleted && customer.email) {
-          logStep("Processing subscription cancellation", { email: customer.email });
+        const { data: successUsers } = await supabaseAdmin.auth.admin.listUsers();
+        const successUser = successUsers.users.find(u => u.user_metadata?.stripe_customer_id === successCustomerId);
+        
+        if (successUser) {
+          await supabaseAdmin.from('user_profiles').update({
+            is_premium: true,
+            subscription_status: 'active',
+            updated_at: new Date().toISOString()
+          }).eq('user_id', successUser.id);
           
-          // Find user by email and downgrade
-          const { data: users } = await supabaseAdmin.auth.admin.listUsers();
-          const user = users.users.find(u => u.email === customer.email);
+          await supabaseAdmin.from('subscription_events').insert({
+            user_id: successUser.id,
+            stripe_event_id: event.id,
+            event_type: event.type,
+            payload: event.data.object,
+          });
           
-          if (user) {
-            // Update user metadata to free
-            await supabaseAdmin.auth.admin.updateUserById(
-              user.id,
-              { user_metadata: { ...user.user_metadata, role: 'free', subscription_tier: 'free' } }
-            );
-            
-            // Update subscribers table
-            await supabaseAdmin
-              .from('subscribers')
-              .update({ 
-                subscribed: false, 
-                subscription_tier: 'free',
-                updated_at: new Date().toISOString() 
-              })
-              .eq('email', customer.email);
+          logStep("Payment succeeded", { userId: successUser.id });
+        }
+        break;
 
-            logStep("User downgraded to free", { email: customer.email });
-          }
+      case 'invoice.payment_failed':
+        const failedInvoice = event.data.object as Stripe.Invoice;
+        const failedCustomerId = failedInvoice.customer as string;
+        
+        const { data: failedUsers } = await supabaseAdmin.auth.admin.listUsers();
+        const failedUser = failedUsers.users.find(u => u.user_metadata?.stripe_customer_id === failedCustomerId);
+        
+        if (failedUser) {
+          await supabaseAdmin.from('user_profiles').update({
+            is_premium: false,
+            subscription_status: 'past_due',
+            updated_at: new Date().toISOString()
+          }).eq('user_id', failedUser.id);
+          
+          await supabaseAdmin.from('subscription_events').insert({
+            user_id: failedUser.id,
+            stripe_event_id: event.id,
+            event_type: event.type,
+            payload: event.data.object,
+          });
+          
+          logStep("Payment failed", { userId: failedUser.id });
+        }
+        break;
+
+      case 'customer.subscription.deleted':
+      case 'customer.subscription.updated':
+        const subscription = event.data.object as Stripe.Subscription;
+        const subCustomerId = subscription.customer as string;
+        const status = subscription.status;
+        
+        const { data: subUsers } = await supabaseAdmin.auth.admin.listUsers();
+        const subUser = subUsers.users.find(u => u.user_metadata?.stripe_customer_id === subCustomerId);
+        
+        if (subUser) {
+          const isPremium = status === 'active' || status === 'trialing';
+          
+          await supabaseAdmin.auth.admin.updateUserById(
+            subUser.id,
+            { user_metadata: { ...subUser.user_metadata, role: isPremium ? 'premium' : 'free' } }
+          );
+          
+          await supabaseAdmin.from('subscribers').update({ 
+            subscribed: isPremium, 
+            subscription_tier: isPremium ? 'premium' : 'free',
+            updated_at: new Date().toISOString() 
+          }).eq('user_id', subUser.id);
+          
+          await supabaseAdmin.from('user_profiles').update({
+            is_premium: isPremium,
+            subscription_status: status,
+            stripe_subscription_id: subscription.id,
+            updated_at: new Date().toISOString()
+          }).eq('user_id', subUser.id);
+          
+          await supabaseAdmin.from('subscription_events').insert({
+            user_id: subUser.id,
+            stripe_event_id: event.id,
+            event_type: event.type,
+            payload: event.data.object,
+          });
+
+          logStep("Subscription updated", { userId: subUser.id, status, isPremium });
         }
         break;
 
