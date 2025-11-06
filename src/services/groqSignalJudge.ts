@@ -31,7 +31,7 @@ interface GroqJudgment {
   interrogation_notes: string[];
 }
 
-class GroqSignalJudge {
+export class GroqSignalJudge {
   private rejectedSignals: any[] = [];
   private interrogationCount = 0;
 
