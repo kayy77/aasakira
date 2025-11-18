@@ -178,8 +178,10 @@ const Signals = () => {
                     ))}
                   </div>
                 </div>
-              </Card>
-            )}
+
+                {/* Timeframe Analysis */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold mb-2">Multi-Timeframe Trend</h3>
                   <div className="grid grid-cols-3 gap-2">
                     <div className="bg-muted/30 p-2 rounded text-center">
                       <div className="text-xs text-muted-foreground">H4</div>
