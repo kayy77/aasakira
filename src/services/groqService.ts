@@ -269,6 +269,70 @@ CRITICAL: You are managing real money. ONE bad trade can destroy the account. On
     };
   }
 
+  async analyzeTradeJournal(trade: {
+    symbol: string;
+    side: string;
+    entryPrice: number;
+    exitPrice?: number;
+    lotSize: number;
+    outcome: string;
+    pnl?: number;
+  }): Promise<{ review: string; rating: number }> {
+    try {
+      const prompt = `Analyze this trade and provide feedback:
+      
+Symbol: ${trade.symbol}
+Direction: ${trade.side}
+Entry: ${trade.entryPrice}
+Exit: ${trade.exitPrice || 'Still Open'}
+Lot Size: ${trade.lotSize}
+Outcome: ${trade.outcome}
+P&L: ${trade.pnl ? `$${trade.pnl.toFixed(2)}` : 'N/A'}
+
+Provide:
+1. Rating (1-5 stars) - Rate the trade execution and risk management
+2. Detailed review covering:
+   - Entry timing and price level quality
+   - Risk management (position sizing, stop placement)
+   - What was done well
+   - Areas for improvement
+   - Key lessons to remember
+
+Format your response as JSON:
+{
+  "rating": <1-5>,
+  "review": "<detailed feedback>"
+}`;
+
+      const response = await this.generateResponse(prompt, {
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0.7,
+        max_tokens: 800
+      });
+
+      // Parse JSON response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          rating: parsed.rating || 3,
+          review: parsed.review || response
+        };
+      }
+
+      return {
+        rating: 3,
+        review: response
+      };
+    } catch (error) {
+      console.error('Error analyzing trade:', error);
+      return {
+        rating: 3,
+        review: 'Unable to analyze trade at this time. Please try again later.'
+      };
+    }
+  }
+
   async testConnection(): Promise<boolean> {
     try {
       console.log('🧪 TESTING GROQ CONNECTION...');

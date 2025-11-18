@@ -80,37 +80,43 @@ serve(async (req) => {
               logStep("Error updating user auth", { error: updateError });
             }
 
-            // Update subscribers table
-            const { error: subscriberError } = await supabaseAdmin
-              .from('subscribers')
-              .upsert({
-                user_id: user.id,
-                email: customerEmail,
-                subscribed: true,
-                subscription_tier: 'premium',
-                stripe_customer_id: customerId,
-                updated_at: new Date().toISOString()
-              }, { onConflict: 'email' });
-
-            if (subscriberError) {
-              logStep("Error updating subscribers table", { error: subscriberError });
-            }
-
-            // Update user_profiles table
+            // Create or update user_profiles table
             const { error: profileError } = await supabaseAdmin
               .from('user_profiles')
-              .update({
+              .upsert({
+                user_id: user.id,
+                country: 'US', // Default, will be updated by user
                 is_premium: true,
                 plan_type: 'monthly',
                 stripe_customer_id: customerId,
                 stripe_subscription_id: subscriptionId,
                 subscription_status: 'active',
+                premium_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
                 updated_at: new Date().toISOString()
-              })
-              .eq('user_id', user.id);
+              }, { onConflict: 'user_id' });
 
             if (profileError) {
               logStep("Error updating user_profiles table", { error: profileError });
+            }
+
+            // Update subscriptions table
+            const { error: subscriptionError } = await supabaseAdmin
+              .from('subscriptions')
+              .upsert({
+                user_id: user.id,
+                email: customerEmail,
+                stripe_customer_id: customerId,
+                stripe_subscription_id: subscriptionId,
+                status: 'active',
+                plan_name: 'premium',
+                plan_type: 'monthly',
+                current_period_start: new Date().toISOString(),
+                current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'email' });
+
+            if (subscriptionError) {
+              logStep("Error updating subscriptions table", { error: subscriptionError });
             }
 
             // Log event

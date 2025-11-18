@@ -163,12 +163,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
-    // Check if user is admin, has premium role in metadata, or is in subscribers table
+    // Check if user is admin, has premium role in metadata
     const isAdmin = ADMIN_EMAILS.includes(authUser.email || '');
     const hasPremiumRole = authUser.user_metadata?.role === 'premium';
     
-    // Check subscribers table on login
-    checkSubscriptionStatus(authUser.email || '');
+    // Check subscription status from database on login
+    checkSubscriptionStatus(authUser.id);
     
     return {
       ...authUser,
@@ -182,28 +182,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   };
 
-  const checkSubscriptionStatus = async (email: string) => {
+  const checkSubscriptionStatus = async (userId: string) => {
     try {
-      const { data } = await supabase.functions.invoke('check-subscription');
-      if (data?.subscribed && user) {
-        // Update user role if subscription is active
-        setUser(prev => prev ? { ...prev, role: 'premium' } : null);
+      // Check user_profiles for premium status
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('is_premium, subscription_status, premium_expires_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (profile?.is_premium && profile?.subscription_status === 'active') {
+        // Check if subscription hasn't expired
+        const isExpired = profile.premium_expires_at && new Date(profile.premium_expires_at) < new Date();
+        if (!isExpired) {
+          setUser(prev => prev ? { ...prev, role: 'premium' } : null);
+          return;
+        }
       }
-    } catch (error) {
-      // Fallback to database check
-      try {
-        const { data: subscription } = await supabase
-          .from('subscriptions')
-          .select('status, plan_name')
-          .eq('user_id', user?.id)
-          .maybeSingle();
-        
-        if (subscription?.status === 'active' && user) {
+
+      // Fallback to subscriptions table
+      const { data: subscription } = await supabase
+        .from('subscriptions')
+        .select('status, plan_name, current_period_end')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (subscription?.status === 'active') {
+        // Check if subscription period is valid
+        const isExpired = subscription.current_period_end && new Date(subscription.current_period_end) < new Date();
+        if (!isExpired) {
           setUser(prev => prev ? { ...prev, role: 'premium' } : null);
         }
-      } catch (dbError) {
-        console.log('No subscription found for user');
       }
+    } catch (error) {
+      console.log('Error checking subscription status:', error);
     }
   };
 
