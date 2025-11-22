@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, BarChart3, Brain, Filter, MoreVertical, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, BarChart3, Brain, Filter, MoreVertical, Edit, Trash2, Loader2, Camera, X } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +25,9 @@ import { PairHeatmap } from '@/components/journal/PairHeatmap';
 import { PositionSizeAnalysis } from '@/components/journal/PositionSizeAnalysis';
 import { RiskRewardConsistency } from '@/components/journal/RiskRewardConsistency';
 import { SetupClustering } from '@/components/journal/SetupClustering';
+import ScreenshotUpload from '@/components/journal/ScreenshotUpload';
+import ChartVisualizer from '@/components/journal/ChartVisualizer';
+import WeeklySummary from '@/components/journal/WeeklySummary';
 
 interface JournalEntry {
   id: string;
@@ -68,6 +71,9 @@ const Journal = () => {
   const [generatingAISummary, setGeneratingAISummary] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
   const [selectedTrades, setSelectedTrades] = useState<JournalEntry[]>([]);
+  const [showScreenshotUpload, setShowScreenshotUpload] = useState(false);
+  const [showChartVisualizer, setShowChartVisualizer] = useState(false);
+  const [visualizingTrade, setVisualizingTrade] = useState<JournalEntry | null>(null);
 
   // Display settings - Calculate actual P&L using lot size
   const calculateRealPnL = (pips: number, lotSize: number = 1, fees: number = 0) => {
@@ -469,6 +475,37 @@ const Journal = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleScreenshotExtraction = (extractedData: any) => {
+    // Auto-populate form with extracted data
+    setNewEntry({
+      pair: extractedData.pair || '',
+      entry_price: extractedData.entry_price?.toString() || '',
+      exit_price: extractedData.exit_price?.toString() || '',
+      entry_time: '',
+      direction: extractedData.direction || 'LONG',
+      strategy: extractedData.strategy || '',
+      lot_size: extractedData.lot_size?.toString() || '',
+      fees: '',
+      feelings: '',
+      mistakes: '',
+      notes: '',
+      status: extractedData.exit_price ? 'CLOSED' : 'OPEN'
+    });
+
+    setShowScreenshotUpload(false);
+    setShowAddDialog(true);
+
+    toast({
+      title: "Trade Data Extracted!",
+      description: "Review and confirm the details before saving",
+    });
+  };
+
+  const handleVisualizeChart = (entry: JournalEntry) => {
+    setVisualizingTrade(entry);
+    setShowChartVisualizer(true);
   };
 
   const handleEditEntry = (entry: JournalEntry) => {
@@ -1368,7 +1405,7 @@ const Journal = () => {
                       <h3 className="text-lg font-zen-maru font-semibold text-foreground">{formatSelectedDate()}</h3>
                       <p className="text-sm text-muted-foreground">Daily Performance</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         onClick={revertDateShift}
                         variant="outline"
@@ -1385,6 +1422,24 @@ const Journal = () => {
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Add Trade
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowScreenshotUpload(true)}
+                        className="hover-lift bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                      >
+                        <Camera className="h-4 w-4 mr-1" />
+                        Upload Screenshot
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveCategory('weekly')}
+                        className="hover-lift bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20"
+                      >
+                        <Calendar className="h-4 w-4 mr-1" />
+                        Weekly Summary
                       </Button>
                     </div>
                   </div>
@@ -1527,6 +1582,13 @@ const Journal = () => {
                                   >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleVisualizeChart(entry)}
+                                    className="text-white hover:bg-zinc-700"
+                                  >
+                                    <BarChart3 className="h-4 w-4 mr-2" />
+                                    Visualize Chart
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     onClick={() => generateAIFeedback(entry.id)}
@@ -1908,6 +1970,53 @@ const Journal = () => {
         open={showUpgradeDialog} 
         onOpenChange={setShowUpgradeDialog} 
       />
+
+      {/* Screenshot Upload Dialog */}
+      <Dialog open={showScreenshotUpload} onOpenChange={setShowScreenshotUpload}>
+        <DialogContent className="max-w-3xl bg-zinc-900 border-zinc-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Upload Trading Screenshot</DialogTitle>
+          </DialogHeader>
+          <ScreenshotUpload onTradeExtracted={handleScreenshotExtraction} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Chart Visualizer Dialog */}
+      <Dialog open={showChartVisualizer} onOpenChange={setShowChartVisualizer}>
+        <DialogContent className="max-w-4xl bg-zinc-900 border-zinc-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Trade Setup Visualization</DialogTitle>
+          </DialogHeader>
+          {visualizingTrade && (
+            <ChartVisualizer 
+              tradeData={{
+                pair: visualizingTrade.pair,
+                direction: visualizingTrade.direction,
+                entry_price: visualizingTrade.entry_price,
+                exit_price: visualizingTrade.exit_price,
+                notes: visualizingTrade.notes
+              }} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Weekly Summary Section */}
+      {activeCategory === 'weekly' && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-zinc-900 rounded-lg border border-zinc-700 p-6">
+            <Button
+              onClick={() => setActiveCategory('overview')}
+              variant="ghost"
+              size="sm"
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            <WeeklySummary entries={entries} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
