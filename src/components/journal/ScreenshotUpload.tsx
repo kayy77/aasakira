@@ -84,11 +84,25 @@ const ScreenshotUpload: React.FC<ScreenshotUploadProps> = ({ onTradeExtracted })
 
       if (error) throw error;
 
+      // Handle validation errors (non-trading screenshots)
+      if (data?.success === false) {
+        const userMessage = data?.userMessage || data?.error || 'This doesn\'t appear to be a trading screenshot';
+        toast({
+          title: "Invalid Screenshot",
+          description: userMessage,
+          variant: "destructive"
+        });
+        setAnalyzing(false);
+        return;
+      }
+
       if (data?.tradeData) {
+        const confidence = data?.metadata?.confidence || 0;
         onTradeExtracted(data.tradeData);
+        
         toast({
           title: "Trade Extracted Successfully!",
-          description: `Found ${data.tradeData.pair} ${data.tradeData.direction} trade`,
+          description: `Found ${data.tradeData.pair} ${data.tradeData.direction} trade (${confidence}% confidence)`,
         });
       } else {
         toast({
@@ -97,11 +111,15 @@ const ScreenshotUpload: React.FC<ScreenshotUploadProps> = ({ onTradeExtracted })
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error analyzing screenshot:", error);
+      
+      // Show user-friendly error message if available
+      const message = error?.message || "Unable to analyze the screenshot. Please try again.";
+      
       toast({
         title: "Analysis Failed",
-        description: "Unable to analyze the screenshot. Please try again.",
+        description: message,
         variant: "destructive"
       });
     } finally {
