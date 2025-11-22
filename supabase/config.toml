@@ -53,3 +53,24 @@ verify_jwt = false
 
 [functions.generate-live-signal]
 verify_jwt = false
+
+[functions.analyze-trading-screenshot]
+verify_jwt = true
+
+[functions.generate-chart-visual]
+verify_jwt = true
+
+[functions.generate-ai-feedback]
+verify_jwt = true
+
+[functions.gpt4o-chat]
+verify_jwt = true
+
+[functions.check-subscription]
+verify_jwt = true
+
+[functions.send-signal-email]
+verify_jwt = true
+
+[functions.signal-webhook-validator]
+verify_jwt = false
