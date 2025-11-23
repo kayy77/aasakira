@@ -77,12 +77,19 @@ const ScreenshotUpload: React.FC<ScreenshotUploadProps> = ({ onTradeExtracted })
     setAnalyzing(true);
     
     try {
+      console.log('📤 Sending image to AI analysis...');
+      
       // Call edge function to analyze screenshot with AI
       const { data, error } = await supabase.functions.invoke('analyze-trading-screenshot', {
         body: { imageData }
       });
 
-      if (error) throw error;
+      console.log('📥 Response:', data);
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
 
       // Handle validation errors (non-trading screenshots)
       if (data?.success === false) {
@@ -98,12 +105,28 @@ const ScreenshotUpload: React.FC<ScreenshotUploadProps> = ({ onTradeExtracted })
 
       if (data?.tradeData) {
         const confidence = data?.metadata?.confidence || 0;
-        onTradeExtracted(data.tradeData);
+        const tradeCount = data?.metadata?.tradeCount || 1;
+        const platform = data?.metadata?.platform || 'Unknown';
         
+        // Handle single trade or first trade of multiple
+        const firstTrade = Array.isArray(data.tradeData) ? data.tradeData[0] : data.tradeData;
+        
+        onTradeExtracted(firstTrade);
+        
+        // Show success message with platform info
         toast({
-          title: "Trade Extracted Successfully!",
-          description: `Found ${data.tradeData.pair} ${data.tradeData.direction} trade (${confidence}% confidence)`,
+          title: `✅ ${tradeCount} Trade${tradeCount > 1 ? 's' : ''} Extracted!`,
+          description: `${platform} • ${firstTrade.pair} ${firstTrade.direction} trade (${confidence}% confidence)${tradeCount > 1 ? ` • +${tradeCount - 1} more` : ''}`,
         });
+        
+        // If multiple trades, log them
+        if (Array.isArray(data.tradeData) && data.tradeData.length > 1) {
+          console.log('📊 Multiple trades found:', data.tradeData);
+          toast({
+            title: "Multiple Trades Detected",
+            description: `Found ${tradeCount} trades. First trade has been loaded. Check console for all trades.`,
+          });
+        }
       } else {
         toast({
           title: "Could not extract trade data",
@@ -232,11 +255,20 @@ const ScreenshotUpload: React.FC<ScreenshotUploadProps> = ({ onTradeExtracted })
           )}
 
           <div className="text-xs text-gray-500 mt-4 p-3 bg-gray-800/50 rounded-lg">
-            <p className="font-semibold text-purple-400 mb-1">💡 Tips for best results:</p>
+            <p className="font-semibold text-purple-400 mb-1">✅ Supported Platforms:</p>
+            <ul className="list-disc list-inside space-y-1 mb-2">
+              <li>MetaTrader 4/5 (MT4/MT5)</li>
+              <li>cTrader</li>
+              <li>Deriv</li>
+              <li>Binance</li>
+              <li>TradingView</li>
+              <li>Any broker mobile app</li>
+            </ul>
+            <p className="font-semibold text-purple-400 mb-1 mt-2">💡 Tips:</p>
             <ul className="list-disc list-inside space-y-1">
-              <li>Upload clear, high-quality screenshots from your broker</li>
-              <li>Ensure trade details (pair, entry, exit, P&L) are visible</li>
-              <li>Avoid blurry or cropped images</li>
+              <li>Supports multiple trades in one screenshot</li>
+              <li>Works with dark & light themes</li>
+              <li>Mobile screenshots work too</li>
             </ul>
           </div>
         </div>
