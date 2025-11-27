@@ -98,8 +98,30 @@ export const LiveSignalCard = ({ signal, onDelete }: LiveSignalCardProps) => {
   const { tpProgress, slProgress } = calculateProgress();
   const currentPrice = livePrice || signal.entry_price;
 
+  // Get monitoring data from consensus
+  const monitoring = signal.consensus?.monitoring;
+  const monitoringStatus = monitoring?.status || 'ACTIVE';
+  const recommendation = monitoring?.recommendation || '';
+  const invalidationReasons = monitoring?.invalidation_reasons || [];
+  const structuralBreak = monitoring?.structural_break || false;
+
+  // Determine card border based on monitoring status
+  const getBorderColor = () => {
+    if (monitoringStatus === 'TP_HIT') return 'border-l-green-600';
+    if (monitoringStatus === 'SL_HIT') return 'border-l-red-600';
+    if (monitoringStatus === 'INVALIDATED') return 'border-l-orange-500';
+    return isBuy ? 'border-l-green-500' : 'border-l-red-500';
+  };
+
+  const getBackgroundColor = () => {
+    if (monitoringStatus === 'TP_HIT') return 'bg-gradient-to-r from-green-500/10 to-transparent';
+    if (monitoringStatus === 'SL_HIT') return 'bg-gradient-to-r from-red-500/10 to-transparent';
+    if (monitoringStatus === 'INVALIDATED') return 'bg-gradient-to-r from-orange-500/10 to-transparent';
+    return isBuy ? 'bg-gradient-to-r from-green-500/5 to-transparent' : 'bg-gradient-to-r from-red-500/5 to-transparent';
+  };
+
   return (
-    <Card className={`overflow-hidden border-l-4 transition-all hover:shadow-lg ${isBuy ? 'border-l-green-500 bg-gradient-to-r from-green-500/5 to-transparent' : 'border-l-red-500 bg-gradient-to-r from-red-500/5 to-transparent'}`}>
+    <Card className={`overflow-hidden border-l-4 transition-all hover:shadow-lg ${getBorderColor()} ${getBackgroundColor()}`}>
       <CardContent className="p-3">
         {/* Compact Header */}
         <div className="flex items-center justify-between mb-3">
@@ -196,6 +218,53 @@ export const LiveSignalCard = ({ signal, onDelete }: LiveSignalCardProps) => {
                 <span className="font-mono text-red-600">{slProgress.toFixed(0)}%</span>
               </div>
               <Progress value={slProgress} className="h-1.5 bg-red-100" />
+            </div>
+          </div>
+        )}
+
+        {/* Live Monitoring Status */}
+        {monitoring && (
+          <div className={`rounded-lg p-2.5 mb-3 border ${
+            monitoringStatus === 'TP_HIT' ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' :
+            monitoringStatus === 'SL_HIT' ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-300' :
+            monitoringStatus === 'INVALIDATED' ? 'bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-300' :
+            'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300'
+          }`}>
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs ${
+                    monitoringStatus === 'TP_HIT' ? 'bg-green-100 text-green-700 border-green-300' :
+                    monitoringStatus === 'SL_HIT' ? 'bg-red-100 text-red-700 border-red-300' :
+                    monitoringStatus === 'INVALIDATED' ? 'bg-orange-100 text-orange-700 border-orange-300' :
+                    'bg-blue-100 text-blue-700 border-blue-300'
+                  }`}
+                >
+                  📊 {monitoringStatus}
+                </Badge>
+                {structuralBreak && (
+                  <Badge variant="outline" className="bg-red-100 text-red-700 border-red-300 text-xs">
+                    ⚠️ Structure Break
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs font-medium text-gray-800">
+                {recommendation}
+              </p>
+              {invalidationReasons.length > 0 && (
+                <div className="space-y-1">
+                  {invalidationReasons.map((reason, idx) => (
+                    <p key={idx} className="text-xs text-gray-600">
+                      • {reason}
+                    </p>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                Last check: {new Date(monitoring.last_check).toLocaleTimeString()}
+              </div>
             </div>
           </div>
         )}

@@ -170,6 +170,35 @@ const LiveSignalsDashboard = () => {
     }
   };
 
+  const triggerMonitoring = async () => {
+    try {
+      toast({
+        title: "🔄 Monitoring Active Signals",
+        description: "Checking live prices and updating signal status...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('monitor-live-signals');
+
+      if (error) throw error;
+
+      toast({
+        title: "✅ Monitoring Complete",
+        description: `${data.monitored} signals analyzed and updated`,
+      });
+
+      // Refresh signals to show updated monitoring data
+      loadSignals();
+
+    } catch (error) {
+      console.error('Error monitoring signals:', error);
+      toast({
+        title: "Error",
+        description: "Failed to monitor signals",
+        variant: "destructive"
+      });
+    }
+  };
+
   const deleteSignal = async (signalId: string) => {
     try {
       const { error } = await supabase
@@ -231,6 +260,16 @@ const LiveSignalsDashboard = () => {
             >
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
+            </Button>
+            <Button 
+              onClick={triggerMonitoring}
+              disabled={isLoading}
+              size="sm"
+              variant="outline"
+              className="h-9"
+            >
+              <Activity className="h-3.5 w-3.5 mr-1.5" />
+              Monitor
             </Button>
             <Button 
               onClick={triggerSignalScan}

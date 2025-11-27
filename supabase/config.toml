@@ -74,3 +74,6 @@ verify_jwt = true
 
 [functions.signal-webhook-validator]
 verify_jwt = false
+
+[functions.monitor-live-signals]
+verify_jwt = false
