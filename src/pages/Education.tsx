@@ -15,8 +15,8 @@ const Education = () => {
   
   const isPremium = subscription?.tier === 'premium';
   const communityLink = isPremium 
-    ? "https://t.me/+BVlQ6Le1ORtiZTU0" // Premium community
-    : "https://t.me/+YOUR_FREE_GROUP_LINK"; // Free community
+    ? "https://t.me/+E3IYiJSGNqkxNTdk" // Premium community
+    : "https://t.me/+E3IYiJSGNqkxNTdk"; // Free community (same link)
 
   const handleBack = () => {
     navigate(-1);
