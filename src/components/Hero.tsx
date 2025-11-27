@@ -32,6 +32,23 @@ const Hero = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
+      {/* Urgency Ribbon */}
+      <div className="relative z-20 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 animate-gradient-shift">
+        <div className="max-w-7xl mx-auto px-4 py-3 text-center">
+          <p className="text-sm md:text-base text-white font-semibold flex items-center justify-center gap-2">
+            <span className="animate-pulse">🔥</span>
+            24/7 AI Signal Engine – New update released this week!
+            <span className="hidden sm:inline">→</span>
+            <button 
+              onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
+              className="underline hover:text-purple-200 transition-colors"
+            >
+              Join the Private Telegram Group
+            </button>
+          </p>
+        </div>
+      </div>
+
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-background to-pink-900/10"></div>
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
@@ -66,7 +83,7 @@ const Hero = () => {
           </div>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20 animate-fade-in border-t border-b border-border py-12" style={{animationDelay: '0.2s'}}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 animate-fade-in border-t border-b border-border py-12" style={{animationDelay: '0.2s'}}>
             {stats.map((stat, index) => {
               const Icon = stat.icon;
               return (
@@ -77,10 +94,117 @@ const Hero = () => {
               );
             })}
           </div>
+
+          {/* Community Power Section */}
+          <div className="mb-20 animate-fade-in" style={{animationDelay: '0.3s'}}>
+            <Card className="p-8 md:p-10 bg-gradient-to-br from-purple-900/30 via-background to-pink-900/30 backdrop-blur border-purple-500/40 shadow-lg shadow-purple-500/20">
+              <div className="text-center mb-6">
+                <h3 className="text-2xl md:text-3xl font-bold mb-3">
+                  🚀 Join the Aasakira Traders Community
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-400">300+</p>
+                  <p className="text-sm text-muted-foreground">Active Traders</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-pink-400">Daily</p>
+                  <p className="text-sm text-muted-foreground">AI Signal Breakdowns</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-400">Live</p>
+                  <p className="text-sm text-muted-foreground">Trade Discussions</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-pink-400">Risk-Free</p>
+                  <p className="text-sm text-muted-foreground">Learning for Beginners</p>
+                </div>
+              </div>
+              <div className="text-center">
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6 shadow-lg shadow-purple-500/30 border-2 border-purple-400/50 hover:border-purple-300/70 transition-all"
+                  onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
+                >
+                  Join Free Telegram Community
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+              </div>
+            </Card>
+          </div>
         </div>
 
-        {/* Signal Preview */}
+        {/* Visual Feature Cards */}
         <div className="py-16 animate-fade-in" style={{animationDelay: '0.4s'}}>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Powerful AI Trading Tools
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Everything you need to analyze, trade, and master the markets
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+            <Card className="p-6 bg-gradient-to-br from-purple-900/20 to-purple-900/5 border-purple-500/30 hover:border-purple-500/60 transition-all hover:shadow-lg hover:shadow-purple-500/20">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">⚡ Elite AI Signal Engine</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Institutional-grade signals with multi-filter validation and real-time price scraping.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6 bg-gradient-to-br from-pink-900/20 to-pink-900/5 border-pink-500/30 hover:border-pink-500/60 transition-all hover:shadow-lg hover:shadow-pink-500/20">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                  <Activity className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">📊 Advanced Forex + Meme Coin Scanner</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Track market sentiment, liquidity sweeps, whales, breakouts, and more.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6 bg-gradient-to-br from-purple-900/20 to-purple-900/5 border-purple-500/30 hover:border-purple-500/60 transition-all hover:shadow-lg hover:shadow-purple-500/20">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                  <MessageSquare className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">💬 AI Mentor Coach</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Personalized lessons. Multi-strategy analysis. Chart breakdowns on demand.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6 bg-gradient-to-br from-pink-900/20 to-pink-900/5 border-pink-500/30 hover:border-pink-500/60 transition-all hover:shadow-lg hover:shadow-pink-500/20">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                  <Target className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">📝 Smart Trading Journal</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Auto-sync trades from MT4/MT5, Binance, Bybit, and more with AI analysis.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Signal Preview */}
           <div className="text-center mb-12">
             <Badge className="mb-4 bg-purple-500/20 text-purple-400 border-purple-500/30">
               <TrendingUp className="w-3 h-3 mr-1" />
@@ -117,21 +241,49 @@ const Hero = () => {
           </div>
         </div>
 
-        {/* Community CTA */}
+        {/* Final CTA */}
         <div className="py-16 animate-fade-in border-t border-border" style={{animationDelay: '0.6s'}}>
-          <Card className="p-8 md:p-12 bg-gradient-to-br from-purple-900/20 to-pink-900/20 backdrop-blur border-purple-500/30 max-w-2xl mx-auto text-center">
-            <MessageSquare className="w-12 h-12 mx-auto mb-4 text-purple-400" />
-            <h3 className="text-2xl md:text-3xl font-bold mb-4">
-              Join 250+ Traders Learning & Profiting Together
+          <Card className="p-10 md:p-16 bg-gradient-to-br from-purple-900/30 via-background to-pink-900/30 backdrop-blur border-purple-500/40 max-w-3xl mx-auto text-center shadow-2xl shadow-purple-500/20">
+            <h3 className="text-3xl md:text-4xl font-bold mb-4">
+              🚀 Ready to Trade Smarter?
             </h3>
-            <Button 
-              size="lg"
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6"
-              onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
-            >
-              Join Our Telegram
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
+            <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
+              Join 1,000+ traders upgrading their trading with AI.
+            </p>
+            <div className="space-y-4 mb-8">
+              <div className="flex items-center justify-center gap-2 text-foreground">
+                <Target className="w-5 h-5 text-purple-400" />
+                <span>Get AI signals</span>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-foreground">
+                <Globe className="w-5 h-5 text-pink-400" />
+                <span>Join the community</span>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-foreground">
+                <TrendingUp className="w-5 h-5 text-purple-400" />
+                <span>Level up your trading</span>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button
+                size="lg"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6 shadow-lg shadow-purple-500/30 border-2 border-purple-400/50 hover:border-purple-300/70 transition-all"
+                onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
+              >
+                Join Free Telegram Community
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+              <MultiStepSignupDialog>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-purple-500/50 hover:border-purple-500 hover:bg-purple-500/10 font-semibold px-8 py-6"
+                >
+                  Start AI Signals
+                  <Zap className="ml-2 w-5 h-5" />
+                </Button>
+              </MultiStepSignupDialog>
+            </div>
           </Card>
         </div>
 
