@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Signal, Home, User, DollarSign, BookOpen, Camera } from 'lucide-react';
+import { Menu, X, Signal, Home, User, DollarSign, BookOpen, Camera, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
+import AuthenticationDialog from '@/components/AuthenticationDialog';
 
 const MobileNavigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,8 +38,8 @@ const MobileNavigation = () => {
         </Link>
         
         <div className="flex items-center gap-3">
-          {/* User Profile Dropdown */}
-          {user && (
+          {/* User Profile Dropdown or Sign In Button */}
+          {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -63,6 +64,17 @@ const MobileNavigation = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          ) : (
+            <AuthenticationDialog>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="border-primary/30 text-primary hover:bg-primary/10"
+              >
+                <LogIn className="h-4 w-4 mr-1" />
+                Sign In
+              </Button>
+            </AuthenticationDialog>
           )}
           
           {/* Hamburger Menu */}
