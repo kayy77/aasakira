@@ -1,5 +1,8 @@
 project_id = "tnfxxtnfpoavnsabjrii"
 
+[functions.analyze-trading-setup]
+verify_jwt = false
+
 [functions.create-checkout]
 verify_jwt = true
 
@@ -48,14 +51,11 @@ verify_jwt = false
 [functions.test-fcs-debug]
 verify_jwt = false
 
-[functions.analyze-trading-setup]
-verify_jwt = false
-
 [functions.generate-live-signal]
 verify_jwt = false
 
 [functions.analyze-trading-screenshot]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-chart-visual]
 verify_jwt = true
@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.monitor-live-signals]
 verify_jwt = false
+
+[functions.replicate-ai-chat]
+verify_jwt = true
