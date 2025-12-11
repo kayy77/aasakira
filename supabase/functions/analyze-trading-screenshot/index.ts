@@ -69,37 +69,45 @@ serve(async (req) => {
             content: [
               {
                 type: 'text',
-                text: `Analyze this image and extract ALL trades/positions visible.
+                text: `Analyze this trading screenshot and extract ALL trades/positions visible.
 
-IMPORTANT: This could be from ANY trading platform:
+SUPPORTED PLATFORMS:
 - MetaTrader 4/5 (MT4/MT5)
-- cTrader
-- Deriv
-- Binance
-- TradingView
-- Mobile broker apps
-- Or any other platform
+- cTrader, Deriv, Binance, TradingView
+- Any broker mobile app
 
-For EACH trade/position you find, extract:
-- Pair/Symbol (e.g., EURUSD, XAUUSD, BTCUSD, etc.)
-- Direction: "Buy" or "Sell" (will be normalized to LONG/SHORT)
-- Entry Price (exact number)
-- Exit Price (if closed)
-- Lot Size / Volume (if visible)
-- Profit/Loss in USD (if visible)
-- Date/Time (if visible)
+For EACH trade, extract these fields (CRITICAL - extract ALL you can see):
 
-EXTRACTION RULES:
-1. Extract ALL trades you can see (not just one)
-2. Handle various formats: tables, lists, cards, mobile views
-3. Normalize pairs: EUR/USD → EURUSD, XAU/USD → XAUUSD
-4. If image quality is low, extract what you can and mark confidence as lower
-5. If this is NOT a trading screenshot (e.g., passport, random photo), return: {"is_trading_screenshot": false, "reason": "description"}
+1. **DATE** (VERY IMPORTANT): Look for dates in formats like:
+   - 2025-01-12, 12/01/2025, Jan 12 2025, 12.01.2025
+   - Open/Close timestamps, "Closed at" dates
+   - Extract the MOST RECENT date visible for the trade
+
+2. **PROFIT/LOSS** (CRITICAL): Look for:
+   - +$250.00, -$23.40, Profit: 134, P/L: -18.96
+   - Green/red values, "Result", "Profit", "Net P/L"
+   - Extract the exact USD amount
+
+3. **PAIR/SYMBOL**: EURUSD, XAUUSD, BTCUSD, US30, NAS100
+   - Normalize: EUR/USD → EURUSD, XAU/USD → XAUUSD
+
+4. **DIRECTION**: Buy/Sell, Long/Short
+
+5. **OTHER**: Entry/Exit price, Lot size, Volume
+
+EXTRACTION PRIORITY:
+- Date + P/L + Pair = minimum for a valid trade
+- Entry/exit prices are bonus but not required
+- If P/L is visible, that's the most important field
+
+VALIDATION:
+- If NOT a trading screenshot (passport, random photo): {"is_trading_screenshot": false, "reason": "..."}
+- If trades visible but unreadable: return what you can with lower confidence
 
 Return ONLY valid JSON (no markdown):
 {
   "is_trading_screenshot": true,
-  "platform": "MT4" | "MT5" | "cTrader" | "Deriv" | "Binance" | "Other",
+  "platform": "MT4" | "MT5" | "cTrader" | "Deriv" | "Binance" | "TradingView" | "Other",
   "trades": [
     {
       "pair": "EURUSD",
@@ -108,12 +116,12 @@ Return ONLY valid JSON (no markdown):
       "exit_price": 1.0920,
       "lot_size": 0.1,
       "pnl": 70.00,
+      "date": "2025-01-12",
+      "time": "14:30",
       "confidence": 95
     }
   ]
-}
-
-If NO trades found but image looks trading-related, return empty trades array.`
+}`
               },
               {
                 type: 'image_url',
@@ -220,8 +228,8 @@ If NO trades found but image looks trading-related, return empty trades array.`
       let pair = trade.pair?.replace(/[\/\s]/g, '').toUpperCase() || 'UNKNOWN';
       
       // Validate required fields
-      if (!trade.entry_price) {
-        console.warn(`⚠️ Trade ${index + 1} missing entry_price`);
+      if (!trade.entry_price && !trade.pnl) {
+        console.warn(`⚠️ Trade ${index + 1} missing entry_price and pnl`);
       }
       
       return {
@@ -231,13 +239,18 @@ If NO trades found but image looks trading-related, return empty trades array.`
         direction,
         lot_size: trade.lot_size,
         pnl: trade.pnl,
+        date: trade.date,
+        time: trade.time,
         strategy: trade.strategy,
         confidence: trade.confidence || 80
       };
     });
 
-    // Filter out trades with missing critical data
-    const validTrades = normalizedTrades.filter((t: any) => t.pair && t.entry_price && t.direction);
+    // Filter out trades with missing critical data (need at least pair + direction + some value indicator)
+    const validTrades = normalizedTrades.filter((t: any) => {
+      // Valid if has pair + direction + (entry_price OR pnl)
+      return t.pair && t.direction && (t.entry_price || t.pnl);
+    });
     
     if (validTrades.length === 0) {
       console.log('❌ No valid trades after normalization');

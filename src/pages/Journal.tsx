@@ -25,7 +25,7 @@ import { PairHeatmap } from '@/components/journal/PairHeatmap';
 import { PositionSizeAnalysis } from '@/components/journal/PositionSizeAnalysis';
 import { RiskRewardConsistency } from '@/components/journal/RiskRewardConsistency';
 import { SetupClustering } from '@/components/journal/SetupClustering';
-import ScreenshotUpload from '@/components/journal/ScreenshotUpload';
+import SmartScreenshotJournal from '@/components/journal/SmartScreenshotJournal';
 import ChartVisualizer from '@/components/journal/ChartVisualizer';
 import WeeklySummary from '@/components/journal/WeeklySummary';
 
@@ -1427,10 +1427,10 @@ const Journal = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowScreenshotUpload(true)}
-                        className="hover-lift bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                        className="hover-lift bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/30 hover:from-purple-500/30 hover:to-pink-500/30"
                       >
                         <Camera className="h-4 w-4 mr-1" />
-                        Upload Screenshot
+                        📸 Smart Screenshot
                       </Button>
                       <Button
                         variant="outline"
@@ -1971,13 +1971,18 @@ const Journal = () => {
         onOpenChange={setShowUpgradeDialog} 
       />
 
-      {/* Screenshot Upload Dialog */}
+      {/* Smart Screenshot Journal Dialog */}
       <Dialog open={showScreenshotUpload} onOpenChange={setShowScreenshotUpload}>
-        <DialogContent className="max-w-3xl bg-zinc-900 border-zinc-700">
+        <DialogContent className="max-w-2xl bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Upload Trading Screenshot</DialogTitle>
+            <DialogTitle className="text-foreground">Smart Screenshot Journal</DialogTitle>
           </DialogHeader>
-          <ScreenshotUpload onTradeExtracted={handleScreenshotExtraction} />
+          <SmartScreenshotJournal 
+            onTradesSaved={() => {
+              setShowScreenshotUpload(false);
+              loadEntries();
+            }} 
+          />
         </DialogContent>
       </Dialog>
 
