@@ -789,6 +789,45 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_messages: {
+        Row: {
+          channel_id: number
+          created_at: string
+          edit_date: string | null
+          edited: boolean
+          id: string
+          message_id: number
+          original_date: string | null
+          raw_text: string | null
+          timestamp: string
+          updated_at: string
+        }
+        Insert: {
+          channel_id: number
+          created_at?: string
+          edit_date?: string | null
+          edited?: boolean
+          id?: string
+          message_id: number
+          original_date?: string | null
+          raw_text?: string | null
+          timestamp?: string
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: number
+          created_at?: string
+          edit_date?: string | null
+          edited?: boolean
+          id?: string
+          message_id?: number
+          original_date?: string | null
+          raw_text?: string | null
+          timestamp?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       trade_setups: {
         Row: {
           ai_feedback: Json | null
