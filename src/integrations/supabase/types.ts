@@ -493,6 +493,65 @@ export type Database = {
         }
         Relationships: []
       }
+      parsed_signals: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          direction: string | null
+          entry_price: number | null
+          id: string
+          parsed_at: string | null
+          raw_text: string
+          rejection_reason: string | null
+          status: string
+          stop_loss: number | null
+          symbol: string | null
+          take_profit_levels: number[] | null
+          telegram_message_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          direction?: string | null
+          entry_price?: number | null
+          id?: string
+          parsed_at?: string | null
+          raw_text: string
+          rejection_reason?: string | null
+          status?: string
+          stop_loss?: number | null
+          symbol?: string | null
+          take_profit_levels?: number[] | null
+          telegram_message_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          direction?: string | null
+          entry_price?: number | null
+          id?: string
+          parsed_at?: string | null
+          raw_text?: string
+          rejection_reason?: string | null
+          status?: string
+          stop_loss?: number | null
+          symbol?: string | null
+          take_profit_levels?: number[] | null
+          telegram_message_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parsed_signals_telegram_message_id_fkey"
+            columns: ["telegram_message_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       Premium: {
         Row: {
           created_at: string
