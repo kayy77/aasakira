@@ -17,6 +17,8 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+
     // GET request - List raw messages
     if (req.method === 'GET') {
       const url = new URL(req.url);
@@ -66,10 +68,12 @@ Deno.serve(async (req) => {
         );
       }
 
+      const rawText = message.text || message.caption || '';
+      
       const messageData = {
         message_id: message.message_id,
         channel_id: message.chat?.id || message.sender_chat?.id,
-        raw_text: message.text || message.caption || '',
+        raw_text: rawText,
         timestamp: new Date().toISOString(),
         edited: isEdited,
         original_date: message.date ? new Date(message.date * 1000).toISOString() : null,
@@ -97,6 +101,33 @@ Deno.serve(async (req) => {
       }
 
       console.log('✅ Message stored successfully:', data?.id);
+
+      // If there's text content, trigger signal parsing
+      if (rawText && rawText.trim().length > 0) {
+        console.log('🔄 Triggering signal parsing...');
+        
+        try {
+          // Call the parse-signal function
+          const parseResponse = await fetch(`${supabaseUrl}/functions/v1/parse-signal`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            },
+            body: JSON.stringify({
+              raw_text: rawText,
+              telegram_message_id: data?.id,
+            }),
+          });
+
+          const parseResult = await parseResponse.json();
+          console.log('📊 Parse result:', parseResult);
+        } catch (parseError) {
+          console.error('⚠️ Signal parsing failed (non-blocking):', parseError);
+          // Don't fail the webhook if parsing fails
+        }
+      }
+
       return new Response(
         JSON.stringify({ success: true, message_id: data?.id }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
