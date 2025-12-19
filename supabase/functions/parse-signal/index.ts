@@ -10,23 +10,12 @@ const SYSTEM_PROMPT = `You are a trading signal parser. Your job is to extract s
 RULES:
 1. Ignore all emojis, hashtags, and promotional text
 2. Normalize symbols: XAU/USD → XAUUSD, EUR/USD → EURUSD, NAS100 → NAS100, US30 → US30, BTC/USD → BTCUSD
-3. Direction must be exactly "BUY" or "SELL"
+3. Direction must be exactly "LONG" or "SHORT" (map BUY→LONG, SELL→SHORT)
 4. Extract numeric values for entry, stop loss, and take profit levels
 5. If multiple TP levels exist, extract all of them in order (TP1, TP2, TP3, etc.)
 6. If ANY required field (symbol, direction, entry_price, stop_loss, at least one take_profit) is missing or unclear, mark as REJECTED
 
 IMPORTANT: Be strict about extraction. If the message is not a clear trading signal, reject it.`;
-
-interface ParsedSignal {
-  symbol: string | null;
-  direction: 'BUY' | 'SELL' | null;
-  entry_price: number | null;
-  stop_loss: number | null;
-  take_profit_levels: number[];
-  status: 'PARSED' | 'REJECTED';
-  rejection_reason: string | null;
-  confidence: number;
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -44,7 +33,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { raw_text, telegram_message_id } = await req.json();
+    const { raw_text, telegram_message_id, original_message_id, channel_id } = await req.json();
 
     if (!raw_text) {
       return new Response(
@@ -79,12 +68,12 @@ Deno.serve(async (req) => {
                 properties: {
                   symbol: {
                     type: 'string',
-                    description: 'Trading symbol normalized (e.g., XAUUSD, EURUSD, NAS100)'
+                    description: 'Trading symbol normalized (e.g., XAUUSD, EURUSD, BTCUSDT)'
                   },
                   direction: {
                     type: 'string',
-                    enum: ['BUY', 'SELL'],
-                    description: 'Trade direction'
+                    enum: ['LONG', 'SHORT'],
+                    description: 'Trade direction (LONG or SHORT)'
                   },
                   entry_price: {
                     type: 'number',
@@ -148,7 +137,7 @@ Deno.serve(async (req) => {
     const parsedData = JSON.parse(toolCall.function.arguments);
     console.log('📋 Parsed data:', parsedData);
 
-    // Build the signal object
+    // Build the parsed signal record
     const signalRecord: any = {
       raw_text,
       telegram_message_id: telegram_message_id || null,
@@ -162,12 +151,14 @@ Deno.serve(async (req) => {
     };
 
     // Determine status
-    if (parsedData.is_valid_signal && 
+    const isValid = parsedData.is_valid_signal && 
         signalRecord.symbol && 
         signalRecord.direction && 
         signalRecord.entry_price && 
         signalRecord.stop_loss &&
-        signalRecord.take_profit_levels?.length > 0) {
+        signalRecord.take_profit_levels?.length > 0;
+
+    if (isValid) {
       signalRecord.status = 'PARSED';
       signalRecord.rejection_reason = null;
     } else {
@@ -178,24 +169,72 @@ Deno.serve(async (req) => {
 
     console.log('💾 Storing signal record:', signalRecord);
 
-    // Store in database
-    const { data, error } = await supabase
+    // Store in parsed_signals
+    const { data: parsedSignalData, error: parsedError } = await supabase
       .from('parsed_signals')
       .insert(signalRecord)
       .select()
       .single();
 
-    if (error) {
-      console.error('❌ Database error:', error);
-      throw error;
+    if (parsedError) {
+      console.error('❌ Database error (parsed_signals):', parsedError);
+      throw parsedError;
     }
 
-    console.log('✅ Signal stored:', data.id, 'Status:', data.status);
+    console.log('✅ Signal stored:', parsedSignalData.id, 'Status:', parsedSignalData.status);
+
+    // If valid signal, also create an active_trade
+    if (isValid && original_message_id && channel_id) {
+      // First, close any existing active trades
+      const { error: closeError } = await supabase
+        .from('active_trades')
+        .update({ 
+          status: 'CLOSED', 
+          closed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('status', 'ACTIVE');
+
+      if (closeError) {
+        console.error('⚠️ Error closing previous trades:', closeError);
+      }
+
+      // Create new active trade
+      const tpLevels = parsedData.take_profit_levels || [];
+      const activeTradeData = {
+        telegram_message_id: telegram_message_id,
+        original_message_id: original_message_id,
+        channel_id: channel_id,
+        pair: parsedData.symbol,
+        direction: parsedData.direction,
+        entry_price: parsedData.entry_price,
+        stop_loss: parsedData.stop_loss,
+        tp1: tpLevels[0] || null,
+        tp2: tpLevels[1] || null,
+        tp3: tpLevels[2] || null,
+        status: 'ACTIVE',
+        raw_text: raw_text,
+      };
+
+      console.log('🎯 Creating active trade:', activeTradeData);
+
+      const { data: activeTradeResult, error: activeError } = await supabase
+        .from('active_trades')
+        .insert(activeTradeData)
+        .select()
+        .single();
+
+      if (activeError) {
+        console.error('❌ Error creating active trade:', activeError);
+      } else {
+        console.log('✅ Active trade created:', activeTradeResult.id);
+      }
+    }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        signal: data,
+        signal: parsedSignalData,
         parsed: signalRecord.status === 'PARSED'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

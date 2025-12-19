@@ -5,8 +5,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Configuration - Only listen to Signals topic
+const TARGET_CHAT_ID = -1002187927163;
+const SIGNALS_THREAD_ID = 2895;
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -56,8 +59,8 @@ Deno.serve(async (req) => {
       const update = await req.json();
       console.log('📨 Received Telegram update:', JSON.stringify(update, null, 2));
 
-      // Handle channel posts
-      const message = update.channel_post || update.edited_channel_post || update.message;
+      // Handle channel posts and group messages
+      const message = update.channel_post || update.edited_channel_post || update.message || update.edited_message;
       const isEdited = !!update.edited_channel_post || !!update.edited_message;
 
       if (!message) {
@@ -68,11 +71,36 @@ Deno.serve(async (req) => {
         );
       }
 
+      const chatId = message.chat?.id || message.sender_chat?.id;
+      const threadId = message.message_thread_id || null;
+      const replyToMessageId = message.reply_to_message?.message_id || null;
+
+      console.log(`📍 Message from chat: ${chatId}, thread: ${threadId}, reply_to: ${replyToMessageId}`);
+
+      // Filter: Only process messages from Signals topic
+      if (chatId !== TARGET_CHAT_ID) {
+        console.log(`⏭️ Ignoring message from chat ${chatId} (not target chat ${TARGET_CHAT_ID})`);
+        return new Response(
+          JSON.stringify({ success: true, message: 'Message from non-target chat ignored' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (threadId !== SIGNALS_THREAD_ID) {
+        console.log(`⏭️ Ignoring message from thread ${threadId} (not Signals thread ${SIGNALS_THREAD_ID})`);
+        return new Response(
+          JSON.stringify({ success: true, message: 'Message from non-Signals thread ignored' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const rawText = message.text || message.caption || '';
       
       const messageData = {
         message_id: message.message_id,
-        channel_id: message.chat?.id || message.sender_chat?.id,
+        channel_id: chatId,
+        thread_id: threadId,
+        reply_to_message_id: replyToMessageId,
         raw_text: rawText,
         timestamp: new Date().toISOString(),
         edited: isEdited,
@@ -102,29 +130,56 @@ Deno.serve(async (req) => {
 
       console.log('✅ Message stored successfully:', data?.id);
 
-      // If there's text content, trigger signal parsing
+      // Process the message based on whether it's a reply or new signal
       if (rawText && rawText.trim().length > 0) {
-        console.log('🔄 Triggering signal parsing...');
-        
-        try {
-          // Call the parse-signal function
-          const parseResponse = await fetch(`${supabaseUrl}/functions/v1/parse-signal`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            },
-            body: JSON.stringify({
-              raw_text: rawText,
-              telegram_message_id: data?.id,
-            }),
-          });
+        if (replyToMessageId) {
+          // This is a reply - it's a trade UPDATE (TP hit, SL, BE, Close)
+          console.log('🔄 Processing trade update reply...');
+          
+          try {
+            const updateResponse = await fetch(`${supabaseUrl}/functions/v1/process-trade-update`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              },
+              body: JSON.stringify({
+                reply_text: rawText,
+                reply_to_message_id: replyToMessageId,
+                channel_id: chatId,
+                telegram_message_id: data?.id,
+              }),
+            });
 
-          const parseResult = await parseResponse.json();
-          console.log('📊 Parse result:', parseResult);
-        } catch (parseError) {
-          console.error('⚠️ Signal parsing failed (non-blocking):', parseError);
-          // Don't fail the webhook if parsing fails
+            const updateResult = await updateResponse.json();
+            console.log('📊 Trade update result:', updateResult);
+          } catch (updateError) {
+            console.error('⚠️ Trade update failed (non-blocking):', updateError);
+          }
+        } else {
+          // This is a new top-level message - it's a NEW SIGNAL
+          console.log('🔄 Processing new trade signal...');
+          
+          try {
+            const parseResponse = await fetch(`${supabaseUrl}/functions/v1/parse-signal`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              },
+              body: JSON.stringify({
+                raw_text: rawText,
+                telegram_message_id: data?.id,
+                original_message_id: message.message_id,
+                channel_id: chatId,
+              }),
+            });
+
+            const parseResult = await parseResponse.json();
+            console.log('📊 Parse result:', parseResult);
+          } catch (parseError) {
+            console.error('⚠️ Signal parsing failed (non-blocking):', parseError);
+          }
         }
       }
 

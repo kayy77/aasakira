@@ -14,6 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_trades: {
+        Row: {
+          be_activated: boolean | null
+          channel_id: number
+          closed_at: string | null
+          created_at: string | null
+          direction: string
+          entry_price: number | null
+          id: string
+          original_message_id: number
+          pair: string
+          raw_text: string | null
+          status: string
+          stop_loss: number | null
+          telegram_message_id: string | null
+          tp1: number | null
+          tp1_hit: boolean | null
+          tp2: number | null
+          tp2_hit: boolean | null
+          tp3: number | null
+          tp3_hit: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          be_activated?: boolean | null
+          channel_id: number
+          closed_at?: string | null
+          created_at?: string | null
+          direction: string
+          entry_price?: number | null
+          id?: string
+          original_message_id: number
+          pair: string
+          raw_text?: string | null
+          status?: string
+          stop_loss?: number | null
+          telegram_message_id?: string | null
+          tp1?: number | null
+          tp1_hit?: boolean | null
+          tp2?: number | null
+          tp2_hit?: boolean | null
+          tp3?: number | null
+          tp3_hit?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          be_activated?: boolean | null
+          channel_id?: number
+          closed_at?: string | null
+          created_at?: string | null
+          direction?: string
+          entry_price?: number | null
+          id?: string
+          original_message_id?: number
+          pair?: string
+          raw_text?: string | null
+          status?: string
+          stop_loss?: number | null
+          telegram_message_id?: string | null
+          tp1?: number | null
+          tp1_hit?: boolean | null
+          tp2?: number | null
+          tp2_hit?: boolean | null
+          tp3?: number | null
+          tp3_hit?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "active_trades_telegram_message_id_fkey"
+            columns: ["telegram_message_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_memory: {
         Row: {
           content: string
@@ -858,6 +935,8 @@ export type Database = {
           message_id: number
           original_date: string | null
           raw_text: string | null
+          reply_to_message_id: number | null
+          thread_id: number | null
           timestamp: string
           updated_at: string
         }
@@ -870,6 +949,8 @@ export type Database = {
           message_id: number
           original_date?: string | null
           raw_text?: string | null
+          reply_to_message_id?: number | null
+          thread_id?: number | null
           timestamp?: string
           updated_at?: string
         }
@@ -882,6 +963,8 @@ export type Database = {
           message_id?: number
           original_date?: string | null
           raw_text?: string | null
+          reply_to_message_id?: number | null
+          thread_id?: number | null
           timestamp?: string
           updated_at?: string
         }
