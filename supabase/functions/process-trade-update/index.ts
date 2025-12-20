@@ -5,14 +5,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Keywords to detect trade updates
+// Keywords to detect trade updates - case insensitive
 const UPDATE_PATTERNS = {
   TP1: /\btp\s*1\b|tp1/i,
   TP2: /\btp\s*2\b|tp2/i,
   TP3: /\btp\s*3\b|tp3/i,
+  TP4: /\btp\s*4\b|tp4/i,
   BE: /\bbe\b|breakeven|break\s*even/i,
-  SL: /\bsl\b|stop\s*loss|stopped\s*out/i,
-  CLOSE: /\bclose[d]?\b|closed\s*runners?|manually\s*closed/i,
+  SL: /\bsl\b|stop\s*loss|stopped\s*out|sl\s*hit/i,
+  CLOSE: /\bclose[d]?\b|closed\s*runners?|manually\s*closed|exit/i,
 };
 
 Deno.serve(async (req) => {
@@ -29,15 +30,17 @@ Deno.serve(async (req) => {
     const { reply_text, reply_to_message_id, channel_id, telegram_message_id } = await req.json();
 
     if (!reply_text || !reply_to_message_id || !channel_id) {
+      console.log('❌ Missing required fields:', { reply_text: !!reply_text, reply_to_message_id, channel_id });
       return new Response(
         JSON.stringify({ success: false, error: 'reply_text, reply_to_message_id, and channel_id are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`🔍 Processing trade update: "${reply_text}" for message ${reply_to_message_id}`);
+    console.log(`🔍 Processing trade update: "${reply_text}" for original message ${reply_to_message_id} in channel ${channel_id}`);
 
     // Find the active trade that matches this reply
+    // The original_message_id in active_trades should match reply_to_message_id
     const { data: trade, error: findError } = await supabase
       .from('active_trades')
       .select('*')
@@ -46,57 +49,78 @@ Deno.serve(async (req) => {
       .single();
 
     if (findError || !trade) {
-      console.log(`⚠️ No active trade found for message ${reply_to_message_id}:`, findError);
+      console.log(`⚠️ No active trade found for original_message_id ${reply_to_message_id}:`, findError?.message);
+      
+      // List all active trades for debugging
+      const { data: allTrades } = await supabase
+        .from('active_trades')
+        .select('id, original_message_id, channel_id, pair, status')
+        .limit(5);
+      console.log('📋 Current active trades:', JSON.stringify(allTrades, null, 2));
+      
       return new Response(
-        JSON.stringify({ success: false, error: 'No trade found for this message' }),
+        JSON.stringify({ success: false, error: 'No trade found for this message', reply_to_message_id }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`📊 Found trade:`, trade.id, trade.pair, trade.status);
+    console.log(`📊 Found trade: ${trade.id} | ${trade.pair} | Status: ${trade.status}`);
 
     // Detect what type of update this is
     const updates: any = {
       updated_at: new Date().toISOString(),
     };
-    let updateType = 'UNKNOWN';
+    const detectedUpdates: string[] = [];
 
+    // Check for TP hits (can have multiple in same message)
     if (UPDATE_PATTERNS.TP1.test(reply_text)) {
       updates.tp1_hit = true;
-      updateType = 'TP1_HIT';
+      detectedUpdates.push('TP1_HIT');
       console.log('✅ TP1 hit detected');
     }
 
     if (UPDATE_PATTERNS.TP2.test(reply_text)) {
       updates.tp2_hit = true;
-      updateType = 'TP2_HIT';
+      detectedUpdates.push('TP2_HIT');
       console.log('✅ TP2 hit detected');
     }
 
-    if (UPDATE_PATTERNS.TP3.test(reply_text)) {
+    if (UPDATE_PATTERNS.TP3.test(reply_text) || UPDATE_PATTERNS.TP4.test(reply_text)) {
       updates.tp3_hit = true;
-      updateType = 'TP3_HIT';
-      console.log('✅ TP3 hit detected');
+      detectedUpdates.push('TP3_HIT');
+      console.log('✅ TP3/TP4 hit detected');
     }
 
     if (UPDATE_PATTERNS.BE.test(reply_text)) {
       updates.be_activated = true;
-      updateType = 'BE_ACTIVATED';
+      detectedUpdates.push('BE_ACTIVATED');
       console.log('🔄 Breakeven activated');
     }
 
     if (UPDATE_PATTERNS.SL.test(reply_text)) {
       updates.status = 'STOPPED_OUT';
       updates.closed_at = new Date().toISOString();
-      updateType = 'STOPPED_OUT';
+      detectedUpdates.push('STOPPED_OUT');
       console.log('❌ Stop loss hit - trade closed');
     }
 
     if (UPDATE_PATTERNS.CLOSE.test(reply_text) && updates.status !== 'STOPPED_OUT') {
       updates.status = 'CLOSED';
       updates.closed_at = new Date().toISOString();
-      updateType = 'CLOSED';
+      detectedUpdates.push('CLOSED');
       console.log('✅ Trade manually closed');
+    }
+
+    if (detectedUpdates.length === 0) {
+      console.log(`⚠️ No update patterns matched in: "${reply_text}"`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'No update patterns matched',
+          reply_text 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Apply updates
@@ -112,13 +136,13 @@ Deno.serve(async (req) => {
       throw updateError;
     }
 
-    console.log(`✅ Trade updated:`, updatedTrade.id, 'Type:', updateType);
+    console.log(`✅ Trade ${updatedTrade.id} updated:`, detectedUpdates.join(', '));
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         trade: updatedTrade,
-        update_type: updateType
+        updates_applied: detectedUpdates
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
