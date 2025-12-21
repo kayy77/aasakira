@@ -145,20 +145,52 @@ Deno.serve(async (req) => {
       console.log('🔄 Breakeven activated');
     }
 
-    // Check for SL
+    // Count how many TPs have been hit (including newly hit ones)
+    const tpsHit = takeProfits.filter(tp => tp.hit).length;
+    const totalTps = takeProfits.length;
+
+    // Check for SL - but preserve realized pips!
     if (SL_PATTERN.test(reply_text)) {
-      updates.status = 'STOPPED_OUT';
+      updates.status = 'CLOSED';
       updates.closed_at = new Date().toISOString();
+      
+      // Determine outcome based on whether any TPs were hit before SL
+      if (tpsHit > 0 && tpsHit < totalTps) {
+        updates.outcome = 'PARTIAL'; // Some TPs hit, then stopped
+      } else if (tpsHit === 0) {
+        updates.outcome = 'LOSS'; // No TPs hit, pure loss
+        // For a loss, pips_realized should be negative (entry to SL)
+        if (trade.entry_price && trade.stop_loss) {
+          const lossPips = calculatePips(trade.entry_price, trade.stop_loss, trade.direction, trade.pair);
+          // Only set loss pips if no TPs were realized
+          if (totalPipsRealized === 0) {
+            totalPipsRealized = lossPips;
+          }
+        }
+      }
+      
       detectedUpdates.push('STOPPED_OUT');
-      console.log('❌ Stop loss hit - trade closed');
+      console.log(`❌ Stop loss hit - trade closed as ${updates.outcome} | Realized pips preserved: ${totalPipsRealized}`);
     }
 
     // Check for close (if not already stopped out)
-    if (CLOSE_PATTERN.test(reply_text) && updates.status !== 'STOPPED_OUT') {
+    if (CLOSE_PATTERN.test(reply_text) && updates.status !== 'CLOSED') {
       updates.status = 'CLOSED';
       updates.closed_at = new Date().toISOString();
+      
+      // Determine outcome
+      if (tpsHit === totalTps && totalTps > 0) {
+        updates.outcome = 'WIN'; // All TPs hit
+      } else if (tpsHit > 0) {
+        updates.outcome = 'PARTIAL'; // Some TPs hit
+      } else if (trade.be_activated || updates.be_activated) {
+        updates.outcome = 'BE'; // Breakeven
+      } else {
+        updates.outcome = 'PARTIAL'; // Manually closed
+      }
+      
       detectedUpdates.push('CLOSED');
-      console.log('✅ Trade manually closed');
+      console.log(`✅ Trade manually closed as ${updates.outcome}`);
     }
 
     if (detectedUpdates.length === 0) {

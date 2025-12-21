@@ -31,9 +31,10 @@ export default function WeeklyResults() {
       const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
       const weekEnd = endOfWeek(now, { weekStartsOn: 1 }); // Sunday
 
+      // Fetch ALL closed trades (CLOSED status includes all outcomes)
       const { data, error } = await supabase
         .from('active_trades')
-        .select('pips_realized, status, closed_at')
+        .select('pips_realized, status, closed_at, outcome')
         .eq('status', 'CLOSED')
         .gte('closed_at', weekStart.toISOString())
         .lte('closed_at', weekEnd.toISOString());
@@ -45,15 +46,30 @@ export default function WeeklyResults() {
       let totalPips = 0;
       let wins = 0;
       let losses = 0;
+      let partials = 0;
       let breakEven = 0;
 
       trades.forEach(trade => {
         const pips = Number(trade.pips_realized) || 0;
-        totalPips += pips;
+        totalPips += pips; // Always add pips regardless of outcome
         
-        if (pips > 0) wins++;
-        else if (pips < 0) losses++;
-        else breakEven++;
+        // Use outcome column if available, fallback to pips-based logic
+        const outcome = trade.outcome?.toUpperCase();
+        if (outcome === 'WIN') wins++;
+        else if (outcome === 'LOSS') losses++;
+        else if (outcome === 'PARTIAL') {
+          partials++;
+          // Count partials as wins if pips are positive
+          if (pips > 0) wins++;
+          else losses++;
+        }
+        else if (outcome === 'BE') breakEven++;
+        else {
+          // Fallback: classify by pips if no outcome set
+          if (pips > 0) wins++;
+          else if (pips < 0) losses++;
+          else breakEven++;
+        }
       });
 
       const totalTrades = trades.length;
