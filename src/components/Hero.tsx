@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import MultiStepSignupDialog from './MultiStepSignupDialog';
 import TelegramSignalsFeed from './TelegramSignalsFeed';
-import HomeLiveTrades from './HomeLiveTrades';
+import WeeklyResults from './WeeklyResults';
 
 const Hero = () => {
   const { isAuthenticated } = useAuth();
@@ -97,8 +97,8 @@ const Hero = () => {
             })}
           </div>
 
-          {/* Live Trades Section */}
-          <HomeLiveTrades />
+          {/* Weekly Results Section */}
+          <WeeklyResults />
 
           {/* Community Power Section */}
           <div className="mb-20 animate-fade-in" style={{animationDelay: '0.3s'}}>
