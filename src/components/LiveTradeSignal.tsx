@@ -2,8 +2,14 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, Minus, TrendingUp, TrendingDown, Clock, History } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
+import { Check, X, TrendingUp, TrendingDown, Clock, History, Target, AlertTriangle } from 'lucide-react';
+
+interface TakeProfit {
+  level: number;
+  price: number;
+  hit: boolean;
+  pips: number | null;
+}
 
 interface ActiveTrade {
   id: string;
@@ -11,6 +17,7 @@ interface ActiveTrade {
   direction: string;
   entry_price: number | null;
   stop_loss: number | null;
+  take_profits: TakeProfit[] | null;
   tp1: number | null;
   tp2: number | null;
   tp3: number | null;
@@ -21,24 +28,29 @@ interface ActiveTrade {
   status: string;
   created_at: string;
   closed_at: string | null;
-  raw_text: string | null;
+  pips_realized: number | null;
 }
 
-function TPCheckbox({ label, value, hit }: { label: string; value: number | null; hit: boolean }) {
-  if (!value) return null;
-  
+function TPCheckbox({ tp }: { tp: TakeProfit }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-        hit 
-          ? 'bg-green-500 border-green-500' 
-          : 'border-muted-foreground/30 bg-background'
-      }`}>
-        {hit && <Check className="w-3 h-3 text-white" />}
+    <div className="flex items-center justify-between py-1">
+      <div className="flex items-center gap-3">
+        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+          tp.hit 
+            ? 'bg-green-500 border-green-500' 
+            : 'border-muted-foreground/30 bg-background'
+        }`}>
+          {tp.hit && <Check className="w-3 h-3 text-white" />}
+        </div>
+        <span className={`font-mono ${tp.hit ? 'text-green-400' : 'text-foreground'}`}>
+          TP{tp.level} — {tp.price}
+        </span>
       </div>
-      <span className={`text-sm ${hit ? 'text-green-400 line-through' : 'text-foreground'}`}>
-        {label}: {value}
-      </span>
+      {tp.hit && tp.pips !== null && (
+        <span className="text-green-400 font-semibold text-sm">
+          +{tp.pips} pips
+        </span>
+      )}
     </div>
   );
 }
@@ -48,17 +60,29 @@ function TradeCard({ trade, isActive }: { trade: ActiveTrade; isActive: boolean 
   const isClosed = trade.status !== 'ACTIVE';
   const isStoppedOut = trade.status === 'STOPPED_OUT';
 
+  // Get take profits from new column or fallback to legacy
+  const takeProfits: TakeProfit[] = trade.take_profits && trade.take_profits.length > 0
+    ? trade.take_profits
+    : [
+        trade.tp1 && { level: 1, price: trade.tp1, hit: trade.tp1_hit || false, pips: null },
+        trade.tp2 && { level: 2, price: trade.tp2, hit: trade.tp2_hit || false, pips: null },
+        trade.tp3 && { level: 3, price: trade.tp3, hit: trade.tp3_hit || false, pips: null },
+      ].filter(Boolean) as TakeProfit[];
+
+  const tpsHit = takeProfits.filter(tp => tp.hit).length;
+  const totalPips = trade.pips_realized || 0;
+
   return (
-    <Card className={`${isActive ? 'border-primary/50 shadow-lg' : 'opacity-75'} ${
+    <Card className={`${isActive ? 'border-primary/50 shadow-lg' : 'opacity-80'} ${
       isStoppedOut ? 'border-destructive/50' : ''
     }`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <CardTitle className="text-xl font-bold">{trade.pair}</CardTitle>
+            <CardTitle className="text-2xl font-bold tracking-tight">{trade.pair}</CardTitle>
             <Badge 
               variant={isLong ? 'default' : 'destructive'}
-              className={`${isLong ? 'bg-green-600' : 'bg-red-600'} text-white`}
+              className={`${isLong ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white font-semibold`}
             >
               {isLong ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
               {trade.direction}
@@ -66,12 +90,13 @@ function TradeCard({ trade, isActive }: { trade: ActiveTrade; isActive: boolean 
           </div>
           <Badge 
             variant={isClosed ? (isStoppedOut ? 'destructive' : 'secondary') : 'default'}
-            className={`${
+            className={`text-sm px-3 py-1 ${
               !isClosed ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-              isStoppedOut ? 'bg-red-500/20 text-red-400' : ''
+              isStoppedOut ? 'bg-red-500/20 text-red-400 border-red-500/30' : 
+              'bg-muted text-muted-foreground'
             }`}
           >
-            {isClosed ? (isStoppedOut ? '❌ STOPPED OUT' : '✅ CLOSED') : '🟢 ACTIVE'}
+            {!isClosed ? '🟢 ACTIVE' : isStoppedOut ? '❌ STOPPED' : '✅ CLOSED'}
           </Badge>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -79,34 +104,55 @@ function TradeCard({ trade, isActive }: { trade: ActiveTrade; isActive: boolean 
           {new Date(trade.created_at).toLocaleString()}
         </div>
       </CardHeader>
+      
       <CardContent className="space-y-4">
-        {/* Entry & SL */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground uppercase">Entry</p>
-            <p className="text-lg font-mono font-semibold">{trade.entry_price || '—'}</p>
+        {/* Entry & SL Row */}
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Entry</p>
+            <p className="text-xl font-mono font-bold">{trade.entry_price || '—'}</p>
           </div>
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground uppercase">
-              Stop Loss {trade.be_activated && <span className="text-yellow-500">(BE)</span>}
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" />
+              Stop Loss {trade.be_activated && <span className="text-yellow-500 text-xs">(BE)</span>}
             </p>
-            <p className={`text-lg font-mono font-semibold ${trade.be_activated ? 'text-yellow-500' : 'text-red-400'}`}>
+            <p className={`text-xl font-mono font-bold ${trade.be_activated ? 'text-yellow-500' : 'text-red-400'}`}>
               {trade.stop_loss || '—'}
             </p>
           </div>
         </div>
 
-        <Separator />
+        {/* Divider */}
+        <div className="border-t border-border/50" />
 
-        {/* Take Profit Checklist */}
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground uppercase">Take Profit Targets</p>
-          <div className="space-y-2">
-            <TPCheckbox label="TP1" value={trade.tp1} hit={trade.tp1_hit} />
-            <TPCheckbox label="TP2" value={trade.tp2} hit={trade.tp2_hit} />
-            <TPCheckbox label="TP3" value={trade.tp3} hit={trade.tp3_hit} />
+        {/* Take Profits */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+              <Target className="w-3 h-3" />
+              Take Profits ({tpsHit}/{takeProfits.length})
+            </p>
+            {totalPips > 0 && (
+              <span className="text-green-400 font-bold text-sm">
+                Total: +{totalPips} pips
+              </span>
+            )}
+          </div>
+          <div className="space-y-1">
+            {takeProfits.map((tp) => (
+              <TPCheckbox key={tp.level} tp={tp} />
+            ))}
           </div>
         </div>
+
+        {/* Stopped out indicator */}
+        {isStoppedOut && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-center gap-2">
+            <X className="w-4 h-4 text-red-400" />
+            <span className="text-red-400 text-sm font-medium">Trade stopped out</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -118,10 +164,8 @@ export default function LiveTradeSignal() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch initial data
     fetchTrades();
 
-    // Subscribe to real-time updates
     const channel = supabase
       .channel('active-trades-changes')
       .on(
@@ -145,7 +189,6 @@ export default function LiveTradeSignal() {
 
   async function fetchTrades() {
     try {
-      // Fetch active trade
       const { data: active, error: activeError } = await supabase
         .from('active_trades')
         .select('*')
@@ -155,9 +198,20 @@ export default function LiveTradeSignal() {
         .maybeSingle();
 
       if (activeError) throw activeError;
-      setActiveTrade(active);
+      
+      // Parse the JSONB take_profits column
+      if (active) {
+        const parsed = {
+          ...active,
+          take_profits: Array.isArray(active.take_profits) 
+            ? active.take_profits as unknown as TakeProfit[]
+            : null
+        };
+        setActiveTrade(parsed as ActiveTrade);
+      } else {
+        setActiveTrade(null);
+      }
 
-      // Fetch trade history (closed trades)
       const { data: history, error: historyError } = await supabase
         .from('active_trades')
         .select('*')
@@ -166,7 +220,15 @@ export default function LiveTradeSignal() {
         .limit(10);
 
       if (historyError) throw historyError;
-      setTradeHistory(history || []);
+      
+      // Parse take_profits for history items
+      const parsedHistory = (history || []).map(trade => ({
+        ...trade,
+        take_profits: Array.isArray(trade.take_profits)
+          ? trade.take_profits as unknown as TakeProfit[]
+          : null
+      })) as ActiveTrade[];
+      setTradeHistory(parsedHistory);
     } catch (error) {
       console.error('Error fetching trades:', error);
     } finally {
@@ -197,10 +259,10 @@ export default function LiveTradeSignal() {
         {activeTrade ? (
           <TradeCard trade={activeTrade} isActive={true} />
         ) : (
-          <Card className="border-dashed">
+          <Card className="border-dashed border-2">
             <CardContent className="py-12 text-center">
-              <Minus className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-              <p className="text-muted-foreground">No active trade signal</p>
+              <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+              <p className="text-muted-foreground font-medium">No active trade signal</p>
               <p className="text-xs text-muted-foreground/70 mt-1">
                 Waiting for next signal from Telegram...
               </p>

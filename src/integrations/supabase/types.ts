@@ -25,9 +25,11 @@ export type Database = {
           id: string
           original_message_id: number
           pair: string
+          pips_realized: number | null
           raw_text: string | null
           status: string
           stop_loss: number | null
+          take_profits: Json | null
           telegram_message_id: string | null
           tp1: number | null
           tp1_hit: boolean | null
@@ -47,9 +49,11 @@ export type Database = {
           id?: string
           original_message_id: number
           pair: string
+          pips_realized?: number | null
           raw_text?: string | null
           status?: string
           stop_loss?: number | null
+          take_profits?: Json | null
           telegram_message_id?: string | null
           tp1?: number | null
           tp1_hit?: boolean | null
@@ -69,9 +73,11 @@ export type Database = {
           id?: string
           original_message_id?: number
           pair?: string
+          pips_realized?: number | null
           raw_text?: string | null
           status?: string
           stop_loss?: number | null
+          take_profits?: Json | null
           telegram_message_id?: string | null
           tp1?: number | null
           tp1_hit?: boolean | null

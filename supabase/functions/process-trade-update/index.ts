@@ -5,16 +5,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Keywords to detect trade updates - case insensitive
-const UPDATE_PATTERNS = {
-  TP1: /\btp\s*1\b|tp1/i,
-  TP2: /\btp\s*2\b|tp2/i,
-  TP3: /\btp\s*3\b|tp3/i,
-  TP4: /\btp\s*4\b|tp4/i,
-  BE: /\bbe\b|breakeven|break\s*even/i,
-  SL: /\bsl\b|stop\s*loss|stopped\s*out|sl\s*hit/i,
-  CLOSE: /\bclose[d]?\b|closed\s*runners?|manually\s*closed|exit/i,
-};
+// Dynamic TP pattern - matches TP followed by any number
+const TP_PATTERN = /\btp\s*(\d+)\b/gi;
+const BE_PATTERN = /\bbe\b|breakeven|break\s*even/i;
+const SL_PATTERN = /\bsl\b|stop\s*loss|stopped\s*out|sl\s*hit/i;
+const CLOSE_PATTERN = /\bclose[d]?\b|closed\s*runners?|manually\s*closed|exit/i;
+
+// Calculate pips based on direction
+function calculatePips(entryPrice: number, targetPrice: number, direction: string, pair: string): number {
+  const diff = direction === 'LONG' ? targetPrice - entryPrice : entryPrice - targetPrice;
+  
+  // Determine pip multiplier based on pair
+  // JPY pairs and indices have different pip values
+  const isJpyPair = pair.includes('JPY');
+  const isIndex = ['NAS100', 'US30', 'SPX500', 'US500'].some(idx => pair.includes(idx));
+  const isGold = pair.includes('XAU');
+  
+  let pipMultiplier = 10000; // Standard forex pairs
+  if (isJpyPair) pipMultiplier = 100;
+  if (isIndex) pipMultiplier = 1;
+  if (isGold) pipMultiplier = 10;
+  
+  return Math.round(diff * pipMultiplier * 10) / 10; // Round to 1 decimal
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -40,7 +53,6 @@ Deno.serve(async (req) => {
     console.log(`🔍 Processing trade update: "${reply_text}" for original message ${reply_to_message_id} in channel ${channel_id}`);
 
     // Find the active trade that matches this reply
-    // The original_message_id in active_trades should match reply_to_message_id
     const { data: trade, error: findError } = await supabase
       .from('active_trades')
       .select('*')
@@ -51,7 +63,6 @@ Deno.serve(async (req) => {
     if (findError || !trade) {
       console.log(`⚠️ No active trade found for original_message_id ${reply_to_message_id}:`, findError?.message);
       
-      // List all active trades for debugging
       const { data: allTrades } = await supabase
         .from('active_trades')
         .select('id, original_message_id, channel_id, pair, status')
@@ -66,45 +77,84 @@ Deno.serve(async (req) => {
 
     console.log(`📊 Found trade: ${trade.id} | ${trade.pair} | Status: ${trade.status}`);
 
-    // Detect what type of update this is
+    // Get current take_profits array or build from legacy columns
+    let takeProfits: Array<{ level: number; price: number; hit: boolean; pips: number | null }> = 
+      trade.take_profits || [];
+    
+    // Fallback to legacy columns if take_profits is empty
+    if (takeProfits.length === 0) {
+      const legacyTps = [
+        { level: 1, price: trade.tp1, hit: trade.tp1_hit || false },
+        { level: 2, price: trade.tp2, hit: trade.tp2_hit || false },
+        { level: 3, price: trade.tp3, hit: trade.tp3_hit || false },
+      ].filter(tp => tp.price !== null);
+      
+      takeProfits = legacyTps.map(tp => ({
+        level: tp.level,
+        price: tp.price,
+        hit: tp.hit,
+        pips: null
+      }));
+    }
+
     const updates: any = {
       updated_at: new Date().toISOString(),
     };
     const detectedUpdates: string[] = [];
+    let totalPipsRealized = trade.pips_realized || 0;
 
-    // Check for TP hits (can have multiple in same message)
-    if (UPDATE_PATTERNS.TP1.test(reply_text)) {
-      updates.tp1_hit = true;
-      detectedUpdates.push('TP1_HIT');
-      console.log('✅ TP1 hit detected');
+    // Check for dynamic TP hits
+    let match;
+    const tpMatches: number[] = [];
+    while ((match = TP_PATTERN.exec(reply_text)) !== null) {
+      tpMatches.push(parseInt(match[1], 10));
     }
 
-    if (UPDATE_PATTERNS.TP2.test(reply_text)) {
-      updates.tp2_hit = true;
-      detectedUpdates.push('TP2_HIT');
-      console.log('✅ TP2 hit detected');
+    // Process each matched TP
+    for (const tpLevel of tpMatches) {
+      const tpIndex = takeProfits.findIndex(tp => tp.level === tpLevel);
+      if (tpIndex !== -1 && !takeProfits[tpIndex].hit) {
+        takeProfits[tpIndex].hit = true;
+        
+        // Calculate pips for this TP
+        if (trade.entry_price && takeProfits[tpIndex].price) {
+          const pips = calculatePips(
+            trade.entry_price,
+            takeProfits[tpIndex].price,
+            trade.direction,
+            trade.pair
+          );
+          takeProfits[tpIndex].pips = pips;
+          totalPipsRealized += pips;
+          console.log(`✅ TP${tpLevel} hit: +${pips} pips`);
+        }
+        
+        detectedUpdates.push(`TP${tpLevel}_HIT`);
+
+        // Update legacy columns for compatibility
+        if (tpLevel === 1) updates.tp1_hit = true;
+        if (tpLevel === 2) updates.tp2_hit = true;
+        if (tpLevel === 3) updates.tp3_hit = true;
+      }
     }
 
-    if (UPDATE_PATTERNS.TP3.test(reply_text) || UPDATE_PATTERNS.TP4.test(reply_text)) {
-      updates.tp3_hit = true;
-      detectedUpdates.push('TP3_HIT');
-      console.log('✅ TP3/TP4 hit detected');
-    }
-
-    if (UPDATE_PATTERNS.BE.test(reply_text)) {
+    // Check for BE
+    if (BE_PATTERN.test(reply_text)) {
       updates.be_activated = true;
       detectedUpdates.push('BE_ACTIVATED');
       console.log('🔄 Breakeven activated');
     }
 
-    if (UPDATE_PATTERNS.SL.test(reply_text)) {
+    // Check for SL
+    if (SL_PATTERN.test(reply_text)) {
       updates.status = 'STOPPED_OUT';
       updates.closed_at = new Date().toISOString();
       detectedUpdates.push('STOPPED_OUT');
       console.log('❌ Stop loss hit - trade closed');
     }
 
-    if (UPDATE_PATTERNS.CLOSE.test(reply_text) && updates.status !== 'STOPPED_OUT') {
+    // Check for close (if not already stopped out)
+    if (CLOSE_PATTERN.test(reply_text) && updates.status !== 'STOPPED_OUT') {
       updates.status = 'CLOSED';
       updates.closed_at = new Date().toISOString();
       detectedUpdates.push('CLOSED');
@@ -123,6 +173,10 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Update take_profits and pips_realized
+    updates.take_profits = takeProfits;
+    updates.pips_realized = totalPipsRealized;
+
     // Apply updates
     const { data: updatedTrade, error: updateError } = await supabase
       .from('active_trades')
@@ -136,13 +190,14 @@ Deno.serve(async (req) => {
       throw updateError;
     }
 
-    console.log(`✅ Trade ${updatedTrade.id} updated:`, detectedUpdates.join(', '));
+    console.log(`✅ Trade ${updatedTrade.id} updated:`, detectedUpdates.join(', '), `| Total pips: ${totalPipsRealized}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         trade: updatedTrade,
-        updates_applied: detectedUpdates
+        updates_applied: detectedUpdates,
+        pips_realized: totalPipsRealized
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

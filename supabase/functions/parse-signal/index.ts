@@ -11,8 +11,8 @@ RULES:
 1. Ignore all emojis, hashtags, and promotional text
 2. Normalize symbols: XAU/USD → XAUUSD, EUR/USD → EURUSD, NAS100 → NAS100, US30 → US30, BTC/USD → BTCUSD
 3. Direction must be exactly "LONG" or "SHORT" (map BUY→LONG, SELL→SHORT)
-4. Extract numeric values for entry, stop loss, and take profit levels
-5. If multiple TP levels exist, extract all of them in order (TP1, TP2, TP3, etc.)
+4. Extract numeric values for entry, stop loss, and ALL take profit levels
+5. Extract ALL TPs dynamically - there is no limit. Parse TP1, TP2, TP3, TP4, TP5, etc.
 6. If ANY required field (symbol, direction, entry_price, stop_loss, at least one take_profit) is missing or unclear, mark as REJECTED
 
 IMPORTANT: Be strict about extraction. If the message is not a clear trading signal, reject it.`;
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
                   take_profit_levels: {
                     type: 'array',
                     items: { type: 'number' },
-                    description: 'Array of take profit levels in order (TP1, TP2, TP3, etc.)'
+                    description: 'Array of ALL take profit levels in order (TP1, TP2, TP3, TP4, TP5, etc.) - extract every TP mentioned'
                   },
                   is_valid_signal: {
                     type: 'boolean',
@@ -199,8 +199,18 @@ Deno.serve(async (req) => {
         console.error('⚠️ Error closing previous trades:', closeError);
       }
 
-      // Create new active trade
+      // Build dynamic take_profits array
       const tpLevels = parsedData.take_profit_levels || [];
+      const takeProfits = tpLevels.map((price: number, index: number) => ({
+        level: index + 1,
+        price: price,
+        hit: false,
+        pips: null
+      }));
+
+      console.log(`📈 Creating trade with ${takeProfits.length} take profit levels`);
+
+      // Create new active trade with dynamic TPs
       const activeTradeData = {
         telegram_message_id: telegram_message_id,
         original_message_id: original_message_id,
@@ -209,11 +219,15 @@ Deno.serve(async (req) => {
         direction: parsedData.direction,
         entry_price: parsedData.entry_price,
         stop_loss: parsedData.stop_loss,
+        // Keep legacy columns for compatibility
         tp1: tpLevels[0] || null,
         tp2: tpLevels[1] || null,
         tp3: tpLevels[2] || null,
+        // New dynamic take_profits column
+        take_profits: takeProfits,
         status: 'ACTIVE',
         raw_text: raw_text,
+        pips_realized: 0,
       };
 
       console.log('🎯 Creating active trade:', activeTradeData);
