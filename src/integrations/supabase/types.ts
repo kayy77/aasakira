@@ -24,6 +24,7 @@ export type Database = {
           entry_price: number | null
           id: string
           original_message_id: number
+          outcome: string | null
           pair: string
           pips_realized: number | null
           raw_text: string | null
@@ -48,6 +49,7 @@ export type Database = {
           entry_price?: number | null
           id?: string
           original_message_id: number
+          outcome?: string | null
           pair: string
           pips_realized?: number | null
           raw_text?: string | null
@@ -72,6 +74,7 @@ export type Database = {
           entry_price?: number | null
           id?: string
           original_message_id?: number
+          outcome?: string | null
           pair?: string
           pips_realized?: number | null
           raw_text?: string | null
