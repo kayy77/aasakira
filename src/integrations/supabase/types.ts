@@ -1256,6 +1256,15 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_trade_pips: {
+        Args: {
+          p_direction: string
+          p_entry: number
+          p_pair: string
+          p_target: number
+        }
+        Returns: number
+      }
       check_and_increment_usage: {
         Args: { p_daily_limit: number; p_feature: string; p_user_id: string }
         Returns: Json

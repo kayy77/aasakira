@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 
 interface WeeklyStats {
@@ -11,6 +11,7 @@ interface WeeklyStats {
   totalTrades: number;
   wins: number;
   losses: number;
+  partials: number;
   breakEven: number;
   winRate: number;
   startDate: Date;
@@ -28,44 +29,41 @@ export default function WeeklyResults() {
   const fetchWeeklyStats = async () => {
     try {
       const now = new Date();
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
-      const weekEnd = endOfWeek(now, { weekStartsOn: 1 }); // Sunday
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
-      // Fetch ALL closed trades (CLOSED status includes all outcomes)
+      // Fetch ALL closed trades (CLOSED + STOPPED_OUT)
       const { data, error } = await supabase
         .from('active_trades')
         .select('pips_realized, status, closed_at, outcome')
-        .eq('status', 'CLOSED')
+        .in('status', ['CLOSED', 'STOPPED_OUT'])
         .gte('closed_at', weekStart.toISOString())
         .lte('closed_at', weekEnd.toISOString());
 
       if (error) throw error;
 
       const trades = data || [];
-      
+
       let totalPips = 0;
       let wins = 0;
       let losses = 0;
       let partials = 0;
       let breakEven = 0;
 
-      trades.forEach(trade => {
+      trades.forEach((trade) => {
         const pips = Number(trade.pips_realized) || 0;
-        totalPips += pips; // Always add pips regardless of outcome
-        
-        // Use outcome column if available, fallback to pips-based logic
+        totalPips += pips;
+
         const outcome = trade.outcome?.toUpperCase();
         if (outcome === 'WIN') wins++;
         else if (outcome === 'LOSS') losses++;
         else if (outcome === 'PARTIAL') {
           partials++;
-          // Count partials as wins if pips are positive
           if (pips > 0) wins++;
           else losses++;
-        }
-        else if (outcome === 'BE') breakEven++;
+        } else if (outcome === 'BE') breakEven++;
         else {
-          // Fallback: classify by pips if no outcome set
+          // Fallback classification
           if (pips > 0) wins++;
           else if (pips < 0) losses++;
           else breakEven++;
@@ -76,10 +74,11 @@ export default function WeeklyResults() {
       const winRate = totalTrades > 0 ? Math.round((wins / totalTrades) * 100) : 0;
 
       setStats({
-        totalPips: Math.round(totalPips),
+        totalPips: Math.round(totalPips * 10) / 10,
         totalTrades,
         wins,
         losses,
+        partials,
         breakEven,
         winRate,
         startDate: weekStart,
@@ -94,11 +93,11 @@ export default function WeeklyResults() {
 
   if (loading) {
     return (
-      <div className="mb-16 animate-fade-in">
-        <Card className="p-8 md:p-12 bg-gradient-to-br from-card/90 to-card/60 backdrop-blur border-border">
+      <div className="mb-12 animate-fade-in">
+        <Card className="p-6 bg-card/80 backdrop-blur border-border">
           <div className="text-center">
-            <div className="h-8 w-48 bg-muted/50 rounded animate-pulse mx-auto mb-4" />
-            <div className="h-16 w-32 bg-muted/50 rounded animate-pulse mx-auto" />
+            <div className="h-6 w-40 bg-muted/50 rounded animate-pulse mx-auto mb-3" />
+            <div className="h-12 w-24 bg-muted/50 rounded animate-pulse mx-auto" />
           </div>
         </Card>
       </div>
@@ -107,19 +106,19 @@ export default function WeeklyResults() {
 
   if (!stats || stats.totalTrades === 0) {
     return (
-      <div className="mb-16 animate-fade-in">
-        <Card className="p-8 md:p-12 bg-gradient-to-br from-purple-900/20 via-card to-pink-900/20 backdrop-blur border-purple-500/30">
+      <div className="mb-12 animate-fade-in">
+        <Card className="p-6 bg-card/80 backdrop-blur border-border">
           <div className="text-center">
-            <Badge className="mb-4 bg-purple-500/20 text-purple-400 border-purple-500/30">
-              WEEKLY RESULTS
-            </Badge>
-            <p className="text-muted-foreground mb-6">No closed trades this week yet.</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Weekly Recap</p>
+            <p className="text-sm font-medium text-cyber-purple-500">@aasakira.ai</p>
+            <p className="text-muted-foreground text-sm mt-3">No closed trades this week yet.</p>
             <Button
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              size="sm"
+              className="mt-4 bg-gradient-to-r from-cyber-purple-600 to-cyber-pink-500 hover:from-cyber-purple-700 hover:to-cyber-pink-600 text-white"
               onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
             >
-              Join FREE Telegram Group
-              <ArrowRight className="ml-2 w-4 h-4" />
+              Join FREE Telegram
+              <ArrowRight className="ml-1.5 w-4 h-4" />
             </Button>
           </div>
         </Card>
@@ -131,50 +130,54 @@ export default function WeeklyResults() {
   const dateRange = `${format(stats.startDate, 'd MMM')} → ${format(stats.endDate, 'd MMM')}`;
 
   return (
-    <div className="mb-16 animate-fade-in">
-      <Card className="p-8 md:p-12 bg-gradient-to-br from-purple-900/30 via-card to-pink-900/30 backdrop-blur border-purple-500/40 shadow-xl shadow-purple-500/10">
+    <div className="mb-12 animate-fade-in">
+      <Card className="p-6 md:p-8 bg-card/90 backdrop-blur border-border">
         <div className="text-center">
-          {/* Date Range */}
-          <Badge className="mb-6 bg-purple-500/20 text-purple-400 border-purple-500/30 text-sm px-4 py-1">
-            RESULTS — {dateRange.toUpperCase()}
-          </Badge>
-
-          {/* Big Pips Number */}
-          <div className="mb-8">
-            <div className={`text-6xl md:text-8xl font-bold tracking-tight ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-              {isPositive ? '+' : ''}{stats.totalPips.toLocaleString()}
-            </div>
-            <p className="text-xl text-muted-foreground mt-2 uppercase tracking-wide">PIPS</p>
+          {/* Header with branding */}
+          <div className="mb-4">
+            <Badge variant="outline" className="border-cyber-purple-500/40 text-cyber-purple-400 text-[10px] uppercase tracking-widest mb-1">
+              {dateRange}
+            </Badge>
+            <p className="text-lg font-semibold text-foreground">Weekly Recap</p>
+            <p className="text-xs text-cyber-purple-400 font-medium">@aasakira.ai</p>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-6 mb-8 max-w-md mx-auto">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-foreground">{stats.totalTrades}</p>
-              <p className="text-sm text-muted-foreground uppercase tracking-wide">Trades</p>
+          {/* Pips */}
+          <div className="mb-5">
+            <span className={`text-5xl md:text-6xl font-bold tracking-tight ${isPositive ? 'text-neon-green-400' : 'text-destructive'}`}>
+              {isPositive ? '+' : ''}{stats.totalPips.toLocaleString()}
+            </span>
+            <p className="text-sm text-muted-foreground uppercase tracking-wide mt-1">pips</p>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex justify-center gap-6 text-sm mb-5">
+            <div>
+              <p className="text-xl font-bold text-foreground">{stats.totalTrades}</p>
+              <p className="text-muted-foreground text-xs uppercase">Trades</p>
             </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold">
-                <span className="text-green-400">{stats.wins}</span>
-                <span className="text-muted-foreground mx-1">•</span>
-                <span className="text-red-400">{stats.losses}</span>
+            <div>
+              <p className="text-xl font-bold">
+                <span className="text-neon-green-400">{stats.wins}</span>
+                <span className="text-muted-foreground mx-0.5">/</span>
+                <span className="text-destructive">{stats.losses}</span>
               </p>
-              <p className="text-sm text-muted-foreground uppercase tracking-wide">W / L</p>
+              <p className="text-muted-foreground text-xs uppercase">W / L</p>
             </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-purple-400">{stats.winRate}%</p>
-              <p className="text-sm text-muted-foreground uppercase tracking-wide">Win Rate</p>
+            <div>
+              <p className="text-xl font-bold text-cyber-purple-400">{stats.winRate}%</p>
+              <p className="text-muted-foreground text-xs uppercase">Win Rate</p>
             </div>
           </div>
 
           {/* CTA */}
           <Button
-            size="lg"
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6 shadow-lg shadow-purple-500/30"
+            size="sm"
+            className="bg-gradient-to-r from-cyber-purple-600 to-cyber-pink-500 hover:from-cyber-purple-700 hover:to-cyber-pink-600 text-white font-medium px-6"
             onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
           >
-            Join the FREE Telegram Group
-            <ArrowRight className="ml-2 w-5 h-5" />
+            Join FREE Telegram
+            <ArrowRight className="ml-1.5 w-4 h-4" />
           </Button>
         </div>
       </Card>
