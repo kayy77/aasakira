@@ -70,7 +70,21 @@ function TradeCard({ trade, isActive }: { trade: ActiveTrade; isActive: boolean 
       ].filter(Boolean) as TakeProfit[];
 
   const tpsHit = takeProfits.filter(tp => tp.hit).length;
-  const totalPips = trade.pips_realized || 0;
+
+  // Display “Total pips” as the furthest TP reached (not a sum of each TP step)
+  const maxHitTpPips = takeProfits
+    .filter((tp) => tp.hit && typeof tp.pips === 'number')
+    .map((tp) => tp.pips as number);
+
+  const totalPips = (() => {
+    // Prefer TP-derived pips when available (fixes old records where pips_realized was summed)
+    if (maxHitTpPips.length > 0) return Math.max(...maxHitTpPips);
+
+    // Fallback to stored value (useful for SL / manual close when no TP pips exist)
+    if (typeof trade.pips_realized === 'number') return trade.pips_realized;
+
+    return 0;
+  })();
 
   return (
     <Card className={`${isActive ? 'border-primary/50 shadow-lg' : 'opacity-80'} ${
@@ -133,9 +147,9 @@ function TradeCard({ trade, isActive }: { trade: ActiveTrade; isActive: boolean 
               <Target className="w-3 h-3" />
               Take Profits ({tpsHit}/{takeProfits.length})
             </p>
-            {totalPips > 0 && (
-              <span className="text-green-400 font-bold text-sm">
-                Total: +{totalPips} pips
+            {totalPips !== 0 && (
+              <span className={`${totalPips > 0 ? 'text-green-400' : 'text-red-400'} font-bold text-sm`}>
+                Total: {totalPips > 0 ? '+' : ''}{totalPips} pips
               </span>
             )}
           </div>
@@ -157,6 +171,7 @@ function TradeCard({ trade, isActive }: { trade: ActiveTrade; isActive: boolean 
     </Card>
   );
 }
+
 
 export default function LiveTradeSignal() {
   const [activeTrade, setActiveTrade] = useState<ActiveTrade | null>(null);

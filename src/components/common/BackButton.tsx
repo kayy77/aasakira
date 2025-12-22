@@ -15,7 +15,7 @@ export default function BackButton({ className = '' }: BackButtonProps) {
     <Button
       onClick={() => navigate(-1)}
       variant="ghost"
-      className={`flex items-center gap-2 text-gray-300 hover:text-white hover:bg-white/10 ${className}`}
+      className={`flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-accent/40 ${className}`}
     >
       <ArrowLeft className="w-4 h-4" />
       Back
