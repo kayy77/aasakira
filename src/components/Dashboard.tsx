@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import CherryBlossomBackground from './CherryBlossomBackground';
 import EnhancedPremiumUpgrade from './enhanced/EnhancedPremiumUpgrade';
 import UserProfile from './UserProfile';
+import TelegramLinking from './TelegramLinking';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
 const Dashboard = () => {
@@ -377,6 +378,11 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Telegram Linking Card */}
+        <div className="mb-12">
+          <TelegramLinking />
+        </div>
 
         {/* Profile Settings Card */}
         <Card className="glass-card hover-glow border-purple-500/20 mb-12">
