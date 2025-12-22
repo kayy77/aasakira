@@ -1,5 +1,8 @@
 project_id = "tnfxxtnfpoavnsabjrii"
 
+[functions.telegram-bot-handler]
+verify_jwt = false
+
 [functions.analyze-trading-setup]
 verify_jwt = false
 
