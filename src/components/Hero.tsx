@@ -171,41 +171,6 @@ const Hero = () => {
             </Card>
           </div>
 
-          {/* Signal Preview */}
-          <div className="text-center mb-12">
-            <Badge className="mb-4 bg-purple-500/20 text-purple-400 border-purple-500/30">
-              <TrendingUp className="w-3 h-3 mr-1" />
-              Live Preview
-            </Badge>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              See AI Signals in Action
-            </h2>
-          </div>
-
-          <div className="max-w-xl mx-auto">
-            <Card className="p-8 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur border-border hover:border-purple-500/50 transition-all">
-              <div className="text-center mb-6">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4">
-                  <Activity className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">{sampleSignal.pair}</h3>
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-sm">
-                  {sampleSignal.type} @ {sampleSignal.entry}
-                </Badge>
-              </div>
-
-              <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-2">
-                  <Zap className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-muted-foreground">{sampleSignal.reason}</p>
-                </div>
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <span className="text-muted-foreground">Confidence</span>
-                  <span className="text-lg font-bold text-purple-400">{sampleSignal.confidence}%</span>
-                </div>
-              </div>
-            </Card>
-          </div>
         </div>
 
         {/* Final CTA */}
