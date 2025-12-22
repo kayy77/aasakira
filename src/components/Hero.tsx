@@ -100,59 +100,6 @@ const Hero = () => {
           {/* Weekly Results Section */}
           <WeeklyResults />
 
-          {/* Community Power Section */}
-          <div className="mb-20 animate-fade-in" style={{animationDelay: '0.3s'}}>
-            <Card className="p-8 md:p-10 bg-gradient-to-br from-purple-900/30 via-background to-pink-900/30 backdrop-blur border-purple-500/40 shadow-lg shadow-purple-500/20">
-              <div className="text-center mb-6">
-                <Badge className="mb-3 bg-green-500/20 text-green-400 border-green-500/30">
-                  🆓 FREE TO JOIN
-                </Badge>
-                <h3 className="text-2xl md:text-3xl font-bold mb-3">
-                  🚀 Free Trading Signals Telegram Group
-                </h3>
-                <p className="text-muted-foreground">
-                  Get daily AI-powered trading signals directly to your phone
-                </p>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-purple-400">300+</p>
-                  <p className="text-sm text-muted-foreground">Active Traders</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-pink-400">Daily</p>
-                  <p className="text-sm text-muted-foreground">Free Signals</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-purple-400">Live</p>
-                  <p className="text-sm text-muted-foreground">Trade Discussions</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-pink-400">100%</p>
-                  <p className="text-sm text-muted-foreground">Free Access</p>
-                </div>
-              </div>
-              
-              {/* Live Telegram Feed */}
-              <div className="mb-8">
-                <TelegramSignalsFeed />
-              </div>
-              
-              <div className="text-center">
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6 shadow-lg shadow-purple-500/30 border-2 border-purple-400/50 hover:border-purple-300/70 transition-all"
-                  onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
-                >
-                  Join Free Telegram Community
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-                <p className="text-xs text-muted-foreground mt-3">
-                  No credit card required • Instant access
-                </p>
-              </div>
-            </Card>
-          </div>
         </div>
 
         {/* Visual Feature Cards */}
