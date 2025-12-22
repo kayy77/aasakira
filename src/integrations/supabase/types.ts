@@ -1066,6 +1066,7 @@ export type Database = {
           country: string
           created_at: string
           date_of_birth: string | null
+          email: string | null
           has_traded_forex: boolean | null
           has_trading_account: boolean | null
           id: string
@@ -1081,12 +1082,14 @@ export type Database = {
           updated_at: string
           user_id: string
           username: string | null
+          weekly_email_enabled: boolean | null
         }
         Insert: {
           broker_group?: string | null
           country: string
           created_at?: string
           date_of_birth?: string | null
+          email?: string | null
           has_traded_forex?: boolean | null
           has_trading_account?: boolean | null
           id?: string
@@ -1102,12 +1105,14 @@ export type Database = {
           updated_at?: string
           user_id: string
           username?: string | null
+          weekly_email_enabled?: boolean | null
         }
         Update: {
           broker_group?: string | null
           country?: string
           created_at?: string
           date_of_birth?: string | null
+          email?: string | null
           has_traded_forex?: boolean | null
           has_trading_account?: boolean | null
           id?: string
@@ -1123,6 +1128,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string | null
+          weekly_email_enabled?: boolean | null
         }
         Relationships: []
       }
