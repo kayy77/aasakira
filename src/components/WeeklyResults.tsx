@@ -34,7 +34,7 @@ export default function WeeklyResults() {
 
       const { data, error } = await supabase
         .from('active_trades')
-        .select('pips_realized, status, closed_at, outcome')
+        .select('pips_realized, status, closed_at, outcome, take_profits')
         .in('status', ['CLOSED', 'STOPPED_OUT'])
         .gte('closed_at', weekStart.toISOString())
         .lte('closed_at', weekEnd.toISOString());
@@ -50,20 +50,37 @@ export default function WeeklyResults() {
       let breakEven = 0;
 
       trades.forEach((trade) => {
-        const pips = Number(trade.pips_realized) || 0;
-        totalPips += pips;
+        // Calculate pips using the same logic as LiveTradeSignal:
+        // Use the max TP pips hit (not sum), or fallback to pips_realized for SL/manual close
+        let tradePips = 0;
+        
+        if (Array.isArray(trade.take_profits) && trade.take_profits.length > 0) {
+          const hitTpPips = trade.take_profits
+            .filter((tp: any) => tp.hit && typeof tp.pips === 'number')
+            .map((tp: any) => tp.pips as number);
+          
+          if (hitTpPips.length > 0) {
+            tradePips = Math.max(...hitTpPips);
+          } else {
+            tradePips = Number(trade.pips_realized) || 0;
+          }
+        } else {
+          tradePips = Number(trade.pips_realized) || 0;
+        }
+        
+        totalPips += tradePips;
 
         const outcome = trade.outcome?.toUpperCase();
         if (outcome === 'WIN') wins++;
         else if (outcome === 'LOSS') losses++;
         else if (outcome === 'PARTIAL') {
           partials++;
-          if (pips > 0) wins++;
+          if (tradePips > 0) wins++;
           else losses++;
         } else if (outcome === 'BE') breakEven++;
         else {
-          if (pips > 0) wins++;
-          else if (pips < 0) losses++;
+          if (tradePips > 0) wins++;
+          else if (tradePips < 0) losses++;
           else breakEven++;
         }
       });
