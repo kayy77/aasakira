@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import TelegramLinking from './TelegramLinking';
 
 const UserProfile = () => {
   const { user, updateUserProfile } = useAuth();
@@ -68,6 +69,9 @@ const UserProfile = () => {
 
   return (
     <div className="space-y-6">
+      {/* Telegram Linking Section */}
+      <TelegramLinking />
+      
       {/* Profile Header */}
       <Card className="glass-card hover-glow border-purple-500/20">
         <CardHeader>
