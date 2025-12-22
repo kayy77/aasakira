@@ -101,7 +101,29 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     };
     const detectedUpdates: string[] = [];
-    let totalPipsRealized = trade.pips_realized || 0;
+
+    // Ensure any previously-hit TPs have a pips value we can use.
+    if (trade.entry_price) {
+      takeProfits = takeProfits.map((tp) => {
+        if (tp.hit && tp.pips === null && tp.price) {
+          return {
+            ...tp,
+            pips: calculatePips(trade.entry_price, tp.price, trade.direction, trade.pair)
+          };
+        }
+        return tp;
+      });
+    }
+
+    const getMaxHitPips = () => {
+      const hitPips = takeProfits
+        .filter((tp) => tp.hit && typeof tp.pips === 'number')
+        .map((tp) => tp.pips as number);
+      return hitPips.length > 0 ? Math.max(...hitPips) : 0;
+    };
+
+    // IMPORTANT: total pips should represent the furthest TP reached (not the sum of each TP step)
+    let totalPipsRealized = getMaxHitPips();
 
     // Check for dynamic TP hits
     let match;
@@ -115,7 +137,7 @@ Deno.serve(async (req) => {
       const tpIndex = takeProfits.findIndex(tp => tp.level === tpLevel);
       if (tpIndex !== -1 && !takeProfits[tpIndex].hit) {
         takeProfits[tpIndex].hit = true;
-        
+
         // Calculate pips for this TP
         if (trade.entry_price && takeProfits[tpIndex].price) {
           const pips = calculatePips(
@@ -125,10 +147,10 @@ Deno.serve(async (req) => {
             trade.pair
           );
           takeProfits[tpIndex].pips = pips;
-          totalPipsRealized += pips;
-          console.log(`✅ TP${tpLevel} hit: +${pips} pips`);
+          totalPipsRealized = Math.max(totalPipsRealized, pips);
+          console.log(`✅ TP${tpLevel} hit: +${pips} pips | Total now: ${totalPipsRealized}`);
         }
-        
+
         detectedUpdates.push(`TP${tpLevel}_HIT`);
 
         // Update legacy columns for compatibility
