@@ -110,11 +110,16 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { setupId, setup } = await req.json();
 
-    console.log('🚀 SETUP SCANNER - Analyzing setup:', setup.pair, setup.direction);
+    console.log('🚀 SETUP SCANNER V1 - Analyzing setup:', setup.pair, setup.direction);
     
     const symbol = setup.pair;
     const baseCurrency = symbol.substring(0, 3);
     const quoteCurrency = symbol.substring(3, 6);
+    
+    // V1 Scanner fields with defaults
+    const marketStructure = setup.market_structure || 'unknown';
+    const liquiditySweep = setup.liquidity_sweep || 'none';
+    const sessionContext = setup.session_context || 'unknown';
     
     // Fetch live price
     const livePrice = await fetchLivePrice(symbol, TWELVE_DATA_API_KEY);
@@ -139,53 +144,79 @@ serve(async (req) => {
     const liveRR = calculateRR(livePrice.price, setup.stop_loss, setup.take_profit, setup.direction);
     
     // Calculate price deviation in pips
-    const pipMultiplier = symbol.includes('JPY') ? 100 : 10000;
+    const pipMultiplier = symbol.includes('JPY') ? 100 : (symbol === 'XAUUSD' ? 10 : 10000);
     const priceDeviation = Math.abs(livePrice.price - entryPrice) * pipMultiplier;
+    
+    // Rules-based validation flags
+    const ruleChecks = {
+      rrValid: originalRR >= 1.5,
+      structureAligned: (setup.direction === 'BUY' && marketStructure === 'bullish') || 
+                        (setup.direction === 'SELL' && marketStructure === 'bearish'),
+      liquidityConfirmed: liquiditySweep === 'confirmed',
+      sessionOptimal: ['london', 'newyork', 'london_ny_overlap'].includes(sessionContext),
+      priceNear: priceDeviation < 30
+    };
     
     console.log('💰 Analysis:', {
       userEntry: entryPrice,
       livePrice: livePrice.price,
       originalRR: originalRR.toFixed(2),
       liveRR: liveRR.toFixed(2),
-      priceDeviation: priceDeviation.toFixed(1)
+      priceDeviation: priceDeviation.toFixed(1),
+      ruleChecks
     });
 
-    // Prepare AI analysis prompt
-    const analysisPrompt = `You are Aasakira, an elite institutional trading analyst. Analyze this trading setup with precision.
+    // Build V1 Scanner prompt - reality-first approach
+    const analysisPrompt = `You are an elite ICT/SMC trading analyst. Analyze this user-provided trading setup with precision and brutal honesty.
 
 SETUP DETAILS:
 - Pair: ${setup.pair} (${baseCurrency}/${quoteCurrency})
 - Direction: ${setup.direction}
-- Planned Entry: ${entryPrice}
-- Live Market Price: ${livePrice.price} (Source: ${livePrice.source})
-- Price Deviation: ${priceDeviation.toFixed(1)} pips
+- Entry Price: ${entryPrice}
 - Stop Loss: ${setup.stop_loss}
 - Take Profit: ${setup.take_profit}
 - Original R:R: ${originalRR.toFixed(2)}:1
-- Live R:R: ${liveRR.toFixed(2)}:1
 - Timeframe: ${setup.timeframe}
 - Risk %: ${setup.risk_percentage}%
-- Trader's Reasoning: "${setup.entry_reason}"
 
-EVALUATION CRITERIA:
-1. Is the R:R ratio acceptable? (Minimum 1:1.5 recommended)
-2. Is the price deviation acceptable? (Generally <30 pips for majors)
-3. Does the entry reason show proper analysis?
-4. Is the stop loss placement logical?
-5. Is the take profit realistic?
+V1 SCANNER CONTEXT (User Identified):
+- Market Structure: ${marketStructure.toUpperCase()}
+- Liquidity Sweep: ${liquiditySweep.toUpperCase()}
+- Session Context: ${sessionContext.replace('_', ' ').toUpperCase()}
+- Entry Reason: "${setup.entry_reason}"
+
+LIVE MARKET DATA:
+- Current Price: ${livePrice.price} (Source: ${livePrice.source})
+- Price Deviation: ${priceDeviation.toFixed(1)} pips from planned entry
+- Live R:R: ${liveRR.toFixed(2)}:1
+
+RULES-BASED VALIDATION:
+${ruleChecks.rrValid ? '✅' : '❌'} R:R Ratio >= 1.5:1 (Required)
+${ruleChecks.structureAligned ? '✅' : '⚠️'} Direction aligned with market structure
+${ruleChecks.liquidityConfirmed ? '✅' : '⚠️'} Liquidity sweep confirmed
+${ruleChecks.sessionOptimal ? '✅' : '⚠️'} Optimal trading session
+${ruleChecks.priceNear ? '✅' : '⚠️'} Entry within 30 pips of current price
+
+ANALYZE THIS SETUP:
+1. Does the direction make sense given the stated market structure?
+2. Is the liquidity sweep assessment valid for this setup type?
+3. Is the session appropriate for this pair?
+4. Is the entry reason showing proper ICT/SMC analysis?
+5. Are the SL and TP levels logical?
 
 You MUST respond with ONLY valid JSON in this exact format:
 {
   "score": <number 0-100>,
   "verdict": "<APPROVED|CONDITIONAL|REJECTED>",
   "strengths": ["<strength 1>", "<strength 2>"],
-  "critical_flaws": ["<flaw 1>", "<flaw 2>"],
+  "critical_flaws": ["<flaw 1 if any>"],
   "tactical_improvements": ["<improvement 1>", "<improvement 2>"],
   "risk_assessment": "<LOW|MEDIUM|HIGH>",
   "institutional_grade": "<A|B|C|D|F>",
-  "execution_advice": "<specific execution guidance>",
-  "live_price_impact": "<assessment of price deviation impact>",
-  "recommended_entry": ${livePrice.price},
+  "execution_advice": "<specific execution guidance based on setup>",
+  "structure_analysis": "<assessment of stated market structure>",
+  "liquidity_analysis": "<assessment of liquidity sweep claim>",
+  "session_analysis": "<assessment of session timing>",
   "confidence_level": <number 0-100>
 }`;
 
@@ -200,7 +231,7 @@ You MUST respond with ONLY valid JSON in this exact format:
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: 'You are an expert trading analyst. Always respond with valid JSON only, no markdown.' },
+          { role: 'system', content: 'You are an expert ICT/SMC trading analyst. Always respond with valid JSON only, no markdown.' },
           { role: 'user', content: analysisPrompt }
         ],
       }),
@@ -235,23 +266,27 @@ You MUST respond with ONLY valid JSON in this exact format:
       }
     } catch (parseError) {
       console.error('❌ Failed to parse AI response:', parseError);
-      // Provide fallback analysis
+      // Provide fallback analysis based on rule checks
+      const passedChecks = Object.values(ruleChecks).filter(Boolean).length;
+      const baseScore = Math.round((passedChecks / 5) * 100);
+      
       aiAnalysis = {
-        score: originalRR >= 1.5 ? 65 : 45,
-        verdict: originalRR >= 1.5 ? 'CONDITIONAL' : 'REJECTED',
-        strengths: ['Setup submitted for analysis'],
-        critical_flaws: originalRR < 1.5 ? ['R:R ratio below 1.5:1 minimum'] : [],
-        tactical_improvements: ['Consider adjusting entry based on live price'],
-        risk_assessment: 'MEDIUM',
-        institutional_grade: originalRR >= 1.5 ? 'C' : 'D',
+        score: baseScore,
+        verdict: passedChecks >= 4 ? 'APPROVED' : passedChecks >= 2 ? 'CONDITIONAL' : 'REJECTED',
+        strengths: ruleChecks.rrValid ? ['Acceptable risk-reward ratio'] : [],
+        critical_flaws: !ruleChecks.rrValid ? ['R:R ratio below 1.5:1 minimum'] : [],
+        tactical_improvements: ['Review entry against current market structure'],
+        risk_assessment: passedChecks >= 4 ? 'LOW' : passedChecks >= 2 ? 'MEDIUM' : 'HIGH',
+        institutional_grade: passedChecks >= 4 ? 'B' : passedChecks >= 2 ? 'C' : 'D',
         execution_advice: 'Review setup parameters before execution',
-        live_price_impact: `Price has moved ${priceDeviation.toFixed(1)} pips from planned entry`,
-        recommended_entry: livePrice.price,
+        structure_analysis: `Market structure: ${marketStructure}`,
+        liquidity_analysis: `Liquidity sweep: ${liquiditySweep}`,
+        session_analysis: `Session: ${sessionContext}`,
         confidence_level: 50
       };
     }
 
-    // Enrich analysis with live data
+    // Enrich analysis with live data and V1 context
     const enrichedAnalysis = {
       ...aiAnalysis,
       risk_reward: `${originalRR.toFixed(2)}:1`,
@@ -259,6 +294,12 @@ You MUST respond with ONLY valid JSON in this exact format:
       live_price: livePrice.price,
       price_source: livePrice.source,
       price_deviation_pips: priceDeviation,
+      v1_context: {
+        market_structure: marketStructure,
+        liquidity_sweep: liquiditySweep,
+        session_context: sessionContext,
+        rule_checks: ruleChecks
+      },
       analyzed_at: new Date().toISOString()
     };
 
@@ -279,7 +320,7 @@ You MUST respond with ONLY valid JSON in this exact format:
       throw updateError;
     }
 
-    console.log('✅ Setup analyzed successfully');
+    console.log('✅ V1 Scanner analysis complete');
 
     return new Response(JSON.stringify({
       success: true,
