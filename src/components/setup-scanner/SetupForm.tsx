@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Loader2, Camera } from 'lucide-react';
+import { Upload, Loader2, Camera, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { TradeSetup } from '@/pages/SetupScanner';
@@ -35,6 +35,9 @@ const SetupForm: React.FC<SetupFormProps> = ({ onAnalysisComplete }) => {
     take_profit: 0,
     timeframe: '1H',
     risk_percentage: 2.0,
+    market_structure: 'bullish',
+    liquidity_sweep: 'none',
+    session_context: 'london',
     status: 'PENDING'
   });
 
@@ -88,7 +91,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onAnalysisComplete }) => {
         screenshotUrl = await uploadScreenshot(screenshotFile);
       }
 
-      // Save to database
+      // Save to database with v1 scanner fields
       const setupData = {
         user_id: user.id,
         pair: formData.pair!,
@@ -102,6 +105,13 @@ const SetupForm: React.FC<SetupFormProps> = ({ onAnalysisComplete }) => {
         screenshot_url: screenshotUrl,
         status: 'PENDING' as const
       };
+      
+      // Pass v1 fields separately for AI analysis
+      const v1Fields = {
+        market_structure: formData.market_structure || 'bullish',
+        liquidity_sweep: formData.liquidity_sweep || 'none',
+        session_context: formData.session_context || 'london'
+      };
 
       const { data: savedSetup, error: saveError } = await supabase
         .from('trade_setups')
@@ -111,12 +121,12 @@ const SetupForm: React.FC<SetupFormProps> = ({ onAnalysisComplete }) => {
 
       if (saveError) throw saveError;
 
-      // Call AI analysis
+      // Call AI analysis with v1 fields
       const { data: analysisData, error: analysisError } = await supabase.functions
         .invoke('analyze-trading-setup', {
           body: {
             setupId: savedSetup.id,
-            setup: savedSetup
+            setup: { ...savedSetup, ...v1Fields }
           }
         });
 
@@ -216,12 +226,76 @@ const SetupForm: React.FC<SetupFormProps> = ({ onAnalysisComplete }) => {
             </div>
           </div>
 
+          {/* V1 Scanner Fields - Market Structure, Liquidity, Session */}
+          <div className="p-4 border border-primary/20 rounded-lg bg-primary/5 space-y-4">
+            <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Advanced Setup Context
+            </h3>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Market Structure</Label>
+                <Select
+                  value={formData.market_structure}
+                  onValueChange={(value: 'bullish' | 'bearish' | 'ranging' | 'transition') => handleInputChange('market_structure', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bullish">Bullish</SelectItem>
+                    <SelectItem value="bearish">Bearish</SelectItem>
+                    <SelectItem value="ranging">Ranging</SelectItem>
+                    <SelectItem value="transition">Transition</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Liquidity Sweep</Label>
+                <Select
+                  value={formData.liquidity_sweep}
+                  onValueChange={(value: 'confirmed' | 'anticipated' | 'none') => handleInputChange('liquidity_sweep', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="anticipated">Anticipated</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Session</Label>
+                <Select
+                  value={formData.session_context}
+                  onValueChange={(value: 'london' | 'newyork' | 'asia' | 'london_ny_overlap' | 'off_hours') => handleInputChange('session_context', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="london">London</SelectItem>
+                    <SelectItem value="newyork">New York</SelectItem>
+                    <SelectItem value="asia">Asia</SelectItem>
+                    <SelectItem value="london_ny_overlap">London/NY Overlap</SelectItem>
+                    <SelectItem value="off_hours">Off Hours</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
           {/* Entry Reason */}
           <div className="space-y-2">
-            <Label htmlFor="entry_reason">Entry Reason *</Label>
+            <Label htmlFor="entry_reason">Entry Reason / Setup Description *</Label>
             <Textarea
               id="entry_reason"
-              placeholder="Explain why you want to enter this trade (support/resistance, patterns, indicators...)"
+              placeholder="Break & retest of key level, liquidity sweep below previous low, displacement candle with FVG..."
               value={formData.entry_reason}
               onChange={(e) => handleInputChange('entry_reason', e.target.value)}
               rows={3}

@@ -19,6 +19,10 @@ export interface TradeSetup {
   take_profit: number;
   timeframe: string;
   risk_percentage: number;
+  // V1 Scanner fields
+  market_structure: 'bullish' | 'bearish' | 'ranging' | 'transition';
+  liquidity_sweep: 'confirmed' | 'anticipated' | 'none';
+  session_context: 'london' | 'newyork' | 'asia' | 'london_ny_overlap' | 'off_hours';
   screenshot_url?: string;
   ai_score?: number;
   ai_feedback?: any;
