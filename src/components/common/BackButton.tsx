@@ -1,19 +1,30 @@
-
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface BackButtonProps {
   className?: string;
+  fallbackPath?: string;
 }
 
-export default function BackButton({ className = '' }: BackButtonProps) {
+export default function BackButton({ className = '', fallbackPath = '/' }: BackButtonProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleBack = () => {
+    // Check if there's history to go back to
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      // No history, go to fallback (home)
+      navigate(fallbackPath);
+    }
+  };
 
   return (
     <Button
-      onClick={() => navigate(-1)}
+      onClick={handleBack}
       variant="ghost"
       className={`flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-accent/40 ${className}`}
     >

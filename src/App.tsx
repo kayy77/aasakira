@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Index from '@/pages/Index';
@@ -7,6 +6,7 @@ import Pricing from '@/pages/Pricing';
 import Affiliate from '@/pages/Affiliate';
 import SetupScanner from '@/pages/SetupScanner';
 import LiveSignals from '@/pages/LiveSignals';
+import ClientPortal from '@/pages/ClientPortal';
 import NotFound from '@/pages/NotFound';
 
 import { Toaster } from "@/components/ui/toaster"
@@ -28,6 +28,7 @@ function App() {
                   <Route path="/journal" element={<Journal />} />
                   <Route path="/setup-scanner" element={<SetupScanner />} />
                   <Route path="/live-signals" element={<LiveSignals />} />
+                  <Route path="/portal" element={<ClientPortal />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/affiliate" element={<Affiliate />} />
                   <Route path="*" element={<NotFound />} />
