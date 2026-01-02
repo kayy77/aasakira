@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     console.log(`🔍 Processing trade update: "${reply_text}" for original message ${reply_to_message_id} in channel ${channel_id}`);
 
-    // Find the active trade that matches this reply
+    // Find the trade that matches this reply (including closed trades - TPs can hit after close)
     const { data: trade, error: findError } = await supabase
       .from('active_trades')
       .select('*')
@@ -61,13 +61,13 @@ Deno.serve(async (req) => {
       .single();
 
     if (findError || !trade) {
-      console.log(`⚠️ No active trade found for original_message_id ${reply_to_message_id}:`, findError?.message);
+      console.log(`⚠️ No trade found for original_message_id ${reply_to_message_id}:`, findError?.message);
       
       const { data: allTrades } = await supabase
         .from('active_trades')
         .select('id, original_message_id, channel_id, pair, status')
         .limit(5);
-      console.log('📋 Current active trades:', JSON.stringify(allTrades, null, 2));
+      console.log('📋 Recent trades:', JSON.stringify(allTrades, null, 2));
       
       return new Response(
         JSON.stringify({ success: false, error: 'No trade found for this message', reply_to_message_id }),
@@ -75,7 +75,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`📊 Found trade: ${trade.id} | ${trade.pair} | Status: ${trade.status}`);
+    // Allow updates on closed trades (e.g., TP4 hit after manual close)
+    const isClosed = trade.status === 'CLOSED' || trade.status === 'STOPPED_OUT';
+    console.log(`📊 Found trade: ${trade.id} | ${trade.pair} | Status: ${trade.status} | Closed: ${isClosed}`);
 
     // Get current take_profits array or build from legacy columns
     let takeProfits: Array<{ level: number; price: number; hit: boolean; pips: number | null }> = 
