@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, TrendingUp, TrendingDown, Clock, History, Target, AlertTriangle } from 'lucide-react';
+import { Check, X, TrendingUp, TrendingDown, Clock, History, Target, AlertTriangle, Trophy } from 'lucide-react';
+import DateFilter, { DateRange } from '@/components/signals/DateFilter';
+import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 
 interface TakeProfit {
   level: number;
@@ -29,6 +31,15 @@ interface ActiveTrade {
   created_at: string;
   closed_at: string | null;
   pips_realized: number | null;
+  outcome: string | null;
+}
+
+interface TradeStats {
+  totalTrades: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  totalPips: number;
 }
 
 function TPCheckbox({ tp }: { tp: TakeProfit }) {
@@ -175,8 +186,17 @@ function TradeCard({ trade, isActive }: { trade: ActiveTrade; isActive: boolean 
 
 export default function LiveTradeSignal() {
   const [activeTrade, setActiveTrade] = useState<ActiveTrade | null>(null);
-  const [tradeHistory, setTradeHistory] = useState<ActiveTrade[]>([]);
+  const [allTrades, setAllTrades] = useState<ActiveTrade[]>([]);
+  const [filteredHistory, setFilteredHistory] = useState<ActiveTrade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+    label: 'This Month'
+  });
+  const [stats, setStats] = useState<TradeStats>({
+    totalTrades: 0, wins: 0, losses: 0, winRate: 0, totalPips: 0
+  });
 
   useEffect(() => {
     fetchTrades();
@@ -202,6 +222,28 @@ export default function LiveTradeSignal() {
     };
   }, []);
 
+  // Filter trades when date range changes
+  useEffect(() => {
+    const filtered = allTrades.filter(trade => {
+      const tradeDate = new Date(trade.closed_at || trade.created_at);
+      return isWithinInterval(tradeDate, { start: dateRange.from, end: dateRange.to });
+    });
+    setFilteredHistory(filtered);
+
+    // Calculate stats for filtered trades
+    const wins = filtered.filter(t => t.outcome === 'WIN').length;
+    const losses = filtered.filter(t => t.outcome === 'LOSS' || t.status === 'STOPPED_OUT').length;
+    const totalPips = filtered.reduce((sum, t) => sum + (t.pips_realized || 0), 0);
+
+    setStats({
+      totalTrades: filtered.length,
+      wins,
+      losses,
+      winRate: filtered.length > 0 ? Math.round((wins / filtered.length) * 100) : 0,
+      totalPips
+    });
+  }, [dateRange, allTrades]);
+
   async function fetchTrades() {
     try {
       const { data: active, error: activeError } = await supabase
@@ -214,7 +256,6 @@ export default function LiveTradeSignal() {
 
       if (activeError) throw activeError;
       
-      // Parse the JSONB take_profits column
       if (active) {
         const parsed = {
           ...active,
@@ -227,23 +268,22 @@ export default function LiveTradeSignal() {
         setActiveTrade(null);
       }
 
+      // Fetch ALL closed trades for filtering
       const { data: history, error: historyError } = await supabase
         .from('active_trades')
         .select('*')
         .neq('status', 'ACTIVE')
-        .order('closed_at', { ascending: false })
-        .limit(10);
+        .order('closed_at', { ascending: false });
 
       if (historyError) throw historyError;
       
-      // Parse take_profits for history items
       const parsedHistory = (history || []).map(trade => ({
         ...trade,
         take_profits: Array.isArray(trade.take_profits)
           ? trade.take_profits as unknown as TakeProfit[]
           : null
       })) as ActiveTrade[];
-      setTradeHistory(parsedHistory);
+      setAllTrades(parsedHistory);
     } catch (error) {
       console.error('Error fetching trades:', error);
     } finally {
@@ -286,20 +326,67 @@ export default function LiveTradeSignal() {
         )}
       </section>
 
+      {/* Stats Summary */}
+      <section>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card className="bg-card/50">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold">{stats.totalTrades}</p>
+              <p className="text-xs text-muted-foreground">Trades</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-card/50">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-green-400">{stats.wins}</p>
+              <p className="text-xs text-muted-foreground">Wins</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-card/50">
+            <CardContent className="p-4 text-center">
+              <p className={`text-2xl font-bold ${stats.winRate >= 60 ? 'text-green-400' : 'text-foreground'}`}>
+                {stats.winRate}%
+              </p>
+              <p className="text-xs text-muted-foreground">Win Rate</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-card/50">
+            <CardContent className="p-4 text-center">
+              <p className={`text-2xl font-bold ${stats.totalPips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {stats.totalPips >= 0 ? '+' : ''}{stats.totalPips}
+              </p>
+              <p className="text-xs text-muted-foreground">Pips</p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       {/* Trade History Section */}
-      {tradeHistory.length > 0 && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <History className="w-5 h-5" />
-            Trade History
-          </h2>
+      <section>
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <History className="w-5 h-5" />
+          Trade History
+        </h2>
+
+        {/* Date Filter */}
+        <div className="mb-6">
+          <DateFilter onRangeChange={setDateRange} currentRange={dateRange} />
+        </div>
+
+        {filteredHistory.length > 0 ? (
           <div className="space-y-4">
-            {tradeHistory.map((trade) => (
+            {filteredHistory.map((trade) => (
               <TradeCard key={trade.id} trade={trade} isActive={false} />
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="py-8 text-center">
+              <History className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+              <p className="text-muted-foreground text-sm">No trades found for this period</p>
+            </CardContent>
+          </Card>
+        )}
+      </section>
     </div>
   );
 }
