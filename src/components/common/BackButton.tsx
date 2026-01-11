@@ -13,11 +13,13 @@ export default function BackButton({ className = '', fallbackPath = '/' }: BackB
   const location = useLocation();
 
   const handleBack = () => {
-    // Check if there's history to go back to
-    if (window.history.length > 2) {
+    // Always try to go back if there's any history
+    // In SPAs, history.length is usually > 1 even on first load
+    // We use state to track if we navigated from within the app
+    if (window.history.state && window.history.state.idx > 0) {
       navigate(-1);
     } else {
-      // No history, go to fallback (home)
+      // No internal navigation history, go to fallback (home)
       navigate(fallbackPath);
     }
   };
