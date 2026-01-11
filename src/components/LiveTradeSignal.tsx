@@ -231,8 +231,10 @@ export default function LiveTradeSignal() {
     setFilteredHistory(filtered);
 
     // Calculate stats for filtered trades
-    const wins = filtered.filter(t => t.outcome === 'WIN').length;
-    const losses = filtered.filter(t => t.outcome === 'LOSS' || t.status === 'STOPPED_OUT').length;
+    // A trade is a WIN if at least TP1 was hit (closed in profit)
+    const wins = filtered.filter(t => t.tp1_hit === true).length;
+    // A trade is a LOSS only if stopped out and no TP was hit
+    const losses = filtered.filter(t => t.status === 'STOPPED_OUT' && !t.tp1_hit).length;
     const totalPips = filtered.reduce((sum, t) => sum + (t.pips_realized || 0), 0);
 
     setStats({
