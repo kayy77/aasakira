@@ -235,7 +235,22 @@ export default function LiveTradeSignal() {
     const wins = filtered.filter(t => t.tp1_hit === true).length;
     // A trade is a LOSS only if stopped out and no TP was hit
     const losses = filtered.filter(t => t.status === 'STOPPED_OUT' && !t.tp1_hit).length;
-    const totalPips = filtered.reduce((sum, t) => sum + (t.pips_realized || 0), 0);
+    
+    // Calculate total pips correctly:
+    // For winning trades: use the HIGHEST TP level hit (not sum)
+    // For losing trades: use the negative pips_realized
+    const totalPips = filtered.reduce((sum, trade) => {
+      // If trade has take_profits array, get max pips from hit TPs
+      if (trade.take_profits && Array.isArray(trade.take_profits)) {
+        const hitTps = trade.take_profits.filter((tp: any) => tp.hit && typeof tp.pips === 'number');
+        if (hitTps.length > 0) {
+          const maxPips = Math.max(...hitTps.map((tp: any) => tp.pips as number));
+          return sum + maxPips;
+        }
+      }
+      // Fallback for losses or trades without take_profits array
+      return sum + (trade.pips_realized || 0);
+    }, 0);
 
     setStats({
       totalTrades: filtered.length,
