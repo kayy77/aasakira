@@ -98,3 +98,9 @@ verify_jwt = false
 
 [functions.send-weekly-results]
 verify_jwt = false
+
+[functions.ctrader-callback]
+verify_jwt = false
+
+[functions.ctrader-sync]
+verify_jwt = false

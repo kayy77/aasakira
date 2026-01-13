@@ -59,19 +59,38 @@ const CTraderConnect = () => {
 
   const checkConnection = async () => {
     try {
-      const { data, error } = await supabase
-        .from('ctrader_connections')
-        .select('*')
-        .eq('user_id', user?.id)
-        .maybeSingle();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setConnection(null);
+        return;
+      }
 
-      if (!error && data) {
-        setConnection(data as CTraderConnection);
+      // Use direct fetch since the table types aren't generated yet
+      const response = await fetch(
+        `https://tnfxxtnfpoavnsabjrii.supabase.co/rest/v1/ctrader_connections?user_id=eq.${user?.id}&select=*`,
+        {
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRuZnh4dG5mcG9hdm5zYWJqcmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzMTIwNzYsImV4cCI6MjA2Nzg4ODA3Nn0.0JbXi8IRlBNr-UEpPEFIQ8Q4ivxrKLpgKxahOrXjNkE',
+            'Authorization': `Bearer ${session.access_token}`,
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        console.error('Failed to fetch connection:', response.status);
+        setConnection(null);
+        return;
+      }
+
+      const jsonData = await response.json();
+      if (jsonData && jsonData.length > 0) {
+        setConnection(jsonData[0] as CTraderConnection);
       } else {
         setConnection(null);
       }
     } catch (err) {
       console.error('Error checking connection:', err);
+      setConnection(null);
     } finally {
       setLoading(false);
     }
@@ -138,12 +157,20 @@ const CTraderConnect = () => {
   const disconnect = async () => {
     setDisconnecting(true);
     try {
-      const { error } = await supabase
-        .from('ctrader_connections')
-        .delete()
-        .eq('user_id', user?.id);
+      // Use direct fetch since types aren't generated yet
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(
+        `https://tnfxxtnfpoavnsabjrii.supabase.co/rest/v1/ctrader_connections?user_id=eq.${user?.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRuZnh4dG5mcG9hdm5zYWJqcmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzMTIwNzYsImV4cCI6MjA2Nzg4ODA3Nn0.0JbXi8IRlBNr-UEpPEFIQ8Q4ivxrKLpgKxahOrXjNkE',
+            'Authorization': `Bearer ${session?.access_token}`,
+          }
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to disconnect');
 
       setConnection(null);
       toast({
