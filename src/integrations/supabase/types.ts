@@ -261,6 +261,45 @@ export type Database = {
           },
         ]
       }
+      ctrader_connections: {
+        Row: {
+          access_token: string
+          accounts: Json | null
+          connected_at: string
+          created_at: string
+          expires_at: string
+          id: string
+          last_sync: string | null
+          refresh_token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          accounts?: Json | null
+          connected_at?: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          last_sync?: string | null
+          refresh_token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          accounts?: Json | null
+          connected_at?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          last_sync?: string | null
+          refresh_token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       data_source_heartbeat: {
         Row: {
           created_at: string
