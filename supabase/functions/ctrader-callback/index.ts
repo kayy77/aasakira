@@ -21,9 +21,11 @@ serve(async (req) => {
 
   console.log('🔵 cTrader OAuth callback received:', { code: !!code, state, error });
 
+  const origin = 'https://aasakira.uk';
+
   if (error) {
     console.error('❌ OAuth error:', error, errorDescription);
-    const redirectUrl = `https://aasakira.uk/journal?ctrader_error=${encodeURIComponent(errorDescription || error)}`;
+    const redirectUrl = `${origin}/journal?ctrader_error=${encodeURIComponent(errorDescription || error)}`;
     return new Response(null, {
       status: 302,
       headers: { ...corsHeaders, 'Location': redirectUrl }
@@ -32,7 +34,7 @@ serve(async (req) => {
 
   if (!code || !state) {
     console.error('❌ Missing code or state parameter');
-    const redirectUrl = `https://aasakira.uk/journal?ctrader_error=missing_parameters`;
+    const redirectUrl = `${origin}/journal?ctrader_error=missing_parameters`;
     return new Response(null, {
       status: 302,
       headers: { ...corsHeaders, 'Location': redirectUrl }
@@ -42,7 +44,7 @@ serve(async (req) => {
   try {
     const clientId = Deno.env.get('CTRADER_CLIENT_ID');
     const clientSecret = Deno.env.get('CTRADER_CLIENT_SECRET');
-    const redirectUri = 'https://aasakira.uk/api/ctrader/callback';
+    const redirectUri = 'https://tnfxxtnfpoavnsabjrii.supabase.co/functions/v1/ctrader-callback';
 
     if (!clientId || !clientSecret) {
       throw new Error('cTrader credentials not configured');
@@ -120,7 +122,9 @@ serve(async (req) => {
     console.log('✅ Connection stored successfully');
 
     // Redirect back to journal with success
-    const successUrl = `https://aasakira.uk/journal?ctrader_connected=true&accounts=${accountsData.length || 0}`;
+    // Get the origin from the request or use default
+    const origin = 'https://aasakira.uk';
+    const successUrl = `${origin}/journal?ctrader_connected=true&accounts=${accountsData.length || 0}`;
     return new Response(null, {
       status: 302,
       headers: { ...corsHeaders, 'Location': successUrl }
@@ -128,7 +132,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Error in cTrader callback:', error);
-    const errorUrl = `https://aasakira.uk/journal?ctrader_error=${encodeURIComponent(error.message)}`;
+    const origin = 'https://aasakira.uk';
+    const errorUrl = `${origin}/journal?ctrader_error=${encodeURIComponent(error.message)}`;
     return new Response(null, {
       status: 302,
       headers: { ...corsHeaders, 'Location': errorUrl }

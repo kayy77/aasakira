@@ -28,6 +28,7 @@ import { SetupClustering } from '@/components/journal/SetupClustering';
 import SmartScreenshotJournal from '@/components/journal/SmartScreenshotJournal';
 import ChartVisualizer from '@/components/journal/ChartVisualizer';
 import WeeklySummary from '@/components/journal/WeeklySummary';
+import CTraderConnect from '@/components/journal/CTraderConnect';
 
 interface JournalEntry {
   id: string;
@@ -1227,6 +1228,9 @@ const Journal = () => {
                   </CardContent>
                 </Card>
               )}
+
+              {/* cTrader Integration */}
+              <CTraderConnect />
 
               {/* Pattern Analysis Section */}
               {activeCategory === 'patterns' && isPremium && (
