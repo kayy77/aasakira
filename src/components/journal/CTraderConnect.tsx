@@ -22,6 +22,7 @@ interface CTraderConnectProps {
 
 const CTraderConnect = ({ onTradesSynced }: CTraderConnectProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [connection, setConnection] = useState<CTraderConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
