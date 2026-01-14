@@ -1230,8 +1230,7 @@ const Journal = () => {
               )}
 
               {/* cTrader Integration */}
-              <CTraderConnect />
-
+              <CTraderConnect onTradesSynced={loadEntries} />
               {/* Pattern Analysis Section */}
               {activeCategory === 'patterns' && isPremium && (
                 <div className="lg:col-span-5 space-y-6">

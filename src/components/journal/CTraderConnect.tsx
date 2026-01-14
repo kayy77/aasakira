@@ -16,9 +16,12 @@ interface CTraderConnection {
   expires_at: string;
 }
 
-const CTraderConnect = () => {
+interface CTraderConnectProps {
+  onTradesSynced?: () => void;
+}
+
+const CTraderConnect = ({ onTradesSynced }: CTraderConnectProps) => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [connection, setConnection] = useState<CTraderConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -43,6 +46,12 @@ const CTraderConnect = () => {
         description: `Successfully linked ${accounts || 'your'} trading account(s).`,
       });
       checkConnection();
+
+      // Auto-sync after connecting so trades immediately appear in the journal
+      setTimeout(() => {
+        syncTrades();
+      }, 300);
+
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     }
@@ -109,7 +118,7 @@ const CTraderConnect = () => {
     try {
       // Fetch the client ID from edge function
       const { data, error } = await supabase.functions.invoke('ctrader-auth-url', {
-        body: { userId: user.id }
+        body: { userId: user.id, redirectTo: window.location.origin }
       });
 
       if (error) throw error;
@@ -149,6 +158,7 @@ const CTraderConnect = () => {
 
       // Refresh connection to get updated last_sync
       checkConnection();
+      onTradesSynced?.();
 
     } catch (error: any) {
       console.error('Sync error:', error);
