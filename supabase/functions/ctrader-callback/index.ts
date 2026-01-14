@@ -7,6 +7,39 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
+const FALLBACK_ORIGIN = 'https://aasakira.lovable.app';
+const ALLOWED_ORIGINS = new Set<string>([
+  FALLBACK_ORIGIN,
+  'https://id-preview--57fa0788-a98e-40af-8b0d-0f179f03c633.lovable.app',
+]);
+
+function fromBase64Url(input: string) {
+  const pad = input.length % 4 === 0 ? '' : '='.repeat(4 - (input.length % 4));
+  const b64 = input.replace(/-/g, '+').replace(/_/g, '/') + pad;
+  return atob(b64);
+}
+
+function parseState(stateRaw: string | null): { userId: string | null; origin: string } {
+  if (!stateRaw) return { userId: null, origin: FALLBACK_ORIGIN };
+
+  // Backwards compatible: state used to be user_id
+  let userId: string | null = stateRaw;
+  let origin = FALLBACK_ORIGIN;
+
+  try {
+    const decoded = fromBase64Url(stateRaw);
+    const parsed = JSON.parse(decoded);
+    if (parsed?.uid && typeof parsed.uid === 'string') userId = parsed.uid;
+    if (parsed?.r && typeof parsed.r === 'string' && ALLOWED_ORIGINS.has(parsed.r)) {
+      origin = parsed.r;
+    }
+  } catch {
+    // ignore
+  }
+
+  return { userId, origin };
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -15,29 +48,29 @@ serve(async (req) => {
 
   const url = new URL(req.url);
   const code = url.searchParams.get('code');
-  const state = url.searchParams.get('state'); // Contains user_id
+  const stateRaw = url.searchParams.get('state');
   const error = url.searchParams.get('error');
   const errorDescription = url.searchParams.get('error_description');
 
-  console.log('🔵 cTrader OAuth callback received:', { code: !!code, state, error });
+  const { userId, origin } = parseState(stateRaw);
 
-  const origin = 'https://aasakira.uk';
+  console.log('🔵 cTrader OAuth callback received:', { code: !!code, hasState: !!stateRaw, error });
 
   if (error) {
     console.error('❌ OAuth error:', error, errorDescription);
     const redirectUrl = `${origin}/journal?ctrader_error=${encodeURIComponent(errorDescription || error)}`;
     return new Response(null, {
       status: 302,
-      headers: { ...corsHeaders, 'Location': redirectUrl }
+      headers: { ...corsHeaders, 'Location': redirectUrl },
     });
   }
 
-  if (!code || !state) {
+  if (!code || !userId) {
     console.error('❌ Missing code or state parameter');
     const redirectUrl = `${origin}/journal?ctrader_error=missing_parameters`;
     return new Response(null, {
       status: 302,
-      headers: { ...corsHeaders, 'Location': redirectUrl }
+      headers: { ...corsHeaders, 'Location': redirectUrl },
     });
   }
 
@@ -54,12 +87,10 @@ serve(async (req) => {
     console.log('🔄 Exchanging code for token...');
     const tokenResponse = await fetch('https://openapi.ctrader.com/apps/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        code: code,
+        code,
         redirect_uri: redirectUri,
         client_id: clientId,
         client_secret: clientSecret,
@@ -82,9 +113,7 @@ serve(async (req) => {
     // Fetch trading accounts
     console.log('🔄 Fetching trading accounts...');
     const accountsResponse = await fetch('https://api.spotware.com/connect/tradingaccounts', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
+      headers: { 'Authorization': `Bearer ${accessToken}` },
     });
 
     if (!accountsResponse.ok) {
@@ -94,7 +123,8 @@ serve(async (req) => {
     }
 
     const accountsData = await accountsResponse.json();
-    console.log('✅ Accounts fetched:', accountsData);
+    const accountsCount = Array.isArray(accountsData) ? accountsData.length : (accountsData?.length || 0);
+    console.log('✅ Accounts fetched:', accountsCount);
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -105,7 +135,7 @@ serve(async (req) => {
     const { error: insertError } = await supabase
       .from('ctrader_connections')
       .upsert({
-        user_id: state,
+        user_id: userId,
         access_token: accessToken,
         refresh_token: refreshToken,
         expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
@@ -121,22 +151,17 @@ serve(async (req) => {
 
     console.log('✅ Connection stored successfully');
 
-    // Redirect back to journal with success
-    // Get the origin from the request or use default
-    const origin = 'https://aasakira.uk';
-    const successUrl = `${origin}/journal?ctrader_connected=true&accounts=${accountsData.length || 0}`;
+    const successUrl = `${origin}/journal?ctrader_connected=true&accounts=${accountsCount}`;
     return new Response(null, {
       status: 302,
-      headers: { ...corsHeaders, 'Location': successUrl }
+      headers: { ...corsHeaders, 'Location': successUrl },
     });
-
   } catch (error) {
     console.error('❌ Error in cTrader callback:', error);
-    const origin = 'https://aasakira.uk';
     const errorUrl = `${origin}/journal?ctrader_error=${encodeURIComponent(error.message)}`;
     return new Response(null, {
       status: 302,
-      headers: { ...corsHeaders, 'Location': errorUrl }
+      headers: { ...corsHeaders, 'Location': errorUrl },
     });
   }
 });
