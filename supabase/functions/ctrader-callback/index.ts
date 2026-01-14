@@ -8,10 +8,24 @@ const corsHeaders = {
 };
 
 const FALLBACK_ORIGIN = 'https://aasakira.lovable.app';
-const ALLOWED_ORIGINS = new Set<string>([
-  FALLBACK_ORIGIN,
-  'https://id-preview--57fa0788-a98e-40af-8b0d-0f179f03c633.lovable.app',
-]);
+
+function isAllowedRedirectOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    const host = url.hostname;
+
+    // Allow:
+    // - production domain
+    // - Lovable preview domains
+    if (host === 'aasakira.lovable.app') return true;
+    if (host.endsWith('.lovable.app')) return true;
+    if (host.endsWith('.lovableproject.com')) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 function fromBase64Url(input: string) {
   const pad = input.length % 4 === 0 ? '' : '='.repeat(4 - (input.length % 4));
@@ -29,9 +43,11 @@ function parseState(stateRaw: string | null): { userId: string | null; origin: s
   try {
     const decoded = fromBase64Url(stateRaw);
     const parsed = JSON.parse(decoded);
+
     if (parsed?.uid && typeof parsed.uid === 'string') userId = parsed.uid;
-    if (parsed?.r && typeof parsed.r === 'string' && ALLOWED_ORIGINS.has(parsed.r)) {
-      origin = parsed.r;
+
+    if (parsed?.r && typeof parsed.r === 'string' && isAllowedRedirectOrigin(parsed.r)) {
+      origin = new URL(parsed.r).origin;
     }
   } catch {
     // ignore
