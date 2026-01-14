@@ -96,7 +96,7 @@ const CTraderConnect = () => {
     }
   };
 
-  const initiateConnect = () => {
+  const initiateConnect = async () => {
     if (!user) {
       toast({
         title: "Login Required",
@@ -106,16 +106,24 @@ const CTraderConnect = () => {
       return;
     }
 
-    // Build OAuth URL
-    const clientId = '20325_ODH9oO5XpdCvsgzOcGwyMrPphJkknF8brHZgv1whNsnFkVBPUB';
-    const redirectUri = encodeURIComponent('https://tnfxxtnfpoavnsabjrii.supabase.co/functions/v1/ctrader-callback');
-    const scope = encodeURIComponent('trading accounts');
-    const state = user.id;
+    try {
+      // Fetch the client ID from edge function
+      const { data, error } = await supabase.functions.invoke('ctrader-auth-url', {
+        body: { userId: user.id }
+      });
 
-    const authUrl = `https://openapi.ctrader.com/apps/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}`;
-    
-    console.log('🔗 Redirecting to cTrader OAuth:', authUrl);
-    window.location.href = authUrl;
+      if (error) throw error;
+      
+      console.log('🔗 Redirecting to cTrader OAuth:', data.authUrl);
+      window.location.href = data.authUrl;
+    } catch (err: any) {
+      console.error('Failed to get auth URL:', err);
+      toast({
+        title: "Connection Error",
+        description: err.message || "Failed to initiate cTrader connection",
+        variant: "destructive"
+      });
+    }
   };
 
   const syncTrades = async () => {
@@ -284,9 +292,9 @@ const CTraderConnect = () => {
         <p className="text-sm text-muted-foreground">
           Link your cTrader account to automatically sync your trades to your journal.
         </p>
-        <Button onClick={initiateConnect} className="w-full">
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Connect cTrader Account
+        <Button onClick={initiateConnect} className="w-full text-sm">
+          <ExternalLink className="h-4 w-4 mr-2 shrink-0" />
+          <span className="truncate">Connect cTrader</span>
         </Button>
       </CardContent>
     </Card>
