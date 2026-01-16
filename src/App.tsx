@@ -7,6 +7,7 @@ import Affiliate from '@/pages/Affiliate';
 import SetupScanner from '@/pages/SetupScanner';
 import LiveSignals from '@/pages/LiveSignals';
 import ClientPortal from '@/pages/ClientPortal';
+import UserDashboard from '@/pages/UserDashboard';
 import NotFound from '@/pages/NotFound';
 
 import { Toaster } from "@/components/ui/toaster"
@@ -29,6 +30,7 @@ function App() {
                   <Route path="/setup-scanner" element={<SetupScanner />} />
                   <Route path="/live-signals" element={<LiveSignals />} />
                   <Route path="/portal" element={<ClientPortal />} />
+                  <Route path="/dashboard" element={<UserDashboard />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/affiliate" element={<Affiliate />} />
                   <Route path="*" element={<NotFound />} />
