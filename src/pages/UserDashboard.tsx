@@ -11,6 +11,7 @@ import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import RecentActivityFeed from '@/components/dashboard/RecentActivityFeed';
 import AffiliateSection from '@/components/dashboard/AffiliateSection';
 import GrowthOpportunities from '@/components/dashboard/GrowthOpportunities';
+import CTraderDashboard from '@/components/dashboard/CTraderDashboard';
 
 interface DashboardStats {
   activeTrades: number;
@@ -142,6 +143,9 @@ const UserDashboard = () => {
           winRate={stats.winRate}
           planStatus={planStatus}
         />
+
+        {/* cTrader Account Integration */}
+        <CTraderDashboard />
 
         {/* Performance & Activity Row */}
         <div className="grid lg:grid-cols-5 gap-6">
