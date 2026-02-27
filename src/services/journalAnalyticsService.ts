@@ -70,7 +70,7 @@ export class JournalAnalyticsService {
       return (pips * pipValue) - fees;
     };
 
-    const wins = closedTrades.filter(t => (t.result_pips || 0) > 0);
+    const wins = closedTrades.filter(t => (t.result_pips || 0) >= 0);
     const losses = closedTrades.filter(t => (t.result_pips || 0) < 0);
     
     const totalPnL = closedTrades.reduce((sum, t) => sum + calculateUSDPnL(t), 0);
@@ -187,7 +187,7 @@ export class JournalAnalyticsService {
 
     // Calculate current streak (from most recent trades backwards)
     for (let i = sortedTrades.length - 1; i >= 0; i--) {
-      const isWin = (sortedTrades[i].result_pips || 0) > 0;
+      const isWin = (sortedTrades[i].result_pips || 0) >= 0;
       
       if (i === sortedTrades.length - 1) {
         currentStreak = isWin ? 1 : -1;
@@ -203,7 +203,7 @@ export class JournalAnalyticsService {
 
     // Calculate longest win streak
     for (const trade of sortedTrades) {
-      const isWin = (trade.result_pips || 0) > 0;
+      const isWin = (trade.result_pips || 0) >= 0;
       
       if (isWin) {
         tempStreak++;
