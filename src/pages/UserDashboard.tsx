@@ -63,7 +63,7 @@ const UserDashboard = () => {
 
       const totalTrades = journalData?.length || 0;
       const closedTrades = journalData?.filter(t => t.status === 'closed') || [];
-      const wins = closedTrades.filter(t => (t.result_pips || 0) > 0).length;
+      const wins = closedTrades.filter(t => (t.result_pips || 0) >= 0).length;
       const winRate = closedTrades.length > 0 
         ? Math.round((wins / closedTrades.length) * 100) 
         : null;

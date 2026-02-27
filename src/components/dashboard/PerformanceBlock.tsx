@@ -95,6 +95,7 @@ const PerformanceBlock: React.FC = () => {
           losses++;
         } else {
           breakeven++;
+          wins++; // BE counted as wins
         }
 
         // Calculate R if we have target_sl data
