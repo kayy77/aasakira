@@ -71,17 +71,21 @@ export default function WeeklyResults() {
         totalPips += tradePips;
 
         const outcome = trade.outcome?.toUpperCase();
-        if (outcome === 'WIN') wins++;
-        else if (outcome === 'LOSS') losses++;
-        else if (outcome === 'PARTIAL') {
+        const isStoppedOut = trade.status === 'STOPPED_OUT';
+        
+        // A trade is a LOSS only if: outcome is explicitly 'LOSS', OR stopped out without any TP hit
+        const hasAnyTpHit = Array.isArray(trade.take_profits) && trade.take_profits.some((tp: any) => tp.hit);
+        
+        if (outcome === 'LOSS' || (isStoppedOut && !hasAnyTpHit)) {
+          losses++;
+        } else if (outcome === 'PARTIAL') {
           partials++;
-          if (tradePips > 0) wins++;
-          else losses++;
-        } else if (outcome === 'BE') breakEven++;
-        else {
-          if (tradePips > 0) wins++;
-          else if (tradePips < 0) losses++;
-          else breakEven++;
+          wins++; // Partials count as wins (didn't hit SL)
+        } else if (outcome === 'BE') {
+          breakEven++;
+          wins++; // Break-even counts as win (didn't hit SL)
+        } else {
+          wins++; // Everything else that didn't hit SL is a win
         }
       });
 
