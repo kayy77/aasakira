@@ -9,7 +9,6 @@ import {
   Plane,
   CheckCircle2,
   ArrowRight,
-  BarChart3,
   Clock,
   Shield,
   Wallet,
@@ -41,31 +40,31 @@ const Affiliate = () => {
         <div className="max-w-5xl mx-auto">
           
           {/* Hero Section */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-400 p-8 md:p-14 mb-12 animate-fade-in">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-yellow-300 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
-            </div>
+          <div className="relative overflow-hidden rounded-2xl border border-border/50 p-8 md:p-14 mb-12 animate-fade-in" style={{ background: 'linear-gradient(135deg, hsl(0 0% 8%), hsl(0 0% 5%))' }}>
+            {/* Sakura glow decorations */}
+            <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-[120px] opacity-20" style={{ background: 'rgba(255, 174, 225, 0.4)' }} />
+            <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full blur-[100px] opacity-15" style={{ background: 'rgba(255, 174, 225, 0.3)' }} />
             
             <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
               <div className="flex-1 text-center lg:text-left space-y-5">
-                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium text-white">
-                  <Sparkles className="h-4 w-4" />
+                <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium text-foreground border border-border/50 bg-secondary/50 backdrop-blur-sm">
+                  <Sparkles className="h-4 w-4" style={{ color: 'rgba(255, 174, 225, 0.9)' }} />
                   Affiliate Programme
                 </div>
-                <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight">
-                  Earn Up To <span className="text-yellow-300">£12 Per Trade</span>
+                <h1 className="text-3xl md:text-5xl font-bold text-foreground leading-tight font-zen-maru">
+                  Earn Up To <span style={{ color: 'rgba(255, 174, 225, 0.9)' }}>£12 Per Trade</span>
                   <br />Live Life On Your Terms
                 </h1>
-                <p className="text-emerald-50 text-lg max-w-xl">
+                <p className="text-muted-foreground text-lg max-w-xl">
                   Join our exclusive affiliate training where we teach you how to build 
-                  <strong className="text-white"> 4-6 figures/month</strong> in passive income. 
+                  <strong className="text-foreground"> 4-6 figures/month</strong> in passive income. 
                   Travel the world while earning.
                 </p>
                 <Button 
                   onClick={handleJoinTraining}
                   size="lg"
-                  className="bg-white text-emerald-700 hover:bg-yellow-50 font-bold text-lg px-8 py-6 rounded-xl shadow-lg shadow-black/20 hover:shadow-xl transition-all hover:scale-105"
+                  className="glow-soft font-bold text-lg px-8 py-6 rounded-xl transition-all hover:scale-105"
+                  style={{ background: 'rgba(255, 174, 225, 0.15)', border: '1px solid rgba(255, 174, 225, 0.3)', color: 'rgba(255, 174, 225, 0.95)' }}
                 >
                   <ExternalLink className="h-5 w-5 mr-2" />
                   Join Affiliate Training
@@ -75,25 +74,25 @@ const Affiliate = () => {
 
               {/* Earnings Visual */}
               <div className="shrink-0">
-                <div className="bg-white/15 backdrop-blur-md rounded-2xl p-6 border border-white/20 space-y-4 min-w-[260px]">
-                  <p className="text-emerald-100 text-sm font-medium text-center">Potential Monthly Earnings</p>
+                <div className="rounded-2xl p-6 border space-y-4 min-w-[260px] backdrop-blur-md" style={{ background: 'rgba(255, 174, 225, 0.05)', borderColor: 'rgba(255, 174, 225, 0.15)' }}>
+                  <p className="text-muted-foreground text-sm font-medium text-center">Potential Monthly Earnings</p>
                   <div className="text-center">
-                    <span className="text-4xl font-bold text-white">£3,600</span>
-                    <span className="text-emerald-200 text-sm block mt-1">300 referral trades/month</span>
+                    <span className="text-4xl font-bold text-foreground">£3,600</span>
+                    <span className="text-muted-foreground text-sm block mt-1">300 referral trades/month</span>
                   </div>
-                  <div className="h-px bg-white/20" />
+                  <div className="h-px bg-border" />
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between text-emerald-100">
+                    <div className="flex justify-between text-muted-foreground">
                       <span>Per trade</span>
-                      <span className="font-semibold text-white">£12</span>
+                      <span className="font-semibold text-foreground">£12</span>
                     </div>
-                    <div className="flex justify-between text-emerald-100">
+                    <div className="flex justify-between text-muted-foreground">
                       <span>Recurring</span>
-                      <span className="font-semibold text-yellow-300">✓ Lifetime</span>
+                      <span className="font-semibold" style={{ color: 'rgba(255, 174, 225, 0.9)' }}>✓ Lifetime</span>
                     </div>
-                    <div className="flex justify-between text-emerald-100">
+                    <div className="flex justify-between text-muted-foreground">
                       <span>Payouts</span>
-                      <span className="font-semibold text-white">Weekly</span>
+                      <span className="font-semibold text-foreground">Weekly</span>
                     </div>
                   </div>
                 </div>
@@ -108,28 +107,28 @@ const Affiliate = () => {
               <span className="text-lg font-semibold text-foreground">Up to £12 Per Trade</span>
             </div>
             <div className="flex items-center justify-center gap-3 bg-secondary/50 border border-border rounded-xl p-4">
-              <Plane className="h-6 w-6 text-chart-2" />
+              <Plane className="h-6 w-6 text-chart-1" />
               <span className="text-lg font-semibold text-foreground">Freedom Lifestyle</span>
             </div>
             <div className="flex items-center justify-center gap-3 bg-secondary/50 border border-border rounded-xl p-4">
-              <Clock className="h-6 w-6 text-chart-1" />
+              <Clock className="h-6 w-6 text-chart-2" />
               <span className="text-lg font-semibold text-foreground">Weekly Payouts</span>
             </div>
           </div>
 
           {/* Benefits Grid */}
           <div className="mb-16 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-            <h2 className="text-2xl font-bold text-foreground text-center mb-8">Why Become an Aasakira Affiliate?</h2>
+            <h2 className="text-2xl font-bold text-foreground text-center mb-8 font-zen-maru">Why Become an Aasakira Affiliate?</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { icon: DollarSign, title: '£12 Per Trade', desc: 'Earn every time your referrals trade. No caps, no limits.', color: 'text-yellow-400', bg: 'from-yellow-500/20 to-amber-500/10', border: 'border-yellow-500/20' },
-                { icon: TrendingUp, title: '4-6 Figures/Month', desc: 'Learn our proven system to scale your affiliate income fast.', color: 'text-emerald-400', bg: 'from-emerald-500/20 to-green-500/10', border: 'border-emerald-500/20' },
-                { icon: Plane, title: 'Freedom Lifestyle', desc: 'Work from anywhere. Travel the world with passive income.', color: 'text-sky-400', bg: 'from-sky-500/20 to-blue-500/10', border: 'border-sky-500/20' },
-                { icon: Globe, title: 'Global Community', desc: 'Join a network of affiliates all building financial freedom.', color: 'text-purple-400', bg: 'from-purple-500/20 to-violet-500/10', border: 'border-purple-500/20' },
+                { icon: DollarSign, title: '£12 Per Trade', desc: 'Earn every time your referrals trade. No caps, no limits.' },
+                { icon: TrendingUp, title: '4-6 Figures/Month', desc: 'Learn our proven system to scale your affiliate income fast.' },
+                { icon: Plane, title: 'Freedom Lifestyle', desc: 'Work from anywhere. Travel the world with passive income.' },
+                { icon: Globe, title: 'Global Community', desc: 'Join a network of affiliates all building financial freedom.' },
               ].map((item, i) => (
-                <Card key={i} className={`bg-gradient-to-br ${item.bg} ${item.border} hover:scale-[1.02] transition-transform`}>
+                <Card key={i} className="bg-secondary/30 border-border/50 hover:border-border transition-all hover:scale-[1.02]">
                   <CardContent className="p-5 space-y-3">
-                    <div className={`p-3 rounded-xl bg-background/50 w-fit ${item.color}`}>
+                    <div className="p-3 rounded-xl bg-secondary/50 w-fit" style={{ color: 'rgba(255, 174, 225, 0.8)' }}>
                       <item.icon className="h-6 w-6" />
                     </div>
                     <h3 className="font-semibold text-foreground">{item.title}</h3>
@@ -160,7 +159,7 @@ const Affiliate = () => {
                     <div className="text-sm text-muted-foreground">Active Traders</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-chart-2 mb-1">£1,240</div>
+                    <div className="text-3xl font-bold mb-1" style={{ color: 'rgba(255, 174, 225, 0.9)' }}>£1,240</div>
                     <div className="text-sm text-muted-foreground">Monthly Earnings</div>
                   </div>
                   <div className="text-center">
@@ -174,7 +173,7 @@ const Affiliate = () => {
 
           {/* How It Works */}
           <div className="mb-16 animate-slide-up" style={{ animationDelay: '0.3s' }}>
-            <h2 className="text-2xl font-bold text-foreground text-center mb-8">How It Works</h2>
+            <h2 className="text-2xl font-bold text-foreground text-center mb-8 font-zen-maru">How It Works</h2>
             <div className="grid md:grid-cols-3 gap-6">
               {[
                 { step: '1', title: 'Join Our Training', desc: 'Join our private Telegram where we train you step-by-step on building your affiliate income.' },
@@ -182,7 +181,7 @@ const Affiliate = () => {
                 { step: '3', title: 'Earn £12 Per Trade', desc: 'Earn up to £12 for every trade your referrals place. Passive, recurring income — weekly payouts.' },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-4 p-6 bg-card border border-border rounded-xl">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-lg">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg" style={{ background: 'rgba(255, 174, 225, 0.15)', color: 'rgba(255, 174, 225, 0.9)' }}>
                     {item.step}
                   </div>
                   <div>
@@ -205,41 +204,28 @@ const Affiliate = () => {
                 <div className="p-6 relative">
                   <div className="blur-sm pointer-events-none select-none">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                      <div className="bg-secondary/50 rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                          <MousePointer className="h-4 w-4" />
-                          <span className="text-xs">Clicks</span>
+                      {[
+                        { icon: MousePointer, label: 'Clicks', value: '1,247' },
+                        { icon: UserPlus, label: 'Signups', value: '89' },
+                        { icon: Eye, label: 'Active', value: '42' },
+                        { icon: Wallet, label: 'Earnings', value: '£2,840' },
+                      ].map((item, i) => (
+                        <div key={i} className="bg-secondary/50 rounded-lg p-4">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                            <item.icon className="h-4 w-4" />
+                            <span className="text-xs">{item.label}</span>
+                          </div>
+                          <div className="text-2xl font-bold text-foreground">{item.value}</div>
                         </div>
-                        <div className="text-2xl font-bold text-foreground">1,247</div>
-                      </div>
-                      <div className="bg-secondary/50 rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                          <UserPlus className="h-4 w-4" />
-                          <span className="text-xs">Signups</span>
-                        </div>
-                        <div className="text-2xl font-bold text-foreground">89</div>
-                      </div>
-                      <div className="bg-secondary/50 rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                          <Eye className="h-4 w-4" />
-                          <span className="text-xs">Active</span>
-                        </div>
-                        <div className="text-2xl font-bold text-foreground">42</div>
-                      </div>
-                      <div className="bg-secondary/50 rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                          <Wallet className="h-4 w-4" />
-                          <span className="text-xs">Earnings</span>
-                        </div>
-                        <div className="text-2xl font-bold text-chart-2">£2,840</div>
-                      </div>
+                      ))}
                     </div>
                     <div className="h-32 bg-secondary/30 rounded-lg"></div>
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-[2px]">
                     <Button 
                       size="lg"
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                      className="glow-soft"
+                      style={{ background: 'rgba(255, 174, 225, 0.15)', border: '1px solid rgba(255, 174, 225, 0.3)', color: 'rgba(255, 174, 225, 0.95)' }}
                       onClick={handleJoinTraining}
                     >
                       Unlock Your Dashboard
@@ -253,34 +239,29 @@ const Affiliate = () => {
 
           {/* Trust Badges */}
           <div className="flex flex-wrap justify-center gap-6 mb-16 animate-slide-up" style={{ animationDelay: '0.5s' }}>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <CheckCircle2 className="h-5 w-5 text-chart-2" />
-              <span className="text-sm">Real-time tracking</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <CheckCircle2 className="h-5 w-5 text-chart-2" />
-              <span className="text-sm">No minimum payouts</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <CheckCircle2 className="h-5 w-5 text-chart-2" />
-              <span className="text-sm">Free training provided</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Shield className="h-5 w-5 text-chart-2" />
-              <span className="text-sm">Trusted by 100+ affiliates</span>
-            </div>
+            {[
+              { icon: CheckCircle2, label: 'Real-time tracking' },
+              { icon: CheckCircle2, label: 'No minimum payouts' },
+              { icon: CheckCircle2, label: 'Free training provided' },
+              { icon: Shield, label: 'Trusted by 100+ affiliates' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-2 text-muted-foreground">
+                <item.icon className="h-5 w-5" style={{ color: 'rgba(255, 174, 225, 0.7)' }} />
+                <span className="text-sm">{item.label}</span>
+              </div>
+            ))}
           </div>
 
           {/* Final CTA */}
-          <Card className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 border-emerald-500/30 overflow-hidden relative animate-slide-up" style={{ animationDelay: '0.6s' }}>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl" />
+          <Card className="border-border/50 overflow-hidden relative animate-slide-up" style={{ animationDelay: '0.6s', background: 'linear-gradient(135deg, hsl(0 0% 6%), hsl(0 0% 4%))' }}>
+            <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-[80px] opacity-20" style={{ background: 'rgba(255, 174, 225, 0.4)' }} />
             <CardContent className="p-8 relative z-10 text-center">
               <div className="flex justify-center mb-4">
-                <div className="p-4 rounded-2xl bg-emerald-500/20">
-                  <Zap className="h-8 w-8 text-emerald-400" />
+                <div className="p-4 rounded-2xl" style={{ background: 'rgba(255, 174, 225, 0.1)' }}>
+                  <Zap className="h-8 w-8" style={{ color: 'rgba(255, 174, 225, 0.8)' }} />
                 </div>
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Ready to Start Earning?</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-2 font-zen-maru">Ready to Start Earning?</h2>
               <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
                 Join our private Telegram where we'll train you step-by-step on how to earn 4-6 figures/month as an Aasakira affiliate. 
                 Travel the world, live free, build passive income.
@@ -288,7 +269,8 @@ const Affiliate = () => {
               <Button 
                 onClick={handleJoinTraining}
                 size="lg"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-8 py-6 rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all hover:scale-105 text-lg"
+                className="glow-soft font-semibold px-8 py-6 rounded-xl transition-all hover:scale-105 text-lg"
+                style={{ background: 'rgba(255, 174, 225, 0.15)', border: '1px solid rgba(255, 174, 225, 0.3)', color: 'rgba(255, 174, 225, 0.95)' }}
               >
                 <ExternalLink className="h-5 w-5 mr-2" />
                 Join Affiliate Training on Telegram
