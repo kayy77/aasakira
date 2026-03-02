@@ -1,237 +1,172 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Copy, Check, MousePointerClick, Users, UserCheck, DollarSign } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
+import { 
+  Plane, 
+  DollarSign, 
+  TrendingUp, 
+  Globe, 
+  Sparkles, 
+  ArrowRight,
+  ExternalLink,
+  Zap
+} from 'lucide-react';
 
-interface AffiliateSummaryCardProps {
-  label: string;
-  value: string | number;
-  icon: React.ReactNode;
-}
+const AFFILIATE_TELEGRAM = 'https://t.me/+CEg8DUQuPXQ5MWRk';
 
-const AffiliateSummaryCard = ({ label, value, icon }: AffiliateSummaryCardProps) => (
-  <Card className="bg-muted/30 border-border/30">
-    <CardContent className="p-4">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-          {icon}
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold text-foreground">{value}</p>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-interface AffiliateStats {
-  clicks: number;
-  signups: number;
-  activeReferrals: number;
-  earnings: number;
-}
-
-interface ReferralActivity {
-  id: string;
-  email: string;
-  status: 'pending' | 'active' | 'converted';
-  joinedAt: Date;
-  earnings: number;
-}
-
-interface AffiliateSectionProps {
-  affiliateLink?: string;
-  stats?: AffiliateStats;
-  referrals?: ReferralActivity[];
-}
-
-// Mock data
-const mockStats: AffiliateStats = {
-  clicks: 142,
-  signups: 18,
-  activeReferrals: 12,
-  earnings: 0,
-};
-
-const mockReferrals: ReferralActivity[] = [
-  { id: '1', email: 'j***@gmail.com', status: 'active', joinedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), earnings: 0 },
-  { id: '2', email: 'm***@yahoo.com', status: 'pending', joinedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7), earnings: 0 },
-  { id: '3', email: 's***@outlook.com', status: 'active', joinedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14), earnings: 0 },
-];
-
-const mockEarningsData = Array.from({ length: 30 }, (_, i) => ({
-  date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-  earnings: 0,
-}));
-
-const AffiliateSection = ({
-  affiliateLink = 'https://aasakira.lovable.app?ref=YOUR_CODE',
-  stats = mockStats,
-  referrals = mockReferrals,
-}: AffiliateSectionProps) => {
-  const { toast } = useToast();
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(affiliateLink);
-      setCopied(true);
-      toast({ title: 'Link copied!', description: 'Affiliate link copied to clipboard.' });
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast({ title: 'Failed to copy', variant: 'destructive' });
-    }
-  };
-
-  const getStatusBadge = (status: ReferralActivity['status']) => {
-    const styles = {
-      pending: 'bg-yellow-500/20 text-yellow-400',
-      active: 'bg-green-500/20 text-green-400',
-      converted: 'bg-blue-500/20 text-blue-400',
-    };
-    return (
-      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </span>
-    );
+const AffiliateSection = () => {
+  const handleJoinTelegram = () => {
+    window.open(AFFILIATE_TELEGRAM, '_blank');
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-foreground">Affiliate Dashboard</h2>
+    <div className="space-y-8">
+      {/* Hero Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-400 p-8 md:p-12">
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-yellow-300 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
+        </div>
+        
+        <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
+          <div className="flex-1 text-center lg:text-left space-y-4">
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium text-white">
+              <Sparkles className="h-4 w-4" />
+              Affiliate Programme
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight">
+              Earn Up To <span className="text-yellow-300">£12 Per Trade</span>
+              <br />Live Life On Your Terms
+            </h2>
+            <p className="text-emerald-50 text-lg max-w-xl">
+              Join our exclusive affiliate training where we teach you how to build 
+              <strong className="text-white"> 4-6 figures/month</strong> in passive income. 
+              Travel the world while earning.
+            </p>
+            <Button 
+              onClick={handleJoinTelegram}
+              size="lg"
+              className="bg-white text-emerald-700 hover:bg-yellow-50 font-bold text-lg px-8 py-6 rounded-xl shadow-lg shadow-black/20 hover:shadow-xl transition-all hover:scale-105"
+            >
+              <ExternalLink className="h-5 w-5 mr-2" />
+              Join Affiliate Training
+              <ArrowRight className="h-5 w-5 ml-2" />
+            </Button>
+          </div>
+
+          {/* Earnings Visual */}
+          <div className="shrink-0">
+            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-6 border border-white/20 space-y-4 min-w-[260px]">
+              <p className="text-emerald-100 text-sm font-medium text-center">Potential Monthly Earnings</p>
+              <div className="text-center">
+                <span className="text-4xl font-bold text-white">£3,600</span>
+                <span className="text-emerald-200 text-sm block mt-1">300 referral trades/month</span>
+              </div>
+              <div className="h-px bg-white/20" />
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-emerald-100">
+                  <span>Per trade</span>
+                  <span className="font-semibold text-white">£12</span>
+                </div>
+                <div className="flex justify-between text-emerald-100">
+                  <span>Recurring</span>
+                  <span className="font-semibold text-yellow-300">✓ Lifetime</span>
+                </div>
+                <div className="flex justify-between text-emerald-100">
+                  <span>Payouts</span>
+                  <span className="font-semibold text-white">Weekly</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <AffiliateSummaryCard
-          label="Referral Clicks"
-          value={stats.clicks}
-          icon={<MousePointerClick className="h-4 w-4" />}
+      {/* Benefits Grid */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <BenefitCard 
+          icon={<DollarSign className="h-6 w-6" />}
+          title="£12 Per Trade"
+          description="Earn every time your referrals trade. No caps, no limits."
+          gradient="from-yellow-500/20 to-amber-500/10"
+          iconColor="text-yellow-400"
+          borderColor="border-yellow-500/20"
         />
-        <AffiliateSummaryCard
-          label="Signups"
-          value={stats.signups}
-          icon={<Users className="h-4 w-4" />}
+        <BenefitCard 
+          icon={<TrendingUp className="h-6 w-6" />}
+          title="4-6 Figures/Month"
+          description="Learn our proven system to scale your affiliate income fast."
+          gradient="from-emerald-500/20 to-green-500/10"
+          iconColor="text-emerald-400"
+          borderColor="border-emerald-500/20"
         />
-        <AffiliateSummaryCard
-          label="Active Referrals"
-          value={stats.activeReferrals}
-          icon={<UserCheck className="h-4 w-4" />}
+        <BenefitCard 
+          icon={<Plane className="h-6 w-6" />}
+          title="Freedom Lifestyle"
+          description="Work from anywhere. Travel the world with passive income."
+          gradient="from-sky-500/20 to-blue-500/10"
+          iconColor="text-sky-400"
+          borderColor="border-sky-500/20"
         />
-        <AffiliateSummaryCard
-          label="Total Earnings"
-          value={`$${stats.earnings.toFixed(2)}`}
-          icon={<DollarSign className="h-4 w-4" />}
+        <BenefitCard 
+          icon={<Globe className="h-6 w-6" />}
+          title="Global Community"
+          description="Join a network of affiliates all building financial freedom."
+          gradient="from-purple-500/20 to-violet-500/10"
+          iconColor="text-purple-400"
+          borderColor="border-purple-500/20"
         />
       </div>
 
-      {/* Affiliate Link */}
-      <Card className="bg-card/50 border-border/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Your Affiliate Link</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              value={affiliateLink}
-              readOnly
-              className="bg-muted/50 border-border/50 text-sm"
-            />
-            <Button onClick={handleCopyLink} variant="outline" className="shrink-0">
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+      {/* CTA Card */}
+      <Card className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 border-emerald-500/30 overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl" />
+        <CardContent className="p-6 md:p-8 relative z-10">
+          <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+            <div className="p-4 rounded-2xl bg-emerald-500/20 shrink-0">
+              <Zap className="h-8 w-8 text-emerald-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-foreground mb-1">
+                Ready to Start Earning?
+              </h3>
+              <p className="text-muted-foreground">
+                Join our private Telegram where we'll train you step-by-step on how to build your affiliate empire with Aasakira.
+              </p>
+            </div>
+            <Button 
+              onClick={handleJoinTelegram}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-5 rounded-xl shrink-0 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all hover:scale-105"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Join Training Now
             </Button>
           </div>
         </CardContent>
       </Card>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Earnings Chart */}
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Earnings Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={mockEarningsData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={10}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={10}
-                    tickLine={false}
-                    tickFormatter={(v) => `$${v}`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="earnings"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Referral Table */}
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Recent Referrals</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/30">
-                  <TableHead className="text-xs">Email</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
-                  <TableHead className="text-xs text-right">Earnings</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {referrals.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                      No referrals yet
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  referrals.map((referral) => (
-                    <TableRow key={referral.id} className="border-border/30">
-                      <TableCell className="text-sm">{referral.email}</TableCell>
-                      <TableCell>{getStatusBadge(referral.status)}</TableCell>
-                      <TableCell className="text-right text-sm">${referral.earnings.toFixed(2)}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 };
+
+interface BenefitCardProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  gradient: string;
+  iconColor: string;
+  borderColor: string;
+}
+
+const BenefitCard = ({ icon, title, description, gradient, iconColor, borderColor }: BenefitCardProps) => (
+  <Card className={`bg-gradient-to-br ${gradient} ${borderColor} hover:scale-[1.02] transition-transform`}>
+    <CardContent className="p-5 space-y-3">
+      <div className={`p-3 rounded-xl bg-background/50 w-fit ${iconColor}`}>
+        {icon}
+      </div>
+      <h3 className="font-semibold text-foreground">{title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+    </CardContent>
+  </Card>
+);
 
 export default AffiliateSection;
