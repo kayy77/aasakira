@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, TrendingUp } from 'lucide-react';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
+import { getMaxTpPips, classifyTradeOutcome, isTradeCountable } from '@/utils/tradePips';
 
 interface WeeklyStats {
   totalPips: number;
@@ -57,15 +58,7 @@ export default function WeeklyResults() {
 
       if (error) throw error;
 
-      // Include closed/stopped trades + active trades that already hit all TP levels (TP4 reached)
-      const trades = (data || []).filter((trade) => {
-        const takeProfits = Array.isArray(trade.take_profits) ? trade.take_profits : [];
-        const hasAllTakeProfitsHit =
-          takeProfits.length > 0 &&
-          takeProfits.every((tp: any) => tp?.hit === true);
-
-        return trade.status === 'CLOSED' || trade.status === 'STOPPED_OUT' || hasAllTakeProfitsHit;
-      });
+      const trades = (data || []).filter(isTradeCountable);
 
       let totalPips = 0;
       let wins = 0;
@@ -74,42 +67,17 @@ export default function WeeklyResults() {
       let breakEven = 0;
 
       trades.forEach((trade) => {
-        // Calculate pips using the same logic as LiveTradeSignal:
-        // Use the max TP pips hit (not sum), or fallback to pips_realized for SL/manual close
-        let tradePips = 0;
-        
-        if (Array.isArray(trade.take_profits) && trade.take_profits.length > 0) {
-          const hitTpPips = trade.take_profits
-            .filter((tp: any) => tp.hit && typeof tp.pips === 'number')
-            .map((tp: any) => tp.pips as number);
-          
-          if (hitTpPips.length > 0) {
-            tradePips = Math.max(...hitTpPips);
-          } else {
-            tradePips = Number(trade.pips_realized) || 0;
-          }
-        } else {
-          tradePips = Number(trade.pips_realized) || 0;
-        }
-        
-        totalPips += tradePips;
+        totalPips += getMaxTpPips(trade);
 
         const outcome = trade.outcome?.toUpperCase();
-        const isStoppedOut = trade.status === 'STOPPED_OUT';
-        
-        // A trade is a LOSS only if: outcome is explicitly 'LOSS', OR stopped out without any TP hit
-        const hasAnyTpHit = Array.isArray(trade.take_profits) && trade.take_profits.some((tp: any) => tp.hit);
-        
-        if (outcome === 'LOSS' || (isStoppedOut && !hasAnyTpHit)) {
+        const result = classifyTradeOutcome(trade);
+
+        if (result === 'loss') {
           losses++;
-        } else if (outcome === 'PARTIAL') {
-          partials++;
-          wins++; // Partials count as wins (didn't hit SL)
-        } else if (outcome === 'BE') {
-          breakEven++;
-          wins++; // Break-even counts as win (didn't hit SL)
         } else {
-          wins++; // Everything else that didn't hit SL is a win
+          if (outcome === 'PARTIAL') partials++;
+          else if (outcome === 'BE') breakEven++;
+          wins++;
         }
       });
 
