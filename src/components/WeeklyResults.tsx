@@ -51,13 +51,21 @@ export default function WeeklyResults() {
       const { data, error } = await supabase
         .from('active_trades')
         .select('pips_realized, status, created_at, closed_at, outcome, take_profits')
-        .in('status', ['CLOSED', 'STOPPED_OUT'])
+        .in('status', ['ACTIVE', 'CLOSED', 'STOPPED_OUT'])
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString());
 
       if (error) throw error;
 
-      const trades = data || [];
+      // Include closed/stopped trades + active trades that already hit all TP levels (TP4 reached)
+      const trades = (data || []).filter((trade) => {
+        const takeProfits = Array.isArray(trade.take_profits) ? trade.take_profits : [];
+        const hasAllTakeProfitsHit =
+          takeProfits.length > 0 &&
+          takeProfits.every((tp: any) => tp?.hit === true);
+
+        return trade.status === 'CLOSED' || trade.status === 'STOPPED_OUT' || hasAllTakeProfitsHit;
+      });
 
       let totalPips = 0;
       let wins = 0;
