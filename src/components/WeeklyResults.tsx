@@ -24,6 +24,22 @@ export default function WeeklyResults() {
 
   useEffect(() => {
     fetchWeeklyStats();
+
+    // Subscribe to realtime changes on active_trades so recap auto-updates
+    const channel = supabase
+      .channel('weekly-results-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'active_trades' },
+        () => {
+          fetchWeeklyStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchWeeklyStats = async () => {
@@ -34,10 +50,10 @@ export default function WeeklyResults() {
 
       const { data, error } = await supabase
         .from('active_trades')
-        .select('pips_realized, status, closed_at, outcome, take_profits')
+        .select('pips_realized, status, created_at, closed_at, outcome, take_profits')
         .in('status', ['CLOSED', 'STOPPED_OUT'])
-        .gte('closed_at', weekStart.toISOString())
-        .lte('closed_at', weekEnd.toISOString());
+        .gte('created_at', weekStart.toISOString())
+        .lte('created_at', weekEnd.toISOString());
 
       if (error) throw error;
 

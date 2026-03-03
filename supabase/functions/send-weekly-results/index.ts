@@ -50,8 +50,8 @@ const handler = async (req: Request): Promise<Response> => {
       .from("active_trades")
       .select("*")
       .in("status", ["CLOSED", "STOPPED_OUT"])
-      .gte("closed_at", startDateStr)
-      .lte("closed_at", endDateStr);
+      .gte("created_at", startDateStr)
+      .lte("created_at", endDateStr);
 
     if (tradesError) {
       console.error("Error fetching trades:", tradesError);
