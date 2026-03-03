@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Check, X, TrendingUp, TrendingDown, Clock, History, Target, AlertTriangle, Trophy } from 'lucide-react';
 import DateFilter, { DateRange } from '@/components/signals/DateFilter';
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { getMaxTpPips, classifyTradeOutcome } from '@/utils/tradePips';
 
 interface TakeProfit {
   level: number;
@@ -230,29 +231,11 @@ export default function LiveTradeSignal() {
     });
     setFilteredHistory(filtered);
 
-    // Calculate stats for filtered trades
-    // A trade is a LOSS if: outcome is explicitly 'LOSS', OR stopped out without any TP hit
-    const losses = filtered.filter(t => 
-      t.outcome === 'LOSS' || (t.status === 'STOPPED_OUT' && !t.tp1_hit)
-    ).length;
-    // Everything else is a WIN (TP hits + break-even trades that didn't hit SL)
+    // Calculate stats for filtered trades using shared utility
+    const losses = filtered.filter(t => classifyTradeOutcome(t) === 'loss').length;
     const wins = filtered.length - losses;
     
-    // Calculate total pips correctly:
-    // For winning trades: use the HIGHEST TP level hit (not sum)
-    // For losing trades: use the negative pips_realized
-    const totalPips = filtered.reduce((sum, trade) => {
-      // If trade has take_profits array, get max pips from hit TPs
-      if (trade.take_profits && Array.isArray(trade.take_profits)) {
-        const hitTps = trade.take_profits.filter((tp: any) => tp.hit && typeof tp.pips === 'number');
-        if (hitTps.length > 0) {
-          const maxPips = Math.max(...hitTps.map((tp: any) => tp.pips as number));
-          return sum + maxPips;
-        }
-      }
-      // Fallback for losses or trades without take_profits array
-      return sum + (trade.pips_realized || 0);
-    }, 0);
+    const totalPips = filtered.reduce((sum, trade) => sum + getMaxTpPips(trade), 0);
 
     setStats({
       totalTrades: filtered.length,
