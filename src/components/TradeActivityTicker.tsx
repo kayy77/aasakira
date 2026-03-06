@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle } from 'lucide-react';
-import { getMaxTpPips, isTradeCountable } from '@/utils/tradePips';
+import { CheckCircle, XCircle, Circle } from 'lucide-react';
+import { getMaxTpPips } from '@/utils/tradePips';
 import { startOfWeek, endOfWeek } from 'date-fns';
 
 interface TradeItem {
   id: string;
   pair: string;
   pips: number;
-  isWin: boolean;
+  hasHitTp: boolean;
+  isLoss: boolean;
 }
 
 export default function TradeActivityTicker() {
@@ -18,19 +19,25 @@ export default function TradeActivityTicker() {
 
   useEffect(() => {
     fetchTrades();
+
+    const channel = supabase
+      .channel('ticker-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'active_trades' }, () => {
+        fetchTrades();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   useEffect(() => {
     if (trades.length === 0) return;
-    // Reveal items one by one
+    setVisibleCount(0);
+    let count = 0;
     const interval = setInterval(() => {
-      setVisibleCount((prev) => {
-        if (prev >= trades.length) {
-          clearInterval(interval);
-          return prev;
-        }
-        return prev + 1;
-      });
+      count++;
+      setVisibleCount(count);
+      if (count >= trades.length) clearInterval(interval);
     }, 800);
     return () => clearInterval(interval);
   }, [trades]);
@@ -47,17 +54,23 @@ export default function TradeActivityTicker() {
       .gte('created_at', weekStart.toISOString())
       .lte('created_at', weekEnd.toISOString())
       .order('created_at', { ascending: false })
-      .limit(8);
+      .limit(10);
 
     if (data) {
-      const items: TradeItem[] = data
-        .filter(isTradeCountable)
-        .map((t) => ({
+      const items: TradeItem[] = data.map((t) => {
+        const pips = getMaxTpPips(t);
+        const hasAnyTpHit = Array.isArray(t.take_profits) &&
+          t.take_profits.some((tp: any) => tp?.hit === true);
+        const isLoss = t.status === 'STOPPED_OUT' && !hasAnyTpHit;
+
+        return {
           id: t.id,
           pair: t.pair,
-          pips: getMaxTpPips(t),
-          isWin: getMaxTpPips(t) >= 0,
-        }));
+          pips,
+          hasHitTp: hasAnyTpHit,
+          isLoss,
+        };
+      });
       setTrades(items);
     }
   };
@@ -68,7 +81,7 @@ export default function TradeActivityTicker() {
     <div className="space-y-1.5">
       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2">Recent Signals</p>
       <AnimatePresence>
-        {trades.slice(0, visibleCount).map((trade, i) => (
+        {trades.slice(0, visibleCount).map((trade) => (
           <motion.div
             key={trade.id}
             initial={{ opacity: 0, x: -20 }}
@@ -76,14 +89,19 @@ export default function TradeActivityTicker() {
             transition={{ duration: 0.4, ease: 'easeOut' }}
             className="flex items-center gap-2 text-sm py-1"
           >
-            {trade.isWin ? (
+            {trade.isLoss ? (
+              <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+            ) : trade.hasHitTp ? (
               <CheckCircle className="w-3.5 h-3.5 text-neon-green-400 shrink-0" />
             ) : (
-              <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+              <Circle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             )}
             <span className="font-medium text-foreground">{trade.pair}</span>
-            <span className={`font-mono text-xs ${trade.isWin ? 'text-neon-green-400' : 'text-destructive'}`}>
-              {trade.isWin ? '+' : ''}{trade.pips} pips
+            <span className={`font-mono text-xs ${
+              trade.isLoss ? 'text-destructive' : 
+              trade.pips > 0 ? 'text-neon-green-400' : 'text-muted-foreground'
+            }`}>
+              {trade.pips > 0 ? '+' : ''}{trade.pips} pips
             </span>
           </motion.div>
         ))}
