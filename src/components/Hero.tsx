@@ -1,36 +1,23 @@
 
 import React from 'react';
-import { ArrowRight, MessageSquare, Zap, Activity, Globe, Target, TrendingUp, ArrowDownRight } from 'lucide-react';
+import { ArrowRight, MessageSquare, Zap, Activity, Globe, Target, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import MultiStepSignupDialog from './MultiStepSignupDialog';
-import TelegramSignalsFeed from './TelegramSignalsFeed';
 import WeeklyResults from './WeeklyResults';
 
 const Hero = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const handleViewSignals = () => {
-    navigate('/signals');
-  };
-
   const stats = [
     { icon: Target, label: '3+ AI Tools', color: 'text-pink-400' },
     { icon: Activity, label: '24/7 Real-time Signals', color: 'text-green-400' },
     { icon: Globe, label: '1K+ Trusted Traders', color: 'text-blue-400' },
   ];
-
-  const sampleSignal = {
-    pair: 'NAS100',
-    type: 'BUY',
-    entry: '15,230.00',
-    reason: 'Liquidity sweep + RSI divergence + Order block confirmation',
-    confidence: 92
-  };
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -51,8 +38,8 @@ const Hero = () => {
         </div>
       </div>
 
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-background to-pink-900/10"></div>
+      {/* Animated gradient background - subtle motion */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-background to-pink-900/10 animate-gradient-bg"></div>
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
 
@@ -71,22 +58,23 @@ const Hero = () => {
             </p>
           </div>
 
-          {/* CTA Button */}
+          {/* CTA Button with shimmer */}
           <div className="flex justify-center mb-20 animate-slide-up">
             <MultiStepSignupDialog>
               <Button 
                 size="lg" 
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6 text-lg shadow-lg shadow-purple-500/25"
+                className="group relative bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6 text-lg shadow-lg shadow-purple-500/25 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
               >
-                Get Started
-                <ArrowRight className="ml-2 w-5 h-5" />
+                <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                <span className="relative">Get Started</span>
+                <ArrowRight className="ml-2 w-5 h-5 relative" />
               </Button>
             </MultiStepSignupDialog>
           </div>
 
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 animate-fade-in border-t border-b border-border py-12" style={{animationDelay: '0.2s'}}>
-            {stats.map((stat, index) => {
+            {stats.map((stat) => {
               const Icon = stat.icon;
               return (
                 <div key={stat.label} className="text-center">
@@ -173,7 +161,7 @@ const Hero = () => {
 
         </div>
 
-        {/* Final CTA */}
+        {/* Final CTA with shimmer */}
         <div className="py-16 animate-fade-in border-t border-border" style={{animationDelay: '0.6s'}}>
           <Card className="p-10 md:p-16 bg-gradient-to-br from-purple-900/30 via-background to-pink-900/30 backdrop-blur border-purple-500/40 max-w-3xl mx-auto text-center shadow-2xl shadow-purple-500/20">
             <h3 className="text-3xl md:text-4xl font-bold mb-4">
@@ -199,17 +187,18 @@ const Hero = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6 shadow-lg shadow-purple-500/30 border-2 border-purple-400/50 hover:border-purple-300/70 transition-all"
+                className="group relative bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6 shadow-lg shadow-purple-500/30 border-2 border-purple-400/50 hover:border-purple-300/70 transition-all overflow-hidden hover:scale-105 hover:-translate-y-0.5 duration-200"
                 onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
               >
-                Join Free Telegram Community
-                <ArrowRight className="ml-2 w-5 h-5" />
+                <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                <span className="relative">Join Free Telegram Community</span>
+                <ArrowRight className="ml-2 w-5 h-5 relative" />
               </Button>
               <MultiStepSignupDialog>
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-purple-500/50 hover:border-purple-500 hover:bg-purple-500/10 font-semibold px-8 py-6"
+                  className="border-purple-500/50 hover:border-purple-500 hover:bg-purple-500/10 font-semibold px-8 py-6 hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
                 >
                   Start AI Signals
                   <Zap className="ml-2 w-5 h-5" />
