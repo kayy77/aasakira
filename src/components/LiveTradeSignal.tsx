@@ -314,7 +314,7 @@ export default function LiveTradeSignal() {
   const [communityAll, setCommunityAll] = useState<ActiveTrade[]>([]);
   const [vipAll, setVipAll] = useState<ActiveTrade[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'community' | 'vip'>('community');
+  const [activeTab, setActiveTab] = useState<'community' | 'vip'>('vip');
 
   const [communityDateRange, setCommunityDateRange] = useState<DateRange>({
     from: startOfMonth(new Date()),
@@ -399,35 +399,25 @@ export default function LiveTradeSignal() {
     <div className="space-y-8">
       {/* Tab Switcher */}
       <div className="flex gap-2">
+      <Button
+          variant={activeTab === 'vip' ? 'default' : 'outline'}
+          onClick={() => setActiveTab('vip')}
+          className="flex items-center gap-2"
+        >
+          <span className="text-yellow-400">⭐</span>
+          VIP Trades
+        </Button>
         <Button
           variant={activeTab === 'community' ? 'default' : 'outline'}
           onClick={() => setActiveTab('community')}
           className="flex items-center gap-2"
         >
           <Trophy className="w-4 h-4" />
-          Community Signals
-        </Button>
-        <Button
-          variant={activeTab === 'vip' ? 'default' : 'outline'}
-          onClick={() => setActiveTab('vip')}
-          className="flex items-center gap-2"
-        >
-          <span className="text-yellow-400">⭐</span>
-          VIP Signals
+          FREE Trades
         </Button>
       </div>
 
-      {activeTab === 'community' ? (
-        <TradeSection
-          label="Community"
-          badgeColor="bg-blue-500/20 text-blue-400 border-blue-500/30"
-          activeTrade={communityActive}
-          history={communityFiltered}
-          stats={communityStats}
-          dateRange={communityDateRange}
-          onDateChange={setCommunityDateRange}
-        />
-      ) : (
+      {activeTab === 'vip' ? (
         <TradeSection
           label="VIP"
           badgeColor="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
@@ -436,6 +426,16 @@ export default function LiveTradeSignal() {
           stats={vipStats}
           dateRange={vipDateRange}
           onDateChange={setVipDateRange}
+        />
+      ) : (
+        <TradeSection
+          label="FREE"
+          badgeColor="bg-blue-500/20 text-blue-400 border-blue-500/30"
+          activeTrade={communityActive}
+          history={communityFiltered}
+          stats={communityStats}
+          dateRange={communityDateRange}
+          onDateChange={setCommunityDateRange}
         />
       )}
     </div>
