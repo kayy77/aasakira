@@ -14,6 +14,9 @@ interface TakeProfit {
   pips: number | null;
 }
 
+const COMMUNITY_CHANNEL_ID = -1002187927163;
+const VIP_CHANNEL_ID = -1003491244183;
+
 interface ActiveTrade {
   id: string;
   pair: string;
@@ -33,6 +36,7 @@ interface ActiveTrade {
   closed_at: string | null;
   pips_realized: number | null;
   outcome: string | null;
+  channel_id: number;
 }
 
 interface TradeStats {
