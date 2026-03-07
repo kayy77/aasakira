@@ -5,9 +5,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Configuration - Only listen to Signals topic
-const TARGET_CHAT_ID = -1002187927163;
-const SIGNALS_THREAD_ID = 2895;
+// Channel configurations
+const CHANNELS = {
+  COMMUNITY: {
+    chatId: -1002187927163,
+    threadId: 2895, // Signals topic
+    label: 'community',
+  },
+  VIP: {
+    chatId: -1003491244183,
+    threadId: null, // No topics — all messages are signals
+    label: 'vip',
+  },
+};
+
+function getChannelConfig(chatId: number, threadId: number | null) {
+  if (chatId === CHANNELS.COMMUNITY.chatId) {
+    // Community requires the correct Signals thread
+    if (threadId === CHANNELS.COMMUNITY.threadId) return CHANNELS.COMMUNITY;
+    return null; // Wrong thread in community
+  }
+  if (chatId === CHANNELS.VIP.chatId) {
+    return CHANNELS.VIP; // All messages accepted
+  }
+  return null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -59,7 +81,6 @@ Deno.serve(async (req) => {
       const update = await req.json();
       console.log('📨 Received Telegram update:', JSON.stringify(update, null, 2));
 
-      // Handle channel posts and group messages
       const message = update.channel_post || update.edited_channel_post || update.message || update.edited_message;
       const isEdited = !!update.edited_channel_post || !!update.edited_message;
 
@@ -75,37 +96,33 @@ Deno.serve(async (req) => {
       const threadId = message.message_thread_id || null;
       const rawReplyToMessageId = message.reply_to_message?.message_id || null;
 
-      // CRITICAL FIX: In Telegram topics, reply_to_message_id = thread_id means it's a TOP-LEVEL post
-      // A REAL reply to another message will have reply_to_message_id DIFFERENT from thread_id
-      const isReplyToThread = rawReplyToMessageId === threadId;
+      // Determine which channel this belongs to
+      const channelConfig = getChannelConfig(chatId, threadId);
+
+      if (!channelConfig) {
+        console.log(`⏭️ Ignoring message from chat ${chatId}, thread ${threadId} (not a monitored channel/thread)`);
+        return new Response(
+          JSON.stringify({ success: true, message: 'Message from non-monitored source ignored' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`📍 Message from ${channelConfig.label} channel (chat: ${chatId}, thread: ${threadId})`);
+
+      // For community channel: reply_to_message_id = thread_id means top-level post
+      // For VIP channel: no topics, so reply_to_message_id is always a real reply
+      const isReplyToThread = channelConfig.threadId !== null && rawReplyToMessageId === channelConfig.threadId;
       const replyToMessageId = isReplyToThread ? null : rawReplyToMessageId;
 
-      console.log(`📍 Message from chat: ${chatId}, thread: ${threadId}, raw_reply_to: ${rawReplyToMessageId}, actual_reply_to: ${replyToMessageId}, is_topic_post: ${isReplyToThread}`);
-
-      // Filter: Only process messages from Signals topic
-      if (chatId !== TARGET_CHAT_ID) {
-        console.log(`⏭️ Ignoring message from chat ${chatId} (not target chat ${TARGET_CHAT_ID})`);
-        return new Response(
-          JSON.stringify({ success: true, message: 'Message from non-target chat ignored' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      if (threadId !== SIGNALS_THREAD_ID) {
-        console.log(`⏭️ Ignoring message from thread ${threadId} (not Signals thread ${SIGNALS_THREAD_ID})`);
-        return new Response(
-          JSON.stringify({ success: true, message: 'Message from non-Signals thread ignored' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      console.log(`📍 raw_reply_to: ${rawReplyToMessageId}, actual_reply_to: ${replyToMessageId}, is_topic_post: ${isReplyToThread}`);
 
       const rawText = message.text || message.caption || '';
-      
+
       const messageData = {
         message_id: message.message_id,
         channel_id: chatId,
         thread_id: threadId,
-        reply_to_message_id: replyToMessageId, // null if it's a topic post, actual ID if reply
+        reply_to_message_id: replyToMessageId,
         raw_text: rawText,
         timestamp: new Date().toISOString(),
         edited: isEdited,
@@ -115,7 +132,6 @@ Deno.serve(async (req) => {
 
       console.log('💾 Storing message:', messageData);
 
-      // Upsert message (update if exists, insert if new)
       const { data, error } = await supabase
         .from('telegram_messages')
         .upsert(messageData, {
@@ -133,14 +149,14 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log('✅ Message stored successfully:', data?.id);
+      console.log(`✅ Message stored successfully (${channelConfig.label}):`, data?.id);
 
-      // Process the message based on whether it's a reply or new signal
+      // Process the message
       if (rawText && rawText.trim().length > 0) {
         if (replyToMessageId) {
-          // This is a REAL reply to a signal message - it's a trade UPDATE (TP hit, SL, BE, Close)
-          console.log(`🔄 Processing trade update reply to message ${replyToMessageId}...`);
-          
+          // Reply to a signal — trade UPDATE
+          console.log(`🔄 Processing trade update reply to message ${replyToMessageId} (${channelConfig.label})...`);
+
           try {
             const updateResponse = await fetch(`${supabaseUrl}/functions/v1/process-trade-update`, {
               method: 'POST',
@@ -162,9 +178,9 @@ Deno.serve(async (req) => {
             console.error('⚠️ Trade update failed (non-blocking):', updateError);
           }
         } else {
-          // This is a top-level message in the topic - check if it's a NEW SIGNAL
-          console.log('🔄 Processing potential new trade signal...');
-          
+          // Top-level message — NEW SIGNAL
+          console.log(`🔄 Processing potential new trade signal (${channelConfig.label})...`);
+
           try {
             const parseResponse = await fetch(`${supabaseUrl}/functions/v1/parse-signal`, {
               method: 'POST',
@@ -189,7 +205,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, message_id: data?.id }),
+        JSON.stringify({ success: true, message_id: data?.id, channel: channelConfig.label }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

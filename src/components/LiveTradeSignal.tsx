@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Check, X, TrendingUp, TrendingDown, Clock, History, Target, AlertTriangle, Trophy } from 'lucide-react';
 import DateFilter, { DateRange } from '@/components/signals/DateFilter';
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
@@ -13,6 +14,9 @@ interface TakeProfit {
   hit: boolean;
   pips: number | null;
 }
+
+const COMMUNITY_CHANNEL_ID = -1002187927163;
+const VIP_CHANNEL_ID = -1003491244183;
 
 interface ActiveTrade {
   id: string;
@@ -33,6 +37,7 @@ interface ActiveTrade {
   closed_at: string | null;
   pips_realized: number | null;
   outcome: string | null;
+  channel_id: number;
 }
 
 interface TradeStats {
@@ -185,150 +190,50 @@ function TradeCard({ trade, isActive }: { trade: ActiveTrade; isActive: boolean 
 }
 
 
-export default function LiveTradeSignal() {
-  const [activeTrade, setActiveTrade] = useState<ActiveTrade | null>(null);
-  const [allTrades, setAllTrades] = useState<ActiveTrade[]>([]);
-  const [filteredHistory, setFilteredHistory] = useState<ActiveTrade[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-    label: 'This Month'
-  });
-  const [stats, setStats] = useState<TradeStats>({
-    totalTrades: 0, wins: 0, losses: 0, winRate: 0, totalPips: 0
-  });
-
-  useEffect(() => {
-    fetchTrades();
-
-    const channel = supabase
-      .channel('active-trades-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'active_trades'
-        },
-        (payload) => {
-          console.log('🔄 Trade update received:', payload);
-          fetchTrades();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // Filter trades when date range changes
-  useEffect(() => {
-    const filtered = allTrades.filter(trade => {
-      const tradeDate = new Date(trade.closed_at || trade.created_at);
-      return isWithinInterval(tradeDate, { start: dateRange.from, end: dateRange.to });
-    });
-    setFilteredHistory(filtered);
-
-    // Calculate stats for filtered trades using shared utility
-    const losses = filtered.filter(t => classifyTradeOutcome(t) === 'loss').length;
-    const wins = filtered.length - losses;
-    
-    const totalPips = filtered.reduce((sum, trade) => sum + getMaxTpPips(trade), 0);
-
-    setStats({
-      totalTrades: filtered.length,
-      wins,
-      losses,
-      winRate: filtered.length > 0 ? Math.round((wins / filtered.length) * 100) : 0,
-      totalPips
-    });
-  }, [dateRange, allTrades]);
-
-  async function fetchTrades() {
-    try {
-      const { data: active, error: activeError } = await supabase
-        .from('active_trades')
-        .select('*')
-        .eq('status', 'ACTIVE')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (activeError) throw activeError;
-      
-      if (active) {
-        const parsed = {
-          ...active,
-          take_profits: Array.isArray(active.take_profits) 
-            ? active.take_profits as unknown as TakeProfit[]
-            : null
-        };
-        setActiveTrade(parsed as ActiveTrade);
-      } else {
-        setActiveTrade(null);
-      }
-
-      // Fetch ALL closed trades for filtering
-      const { data: history, error: historyError } = await supabase
-        .from('active_trades')
-        .select('*')
-        .neq('status', 'ACTIVE')
-        .order('closed_at', { ascending: false });
-
-      if (historyError) throw historyError;
-      
-      const parsedHistory = (history || []).map(trade => ({
-        ...trade,
-        take_profits: Array.isArray(trade.take_profits)
-          ? trade.take_profits as unknown as TakeProfit[]
-          : null
-      })) as ActiveTrade[];
-      setAllTrades(parsedHistory);
-    } catch (error) {
-      console.error('Error fetching trades:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-pulse text-muted-foreground">Loading signals...</div>
-      </div>
-    );
-  }
-
+function TradeSection({ 
+  label, 
+  badgeColor, 
+  activeTrade, 
+  history, 
+  stats, 
+  dateRange, 
+  onDateChange 
+}: { 
+  label: string; 
+  badgeColor: string; 
+  activeTrade: ActiveTrade | null; 
+  history: ActiveTrade[]; 
+  stats: TradeStats; 
+  dateRange: DateRange; 
+  onDateChange: (range: DateRange) => void;
+}) {
   return (
-    <div className="space-y-8">
-      {/* Active Trade Section */}
+    <div className="space-y-6">
+      {/* Active Trade */}
       <section>
         <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
           <span className="relative flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
           </span>
-          Live Trade Signal
+          {label} Live Signal
+          <Badge className={`${badgeColor} text-xs ml-2`}>{label}</Badge>
         </h2>
-        
+
         {activeTrade ? (
           <TradeCard trade={activeTrade} isActive={true} />
         ) : (
           <Card className="border-dashed border-2">
             <CardContent className="py-12 text-center">
               <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-              <p className="text-muted-foreground font-medium">No active trade signal</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">
-                Waiting for next signal from Telegram...
-              </p>
+              <p className="text-muted-foreground font-medium">No active {label.toLowerCase()} signal</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Waiting for next signal...</p>
             </CardContent>
           </Card>
         )}
       </section>
 
-      {/* Stats Summary */}
+      {/* Stats */}
       <section>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card className="bg-card/50">
@@ -362,21 +267,18 @@ export default function LiveTradeSignal() {
         </div>
       </section>
 
-      {/* Trade History Section */}
+      {/* History */}
       <section>
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
           <History className="w-5 h-5" />
-          Trade History
+          {label} Trade History
         </h2>
-
-        {/* Date Filter */}
         <div className="mb-6">
-          <DateFilter onRangeChange={setDateRange} currentRange={dateRange} />
+          <DateFilter onRangeChange={onDateChange} currentRange={dateRange} />
         </div>
-
-        {filteredHistory.length > 0 ? (
+        {history.length > 0 ? (
           <div className="space-y-4">
-            {filteredHistory.map((trade) => (
+            {history.map((trade) => (
               <TradeCard key={trade.id} trade={trade} isActive={false} />
             ))}
           </div>
@@ -389,6 +291,153 @@ export default function LiveTradeSignal() {
           </Card>
         )}
       </section>
+    </div>
+  );
+}
+
+function computeStats(trades: ActiveTrade[]): TradeStats {
+  const losses = trades.filter(t => classifyTradeOutcome(t) === 'loss').length;
+  const wins = trades.length - losses;
+  const totalPips = trades.reduce((sum, trade) => sum + getMaxTpPips(trade), 0);
+  return {
+    totalTrades: trades.length,
+    wins,
+    losses,
+    winRate: trades.length > 0 ? Math.round((wins / trades.length) * 100) : 0,
+    totalPips,
+  };
+}
+
+export default function LiveTradeSignal() {
+  const [communityActive, setCommunityActive] = useState<ActiveTrade | null>(null);
+  const [vipActive, setVipActive] = useState<ActiveTrade | null>(null);
+  const [communityAll, setCommunityAll] = useState<ActiveTrade[]>([]);
+  const [vipAll, setVipAll] = useState<ActiveTrade[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'community' | 'vip'>('community');
+
+  const [communityDateRange, setCommunityDateRange] = useState<DateRange>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+    label: 'This Month'
+  });
+  const [vipDateRange, setVipDateRange] = useState<DateRange>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+    label: 'This Month'
+  });
+
+  useEffect(() => {
+    fetchTrades();
+
+    const channel = supabase
+      .channel('active-trades-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'active_trades' }, () => {
+        fetchTrades();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const communityFiltered = communityAll.filter(t => {
+    const d = new Date(t.closed_at || t.created_at);
+    return isWithinInterval(d, { start: communityDateRange.from, end: communityDateRange.to });
+  });
+  const vipFiltered = vipAll.filter(t => {
+    const d = new Date(t.closed_at || t.created_at);
+    return isWithinInterval(d, { start: vipDateRange.from, end: vipDateRange.to });
+  });
+
+  const communityStats = computeStats(communityFiltered);
+  const vipStats = computeStats(vipFiltered);
+
+  async function fetchTrades() {
+    try {
+      // Fetch active trades
+      const { data: actives } = await supabase
+        .from('active_trades')
+        .select('*')
+        .eq('status', 'ACTIVE')
+        .order('created_at', { ascending: false });
+
+      const parseTrade = (t: any): ActiveTrade => ({
+        ...t,
+        take_profits: Array.isArray(t.take_profits) ? t.take_profits as unknown as TakeProfit[] : null,
+      });
+
+      const activeList = (actives || []).map(parseTrade);
+      setCommunityActive(activeList.find(t => t.channel_id === COMMUNITY_CHANNEL_ID) || null);
+      setVipActive(activeList.find(t => t.channel_id === VIP_CHANNEL_ID) || null);
+
+      // Fetch closed trades
+      const { data: history } = await supabase
+        .from('active_trades')
+        .select('*')
+        .neq('status', 'ACTIVE')
+        .order('closed_at', { ascending: false });
+
+      const historyList = (history || []).map(parseTrade);
+      setCommunityAll(historyList.filter(t => t.channel_id === COMMUNITY_CHANNEL_ID));
+      setVipAll(historyList.filter(t => t.channel_id === VIP_CHANNEL_ID));
+    } catch (error) {
+      console.error('Error fetching trades:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-pulse text-muted-foreground">Loading signals...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Tab Switcher */}
+      <div className="flex gap-2">
+        <Button
+          variant={activeTab === 'community' ? 'default' : 'outline'}
+          onClick={() => setActiveTab('community')}
+          className="flex items-center gap-2"
+        >
+          <Trophy className="w-4 h-4" />
+          Community Signals
+        </Button>
+        <Button
+          variant={activeTab === 'vip' ? 'default' : 'outline'}
+          onClick={() => setActiveTab('vip')}
+          className="flex items-center gap-2"
+        >
+          <span className="text-yellow-400">⭐</span>
+          VIP Signals
+        </Button>
+      </div>
+
+      {activeTab === 'community' ? (
+        <TradeSection
+          label="Community"
+          badgeColor="bg-blue-500/20 text-blue-400 border-blue-500/30"
+          activeTrade={communityActive}
+          history={communityFiltered}
+          stats={communityStats}
+          dateRange={communityDateRange}
+          onDateChange={setCommunityDateRange}
+        />
+      ) : (
+        <TradeSection
+          label="VIP"
+          badgeColor="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+          activeTrade={vipActive}
+          history={vipFiltered}
+          stats={vipStats}
+          dateRange={vipDateRange}
+          onDateChange={setVipDateRange}
+        />
+      )}
     </div>
   );
 }
