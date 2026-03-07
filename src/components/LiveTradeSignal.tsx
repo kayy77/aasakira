@@ -417,17 +417,7 @@ export default function LiveTradeSignal() {
         </Button>
       </div>
 
-      {activeTab === 'community' ? (
-        <TradeSection
-          label="Community"
-          badgeColor="bg-blue-500/20 text-blue-400 border-blue-500/30"
-          activeTrade={communityActive}
-          history={communityFiltered}
-          stats={communityStats}
-          dateRange={communityDateRange}
-          onDateChange={setCommunityDateRange}
-        />
-      ) : (
+      {activeTab === 'vip' ? (
         <TradeSection
           label="VIP"
           badgeColor="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
@@ -436,6 +426,16 @@ export default function LiveTradeSignal() {
           stats={vipStats}
           dateRange={vipDateRange}
           onDateChange={setVipDateRange}
+        />
+      ) : (
+        <TradeSection
+          label="FREE"
+          badgeColor="bg-blue-500/20 text-blue-400 border-blue-500/30"
+          activeTrade={communityActive}
+          history={communityFiltered}
+          stats={communityStats}
+          dateRange={communityDateRange}
+          onDateChange={setCommunityDateRange}
         />
       )}
     </div>
