@@ -314,7 +314,7 @@ export default function LiveTradeSignal() {
   const [communityAll, setCommunityAll] = useState<ActiveTrade[]>([]);
   const [vipAll, setVipAll] = useState<ActiveTrade[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'community' | 'vip'>('community');
+  const [activeTab, setActiveTab] = useState<'community' | 'vip'>('vip');
 
   const [communityDateRange, setCommunityDateRange] = useState<DateRange>({
     from: startOfMonth(new Date()),
