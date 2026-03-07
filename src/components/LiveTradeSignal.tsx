@@ -399,21 +399,21 @@ export default function LiveTradeSignal() {
     <div className="space-y-8">
       {/* Tab Switcher */}
       <div className="flex gap-2">
+      <Button
+          variant={activeTab === 'vip' ? 'default' : 'outline'}
+          onClick={() => setActiveTab('vip')}
+          className="flex items-center gap-2"
+        >
+          <span className="text-yellow-400">⭐</span>
+          VIP Trades
+        </Button>
         <Button
           variant={activeTab === 'community' ? 'default' : 'outline'}
           onClick={() => setActiveTab('community')}
           className="flex items-center gap-2"
         >
           <Trophy className="w-4 h-4" />
-          Community Signals
-        </Button>
-        <Button
-          variant={activeTab === 'vip' ? 'default' : 'outline'}
-          onClick={() => setActiveTab('vip')}
-          className="flex items-center gap-2"
-        >
-          <span className="text-yellow-400">⭐</span>
-          VIP Signals
+          FREE Trades
         </Button>
       </div>
 
