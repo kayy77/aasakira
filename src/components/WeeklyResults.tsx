@@ -76,18 +76,18 @@ function StatColumn({ stats, label, icon, accentClass }: {
   const isPositive = stats.totalPips >= 0;
 
   return (
-    <div className="flex-1 text-center space-y-3">
-      <div className="flex items-center justify-center gap-1.5 mb-3">
+    <div className="flex-1 text-center space-y-1.5">
+      <div className="flex items-center justify-center gap-1.5 mb-1.5">
         {icon}
-        <span className={`text-sm font-bold uppercase tracking-wider ${accentClass}`}>{label}</span>
+        <span className={`text-xs font-bold uppercase tracking-wider ${accentClass}`}>{label}</span>
       </div>
 
       {/* Pips */}
       <div className="relative">
-        <p className={`text-2xl md:text-3xl font-bold tabular-nums ${isPositive ? 'text-neon-green-400' : 'text-destructive'}`}>
+        <p className={`text-xl md:text-2xl font-bold tabular-nums ${isPositive ? 'text-neon-green-400' : 'text-destructive'}`}>
           {stats.totalTrades > 0 ? `${isPositive ? '+' : ''}${animPips}` : '—'}
         </p>
-        <p className="text-xs text-muted-foreground">Pips</p>
+        <p className="text-[10px] text-muted-foreground">Pips</p>
         {isPositive && stats.totalPips > 0 && (
           <div className="absolute -inset-2 bg-neon-green-500/5 rounded-lg blur-xl animate-pulse pointer-events-none" />
         )}
