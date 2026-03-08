@@ -4,7 +4,7 @@ import Index from '@/pages/Index';
 import Journal from '@/pages/Journal';
 import Pricing from '@/pages/Pricing';
 import Affiliate from '@/pages/Affiliate';
-import SetupScanner from '@/pages/SetupScanner';
+
 import LiveSignals from '@/pages/LiveSignals';
 import ClientPortal from '@/pages/ClientPortal';
 import UserDashboard from '@/pages/UserDashboard';
