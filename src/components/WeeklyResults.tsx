@@ -206,7 +206,7 @@ export default function WeeklyResults() {
 
   return (
     <div className="mb-12 animate-fade-in">
-      <Card className="relative p-8 md:p-10 bg-gradient-to-br from-cyber-purple-900/30 via-card to-cyber-pink-600/20 backdrop-blur border-cyber-purple-500/40 shadow-lg shadow-cyber-purple-500/10 overflow-hidden">
+      <Card className="relative p-5 md:p-6 bg-gradient-to-br from-cyber-purple-900/30 via-card to-cyber-pink-600/20 backdrop-blur border-cyber-purple-500/40 shadow-lg shadow-cyber-purple-500/10 overflow-hidden">
         <MiniSparkline color="rgba(168, 85, 247, 0.12)" />
 
         <div className="relative z-10">
