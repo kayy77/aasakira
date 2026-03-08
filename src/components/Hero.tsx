@@ -74,7 +74,7 @@ const Hero = () => {
             <Button 
               size="lg"
               className="group relative bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold px-8 py-6 text-lg shadow-lg shadow-amber-500/25 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
-              onClick={() => window.open('https://wa.me/message/GOHILXTX2HIFO1', '_blank')}
+onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?autoload=1&app_absent=0', '_blank')}
             >
               <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
               <Star className="mr-2 w-5 h-5 relative fill-current" />
@@ -192,7 +192,7 @@ const Hero = () => {
               <Button
                 size="lg"
                 className="group relative bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold px-8 py-6 shadow-lg shadow-amber-500/30 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
-                onClick={() => window.open('https://wa.me/message/GOHILXTX2HIFO1', '_blank')}
+                onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?autoload=1&app_absent=0', '_blank')}
               >
                 <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                 <Star className="mr-2 w-5 h-5 relative fill-current" />
