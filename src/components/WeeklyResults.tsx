@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, TrendingUp } from 'lucide-react';
+import { ArrowRight, TrendingUp, Star, Users } from 'lucide-react';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { getMaxTpPips, classifyTradeOutcome, isTradeCountable } from '@/utils/tradePips';
 import { useAnimatedCounter } from '@/hooks/useAnimatedCounter';
@@ -13,7 +13,10 @@ import TradeActivityTicker from '@/components/TradeActivityTicker';
 import WeeklyCountdownTimer from '@/components/WeeklyCountdownTimer';
 import TradeMap from '@/components/TradeMap';
 
-interface WeeklyStats {
+const COMMUNITY_CHANNEL_ID = -1002187927163;
+const VIP_CHANNEL_ID = -1003491244183;
+
+interface ChannelStats {
   totalPips: number;
   totalTrades: number;
   wins: number;
@@ -21,36 +24,124 @@ interface WeeklyStats {
   partials: number;
   breakEven: number;
   winRate: number;
-  startDate: Date;
-  endDate: Date;
   pairs: string[];
 }
 
-export default function WeeklyResults() {
-  const [stats, setStats] = useState<WeeklyStats | null>(null);
-  const [loading, setLoading] = useState(true);
+interface WeeklyData {
+  vip: ChannelStats;
+  free: ChannelStats;
+  combined: ChannelStats;
+  startDate: Date;
+  endDate: Date;
+}
 
-  const animatedPips = useAnimatedCounter(stats?.totalPips ?? 0, 1200, !loading);
-  const animatedTrades = useAnimatedCounter(stats?.totalTrades ?? 0, 1200, !loading);
-  const animatedWinRate = useAnimatedCounter(stats?.winRate ?? 0, 1200, !loading);
+function computeStats(trades: any[]): ChannelStats {
+  const countable = trades.filter(isTradeCountable);
+  let totalPips = 0;
+  let wins = 0, losses = 0, partials = 0, breakEven = 0;
+  const pairsSet = new Set<string>();
+
+  countable.forEach((trade) => {
+    totalPips += getMaxTpPips(trade);
+    pairsSet.add(trade.pair);
+    const outcome = trade.outcome?.toUpperCase();
+    const result = classifyTradeOutcome(trade);
+    if (result === 'loss') { losses++; }
+    else {
+      if (outcome === 'PARTIAL') partials++;
+      else if (outcome === 'BE') breakEven++;
+      wins++;
+    }
+  });
+
+  const totalTrades = countable.length;
+  const winRate = totalTrades > 0 ? Math.round((wins / totalTrades) * 100) : 0;
+
+  return {
+    totalPips: Math.round(totalPips * 10) / 10,
+    totalTrades, wins, losses, partials, breakEven, winRate,
+    pairs: Array.from(pairsSet),
+  };
+}
+
+function StatColumn({ stats, label, icon, accentClass }: {
+  stats: ChannelStats;
+  label: string;
+  icon: React.ReactNode;
+  accentClass: string;
+}) {
+  const animPips = useAnimatedCounter(stats.totalPips, 1200, true);
+  const animTrades = useAnimatedCounter(stats.totalTrades, 1200, true);
+  const animWinRate = useAnimatedCounter(stats.winRate, 1200, true);
+  const isPositive = stats.totalPips >= 0;
+
+  return (
+    <div className="flex-1 text-center space-y-3">
+      <div className="flex items-center justify-center gap-1.5 mb-3">
+        {icon}
+        <span className={`text-sm font-bold uppercase tracking-wider ${accentClass}`}>{label}</span>
+      </div>
+
+      {/* Pips */}
+      <div className="relative">
+        <p className={`text-2xl md:text-3xl font-bold tabular-nums ${isPositive ? 'text-neon-green-400' : 'text-destructive'}`}>
+          {stats.totalTrades > 0 ? `${isPositive ? '+' : ''}${animPips}` : '—'}
+        </p>
+        <p className="text-xs text-muted-foreground">Pips</p>
+        {isPositive && stats.totalPips > 0 && (
+          <div className="absolute -inset-2 bg-neon-green-500/5 rounded-lg blur-xl animate-pulse pointer-events-none" />
+        )}
+      </div>
+
+      {/* Trades */}
+      <div>
+        <p className="text-2xl md:text-3xl font-bold text-cyber-pink-400 tabular-nums">{animTrades}</p>
+        <p className="text-xs text-muted-foreground">Trades</p>
+      </div>
+
+      {/* W/L */}
+      <div>
+        <p className="text-xl font-bold">
+          {stats.totalTrades > 0 ? (
+            <>
+              <span className="text-neon-green-400">{stats.wins}</span>
+              <span className="text-muted-foreground text-sm mx-1">/</span>
+              <span className="text-destructive">{stats.losses}</span>
+            </>
+          ) : '—'}
+        </p>
+        <p className="text-xs text-muted-foreground">W / L</p>
+      </div>
+
+      {/* Win Rate */}
+      <div>
+        <p className="text-xl font-bold text-cyber-blue-400 tabular-nums">
+          {stats.totalTrades > 0 ? `${animWinRate}%` : '—'}
+        </p>
+        <p className="text-xs text-muted-foreground">Win Rate</p>
+      </div>
+
+      {/* Mini Win/Loss Bar */}
+      {stats.totalTrades > 0 && (
+        <WinLossBar wins={stats.wins} losses={stats.losses} />
+      )}
+    </div>
+  );
+}
+
+export default function WeeklyResults() {
+  const [data, setData] = useState<WeeklyData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchWeeklyStats();
-
     const channel = supabase
       .channel('weekly-results-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'active_trades' },
-        () => {
-          fetchWeeklyStats();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'active_trades' }, () => {
+        fetchWeeklyStats();
+      })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const fetchWeeklyStats = async () => {
@@ -59,54 +150,25 @@ export default function WeeklyResults() {
       const weekStart = startOfWeek(now, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
-      const { data, error } = await supabase
+      const { data: raw, error } = await supabase
         .from('active_trades')
-        .select('pips_realized, status, created_at, closed_at, outcome, take_profits, pair')
+        .select('pips_realized, status, created_at, closed_at, outcome, take_profits, pair, channel_id')
         .in('status', ['ACTIVE', 'CLOSED', 'STOPPED_OUT'])
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString());
 
       if (error) throw error;
+      const all = raw || [];
 
-      const trades = (data || []).filter(isTradeCountable);
+      const vipTrades = all.filter(t => t.channel_id === VIP_CHANNEL_ID);
+      const freeTrades = all.filter(t => t.channel_id === COMMUNITY_CHANNEL_ID);
 
-      let totalPips = 0;
-      let wins = 0;
-      let losses = 0;
-      let partials = 0;
-      let breakEven = 0;
-      const pairsSet = new Set<string>();
-
-      trades.forEach((trade) => {
-        totalPips += getMaxTpPips(trade);
-        pairsSet.add(trade.pair);
-
-        const outcome = trade.outcome?.toUpperCase();
-        const result = classifyTradeOutcome(trade);
-
-        if (result === 'loss') {
-          losses++;
-        } else {
-          if (outcome === 'PARTIAL') partials++;
-          else if (outcome === 'BE') breakEven++;
-          wins++;
-        }
-      });
-
-      const totalTrades = trades.length;
-      const winRate = totalTrades > 0 ? Math.round((wins / totalTrades) * 100) : 0;
-
-      setStats({
-        totalPips: Math.round(totalPips * 10) / 10,
-        totalTrades,
-        wins,
-        losses,
-        partials,
-        breakEven,
-        winRate,
+      setData({
+        vip: computeStats(vipTrades),
+        free: computeStats(freeTrades),
+        combined: computeStats(all),
         startDate: weekStart,
         endDate: weekEnd,
-        pairs: Array.from(pairsSet),
       });
     } catch (err) {
       console.error('Error fetching weekly stats:', err);
@@ -136,83 +198,53 @@ export default function WeeklyResults() {
     );
   }
 
-  const dateRange = stats
-    ? `${format(stats.startDate, 'd MMM')} – ${format(stats.endDate, 'd MMM')}`
+  const dateRange = data
+    ? `${format(data.startDate, 'd MMM')} – ${format(data.endDate, 'd MMM')}`
     : '';
 
-  const isPositive = stats ? stats.totalPips >= 0 : true;
+  const allPairs = data ? [...new Set([...data.vip.pairs, ...data.free.pairs])] : [];
 
   return (
     <div className="mb-12 animate-fade-in">
       <Card className="relative p-8 md:p-10 bg-gradient-to-br from-cyber-purple-900/30 via-card to-cyber-pink-600/20 backdrop-blur border-cyber-purple-500/40 shadow-lg shadow-cyber-purple-500/10 overflow-hidden">
-        {/* Micro sparkline background */}
         <MiniSparkline color="rgba(168, 85, 247, 0.12)" />
 
         <div className="relative z-10">
           <div className="text-center">
-            {/* Badge */}
             <Badge className="mb-4 bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-xs px-3 py-1">
               📊 WEEKLY RECAP
             </Badge>
 
-            {/* Title */}
             <h3 className="text-2xl md:text-3xl font-bold mb-2">
               <span className="text-cyber-purple-400">@aasakira.ai</span>{' '}
               <span className="text-foreground">Results</span>
             </h3>
             <p className="text-muted-foreground text-sm mb-6">{dateRange}</p>
 
-            {/* Stats Grid - Animated Counters */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-              <div className="text-center relative">
-                <p className={`text-3xl md:text-4xl font-bold tabular-nums ${isPositive ? 'text-neon-green-400' : 'text-destructive'}`}>
-                  {stats && stats.totalTrades > 0 ? `${isPositive ? '+' : ''}${animatedPips}` : '—'}
-                </p>
-                <p className="text-sm text-muted-foreground">Total Pips</p>
-                {/* Green glow flicker on the pips number */}
-                {isPositive && stats && stats.totalPips > 0 && (
-                  <div className="absolute -inset-2 bg-neon-green-500/5 rounded-lg blur-xl animate-pulse pointer-events-none" />
-                )}
-              </div>
-              <div className="text-center">
-                <p className="text-3xl md:text-4xl font-bold text-cyber-pink-400 tabular-nums">
-                  {animatedTrades}
-                </p>
-                <p className="text-sm text-muted-foreground">Trades</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl md:text-4xl font-bold text-cyber-purple-400">
-                  {stats && stats.totalTrades > 0 ? (
-                    <>
-                      <span className="text-neon-green-400">{stats.wins}</span>
-                      <span className="text-muted-foreground text-xl mx-1">/</span>
-                      <span className="text-destructive">{stats.losses}</span>
-                    </>
-                  ) : (
-                    '—'
-                  )}
-                </p>
-                <p className="text-sm text-muted-foreground">Wins / Losses</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl md:text-4xl font-bold text-cyber-blue-400 tabular-nums">
-                  {stats && stats.totalTrades > 0 ? `${animatedWinRate}%` : '—'}
-                </p>
-                <p className="text-sm text-muted-foreground">Win Rate</p>
-              </div>
-            </div>
+            {/* VIP vs FREE Comparison */}
+            <div className="flex gap-4 md:gap-8 mb-6">
+              <StatColumn
+                stats={data?.vip ?? { totalPips: 0, totalTrades: 0, wins: 0, losses: 0, partials: 0, breakEven: 0, winRate: 0, pairs: [] }}
+                label="VIP"
+                icon={<Star className="w-4 h-4 text-amber-400 fill-amber-400" />}
+                accentClass="text-amber-400"
+              />
 
-            {/* Win/Loss Visual Bar */}
-            {stats && stats.totalTrades > 0 && (
-              <div className="mb-6">
-                <WinLossBar wins={stats.wins} losses={stats.losses} />
-              </div>
-            )}
+              {/* Divider */}
+              <div className="w-px bg-border/50 self-stretch" />
+
+              <StatColumn
+                stats={data?.free ?? { totalPips: 0, totalTrades: 0, wins: 0, losses: 0, partials: 0, breakEven: 0, winRate: 0, pairs: [] }}
+                label="FREE"
+                icon={<Users className="w-4 h-4 text-cyber-blue-400" />}
+                accentClass="text-cyber-blue-400"
+              />
+            </div>
 
             {/* Trade Map + Activity Ticker row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-left">
               <TradeActivityTicker />
-              <TradeMap pairs={stats?.pairs || []} />
+              <TradeMap pairs={allPairs} />
             </div>
 
             {/* Weekly Timer */}
@@ -225,7 +257,6 @@ export default function WeeklyResults() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <TrendingUp className="w-4 h-4 text-cyber-purple-400" />
                 <span>Live Trade Signals</span>
-                {/* Enhanced LIVE pulse badge */}
                 <Badge className="bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-[10px] px-2 py-0.5 relative">
                   <span className="absolute inset-0 rounded-full bg-neon-green-500/20 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]" />
                   <span className="relative flex items-center gap-1">
@@ -238,13 +269,11 @@ export default function WeeklyResults() {
                 </Badge>
               </div>
 
-              {/* CTA with shimmer */}
               <Button
                 size="sm"
                 className="group relative bg-gradient-to-r from-cyber-purple-600 to-cyber-pink-500 hover:from-cyber-purple-700 hover:to-cyber-pink-600 text-white font-medium px-5 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
                 onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
               >
-                {/* Shimmer effect */}
                 <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                 <span className="relative">Join FREE Telegram</span>
                 <ArrowRight className="ml-1.5 w-4 h-4 relative" />
