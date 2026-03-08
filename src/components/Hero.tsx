@@ -14,7 +14,7 @@ const Hero = () => {
   const navigate = useNavigate();
 
   const stats = [
-    { icon: Target, label: '3+ AI Tools', color: 'text-pink-400' },
+    { icon: Target, label: '3+ Trading Tools', color: 'text-pink-400' },
     { icon: Activity, label: '24/7 Real-time Signals', color: 'text-green-400' },
     { icon: Globe, label: '1K+ Trusted Traders', color: 'text-blue-400' },
   ];
