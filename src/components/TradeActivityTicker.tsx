@@ -20,8 +20,8 @@ interface TradeItem {
 function TradeList({ trades, visibleCount, label }: { trades: TradeItem[]; visibleCount: number; label: string }) {
   if (trades.length === 0) return null;
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2">{label}</p>
+    <div className="space-y-1">
+      <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">{label}</p>
       <AnimatePresence>
         {trades.slice(0, visibleCount).map((trade) => (
           <motion.div
@@ -29,21 +29,21 @@ function TradeList({ trades, visibleCount, label }: { trades: TradeItem[]; visib
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="flex items-center gap-2 text-sm py-1"
+            className="flex items-center gap-1.5 text-xs sm:text-sm py-0.5"
           >
             {trade.isLoss ? (
-              <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+              <XCircle className="w-3 h-3 text-destructive shrink-0" />
             ) : trade.hasHitTp ? (
-              <CheckCircle className="w-3.5 h-3.5 text-neon-green-400 shrink-0" />
+              <CheckCircle className="w-3 h-3 text-neon-green-400 shrink-0" />
             ) : (
-              <Circle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <Circle className="w-3 h-3 text-muted-foreground shrink-0" />
             )}
-            <span className="font-medium text-foreground">{trade.pair}</span>
-            <span className={`font-mono text-xs ${
+            <span className="font-medium text-foreground truncate">{trade.pair}</span>
+            <span className={`font-mono text-[10px] sm:text-xs ${
               trade.isLoss ? 'text-destructive' : 
               trade.pips > 0 ? 'text-neon-green-400' : 'text-muted-foreground'
             }`}>
-              {trade.pips > 0 ? '+' : ''}{trade.pips} pips
+              {trade.pips > 0 ? '+' : ''}{trade.pips}p
             </span>
           </motion.div>
         ))}
@@ -125,9 +125,9 @@ export default function TradeActivityTicker() {
   if (vipTrades.length === 0 && freeTrades.length === 0) return null;
 
   return (
-    <div className="space-y-4">
-      <TradeList trades={vipTrades} visibleCount={visibleCount} label="⭐ VIP Trades" />
-      <TradeList trades={freeTrades} visibleCount={visibleCount} label="FREE Trades" />
+    <div className="space-y-2">
+      <TradeList trades={vipTrades} visibleCount={visibleCount} label="⭐ VIP" />
+      <TradeList trades={freeTrades} visibleCount={visibleCount} label="FREE" />
     </div>
   );
 }

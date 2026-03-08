@@ -76,48 +76,48 @@ function StatColumn({ stats, label, icon, accentClass }: {
   const isPositive = stats.totalPips >= 0;
 
   return (
-    <div className="flex-1 text-center space-y-1.5">
-      <div className="flex items-center justify-center gap-1.5 mb-1.5">
+    <div className="flex-1 text-center space-y-1 min-w-0">
+      <div className="flex items-center justify-center gap-1 mb-1">
         {icon}
-        <span className={`text-xs font-bold uppercase tracking-wider ${accentClass}`}>{label}</span>
+        <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${accentClass}`}>{label}</span>
       </div>
 
       {/* Pips */}
       <div className="relative">
-        <p className={`text-xl md:text-2xl font-bold tabular-nums ${isPositive ? 'text-neon-green-400' : 'text-destructive'}`}>
+        <p className={`text-lg sm:text-xl md:text-2xl font-bold tabular-nums leading-tight ${isPositive ? 'text-neon-green-400' : 'text-destructive'}`}>
           {stats.totalTrades > 0 ? `${isPositive ? '+' : ''}${animPips}` : '—'}
         </p>
-        <p className="text-[10px] text-muted-foreground">Pips</p>
+        <p className="text-[9px] sm:text-[10px] text-muted-foreground">Pips</p>
         {isPositive && stats.totalPips > 0 && (
           <div className="absolute -inset-2 bg-neon-green-500/5 rounded-lg blur-xl animate-pulse pointer-events-none" />
         )}
       </div>
 
-      {/* Trades + W/L inline */}
-      <div className="flex items-center justify-center gap-3">
+      {/* Trades / W·L / Win Rate — inline row */}
+      <div className="flex items-center justify-center gap-1.5 sm:gap-2.5">
         <div>
-          <p className="text-lg font-bold text-cyber-pink-400 tabular-nums">{animTrades}</p>
-          <p className="text-[10px] text-muted-foreground">Trades</p>
+          <p className="text-sm sm:text-base font-bold text-cyber-pink-400 tabular-nums leading-tight">{animTrades}</p>
+          <p className="text-[8px] sm:text-[10px] text-muted-foreground">Trades</p>
         </div>
-        <div className="w-px h-6 bg-border/30" />
+        <div className="w-px h-5 bg-border/30" />
         <div>
-          <p className="text-lg font-bold">
+          <p className="text-sm sm:text-base font-bold leading-tight">
             {stats.totalTrades > 0 ? (
               <>
                 <span className="text-neon-green-400">{stats.wins}</span>
-                <span className="text-muted-foreground text-xs mx-0.5">/</span>
+                <span className="text-muted-foreground text-[10px] mx-px">/</span>
                 <span className="text-destructive">{stats.losses}</span>
               </>
             ) : '—'}
           </p>
-          <p className="text-[10px] text-muted-foreground">W / L</p>
+          <p className="text-[8px] sm:text-[10px] text-muted-foreground">W / L</p>
         </div>
-        <div className="w-px h-6 bg-border/30" />
+        <div className="w-px h-5 bg-border/30" />
         <div>
-          <p className="text-lg font-bold text-cyber-blue-400 tabular-nums">
+          <p className="text-sm sm:text-base font-bold text-cyber-blue-400 tabular-nums leading-tight">
             {stats.totalTrades > 0 ? `${animWinRate}%` : '—'}
           </p>
-          <p className="text-[10px] text-muted-foreground">Win Rate</p>
+          <p className="text-[8px] sm:text-[10px] text-muted-foreground">Win Rate</p>
         </div>
       </div>
 
@@ -179,16 +179,16 @@ export default function WeeklyResults() {
 
   if (loading) {
     return (
-      <div className="mb-12 animate-fade-in">
-        <Card className="p-8 bg-gradient-to-br from-cyber-purple-900/20 via-card to-cyber-pink-600/10 backdrop-blur border-cyber-purple-500/30">
+      <div className="mb-8 animate-fade-in">
+        <Card className="p-4 sm:p-6 bg-gradient-to-br from-cyber-purple-900/20 via-card to-cyber-pink-600/10 backdrop-blur border-cyber-purple-500/30">
           <div className="text-center">
-            <div className="h-5 w-24 bg-muted/50 rounded-full animate-pulse mx-auto mb-4" />
-            <div className="h-8 w-64 bg-muted/50 rounded animate-pulse mx-auto mb-6" />
-            <div className="flex justify-center gap-8">
-              {[1, 2, 3, 4].map((i) => (
+            <div className="h-4 w-20 bg-muted/50 rounded-full animate-pulse mx-auto mb-3" />
+            <div className="h-6 w-48 bg-muted/50 rounded animate-pulse mx-auto mb-4" />
+            <div className="flex justify-center gap-6">
+              {[1, 2, 3].map((i) => (
                 <div key={i} className="text-center">
-                  <div className="h-8 w-16 bg-muted/50 rounded animate-pulse mx-auto mb-1" />
-                  <div className="h-3 w-20 bg-muted/50 rounded animate-pulse mx-auto" />
+                  <div className="h-6 w-12 bg-muted/50 rounded animate-pulse mx-auto mb-1" />
+                  <div className="h-2 w-16 bg-muted/50 rounded animate-pulse mx-auto" />
                 </div>
               ))}
             </div>
@@ -205,28 +205,28 @@ export default function WeeklyResults() {
   const allPairs = data ? [...new Set([...data.vip.pairs, ...data.free.pairs])] : [];
 
   return (
-    <div className="mb-12 animate-fade-in">
-      <Card className="relative p-5 md:p-6 bg-gradient-to-br from-cyber-purple-900/30 via-card to-cyber-pink-600/20 backdrop-blur border-cyber-purple-500/40 shadow-lg shadow-cyber-purple-500/10 overflow-hidden">
+    <div className="mb-8 animate-fade-in">
+      <Card className="relative p-4 sm:p-5 md:p-6 bg-gradient-to-br from-cyber-purple-900/30 via-card to-cyber-pink-600/20 backdrop-blur border-cyber-purple-500/40 shadow-lg shadow-cyber-purple-500/10 overflow-hidden">
         <MiniSparkline color="rgba(168, 85, 247, 0.12)" />
 
         <div className="relative z-10">
           <div className="text-center">
-            <Badge className="mb-2 bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-[10px] px-2.5 py-0.5">
+            <Badge className="mb-1.5 bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-[9px] sm:text-[10px] px-2 py-0.5">
               📊 WEEKLY RECAP
             </Badge>
 
-            <h3 className="text-xl md:text-2xl font-bold mb-1">
+            <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-0.5">
               <span className="text-cyber-purple-400">AASAKIRA</span>{' '}
               <span className="text-foreground">Results</span>
             </h3>
-            <p className="text-muted-foreground text-xs mb-4">{dateRange}</p>
+            <p className="text-muted-foreground text-[10px] sm:text-xs mb-3">{dateRange}</p>
 
             {/* VIP vs FREE Comparison */}
-            <div className="flex gap-4 md:gap-6 mb-4">
+            <div className="flex gap-3 sm:gap-4 md:gap-6 mb-3">
               <StatColumn
                 stats={data?.vip ?? { totalPips: 0, totalTrades: 0, wins: 0, losses: 0, partials: 0, breakEven: 0, winRate: 0, pairs: [] }}
                 label="VIP"
-                icon={<Star className="w-4 h-4 text-amber-400 fill-amber-400" />}
+                icon={<Star className="w-3 h-3 sm:w-4 sm:h-4 text-amber-400 fill-amber-400" />}
                 accentClass="text-amber-400"
               />
 
@@ -236,33 +236,33 @@ export default function WeeklyResults() {
               <StatColumn
                 stats={data?.free ?? { totalPips: 0, totalTrades: 0, wins: 0, losses: 0, partials: 0, breakEven: 0, winRate: 0, pairs: [] }}
                 label="FREE"
-                icon={<Users className="w-4 h-4 text-cyber-blue-400" />}
+                icon={<Users className="w-3 h-3 sm:w-4 sm:h-4 text-cyber-blue-400" />}
                 accentClass="text-cyber-blue-400"
               />
             </div>
 
-            {/* Trade Map + Activity Ticker row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-left">
+            {/* Trade Ticker + Map — side by side on all screens */}
+            <div className="grid grid-cols-2 gap-3 mb-3 text-left">
               <TradeActivityTicker />
               <TradeMap pairs={allPairs} />
             </div>
 
             {/* Weekly Timer */}
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-3">
               <WeeklyCountdownTimer />
             </div>
 
             {/* Live Indicator + CTA */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingUp className="w-4 h-4 text-cyber-purple-400" />
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <TrendingUp className="w-3.5 h-3.5 text-cyber-purple-400" />
                 <span>Live Trade Signals</span>
-                <Badge className="bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-[10px] px-2 py-0.5 relative">
+                <Badge className="bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-[9px] px-1.5 py-0.5 relative">
                   <span className="absolute inset-0 rounded-full bg-neon-green-500/20 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]" />
                   <span className="relative flex items-center gap-1">
-                    <span className="relative flex h-2 w-2">
+                    <span className="relative flex h-1.5 w-1.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-green-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-green-500 shadow-[0_0_8px_2px_rgba(74,222,128,0.6)]"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-neon-green-500 shadow-[0_0_6px_2px_rgba(74,222,128,0.6)]"></span>
                     </span>
                     LIVE
                   </span>
@@ -271,12 +271,12 @@ export default function WeeklyResults() {
 
               <Button
                 size="sm"
-                className="group relative bg-gradient-to-r from-cyber-purple-600 to-cyber-pink-500 hover:from-cyber-purple-700 hover:to-cyber-pink-600 text-white font-medium px-5 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
+                className="group relative bg-gradient-to-r from-cyber-purple-600 to-cyber-pink-500 hover:from-cyber-purple-700 hover:to-cyber-pink-600 text-white font-medium text-xs px-4 h-8 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
                 onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
               >
                 <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                 <span className="relative">Join FREE Telegram</span>
-                <ArrowRight className="ml-1.5 w-4 h-4 relative" />
+                <ArrowRight className="ml-1 w-3.5 h-3.5 relative" />
               </Button>
             </div>
           </div>
