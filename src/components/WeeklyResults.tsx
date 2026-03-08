@@ -242,13 +242,13 @@ export default function WeeklyResults() {
             </div>
 
             {/* Trade Map + Activity Ticker row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-left">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-left">
               <TradeActivityTicker />
               <TradeMap pairs={allPairs} />
             </div>
 
             {/* Weekly Timer */}
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-4">
               <WeeklyCountdownTimer />
             </div>
 
