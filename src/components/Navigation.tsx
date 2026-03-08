@@ -26,7 +26,6 @@ const Navigation = () => {
 
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
-    { name: 'Setup Scanner', href: '/setup-scanner', icon: Camera },
     { name: 'Signals', href: '/live-signals', icon: Signal },
     { name: 'Journal', href: '/journal', icon: BookOpen },
     { name: 'Affiliate', href: '/affiliate', icon: DollarSign },
@@ -77,11 +76,11 @@ const Navigation = () => {
               </Badge>
             ) : (
               <Button
-                onClick={() => window.open('https://buy.stripe.com/5kQ00k5Nud1G0AUaRSabK00', '_blank')}
+                onClick={() => window.open('https://wa.me/message/GOHILXTX2HIFO1', '_blank')}
                 className="bg-gradient-to-r from-[#ffb347] to-[#ff416c] hover:opacity-90 text-[#0b0b0b] border-0 flex items-center gap-2 font-bold shadow-[0_6px_18px_rgba(255,65,108,0.35)] hover:shadow-[0_8px_24px_rgba(255,65,108,0.5)] transition-all"
               >
                 <Zap className="h-4 w-4" />
-                <span className="hidden lg:inline">Upgrade</span>
+                <span className="hidden lg:inline">Upgrade to VIP</span>
               </Button>
             )}
 

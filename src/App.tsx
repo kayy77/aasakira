@@ -4,7 +4,7 @@ import Index from '@/pages/Index';
 import Journal from '@/pages/Journal';
 import Pricing from '@/pages/Pricing';
 import Affiliate from '@/pages/Affiliate';
-import SetupScanner from '@/pages/SetupScanner';
+
 import LiveSignals from '@/pages/LiveSignals';
 import ClientPortal from '@/pages/ClientPortal';
 import UserDashboard from '@/pages/UserDashboard';
@@ -28,7 +28,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/journal" element={<Journal />} />
-                  <Route path="/setup-scanner" element={<SetupScanner />} />
+                  
                   <Route path="/live-signals" element={<LiveSignals />} />
                   <Route path="/portal" element={<ClientPortal />} />
                   <Route path="/dashboard" element={<UserDashboard />} />
