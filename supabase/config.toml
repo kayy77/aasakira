@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.ctrader-sync]
 verify_jwt = false
+
+[functions.set-telegram-webhook]
+verify_jwt = false
