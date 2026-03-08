@@ -13,7 +13,7 @@ export default function LiveSignals() {
           <Button
             size="sm"
             className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold"
-            onClick={() => window.open('https://wa.me/message/GOHILXTX2HIFO1', '_blank')}
+            onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?autoload=1&app_absent=0', '_blank')}
           >
             <Star className="w-4 h-4 mr-1 fill-current" />
             Upgrade to VIP
