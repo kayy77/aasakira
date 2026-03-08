@@ -51,13 +51,12 @@ const Hero = () => {
               📈 Trusted by 1,000+ Traders Worldwide
             </Badge>
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Trade Smarter with{' '}
               <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent animate-gradient-shift">
-                @aasakira.ai
+                AASAKIRA
               </span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              AI-powered trading signals delivered straight to your Telegram. VIP & Free channels with proven results.
+              Premium trading signals delivered straight to your Telegram. VIP & Free channels with proven results.
             </p>
           </div>
 
