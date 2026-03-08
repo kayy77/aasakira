@@ -1,8 +1,7 @@
 import LiveTradeSignal from '@/components/LiveTradeSignal';
 import BackButton from '@/components/common/BackButton';
-import AasakiraAIButton from '@/components/education/AasakiraAIButton';
 import { Button } from '@/components/ui/button';
-import { ExternalLink } from 'lucide-react';
+import { Star } from 'lucide-react';
 
 export default function LiveSignals() {
   return (
@@ -11,27 +10,19 @@ export default function LiveSignals() {
         <div className="flex items-center justify-between gap-3 mb-4">
           <BackButton className="-ml-2" />
 
-          <div className="flex items-center gap-2">
-            <AasakiraAIButton
-              topic="Live trade signals"
-              context="You are viewing the Live Trade Signals page. Help explain what the trade history means and how to interpret TP hits, stop loss, and breakeven."
-              userLevel="intermediate"
-            />
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open('https://t.me/+your_channel', '_blank')}
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Join Telegram Channel
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold"
+            onClick={() => window.open('https://wa.me/message/GOHILXTX2HIFO1', '_blank')}
+          >
+            <Star className="w-4 h-4 mr-1 fill-current" />
+            Upgrade to VIP
+          </Button>
         </div>
 
-        <h1 className="text-3xl font-bold mb-2">Live Trade Signals</h1>
-        <p className="text-muted-foreground">
-          Real-time signals from our Telegram channel. Updates automatically.
+        <h1 className="text-3xl font-bold mb-1">Live Trade Signals</h1>
+        <p className="text-muted-foreground text-sm">
+          Real-time signals from our Telegram channels. Updates automatically.
         </p>
       </header>
 
@@ -41,4 +32,3 @@ export default function LiveSignals() {
     </div>
   );
 }
-

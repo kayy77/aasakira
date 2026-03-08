@@ -28,7 +28,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/journal" element={<Journal />} />
-                  <Route path="/setup-scanner" element={<SetupScanner />} />
+                  
                   <Route path="/live-signals" element={<LiveSignals />} />
                   <Route path="/portal" element={<ClientPortal />} />
                   <Route path="/dashboard" element={<UserDashboard />} />

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowRight, MessageSquare, Zap, Activity, Globe, Target, TrendingUp } from 'lucide-react';
+import { ArrowRight, MessageSquare, Zap, Activity, Globe, Target, TrendingUp, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,38 +38,49 @@ const Hero = () => {
         </div>
       </div>
 
-      {/* Animated gradient background - subtle motion */}
+      {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-background to-pink-900/10 animate-gradient-bg"></div>
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Hero Section */}
-        <div className="pt-20 pb-16 text-center">
-          <div className="mb-8 animate-fade-in">
+        <div className="pt-20 pb-12 text-center">
+          <div className="mb-6 animate-fade-in">
+            <Badge className="mb-4 bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-sm px-4 py-1.5">
+              📈 Trusted by 1,000+ Traders Worldwide
+            </Badge>
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Master Trading with{' '}
+              Trade Smarter with{' '}
               <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent animate-gradient-shift">
-                AI
+                @aasakira.ai
               </span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              AI-powered trading signals and real-time market insights
+              AI-powered trading signals delivered straight to your Telegram. VIP & Free channels with proven results.
             </p>
           </div>
 
-          {/* CTA Button with shimmer */}
-          <div className="flex justify-center mb-20 animate-slide-up">
-            <MultiStepSignupDialog>
-              <Button 
-                size="lg" 
-                className="group relative bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6 text-lg shadow-lg shadow-purple-500/25 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                <span className="relative">Get Started</span>
-                <ArrowRight className="ml-2 w-5 h-5 relative" />
-              </Button>
-            </MultiStepSignupDialog>
+          {/* Dual CTA */}
+          <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16 animate-slide-up">
+            <Button 
+              size="lg" 
+              className="group relative bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-6 text-lg shadow-lg shadow-purple-500/25 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
+              onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
+            >
+              <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <span className="relative">Join FREE Telegram</span>
+              <ArrowRight className="ml-2 w-5 h-5 relative" />
+            </Button>
+            <Button 
+              size="lg"
+              className="group relative bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold px-8 py-6 text-lg shadow-lg shadow-amber-500/25 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
+              onClick={() => window.open('https://wa.me/message/GOHILXTX2HIFO1', '_blank')}
+            >
+              <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+              <Star className="mr-2 w-5 h-5 relative fill-current" />
+              <span className="relative">Upgrade to VIP</span>
+            </Button>
           </div>
 
           {/* Key Metrics */}
@@ -85,23 +96,23 @@ const Hero = () => {
             })}
           </div>
 
-          {/* Weekly Results Section */}
+          {/* Weekly Results Section - PROMINENT */}
           <WeeklyResults />
 
         </div>
 
-        {/* Visual Feature Cards */}
+        {/* Feature Cards - Reduced to 3 */}
         <div className="py-16 animate-fade-in" style={{animationDelay: '0.4s'}}>
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               Powerful AI Trading Tools
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to analyze, trade, and master the markets
+              Everything you need to trade smarter
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
             <Card className="p-6 bg-gradient-to-br from-purple-900/20 to-purple-900/5 border-purple-500/30 hover:border-purple-500/60 transition-all hover:shadow-lg hover:shadow-purple-500/20">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
@@ -119,20 +130,6 @@ const Hero = () => {
             <Card className="p-6 bg-gradient-to-br from-pink-900/20 to-pink-900/5 border-pink-500/30 hover:border-pink-500/60 transition-all hover:shadow-lg hover:shadow-pink-500/20">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                  <Activity className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold mb-2">📊 Advanced Forex + Meme Coin Scanner</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Track market sentiment, liquidity sweeps, whales, breakouts, and more.
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-gradient-to-br from-purple-900/20 to-purple-900/5 border-purple-500/30 hover:border-purple-500/60 transition-all hover:shadow-lg hover:shadow-purple-500/20">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
                   <MessageSquare className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -144,9 +141,9 @@ const Hero = () => {
               </div>
             </Card>
 
-            <Card className="p-6 bg-gradient-to-br from-pink-900/20 to-pink-900/5 border-pink-500/30 hover:border-pink-500/60 transition-all hover:shadow-lg hover:shadow-pink-500/20">
+            <Card className="p-6 bg-gradient-to-br from-purple-900/20 to-purple-900/5 border-purple-500/30 hover:border-purple-500/60 transition-all hover:shadow-lg hover:shadow-purple-500/20">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
                   <Target className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -158,10 +155,9 @@ const Hero = () => {
               </div>
             </Card>
           </div>
-
         </div>
 
-        {/* Final CTA with shimmer */}
+        {/* Final CTA */}
         <div className="py-16 animate-fade-in border-t border-border" style={{animationDelay: '0.6s'}}>
           <Card className="p-10 md:p-16 bg-gradient-to-br from-purple-900/30 via-background to-pink-900/30 backdrop-blur border-purple-500/40 max-w-3xl mx-auto text-center shadow-2xl shadow-purple-500/20">
             <h3 className="text-3xl md:text-4xl font-bold mb-4">
@@ -173,11 +169,11 @@ const Hero = () => {
             <div className="space-y-4 mb-8">
               <div className="flex items-center justify-center gap-2 text-foreground">
                 <Target className="w-5 h-5 text-purple-400" />
-                <span>Get AI signals</span>
+                <span>Get AI signals in Telegram</span>
               </div>
               <div className="flex items-center justify-center gap-2 text-foreground">
-                <Globe className="w-5 h-5 text-pink-400" />
-                <span>Join the community</span>
+                <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                <span>Upgrade to VIP for premium signals</span>
               </div>
               <div className="flex items-center justify-center gap-2 text-foreground">
                 <TrendingUp className="w-5 h-5 text-purple-400" />
@@ -191,19 +187,18 @@ const Hero = () => {
                 onClick={() => window.open('https://t.me/+E3IYiJSGNqkxNTdk', '_blank')}
               >
                 <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                <span className="relative">Join Free Telegram Community</span>
+                <span className="relative">Join Free Telegram</span>
                 <ArrowRight className="ml-2 w-5 h-5 relative" />
               </Button>
-              <MultiStepSignupDialog>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-purple-500/50 hover:border-purple-500 hover:bg-purple-500/10 font-semibold px-8 py-6 hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
-                >
-                  Start AI Signals
-                  <Zap className="ml-2 w-5 h-5" />
-                </Button>
-              </MultiStepSignupDialog>
+              <Button
+                size="lg"
+                className="group relative bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold px-8 py-6 shadow-lg shadow-amber-500/30 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
+                onClick={() => window.open('https://wa.me/message/GOHILXTX2HIFO1', '_blank')}
+              >
+                <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                <Star className="mr-2 w-5 h-5 relative fill-current" />
+                <span className="relative">Upgrade to VIP</span>
+              </Button>
             </div>
           </Card>
         </div>
