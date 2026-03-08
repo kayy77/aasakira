@@ -76,49 +76,49 @@ function StatColumn({ stats, label, icon, accentClass }: {
   const isPositive = stats.totalPips >= 0;
 
   return (
-    <div className="flex-1 text-center space-y-3">
-      <div className="flex items-center justify-center gap-1.5 mb-3">
+    <div className="flex-1 text-center space-y-1.5">
+      <div className="flex items-center justify-center gap-1.5 mb-1.5">
         {icon}
-        <span className={`text-sm font-bold uppercase tracking-wider ${accentClass}`}>{label}</span>
+        <span className={`text-xs font-bold uppercase tracking-wider ${accentClass}`}>{label}</span>
       </div>
 
       {/* Pips */}
       <div className="relative">
-        <p className={`text-2xl md:text-3xl font-bold tabular-nums ${isPositive ? 'text-neon-green-400' : 'text-destructive'}`}>
+        <p className={`text-xl md:text-2xl font-bold tabular-nums ${isPositive ? 'text-neon-green-400' : 'text-destructive'}`}>
           {stats.totalTrades > 0 ? `${isPositive ? '+' : ''}${animPips}` : '—'}
         </p>
-        <p className="text-xs text-muted-foreground">Pips</p>
+        <p className="text-[10px] text-muted-foreground">Pips</p>
         {isPositive && stats.totalPips > 0 && (
           <div className="absolute -inset-2 bg-neon-green-500/5 rounded-lg blur-xl animate-pulse pointer-events-none" />
         )}
       </div>
 
-      {/* Trades */}
-      <div>
-        <p className="text-2xl md:text-3xl font-bold text-cyber-pink-400 tabular-nums">{animTrades}</p>
-        <p className="text-xs text-muted-foreground">Trades</p>
-      </div>
-
-      {/* W/L */}
-      <div>
-        <p className="text-xl font-bold">
-          {stats.totalTrades > 0 ? (
-            <>
-              <span className="text-neon-green-400">{stats.wins}</span>
-              <span className="text-muted-foreground text-sm mx-1">/</span>
-              <span className="text-destructive">{stats.losses}</span>
-            </>
-          ) : '—'}
-        </p>
-        <p className="text-xs text-muted-foreground">W / L</p>
-      </div>
-
-      {/* Win Rate */}
-      <div>
-        <p className="text-xl font-bold text-cyber-blue-400 tabular-nums">
-          {stats.totalTrades > 0 ? `${animWinRate}%` : '—'}
-        </p>
-        <p className="text-xs text-muted-foreground">Win Rate</p>
+      {/* Trades + W/L inline */}
+      <div className="flex items-center justify-center gap-3">
+        <div>
+          <p className="text-lg font-bold text-cyber-pink-400 tabular-nums">{animTrades}</p>
+          <p className="text-[10px] text-muted-foreground">Trades</p>
+        </div>
+        <div className="w-px h-6 bg-border/30" />
+        <div>
+          <p className="text-lg font-bold">
+            {stats.totalTrades > 0 ? (
+              <>
+                <span className="text-neon-green-400">{stats.wins}</span>
+                <span className="text-muted-foreground text-xs mx-0.5">/</span>
+                <span className="text-destructive">{stats.losses}</span>
+              </>
+            ) : '—'}
+          </p>
+          <p className="text-[10px] text-muted-foreground">W / L</p>
+        </div>
+        <div className="w-px h-6 bg-border/30" />
+        <div>
+          <p className="text-lg font-bold text-cyber-blue-400 tabular-nums">
+            {stats.totalTrades > 0 ? `${animWinRate}%` : '—'}
+          </p>
+          <p className="text-[10px] text-muted-foreground">Win Rate</p>
+        </div>
       </div>
 
       {/* Mini Win/Loss Bar */}
@@ -206,23 +206,23 @@ export default function WeeklyResults() {
 
   return (
     <div className="mb-12 animate-fade-in">
-      <Card className="relative p-8 md:p-10 bg-gradient-to-br from-cyber-purple-900/30 via-card to-cyber-pink-600/20 backdrop-blur border-cyber-purple-500/40 shadow-lg shadow-cyber-purple-500/10 overflow-hidden">
+      <Card className="relative p-5 md:p-6 bg-gradient-to-br from-cyber-purple-900/30 via-card to-cyber-pink-600/20 backdrop-blur border-cyber-purple-500/40 shadow-lg shadow-cyber-purple-500/10 overflow-hidden">
         <MiniSparkline color="rgba(168, 85, 247, 0.12)" />
 
         <div className="relative z-10">
           <div className="text-center">
-            <Badge className="mb-4 bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-xs px-3 py-1">
+            <Badge className="mb-2 bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-[10px] px-2.5 py-0.5">
               📊 WEEKLY RECAP
             </Badge>
 
-            <h3 className="text-2xl md:text-3xl font-bold mb-2">
+            <h3 className="text-xl md:text-2xl font-bold mb-1">
               <span className="text-cyber-purple-400">AASAKIRA</span>{' '}
               <span className="text-foreground">Results</span>
             </h3>
-            <p className="text-muted-foreground text-sm mb-6">{dateRange}</p>
+            <p className="text-muted-foreground text-xs mb-4">{dateRange}</p>
 
             {/* VIP vs FREE Comparison */}
-            <div className="flex gap-4 md:gap-8 mb-6">
+            <div className="flex gap-4 md:gap-6 mb-4">
               <StatColumn
                 stats={data?.vip ?? { totalPips: 0, totalTrades: 0, wins: 0, losses: 0, partials: 0, breakEven: 0, winRate: 0, pairs: [] }}
                 label="VIP"
@@ -242,13 +242,13 @@ export default function WeeklyResults() {
             </div>
 
             {/* Trade Map + Activity Ticker row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-left">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-left">
               <TradeActivityTicker />
               <TradeMap pairs={allPairs} />
             </div>
 
             {/* Weekly Timer */}
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-4">
               <WeeklyCountdownTimer />
             </div>
 

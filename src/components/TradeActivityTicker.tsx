@@ -119,8 +119,8 @@ export default function TradeActivityTicker() {
     }
   };
 
-  const vipTrades = trades.filter(t => t.channelId === VIP_CHANNEL_ID).slice(0, 3);
-  const freeTrades = trades.filter(t => t.channelId === COMMUNITY_CHANNEL_ID).slice(0, 3);
+  const vipTrades = trades.filter(t => t.channelId === VIP_CHANNEL_ID).slice(0, 1);
+  const freeTrades = trades.filter(t => t.channelId === COMMUNITY_CHANNEL_ID).slice(0, 1);
 
   if (vipTrades.length === 0 && freeTrades.length === 0) return null;
 
