@@ -14,7 +14,7 @@ const Hero = () => {
   const navigate = useNavigate();
 
   const stats = [
-    { icon: Target, label: '3+ AI Tools', color: 'text-pink-400' },
+    { icon: Target, label: '3+ Trading Tools', color: 'text-pink-400' },
     { icon: Activity, label: '24/7 Real-time Signals', color: 'text-green-400' },
     { icon: Globe, label: '1K+ Trusted Traders', color: 'text-blue-400' },
   ];
@@ -51,13 +51,12 @@ const Hero = () => {
               📈 Trusted by 1,000+ Traders Worldwide
             </Badge>
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Trade Smarter with{' '}
               <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent animate-gradient-shift">
-                @aasakira.ai
+                AASAKIRA
               </span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              AI-powered trading signals delivered straight to your Telegram. VIP & Free channels with proven results.
+              Premium trading signals delivered straight to your Telegram. VIP & Free channels with proven results.
             </p>
           </div>
 
@@ -105,7 +104,7 @@ const Hero = () => {
         <div className="py-16 animate-fade-in" style={{animationDelay: '0.4s'}}>
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Powerful AI Trading Tools
+              Powerful Trading Tools
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Everything you need to trade smarter
@@ -119,7 +118,7 @@ const Hero = () => {
                   <Zap className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold mb-2">⚡ Elite AI Signal Engine</h3>
+                  <h3 className="text-xl font-bold mb-2">⚡ Elite Signal Engine</h3>
                   <p className="text-muted-foreground text-sm">
                     Institutional-grade signals with multi-filter validation and real-time price scraping.
                   </p>
