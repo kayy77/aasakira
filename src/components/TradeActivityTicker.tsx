@@ -125,9 +125,9 @@ export default function TradeActivityTicker() {
   if (vipTrades.length === 0 && freeTrades.length === 0) return null;
 
   return (
-    <div className="space-y-4">
-      <TradeList trades={vipTrades} visibleCount={visibleCount} label="⭐ VIP Trades" />
-      <TradeList trades={freeTrades} visibleCount={visibleCount} label="FREE Trades" />
+    <div className="space-y-2">
+      <TradeList trades={vipTrades} visibleCount={visibleCount} label="⭐ VIP" />
+      <TradeList trades={freeTrades} visibleCount={visibleCount} label="FREE" />
     </div>
   );
 }
