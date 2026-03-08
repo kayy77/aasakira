@@ -211,18 +211,18 @@ export default function WeeklyResults() {
 
         <div className="relative z-10">
           <div className="text-center">
-            <Badge className="mb-4 bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-xs px-3 py-1">
+            <Badge className="mb-2 bg-neon-green-500/20 text-neon-green-400 border-neon-green-500/30 text-[10px] px-2.5 py-0.5">
               📊 WEEKLY RECAP
             </Badge>
 
-            <h3 className="text-2xl md:text-3xl font-bold mb-2">
+            <h3 className="text-xl md:text-2xl font-bold mb-1">
               <span className="text-cyber-purple-400">AASAKIRA</span>{' '}
               <span className="text-foreground">Results</span>
             </h3>
-            <p className="text-muted-foreground text-sm mb-6">{dateRange}</p>
+            <p className="text-muted-foreground text-xs mb-4">{dateRange}</p>
 
             {/* VIP vs FREE Comparison */}
-            <div className="flex gap-4 md:gap-8 mb-6">
+            <div className="flex gap-4 md:gap-6 mb-4">
               <StatColumn
                 stats={data?.vip ?? { totalPips: 0, totalTrades: 0, wins: 0, losses: 0, partials: 0, breakEven: 0, winRate: 0, pairs: [] }}
                 label="VIP"
