@@ -93,32 +93,32 @@ function StatColumn({ stats, label, icon, accentClass }: {
         )}
       </div>
 
-      {/* Trades */}
-      <div>
-        <p className="text-2xl md:text-3xl font-bold text-cyber-pink-400 tabular-nums">{animTrades}</p>
-        <p className="text-xs text-muted-foreground">Trades</p>
-      </div>
-
-      {/* W/L */}
-      <div>
-        <p className="text-xl font-bold">
-          {stats.totalTrades > 0 ? (
-            <>
-              <span className="text-neon-green-400">{stats.wins}</span>
-              <span className="text-muted-foreground text-sm mx-1">/</span>
-              <span className="text-destructive">{stats.losses}</span>
-            </>
-          ) : '—'}
-        </p>
-        <p className="text-xs text-muted-foreground">W / L</p>
-      </div>
-
-      {/* Win Rate */}
-      <div>
-        <p className="text-xl font-bold text-cyber-blue-400 tabular-nums">
-          {stats.totalTrades > 0 ? `${animWinRate}%` : '—'}
-        </p>
-        <p className="text-xs text-muted-foreground">Win Rate</p>
+      {/* Trades + W/L inline */}
+      <div className="flex items-center justify-center gap-3">
+        <div>
+          <p className="text-lg font-bold text-cyber-pink-400 tabular-nums">{animTrades}</p>
+          <p className="text-[10px] text-muted-foreground">Trades</p>
+        </div>
+        <div className="w-px h-6 bg-border/30" />
+        <div>
+          <p className="text-lg font-bold">
+            {stats.totalTrades > 0 ? (
+              <>
+                <span className="text-neon-green-400">{stats.wins}</span>
+                <span className="text-muted-foreground text-xs mx-0.5">/</span>
+                <span className="text-destructive">{stats.losses}</span>
+              </>
+            ) : '—'}
+          </p>
+          <p className="text-[10px] text-muted-foreground">W / L</p>
+        </div>
+        <div className="w-px h-6 bg-border/30" />
+        <div>
+          <p className="text-lg font-bold text-cyber-blue-400 tabular-nums">
+            {stats.totalTrades > 0 ? `${animWinRate}%` : '—'}
+          </p>
+          <p className="text-[10px] text-muted-foreground">Win Rate</p>
+        </div>
       </div>
 
       {/* Mini Win/Loss Bar */}
