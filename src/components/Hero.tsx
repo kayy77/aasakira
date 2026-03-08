@@ -118,7 +118,7 @@ const Hero = () => {
                   <Zap className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold mb-2">⚡ Elite AI Signal Engine</h3>
+                  <h3 className="text-xl font-bold mb-2">⚡ Elite Signal Engine</h3>
                   <p className="text-muted-foreground text-sm">
                     Institutional-grade signals with multi-filter validation and real-time price scraping.
                   </p>
