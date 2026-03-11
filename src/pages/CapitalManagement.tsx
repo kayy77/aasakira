@@ -22,7 +22,7 @@ const CapitalManagement = () => {
     { label: 'Annual Returns', value: '40–60%', icon: Target, color: 'text-purple-400' },
     { label: 'Win Rate', value: '65–75%', icon: Shield, color: 'text-yellow-400' },
     { label: 'Risk Per Trade', value: '2%', icon: DollarSign, color: 'text-red-400' },
-    { label: 'Min Deposit', value: '$2,500+', icon: Users, color: 'text-cyan-400' },
+    { label: 'Min Capital', value: '$2,500+', icon: Users, color: 'text-cyan-400' },
   ];
 
   return (
