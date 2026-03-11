@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowRight, MessageSquare, Zap, Activity, Globe, Target, TrendingUp, Star } from 'lucide-react';
+import { ArrowRight, MessageSquare, Zap, Activity, Globe, Target, TrendingUp, Star, Shield, Crown, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -95,65 +95,89 @@ onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?auto
             })}
           </div>
 
-          {/* Weekly Results Section - PROMINENT */}
+          {/* Weekly Signal Results - PROMINENT */}
+          <div className="text-center mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-medium">
+              <Activity className="w-3.5 h-3.5" />
+              Live Signal Performance
+            </div>
+          </div>
           <WeeklyResults />
 
         </div>
 
-        {/* Feature Cards - Reduced to 3 */}
+        {/* Capital Management Service */}
         <div className="py-16 animate-fade-in" style={{animationDelay: '0.4s'}}>
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Powerful Trading Tools
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-medium mb-4">
+              <Crown className="w-3.5 h-3.5" />
+              Professional Service
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold mb-3">
+              Capital Management
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to trade smarter
+              Let us grow your personal or funded account with proven, backtested strategies
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-            <Card className="p-6 bg-gradient-to-br from-purple-900/20 to-purple-900/5 border-purple-500/30 hover:border-purple-500/60 transition-all hover:shadow-lg hover:shadow-purple-500/20">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-                  <Zap className="w-6 h-6 text-white" />
+          <Card className="p-6 md:p-10 bg-gradient-to-br from-purple-900/20 via-background to-green-900/10 border-purple-500/30 max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-8 items-center">
+              <div>
+                <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Shield className="w-6 h-6 text-purple-400" />
+                  We Trade. You Earn.
+                </h3>
+                <p className="text-muted-foreground text-sm mb-6">
+                  Hand your personal capital or funded account over to our proven strategy.
+                  Consistent weekly returns with strict risk management.
+                </p>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  <span className="px-3 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-300 text-xs font-medium">✓ Personal Capital</span>
+                  <span className="px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-medium">✓ Funded Accounts</span>
+                  <span className="px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-medium">✓ Prop Firm Challenges</span>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold mb-2">⚡ Elite Signal Engine</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Institutional-grade signals with multi-filter validation and real-time price scraping.
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-gradient-to-br from-pink-900/20 to-pink-900/5 border-pink-500/30 hover:border-pink-500/60 transition-all hover:shadow-lg hover:shadow-pink-500/20">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold mb-2">💬 AI Mentor Coach</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Personalized lessons. Multi-strategy analysis. Chart breakdowns on demand.
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-gradient-to-br from-purple-900/20 to-purple-900/5 border-purple-500/30 hover:border-purple-500/60 transition-all hover:shadow-lg hover:shadow-purple-500/20">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-                  <Target className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold mb-2">📝 Smart Trading Journal</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Auto-sync trades from MT4/MT5, Binance, Bybit, and more with AI analysis.
-                  </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    onClick={() => navigate('/capital-management')}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold gap-2"
+                  >
+                    Learn More
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?autoload=1&app_absent=0', '_blank')}
+                    className="border-green-500/30 text-green-400 hover:bg-green-500/10 gap-2"
+                  >
+                    Contact via WhatsApp
+                  </Button>
                 </div>
               </div>
-            </Card>
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white/5 rounded-lg p-4 text-center border border-white/10">
+                  <TrendingUp className="w-5 h-5 mx-auto mb-2 text-green-400" />
+                  <div className="text-xl font-bold text-green-400">0.8–1.1%</div>
+                  <div className="text-xs text-muted-foreground">Weekly Returns</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-4 text-center border border-white/10">
+                  <BarChart3 className="w-5 h-5 mx-auto mb-2 text-blue-400" />
+                  <div className="text-xl font-bold text-blue-400">4–5%</div>
+                  <div className="text-xs text-muted-foreground">Monthly Returns</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-4 text-center border border-white/10">
+                  <Target className="w-5 h-5 mx-auto mb-2 text-purple-400" />
+                  <div className="text-xl font-bold text-purple-400">40–60%</div>
+                  <div className="text-xs text-muted-foreground">Annual Returns</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-4 text-center border border-white/10">
+                  <Shield className="w-5 h-5 mx-auto mb-2 text-yellow-400" />
+                  <div className="text-xl font-bold text-yellow-400">65–75%</div>
+                  <div className="text-xs text-muted-foreground">Win Rate</div>
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
 
         {/* Final CTA */}
