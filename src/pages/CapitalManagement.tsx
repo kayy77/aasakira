@@ -57,9 +57,15 @@ const CapitalManagement = () => {
               <span className="text-white/90">With Proven Strategies</span>
             </h1>
             <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base">
-              Institutional-grade forex management for larger deposits and funded accounts.
-              Consistent returns backed by 2+ years of verified backtesting.
+              Institutional-grade forex management for <strong className="text-white">personal deposits</strong> and <strong className="text-white">funded accounts</strong>.
+              Whether you have your own capital or a funded challenge account, we trade it with
+              consistent returns backed by 2+ years of verified backtesting.
             </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              <span className="px-3 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-300 text-xs font-medium">✓ Personal Capital</span>
+              <span className="px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-medium">✓ Funded Accounts</span>
+              <span className="px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-medium">✓ Prop Firm Challenges</span>
+            </div>
           </div>
 
           {/* Performance Stats Grid */}
