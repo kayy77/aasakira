@@ -22,7 +22,7 @@ const CapitalManagement = () => {
     { label: 'Annual Returns', value: '40–60%', icon: Target, color: 'text-purple-400' },
     { label: 'Win Rate', value: '65–75%', icon: Shield, color: 'text-yellow-400' },
     { label: 'Risk Per Trade', value: '2%', icon: DollarSign, color: 'text-red-400' },
-    { label: 'Min Deposit', value: '$2,500+', icon: Users, color: 'text-cyan-400' },
+    { label: 'Min Capital', value: '$2,500+', icon: Users, color: 'text-cyan-400' },
   ];
 
   return (
@@ -57,9 +57,15 @@ const CapitalManagement = () => {
               <span className="text-white/90">With Proven Strategies</span>
             </h1>
             <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base">
-              Institutional-grade forex management for larger deposits and funded accounts.
-              Consistent returns backed by 2+ years of verified backtesting.
+              Institutional-grade forex management for <strong className="text-white">personal deposits</strong> and <strong className="text-white">funded accounts</strong>.
+              Whether you have your own capital or a funded challenge account, we trade it with
+              consistent returns backed by 2+ years of verified backtesting.
             </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              <span className="px-3 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-300 text-xs font-medium">✓ Personal Capital</span>
+              <span className="px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-medium">✓ Funded Accounts</span>
+              <span className="px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-medium">✓ Prop Firm Challenges</span>
+            </div>
           </div>
 
           {/* Performance Stats Grid */}
@@ -86,7 +92,7 @@ const CapitalManagement = () => {
                 <div className="bg-white/5 rounded-lg p-4 border border-white/5">
                   <div className="text-purple-400 font-bold text-lg mb-1">01</div>
                   <div className="font-semibold text-white mb-1">Connect</div>
-                  <p className="text-muted-foreground text-xs">Deposit a minimum of $2,500 into your trading or funded account.</p>
+                  <p className="text-muted-foreground text-xs">Deposit a minimum of $2,500 into your personal or funded trading account.</p>
                 </div>
                 <div className="bg-white/5 rounded-lg p-4 border border-white/5">
                   <div className="text-purple-400 font-bold text-lg mb-1">02</div>
@@ -142,7 +148,7 @@ const CapitalManagement = () => {
               <CardContent className="p-6 sm:p-10">
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Ready to Grow Your Capital?</h2>
                 <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
-                  Get started with a minimum deposit of $2,500. Message us on WhatsApp to learn more.
+                  Whether it's your own capital or a funded account, get started with $2,500+. Message us on WhatsApp to learn more.
                 </p>
                 <Button
                   size="lg"
