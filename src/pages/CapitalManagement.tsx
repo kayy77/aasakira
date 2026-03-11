@@ -148,7 +148,7 @@ const CapitalManagement = () => {
               <CardContent className="p-6 sm:p-10">
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Ready to Grow Your Capital?</h2>
                 <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
-                  Get started with a minimum deposit of $2,500. Message us on WhatsApp to learn more.
+                  Whether it's your own capital or a funded account, get started with $2,500+. Message us on WhatsApp to learn more.
                 </p>
                 <Button
                   size="lg"
