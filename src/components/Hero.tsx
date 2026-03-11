@@ -95,7 +95,13 @@ onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?auto
             })}
           </div>
 
-          {/* Weekly Results Section - PROMINENT */}
+          {/* Weekly Signal Results - PROMINENT */}
+          <div className="text-center mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-medium">
+              <Activity className="w-3.5 h-3.5" />
+              Live Signal Performance
+            </div>
+          </div>
           <WeeklyResults />
 
         </div>
