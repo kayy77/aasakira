@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Signal, Home, User, DollarSign, BookOpen, Camera, LogIn } from 'lucide-react';
+import { Menu, X, Signal, Home, User, DollarSign, BookOpen, Camera, LogIn, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
