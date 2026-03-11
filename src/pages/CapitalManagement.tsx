@@ -92,7 +92,7 @@ const CapitalManagement = () => {
                 <div className="bg-white/5 rounded-lg p-4 border border-white/5">
                   <div className="text-purple-400 font-bold text-lg mb-1">01</div>
                   <div className="font-semibold text-white mb-1">Connect</div>
-                  <p className="text-muted-foreground text-xs">Deposit a minimum of $2,500 into your trading or funded account.</p>
+                  <p className="text-muted-foreground text-xs">Deposit a minimum of $2,500 into your personal or funded trading account.</p>
                 </div>
                 <div className="bg-white/5 rounded-lg p-4 border border-white/5">
                   <div className="text-purple-400 font-bold text-lg mb-1">02</div>
