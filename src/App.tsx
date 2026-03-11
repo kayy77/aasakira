@@ -4,6 +4,7 @@ import Index from '@/pages/Index';
 import Journal from '@/pages/Journal';
 import Pricing from '@/pages/Pricing';
 import Affiliate from '@/pages/Affiliate';
+import CapitalManagement from '@/pages/CapitalManagement';
 
 import LiveSignals from '@/pages/LiveSignals';
 import ClientPortal from '@/pages/ClientPortal';
