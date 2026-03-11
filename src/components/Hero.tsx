@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowRight, MessageSquare, Zap, Activity, Globe, Target, TrendingUp, Star } from 'lucide-react';
+import { ArrowRight, MessageSquare, Zap, Activity, Globe, Target, TrendingUp, Star, Shield, Crown, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
