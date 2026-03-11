@@ -36,6 +36,7 @@ function App() {
                   <Route path="/client" element={<ClientDashboard />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/affiliate" element={<Affiliate />} />
+                  <Route path="/capital-management" element={<CapitalManagement />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>
