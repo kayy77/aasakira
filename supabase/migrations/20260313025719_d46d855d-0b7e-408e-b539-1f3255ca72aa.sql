@@ -1,0 +1,1 @@
+DELETE FROM active_trades WHERE id IN ('ba39e684-9c32-4097-ba30-0a82e6f1b70d', 'fe8dd7dd-f6ea-4493-b5b5-228ef44dfbdb');
