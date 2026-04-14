@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import MultiStepSignupDialog from './MultiStepSignupDialog';
 import WeeklyResults from './WeeklyResults';
+import MyFxBookStats from './MyFxBookStats';
 
 const Hero = () => {
   const { isAuthenticated } = useAuth();
@@ -179,6 +180,9 @@ onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?auto
             </div>
           </Card>
         </div>
+
+        {/* MyFxBook Performance */}
+        <MyFxBookStats />
 
         {/* Final CTA */}
         <div className="py-16 animate-fade-in border-t border-border" style={{animationDelay: '0.6s'}}>
