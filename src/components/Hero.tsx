@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import MultiStepSignupDialog from './MultiStepSignupDialog';
 import WeeklyResults from './WeeklyResults';
+import MyFxBookStats from './MyFxBookStats';
 
 const Hero = () => {
   const { isAuthenticated } = useAuth();
