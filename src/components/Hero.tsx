@@ -181,6 +181,9 @@ onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?auto
           </Card>
         </div>
 
+        {/* MyFxBook Performance */}
+        <MyFxBookStats />
+
         {/* Final CTA */}
         <div className="py-16 animate-fade-in border-t border-border" style={{animationDelay: '0.6s'}}>
           <Card className="p-10 md:p-16 bg-gradient-to-br from-purple-900/30 via-background to-pink-900/30 backdrop-blur border-purple-500/40 max-w-3xl mx-auto text-center shadow-2xl shadow-purple-500/20">
