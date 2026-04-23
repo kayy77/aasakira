@@ -4,7 +4,9 @@ const corsHeaders = {
 };
 
 const API_BASE = 'https://www.myfxbook.com/api';
-const ACCOUNT_ID = '11992764';
+// The MyFxBook profile page uses ID 11992764, but the API account IDs differ.
+// Match by name "khai" (case-insensitive) to find the correct account.
+const ACCOUNT_NAME = 'khai';
 
 async function login(): Promise<string> {
   const email = Deno.env.get('MYFXBOOK_EMAIL');
@@ -33,14 +35,17 @@ Deno.serve(async (req) => {
 
     if (accData.error) throw new Error(accData.message);
 
-    const account = accData.accounts?.find((a: any) => String(a.id) === ACCOUNT_ID) || accData.accounts?.[0];
+    // Find the account named "khai" (the one linked to myfxbook.com/members/Aasakira/khai/11992764)
+    const account = accData.accounts?.find(
+      (a: any) => a.name?.toLowerCase() === ACCOUNT_NAME
+    ) || accData.accounts?.[0];
     if (!account) throw new Error('Account not found');
 
-    // Fetch gain data for chart info (optional, best effort)
+    // Fetch gain data for win rate (optional, best effort)
     let wonPercentage = null;
     let trades = null;
     try {
-      const histRes = await fetch(`${API_BASE}/get-history.json?session=${session}&id=${ACCOUNT_ID}`);
+      const histRes = await fetch(`${API_BASE}/get-history.json?session=${session}&id=${account.id}`);
       const histData = await histRes.json();
       if (!histData.error && histData.history) {
         const total = histData.history.length;
