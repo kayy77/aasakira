@@ -1,18 +1,89 @@
-
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Activity, TrendingUp, Shield, Target, BarChart3, Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ExternalLink, Activity, TrendingUp, Shield, Target, BarChart3, Wallet, ArrowRight, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const MYFXBOOK_URL = 'https://www.myfxbook.com/members/Aasakira/khai/11992764';
+const TELEGRAM_LINK = 'https://t.me/+E3IYiJSGNqkxNTdk';
+
+interface MfxStats {
+  gain: number;
+  profit: number;
+  wonPercentage: number;
+  drawdown: number;
+  balance: number;
+  deposits: number;
+  withdrawals: number;
+  profitFactor: number;
+  monthly: number;
+  trades: number;
+  pips: number;
+  equity: number;
+  currency: string;
+  lastUpdateDate: string;
+}
+
+// Fallback values if API fails
+const FALLBACK: MfxStats = {
+  gain: 143.54, profit: 59895, wonPercentage: 84, drawdown: 13.49,
+  balance: 69895, deposits: 50000, withdrawals: 40000, profitFactor: 3.67,
+  monthly: 12.8, trades: 847, pips: 12450, equity: 69895, currency: 'GBP',
+  lastUpdateDate: '',
+};
+
+const fmt = (n: number, currency?: string) => {
+  if (currency === 'GBP') return `£${n.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+  return `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+};
 
 const MyFxBookStats = () => {
+  const [stats, setStats] = useState<MfxStats>(FALLBACK);
+  const [isLive, setIsLive] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('myfxbook-stats');
+        if (!error && data?.success && data.stats) {
+          const s = data.stats;
+          setStats({
+            gain: Number(s.gain) || FALLBACK.gain,
+            profit: Number(s.profit) || FALLBACK.profit,
+            wonPercentage: Number(s.wonPercentage) || FALLBACK.wonPercentage,
+            drawdown: Number(s.drawdown) || FALLBACK.drawdown,
+            balance: Number(s.balance) || FALLBACK.balance,
+            deposits: Number(s.deposits) || FALLBACK.deposits,
+            withdrawals: Number(s.withdrawals) || FALLBACK.withdrawals,
+            profitFactor: Number(s.profitFactor) || FALLBACK.profitFactor,
+            monthly: Number(s.monthly) || FALLBACK.monthly,
+            trades: Number(s.trades) || FALLBACK.trades,
+            pips: Number(s.pips) || FALLBACK.pips,
+            equity: Number(s.equity) || FALLBACK.equity,
+            currency: s.currency || 'GBP',
+            lastUpdateDate: s.lastUpdateDate || '',
+          });
+          setIsLive(true);
+        }
+      } catch {
+        // Use fallback
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const c = stats.currency;
+
   return (
     <div className="py-16 animate-fade-in">
       <div className="text-center mb-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-300 text-xs font-medium mb-4">
           <Activity className="w-3.5 h-3.5" />
-          Verified Track Record
+          {isLive ? 'Live Data' : 'Verified Track Record'}
         </div>
         <h2 className="text-3xl md:text-4xl font-bold mb-3">
           Live Account Performance
@@ -31,10 +102,18 @@ const MyFxBookStats = () => {
             </div>
             <div>
               <h3 className="font-bold text-lg">KHAI Account</h3>
-              <p className="text-xs text-muted-foreground">Real (GBP) · STARTRADER · 1:500 · MT5</p>
+              <p className="text-xs text-muted-foreground">
+                Real ({c}) · STARTRADER · 1:500 · MT5
+                {stats.lastUpdateDate && <span> · Updated {stats.lastUpdateDate}</span>}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isLive && (
+              <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs animate-pulse">
+                ● Live
+              </Badge>
+            )}
             <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
               ✓ Track Record Verified
             </Badge>
@@ -44,68 +123,85 @@ const MyFxBookStats = () => {
           </div>
         </div>
 
-        {/* Main Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-black/30 rounded-xl p-4 border border-green-500/10">
-            <div className="flex items-center gap-1.5 mb-2">
-              <TrendingUp className="w-4 h-4 text-green-400" />
-              <span className="text-xs text-muted-foreground">Total Gain</span>
-            </div>
-            <p className="text-2xl font-bold text-green-400">+143.54%</p>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-          <div className="bg-black/30 rounded-xl p-4 border border-green-500/10">
-            <div className="flex items-center gap-1.5 mb-2">
-              <Wallet className="w-4 h-4 text-green-400" />
-              <span className="text-xs text-muted-foreground">Profit</span>
+        ) : (
+          <>
+            {/* Main Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-black/30 rounded-xl p-4 border border-green-500/10">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <TrendingUp className="w-4 h-4 text-green-400" />
+                  <span className="text-xs text-muted-foreground">Total Gain</span>
+                </div>
+                <p className="text-2xl font-bold text-green-400">+{stats.gain.toFixed(2)}%</p>
+              </div>
+              <div className="bg-black/30 rounded-xl p-4 border border-green-500/10">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Wallet className="w-4 h-4 text-green-400" />
+                  <span className="text-xs text-muted-foreground">Profit</span>
+                </div>
+                <p className="text-2xl font-bold text-green-400">{fmt(stats.profit, c)}</p>
+              </div>
+              <div className="bg-black/30 rounded-xl p-4 border border-green-500/10">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Target className="w-4 h-4 text-blue-400" />
+                  <span className="text-xs text-muted-foreground">Win Rate</span>
+                </div>
+                <p className="text-2xl font-bold text-blue-400">{stats.wonPercentage}%</p>
+              </div>
+              <div className="bg-black/30 rounded-xl p-4 border border-green-500/10">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Shield className="w-4 h-4 text-yellow-400" />
+                  <span className="text-xs text-muted-foreground">Max Drawdown</span>
+                </div>
+                <p className="text-2xl font-bold text-yellow-400">{stats.drawdown.toFixed(2)}%</p>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-green-400">£59,895</p>
-          </div>
-          <div className="bg-black/30 rounded-xl p-4 border border-green-500/10">
-            <div className="flex items-center gap-1.5 mb-2">
-              <Target className="w-4 h-4 text-blue-400" />
-              <span className="text-xs text-muted-foreground">Win Rate</span>
-            </div>
-            <p className="text-2xl font-bold text-blue-400">84%</p>
-          </div>
-          <div className="bg-black/30 rounded-xl p-4 border border-green-500/10">
-            <div className="flex items-center gap-1.5 mb-2">
-              <Shield className="w-4 h-4 text-yellow-400" />
-              <span className="text-xs text-muted-foreground">Max Drawdown</span>
-            </div>
-            <p className="text-2xl font-bold text-yellow-400">13.49%</p>
-          </div>
-        </div>
 
-        {/* Secondary Stats */}
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
-          {[
-            { label: 'Balance', value: '£69,895' },
-            { label: 'Deposits', value: '£50,000' },
-            { label: 'Withdrawals', value: '£40,000' },
-            { label: 'Profit Factor', value: '3.67' },
-            { label: 'Monthly Avg', value: '+12.8%' },
-            { label: 'Trades', value: '847' },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-black/20 rounded-lg p-3 text-center border border-white/5">
-              <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
-              <p className="text-sm font-semibold">{stat.value}</p>
+            {/* Secondary Stats */}
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
+              {[
+                { label: 'Balance', value: fmt(stats.balance, c) },
+                { label: 'Deposits', value: fmt(stats.deposits, c) },
+                { label: 'Withdrawals', value: fmt(stats.withdrawals, c) },
+                { label: 'Profit Factor', value: stats.profitFactor.toFixed(2) },
+                { label: 'Monthly Avg', value: `+${stats.monthly.toFixed(1)}%` },
+                { label: 'Trades', value: String(stats.trades) },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-black/20 rounded-lg p-3 text-center border border-white/5">
+                  <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
+                  <p className="text-sm font-semibold">{stat.value}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
 
-        {/* CTA */}
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground mb-3">
-            All results independently verified and audited by MyFxBook — view the full transparent report below.
+        {/* CTAs */}
+        <div className="text-center space-y-4">
+          <p className="text-xs text-muted-foreground">
+            All results independently verified and audited by MyFxBook.
           </p>
-          <Button
-            variant="outline"
-            className="border-green-500/30 text-green-400 hover:bg-green-500/10 gap-2"
-            onClick={() => window.open(MYFXBOOK_URL, '_blank')}
-          >
-            <ExternalLink className="w-4 h-4" />
-            View Full Audited Account on MyFxBook
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold gap-2"
+              onClick={() => window.open(TELEGRAM_LINK, '_blank')}
+            >
+              Join FREE Telegram Group
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="border-green-500/30 text-green-400 hover:bg-green-500/10 gap-2"
+              onClick={() => window.open(MYFXBOOK_URL, '_blank')}
+            >
+              <ExternalLink className="w-4 h-4" />
+              View on MyFxBook
+            </Button>
+          </div>
         </div>
       </Card>
     </div>
