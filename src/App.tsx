@@ -4,7 +4,6 @@ import Index from '@/pages/Index';
 import Journal from '@/pages/Journal';
 import Pricing from '@/pages/Pricing';
 import Affiliate from '@/pages/Affiliate';
-import CapitalManagement from '@/pages/CapitalManagement';
 
 import LiveSignals from '@/pages/LiveSignals';
 import ClientPortal from '@/pages/ClientPortal';
@@ -36,7 +35,6 @@ function App() {
                   <Route path="/client" element={<ClientDashboard />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/affiliate" element={<Affiliate />} />
-                  <Route path="/capital-management" element={<CapitalManagement />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>

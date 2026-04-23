@@ -28,7 +28,6 @@ const Navigation = () => {
     { name: 'Home', href: '/', icon: Home },
     { name: 'Signals', href: '/live-signals', icon: Signal },
     { name: 'Journal', href: '/journal', icon: BookOpen },
-    { name: 'Capital', href: '/capital-management', icon: Crown },
     { name: 'Affiliate', href: '/affiliate', icon: DollarSign },
   ];
 
