@@ -41,10 +41,6 @@ Deno.serve(async (req) => {
     ) || accData.accounts?.[0];
     if (!account) throw new Error('Account not found');
 
-    // Debug: log all account IDs and names
-    console.log('Available accounts:', accData.accounts?.map((a: any) => ({ id: a.id, name: a.name, gain: a.gain, balance: a.balance })));
-    console.log('Selected account:', { id: account.id, name: account.name, gain: account.gain, balance: account.balance });
-
     // Fetch gain data for win rate (optional, best effort)
     let wonPercentage = null;
     let trades = null;
