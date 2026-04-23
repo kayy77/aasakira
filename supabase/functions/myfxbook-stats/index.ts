@@ -3,145 +3,74 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const MYFXBOOK_URL = "https://www.myfxbook.com/members/Aasakira/khai/11992764";
+const API_BASE = 'https://www.myfxbook.com/api';
+const ACCOUNT_ID = '11992764';
+
+async function login(): Promise<string> {
+  const email = Deno.env.get('MYFXBOOK_EMAIL');
+  const password = Deno.env.get('MYFXBOOK_PASSWORD');
+  if (!email || !password) throw new Error('MyFxBook credentials not configured');
+
+  const res = await fetch(
+    `${API_BASE}/login.json?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+  );
+  const data = await res.json();
+  if (!data.error && data.session) return data.session;
+  throw new Error(`MyFxBook login failed: ${data.message || JSON.stringify(data)}`);
+}
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Fetch the public MyFxBook profile page
-    const response = await fetch(MYFXBOOK_URL, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-    });
+    const session = await login();
 
-    if (!response.ok) {
-      throw new Error(`MyFxBook returned ${response.status}`);
-    }
+    // Fetch account info
+    const accRes = await fetch(`${API_BASE}/get-my-accounts.json?session=${session}`);
+    const accData = await accRes.json();
 
-    const html = await response.text();
+    if (accData.error) throw new Error(accData.message);
 
-    // Extract stats from the HTML page
-    const stats: Record<string, string | null> = {};
+    const account = accData.accounts?.find((a: any) => String(a.id) === ACCOUNT_ID) || accData.accounts?.[0];
+    if (!account) throw new Error('Account not found');
 
-    // Helper to extract values
-    const extract = (pattern: RegExp): string | null => {
-      const match = html.match(pattern);
-      return match ? match[1].trim() : null;
-    };
-
-    // Gain
-    stats.gain = extract(/Gain[:\s]*<[^>]*>([^<]+)</i) 
-      || extract(/id="gain"[^>]*>([^<]+)/i)
-      || extract(/"gain"\s*:\s*"?([^",}]+)/i);
-
-    // Abs Gain
-    stats.absGain = extract(/Abs\.?\s*Gain[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"absGain"\s*:\s*"?([^",}]+)/i);
-
-    // Daily gain
-    stats.daily = extract(/Daily[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"daily"\s*:\s*"?([^",}]+)/i);
-
-    // Monthly gain
-    stats.monthly = extract(/Monthly[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"monthly"\s*:\s*"?([^",}]+)/i);
-
-    // Drawdown
-    stats.drawdown = extract(/Drawdown[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"drawdown"\s*:\s*"?([^",}]+)/i);
-
-    // Balance
-    stats.balance = extract(/Balance[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"balance"\s*:\s*"?([^",}]+)/i);
-
-    // Equity
-    stats.equity = extract(/Equity[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"equity"\s*:\s*"?([^",}]+)/i);
-
-    // Profit
-    stats.profit = extract(/Profit[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"profit"\s*:\s*"?([^",}]+)/i);
-
-    // Profit Factor
-    stats.profitFactor = extract(/Profit\s*Factor[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"profitFactor"\s*:\s*"?([^",}]+)/i);
-
-    // Pips
-    stats.pips = extract(/Pips[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"pips"\s*:\s*"?([^",}]+)/i);
-
-    // Deposits
-    stats.deposits = extract(/Deposits[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"deposits"\s*:\s*"?([^",}]+)/i);
-
-    // Withdrawals
-    stats.withdrawals = extract(/Withdrawals[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"withdrawals"\s*:\s*"?([^",}]+)/i);
-
-    // Trades
-    stats.trades = extract(/Trades[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"trades"\s*:\s*"?([^",}]+)/i);
-
-    // Win rate / Won
-    stats.winRate = extract(/Won[:\s]*<[^>]*>([^<]+)</i)
-      || extract(/"wonPercentage"\s*:\s*"?([^",}]+)/i);
-
-    // Also try to capture from JSON data embedded in page
-    const jsonMatch = html.match(/var\s+accountData\s*=\s*(\{[^;]+\})/);
-    if (jsonMatch) {
-      try {
-        const accountData = JSON.parse(jsonMatch[1]);
-        if (accountData.gain) stats.gain = String(accountData.gain);
-        if (accountData.absGain) stats.absGain = String(accountData.absGain);
-        if (accountData.daily) stats.daily = String(accountData.daily);
-        if (accountData.monthly) stats.monthly = String(accountData.monthly);
-        if (accountData.drawdown) stats.drawdown = String(accountData.drawdown);
-        if (accountData.balance) stats.balance = String(accountData.balance);
-        if (accountData.equity) stats.equity = String(accountData.equity);
-        if (accountData.profit) stats.profit = String(accountData.profit);
-        if (accountData.profitFactor) stats.profitFactor = String(accountData.profitFactor);
-        if (accountData.pips) stats.pips = String(accountData.pips);
-        if (accountData.deposits) stats.deposits = String(accountData.deposits);
-        if (accountData.withdrawals) stats.withdrawals = String(accountData.withdrawals);
-        if (accountData.trades) stats.trades = String(accountData.trades);
-      } catch {
-        // JSON parse failed, continue with regex results
-      }
-    }
-
-    // Return a sample of the HTML for debugging if no stats found
-    const hasAnyStats = Object.values(stats).some(v => v !== null);
+    // Logout to free session
+    fetch(`${API_BASE}/logout.json?session=${session}`).catch(() => {});
 
     return new Response(
       JSON.stringify({
         success: true,
-        stats,
-        hasData: hasAnyStats,
+        stats: {
+          gain: account.gain,
+          absGain: account.absGain,
+          daily: account.daily,
+          monthly: account.monthly,
+          drawdown: account.drawdown,
+          balance: account.balance,
+          equity: account.equity,
+          profit: account.profit,
+          profitFactor: account.profitFactor,
+          pips: account.pips,
+          deposits: account.deposits,
+          withdrawals: account.withdrawals,
+          trades: account.trades,
+          wonPercentage: account.wonPercentage,
+          lostPercentage: account.lostPercentage,
+          currency: account.currency,
+          name: account.name,
+          lastUpdateDate: account.lastUpdateDate,
+        },
         fetchedAt: new Date().toISOString(),
-        // Include a small HTML sample for debugging
-        ...(hasAnyStats ? {} : { htmlSample: html.substring(0, 2000) }),
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
   } catch (error) {
-    console.error("MyFxBook fetch error:", error);
+    console.error('MyFxBook API error:', error);
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      }
+      JSON.stringify({ success: false, error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });
