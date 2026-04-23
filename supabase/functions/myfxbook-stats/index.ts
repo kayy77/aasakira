@@ -36,7 +36,23 @@ Deno.serve(async (req) => {
     const account = accData.accounts?.find((a: any) => String(a.id) === ACCOUNT_ID) || accData.accounts?.[0];
     if (!account) throw new Error('Account not found');
 
-    // Logout to free session
+    // Fetch gain data for chart info (optional, best effort)
+    let wonPercentage = null;
+    let trades = null;
+    try {
+      const histRes = await fetch(`${API_BASE}/get-history.json?session=${session}&id=${ACCOUNT_ID}`);
+      const histData = await histRes.json();
+      if (!histData.error && histData.history) {
+        const total = histData.history.length;
+        const wins = histData.history.filter((t: any) => Number(t.profit) > 0).length;
+        trades = total;
+        wonPercentage = total > 0 ? Math.round((wins / total) * 100) : null;
+      }
+    } catch {
+      // Non-critical
+    }
+
+    // Logout
     fetch(`${API_BASE}/logout.json?session=${session}`).catch(() => {});
 
     return new Response(
@@ -56,11 +72,11 @@ Deno.serve(async (req) => {
           deposits: account.deposits,
           withdrawals: account.withdrawals,
           trades: account.trades,
-          wonPercentage: account.wonPercentage,
-          lostPercentage: account.lostPercentage,
+          wonPercentage: wonPercentage ?? account.wonPercentage ?? null,
           currency: account.currency,
           name: account.name,
           lastUpdateDate: account.lastUpdateDate,
+          ...(trades !== null ? { trades } : {}),
         },
         fetchedAt: new Date().toISOString(),
       }),
