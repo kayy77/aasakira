@@ -5,7 +5,7 @@ import { ExternalLink, Crown, Sparkles, MessageSquare } from 'lucide-react';
 
 const STARTRADER_URL =
   'https://www.startrader.com/live-account/?affid=MTcwOTQ3NTc=&ibpRebateCode=MTcwOTQ3NTdTVDEwMjMw';
-const TELEGRAM_LINK = 'https://t.me/+E3IYiJSGNqkxNTdk';
+const TELEGRAM_CONTACT_LINK = 'https://t.me/khaiwh';
 
 interface VipUpgradeModalProps {
   open: boolean;
@@ -82,7 +82,7 @@ const VipUpgradeModal: React.FC<VipUpgradeModalProps> = ({ open, onOpenChange })
             </p>
             <Button
               variant="outline"
-              onClick={() => window.open(TELEGRAM_LINK, '_blank')}
+              onClick={() => window.open(TELEGRAM_CONTACT_LINK, '_blank')}
               className="border-purple-500/40 text-purple-300 hover:bg-purple-500/10"
             >
               <MessageSquare className="w-4 h-4 mr-2" />
