@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import LiveTradeSignal from '@/components/LiveTradeSignal';
 import BackButton from '@/components/common/BackButton';
 import { Button } from '@/components/ui/button';
 import { Star } from 'lucide-react';
+import VipUpgradeModal from '@/components/VipUpgradeModal';
 
 export default function LiveSignals() {
+  const [vipOpen, setVipOpen] = useState(false);
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <header className="mb-8">
@@ -13,7 +16,7 @@ export default function LiveSignals() {
           <Button
             size="sm"
             className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold"
-            onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?autoload=1&app_absent=0', '_blank')}
+            onClick={() => setVipOpen(true)}
           >
             <Star className="w-4 h-4 mr-1 fill-current" />
             Upgrade to VIP
@@ -29,6 +32,7 @@ export default function LiveSignals() {
       <main>
         <LiveTradeSignal />
       </main>
+      <VipUpgradeModal open={vipOpen} onOpenChange={setVipOpen} />
     </div>
   );
 }

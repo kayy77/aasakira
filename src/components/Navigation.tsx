@@ -133,6 +133,7 @@ const Navigation = () => {
         open={upgradeModalOpen} 
         onOpenChange={setUpgradeModalOpen} 
       />
+      <VipUpgradeModal open={vipModalOpen} onOpenChange={setVipModalOpen} />
     </>
   );
 };
