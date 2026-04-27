@@ -10,7 +10,7 @@ interface BrokerModalProps {
   countryName?: string;
 }
 
-const STARTRADER_URL = 'https://www.startrader.com/live-account/?affid=MTcwOTQ3NTc=&ibpRebateCode=MTcwOTQ3NTdTVDEwMDcz';
+const STARTRADER_URL = 'https://www.startrader.com/live-account/?affid=MTcwOTQ3NTc=&ibpRebateCode=MTcwOTQ3NTdTVDEwMjMw';
 
 const BrokerModal: React.FC<BrokerModalProps> = ({ 
   isOpen, 

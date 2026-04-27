@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowRight, MessageSquare, Zap, Activity, Globe, Target, TrendingUp, Star, Shield, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,10 +9,12 @@ import { useNavigate } from 'react-router-dom';
 import MultiStepSignupDialog from './MultiStepSignupDialog';
 import WeeklyResults from './WeeklyResults';
 import MyFxBookStats from './MyFxBookStats';
+import VipUpgradeModal from './VipUpgradeModal';
 
 const Hero = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [vipOpen, setVipOpen] = useState(false);
 
   const stats = [
     { icon: Target, label: '3+ Trading Tools', color: 'text-pink-400' },
@@ -76,7 +78,7 @@ const Hero = () => {
               size="lg"
               variant="outline"
               className="group relative border-purple-500/40 text-purple-300 hover:bg-purple-500/10 font-semibold px-8 py-6 text-lg overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
-              onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?autoload=1&app_absent=0', '_blank')}
+              onClick={() => setVipOpen(true)}
             >
               <Star className="mr-2 w-5 h-5 relative fill-current" />
               <span className="relative">Upgrade to VIP</span>
@@ -146,15 +148,17 @@ const Hero = () => {
               <Button
                 size="lg"
                 className="group relative bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold px-8 py-6 shadow-lg shadow-amber-500/30 overflow-hidden hover:scale-105 hover:-translate-y-0.5 transition-all duration-200"
-                onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?autoload=1&app_absent=0', '_blank')}
+                onClick={() => setVipOpen(true)}
               >
                 <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-              <MessageSquare className="mr-2 w-5 h-5 relative" />
-              <span className="relative">Contact on WhatsApp</span>
+              <Star className="mr-2 w-5 h-5 relative fill-current" />
+              <span className="relative">Upgrade to VIP</span>
               </Button>
             </div>
           </Card>
         </div>
+
+        <VipUpgradeModal open={vipOpen} onOpenChange={setVipOpen} />
 
         {/* Footer */}
         <footer className="py-8 border-t border-border mt-12">

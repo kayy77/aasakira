@@ -17,12 +17,14 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import MobileNavigation from '@/components/mobile/MobileNavigation';
 import AuthenticationDialog from './AuthenticationDialog';
 import EnhancedPremiumUpgrade from './enhanced/EnhancedPremiumUpgrade';
+import VipUpgradeModal from './VipUpgradeModal';
 
 const Navigation = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { isPremium } = useSubscription();
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [vipModalOpen, setVipModalOpen] = useState(false);
 
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
@@ -76,7 +78,7 @@ const Navigation = () => {
               </Badge>
             ) : (
               <Button
-                onClick={() => window.open('https://api.whatsapp.com/message/GOHILXTX2HIFO1?autoload=1&app_absent=0', '_blank')}
+                onClick={() => setVipModalOpen(true)}
                 className="bg-gradient-to-r from-[#ffb347] to-[#ff416c] hover:opacity-90 text-[#0b0b0b] border-0 flex items-center gap-2 font-bold shadow-[0_6px_18px_rgba(255,65,108,0.35)] hover:shadow-[0_8px_24px_rgba(255,65,108,0.5)] transition-all"
               >
                 <Zap className="h-4 w-4" />
@@ -131,6 +133,7 @@ const Navigation = () => {
         open={upgradeModalOpen} 
         onOpenChange={setUpgradeModalOpen} 
       />
+      <VipUpgradeModal open={vipModalOpen} onOpenChange={setVipModalOpen} />
     </>
   );
 };
