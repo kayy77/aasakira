@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Activity, TrendingUp, Shield, Target, BarChart3, Wallet, ArrowRight, Loader2 } from 'lucide-react';
+import { ExternalLink, Activity, TrendingUp, Shield, Target, BarChart3, Wallet, ArrowRight, Loader2, Trophy, TrendingDown, Zap, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const MYFXBOOK_URL = 'https://www.myfxbook.com/members/Aasakira/khai/11992764';
@@ -23,6 +23,17 @@ interface MfxStats {
   equity: number;
   currency: string;
   lastUpdateDate: string;
+  wins: number;
+  losses: number;
+  bestTrade: number;
+  worstTrade: number;
+  avgWin: number;
+  avgLoss: number;
+  expectancy: number;
+  totalLots: number;
+  topSymbol: string;
+  daily: number;
+  absGain: number;
 }
 
 // Fallback values if API fails
@@ -30,7 +41,9 @@ const FALLBACK: MfxStats = {
   gain: 143.54, profit: 59895, wonPercentage: 84, drawdown: 13.49,
   balance: 69895, deposits: 50000, withdrawals: 40000, profitFactor: 3.67,
   monthly: 12.8, trades: 847, pips: 12450, equity: 69895, currency: 'GBP',
-  lastUpdateDate: '',
+  lastUpdateDate: '', wins: 0, losses: 0, bestTrade: 0, worstTrade: 0,
+  avgWin: 0, avgLoss: 0, expectancy: 0, totalLots: 0, topSymbol: '—',
+  daily: 0, absGain: 0,
 };
 
 const fmt = (n: number, currency?: string) => {
@@ -64,6 +77,17 @@ const MyFxBookStats = () => {
             equity: Number(s.equity) || FALLBACK.equity,
             currency: s.currency || 'GBP',
             lastUpdateDate: s.lastUpdateDate || '',
+            wins: Number(s.wins) || 0,
+            losses: Number(s.losses) || 0,
+            bestTrade: Number(s.bestTrade) || 0,
+            worstTrade: Number(s.worstTrade) || 0,
+            avgWin: Number(s.avgWin) || 0,
+            avgLoss: Number(s.avgLoss) || 0,
+            expectancy: Number(s.expectancy) || 0,
+            totalLots: Number(s.totalLots) || 0,
+            topSymbol: s.topSymbol || '—',
+            daily: Number(s.daily) || 0,
+            absGain: Number(s.absGain) || 0,
           });
           setIsLive(true);
         }
@@ -162,20 +186,62 @@ const MyFxBookStats = () => {
             </div>
 
             {/* Secondary Stats */}
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
               {[
                 { label: 'Balance', value: fmt(stats.balance, c) },
+                { label: 'Equity', value: fmt(stats.equity, c) },
                 { label: 'Deposits', value: fmt(stats.deposits, c) },
                 { label: 'Withdrawals', value: fmt(stats.withdrawals, c) },
                 { label: 'Profit Factor', value: stats.profitFactor.toFixed(2) },
                 { label: 'Monthly Avg', value: `+${stats.monthly.toFixed(1)}%` },
+                { label: 'Daily Avg', value: `+${stats.daily.toFixed(2)}%` },
+                { label: 'Abs. Gain', value: `+${stats.absGain.toFixed(2)}%` },
+                { label: 'Total Pips', value: stats.pips.toLocaleString() },
+                { label: 'Total Lots', value: stats.totalLots.toFixed(2) },
+                { label: 'Top Pair', value: stats.topSymbol },
                 { label: 'Trades', value: String(stats.trades) },
               ].map((stat) => (
                 <div key={stat.label} className="bg-black/20 rounded-lg p-3 text-center border border-white/5">
-                  <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
+                  <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide">{stat.label}</p>
                   <p className="text-sm font-semibold">{stat.value}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Trade Quality Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+              <div className="bg-green-500/5 rounded-lg p-3 border border-green-500/20">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Trophy className="w-3.5 h-3.5 text-green-400" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Wins / Losses</span>
+                </div>
+                <p className="text-sm font-semibold">
+                  <span className="text-green-400">{stats.wins}</span>
+                  <span className="text-muted-foreground"> / </span>
+                  <span className="text-red-400">{stats.losses}</span>
+                </p>
+              </div>
+              <div className="bg-green-500/5 rounded-lg p-3 border border-green-500/20">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Award className="w-3.5 h-3.5 text-green-400" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Best Trade</span>
+                </div>
+                <p className="text-sm font-semibold text-green-400">{fmt(stats.bestTrade, c)}</p>
+              </div>
+              <div className="bg-red-500/5 rounded-lg p-3 border border-red-500/20">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Worst Trade</span>
+                </div>
+                <p className="text-sm font-semibold text-red-400">{fmt(stats.worstTrade, c)}</p>
+              </div>
+              <div className="bg-blue-500/5 rounded-lg p-3 border border-blue-500/20">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Zap className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Expectancy / Trade</span>
+                </div>
+                <p className="text-sm font-semibold text-blue-400">{fmt(stats.expectancy, c)}</p>
+              </div>
             </div>
           </>
         )}
