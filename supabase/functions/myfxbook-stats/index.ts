@@ -41,20 +41,61 @@ Deno.serve(async (req) => {
     ) || accData.accounts?.[0];
     if (!account) throw new Error('Account not found');
 
-    // Fetch gain data for win rate (optional, best effort)
-    let wonPercentage = null;
-    let trades = null;
+    // Compute rich, accurate stats from full trade history
+    let computed: Record<string, any> = {};
     try {
       const histRes = await fetch(`${API_BASE}/get-history.json?session=${session}&id=${account.id}`);
       const histData = await histRes.json();
-      if (!histData.error && histData.history) {
-        const total = histData.history.length;
-        const wins = histData.history.filter((t: any) => Number(t.profit) > 0).length;
-        trades = total;
-        wonPercentage = total > 0 ? Math.round((wins / total) * 100) : null;
+      if (!histData.error && Array.isArray(histData.history)) {
+        // Only count actual closed trades (exclude balance/deposit/withdrawal entries with no symbol)
+        const trades = histData.history.filter(
+          (t: any) => t.symbol && t.action && (t.action === 'Buy' || t.action === 'Sell')
+        );
+        const total = trades.length;
+        const wins = trades.filter((t: any) => Number(t.profit) > 0);
+        const losses = trades.filter((t: any) => Number(t.profit) < 0);
+        const breakEvens = trades.filter((t: any) => Number(t.profit) === 0);
+        const totalProfit = trades.reduce((s: number, t: any) => s + Number(t.profit || 0), 0);
+        const totalPips = trades.reduce((s: number, t: any) => s + Number(t.pips || 0), 0);
+        const totalLots = trades.reduce(
+          (s: number, t: any) => s + Number(t?.sizing?.value || 0),
+          0
+        );
+        const grossWin = wins.reduce((s: number, t: any) => s + Number(t.profit), 0);
+        const grossLoss = Math.abs(losses.reduce((s: number, t: any) => s + Number(t.profit), 0));
+        const bestTrade = trades.reduce((m: number, t: any) => Math.max(m, Number(t.profit || 0)), 0);
+        const worstTrade = trades.reduce((m: number, t: any) => Math.min(m, Number(t.profit || 0)), 0);
+        const avgWin = wins.length ? grossWin / wins.length : 0;
+        const avgLoss = losses.length ? grossLoss / losses.length : 0;
+        const symbols: Record<string, number> = {};
+        for (const t of trades) symbols[t.symbol] = (symbols[t.symbol] || 0) + 1;
+        const topSymbol =
+          Object.entries(symbols).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
+        computed = {
+          trades: total,
+          wins: wins.length,
+          losses: losses.length,
+          breakEvens: breakEvens.length,
+          wonPercentage: total > 0 ? Math.round((wins.length / total) * 1000) / 10 : null,
+          lostPercentage: total > 0 ? Math.round((losses.length / total) * 1000) / 10 : null,
+          totalPipsHistory: Math.round(totalPips),
+          totalLots: Math.round(totalLots * 100) / 100,
+          grossWin: Math.round(grossWin * 100) / 100,
+          grossLoss: Math.round(grossLoss * 100) / 100,
+          profitFactorComputed:
+            grossLoss > 0 ? Math.round((grossWin / grossLoss) * 100) / 100 : null,
+          avgWin: Math.round(avgWin * 100) / 100,
+          avgLoss: Math.round(avgLoss * 100) / 100,
+          bestTrade: Math.round(bestTrade * 100) / 100,
+          worstTrade: Math.round(worstTrade * 100) / 100,
+          expectancy:
+            total > 0 ? Math.round((totalProfit / total) * 100) / 100 : null,
+          topSymbol,
+        };
       }
-    } catch {
-      // Non-critical
+    } catch (e) {
+      console.error('History fetch failed:', e);
     }
 
     // Logout
@@ -64,6 +105,15 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         stats: {
+          // Account-level (from MyFxBook summary)
+          name: account.name,
+          currency: account.currency,
+          server: account.server?.name || null,
+          tracking: account.tracking,
+          views: account.views,
+          creationDate: account.creationDate,
+          firstTradeDate: account.firstTradeDate,
+          lastUpdateDate: account.lastUpdateDate,
           gain: account.gain,
           absGain: account.absGain,
           daily: account.daily,
@@ -72,16 +122,17 @@ Deno.serve(async (req) => {
           balance: account.balance,
           equity: account.equity,
           profit: account.profit,
+          interest: account.interest,
           profitFactor: account.profitFactor,
           pips: account.pips,
           deposits: account.deposits,
           withdrawals: account.withdrawals,
-          trades: account.trades,
-          wonPercentage: wonPercentage ?? account.wonPercentage ?? null,
-          currency: account.currency,
-          name: account.name,
-          lastUpdateDate: account.lastUpdateDate,
-          ...(trades !== null ? { trades } : {}),
+          // Computed from full history (overrides account-level when available)
+          ...computed,
+          // Keep wonPercentage falling back to account value if computation failed
+          wonPercentage:
+            computed.wonPercentage ?? account.wonPercentage ?? null,
+          trades: computed.trades ?? account.trades ?? null,
         },
         fetchedAt: new Date().toISOString(),
       }),
