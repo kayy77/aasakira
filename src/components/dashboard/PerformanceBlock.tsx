@@ -249,7 +249,7 @@ const PerformanceBlock: React.FC = () => {
         {/* Honest disclaimer */}
         <div className="mt-4 p-2 rounded-lg bg-muted/30 border border-border/30">
           <p className="text-[10px] text-muted-foreground text-center">
-            Stats from closed journal entries only. Past performance does not guarantee future results.
+            Stats from closed trades only. Past performance does not guarantee future results.
           </p>
         </div>
       </CardContent>
