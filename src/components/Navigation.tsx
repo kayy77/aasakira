@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Signal, User, Zap, Home, DollarSign, BookOpen, Camera, Crown } from 'lucide-react';
+import { Signal, User, Zap, Home, DollarSign, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,6 @@ const Navigation = () => {
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
     { name: 'Signals', href: '/live-signals', icon: Signal },
-    { name: 'Journal', href: '/journal', icon: BookOpen },
     { name: 'Affiliate', href: '/affiliate', icon: DollarSign },
   ];
 

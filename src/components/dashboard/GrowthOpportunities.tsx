@@ -81,7 +81,7 @@ const GrowthOpportunities = ({ isPremium, isAffiliate }: GrowthOpportunitiesProp
               <div className="flex-1 space-y-2">
                 <h3 className="font-semibold text-foreground">Explore Features</h3>
                 <p className="text-sm text-muted-foreground">
-                  Discover AI signals, setup scanner, and trading journal tools.
+                  Discover AI signals, setup scanner, and live market analysis.
                 </p>
                 <Button 
                   size="sm" 
