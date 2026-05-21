@@ -220,7 +220,7 @@ const ClientDashboard: React.FC = () => {
             />
 
             {/* Growth Opportunities */}
-            <GrowthOpportunities isPremium={isPremium} isAffiliate={false} />
+            <GrowthOpportunities isPremium={isPremium} />
           </div>
         </div>
       </main>

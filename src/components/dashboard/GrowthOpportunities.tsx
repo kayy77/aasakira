@@ -5,10 +5,9 @@ import { useNavigate } from 'react-router-dom';
 
 interface GrowthOpportunitiesProps {
   isPremium: boolean;
-  isAffiliate: boolean;
 }
 
-const GrowthOpportunities = ({ isPremium, isAffiliate }: GrowthOpportunitiesProps) => {
+const GrowthOpportunities = ({ isPremium }: GrowthOpportunitiesProps) => {
   const navigate = useNavigate();
 
   return (

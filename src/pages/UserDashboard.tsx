@@ -152,7 +152,7 @@ const UserDashboard = () => {
         </div>
 
         {/* Growth Opportunities */}
-        <GrowthOpportunities isPremium={isPremium} isAffiliate={false} />
+        <GrowthOpportunities isPremium={isPremium} />
       </main>
     </div>
   );
