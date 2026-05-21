@@ -85,24 +85,6 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
             Open Account & Get 100% Bonus
           </Button>
 
-          {/* Affiliate Section */}
-          <div className="border-t border-gray-700 pt-6">
-            <div className="glass-card p-5 border-purple-500/20">
-              <h3 className="text-purple-400 font-bold text-lg mb-2">💰 Become an Affiliate</h3>
-              <p className="text-gray-300 mb-3">
-                Earn <strong className="text-green-400">up to £18 per 1.0 lot</strong> — the highest paying rebate in the FX game!
-              </p>
-              <Button
-                onClick={handleWhatsApp}
-                variant="outline"
-                className="w-full border-green-500/50 text-green-400 hover:bg-green-500/10"
-              >
-                <MessageSquare className="w-5 h-5 mr-2" />
-                Contact +44 7500 659269 on WhatsApp
-              </Button>
-            </div>
-          </div>
-
           <div className="flex gap-3">
             <Button
               onClick={onClose}

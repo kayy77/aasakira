@@ -22,8 +22,6 @@ import ProfessionalSignalQualityFilter from './ProfessionalSignalQualityFilter';
 import { EnhancedConsensusDisplay } from './EnhancedConsensusDisplay';
 import { useEnhancedConsensusScanner } from '@/hooks/useEnhancedConsensusScanner';
 import { SignalValidationStatus } from './SignalValidationStatus';
-import AffiliateBrokerBanner from '@/components/common/AffiliateBrokerBanner';
-
 const EnhancedSignalsDashboard: React.FC = () => {
   const [signals, setSignals] = useState<ProfessionalSignal[]>([]);
   const [filteredSignals, setFilteredSignals] = useState<ProfessionalSignal[]>([]);
@@ -125,9 +123,6 @@ const EnhancedSignalsDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Affiliate Broker Banner */}
-        <AffiliateBrokerBanner />
-
         {/* Enhanced Signal Generator */}
         <Card className="glass-card border-purple-500/20">
           <CardHeader>

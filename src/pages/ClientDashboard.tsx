@@ -215,14 +215,12 @@ const ClientDashboard: React.FC = () => {
             <ConnectionsCard
               ctraderConnected={ctraderConnected}
               telegramLinked={telegramLinked}
-              isAffiliate={false}
               onConnectCTrader={() => {/* handled by CTraderDashboard */}}
               onLinkTelegram={() => navigate('/live-signals')}
-              onBecomeAffiliate={() => navigate('/affiliate')}
             />
 
             {/* Growth Opportunities */}
-            <GrowthOpportunities isPremium={isPremium} isAffiliate={false} />
+            <GrowthOpportunities isPremium={isPremium} />
           </div>
         </div>
       </main>

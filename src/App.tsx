@@ -2,8 +2,6 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Index from '@/pages/Index';
 import Pricing from '@/pages/Pricing';
-import Affiliate from '@/pages/Affiliate';
-
 import LiveSignals from '@/pages/LiveSignals';
 import ClientPortal from '@/pages/ClientPortal';
 import UserDashboard from '@/pages/UserDashboard';
@@ -31,7 +29,6 @@ function App() {
                   <Route path="/dashboard" element={<UserDashboard />} />
                   <Route path="/client" element={<ClientDashboard />} />
                   <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/affiliate" element={<Affiliate />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>
