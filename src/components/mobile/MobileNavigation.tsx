@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Signal, Home, User, DollarSign, LogIn, Crown } from 'lucide-react';
+import { Menu, X, Signal, Home, User, LogIn, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -22,7 +22,6 @@ const MobileNavigation = () => {
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
     { name: 'Signals', href: '/live-signals', icon: Signal },
-    { name: 'Affiliate', href: '/affiliate', icon: DollarSign },
   ];
 
   const isActive = (path: string) => location.pathname === path;
