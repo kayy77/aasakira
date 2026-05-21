@@ -8,8 +8,7 @@ import {
   XCircle, 
   ChevronRight,
   BarChart3,
-  MessageCircle,
-  Users
+  MessageCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,19 +25,15 @@ interface Connection {
 interface ConnectionsCardProps {
   ctraderConnected: boolean;
   telegramLinked: boolean;
-  isAffiliate: boolean;
   onConnectCTrader?: () => void;
   onLinkTelegram?: () => void;
-  onBecomeAffiliate?: () => void;
 }
 
 const ConnectionsCard: React.FC<ConnectionsCardProps> = ({
   ctraderConnected,
   telegramLinked,
-  isAffiliate,
   onConnectCTrader,
-  onLinkTelegram,
-  onBecomeAffiliate
+  onLinkTelegram
 }) => {
   const connections: Connection[] = [
     {
@@ -59,15 +54,6 @@ const ConnectionsCard: React.FC<ConnectionsCardProps> = ({
       action: onLinkTelegram,
       actionLabel: 'Link'
     },
-    {
-      id: 'affiliate',
-      name: 'Affiliate Program',
-      icon: <Users className="h-4 w-4" />,
-      connected: isAffiliate,
-      details: isAffiliate ? 'Active affiliate' : 'Earn commissions',
-      action: onBecomeAffiliate,
-      actionLabel: 'Join'
-    }
   ];
 
   const connectedCount = connections.filter(c => c.connected).length;

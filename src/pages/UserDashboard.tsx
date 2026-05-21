@@ -9,7 +9,6 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 import DashboardSummaryCards from '@/components/dashboard/DashboardSummaryCards';
 import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import RecentActivityFeed from '@/components/dashboard/RecentActivityFeed';
-import AffiliateSection from '@/components/dashboard/AffiliateSection';
 import GrowthOpportunities from '@/components/dashboard/GrowthOpportunities';
 import CTraderDashboard from '@/components/dashboard/CTraderDashboard';
 
@@ -29,7 +28,6 @@ const UserDashboard = () => {
     totalTrades: 0,
     winRate: null,
   });
-  const [isAffiliate, setIsAffiliate] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -73,10 +71,6 @@ const UserDashboard = () => {
         totalTrades,
         winRate,
       });
-
-      // Check if user is an affiliate (placeholder - would check affiliate table)
-      // For now, using a simple check
-      setIsAffiliate(false); // Set to true when affiliate system is implemented
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -158,15 +152,7 @@ const UserDashboard = () => {
         </div>
 
         {/* Growth Opportunities */}
-        <GrowthOpportunities isPremium={isPremium} isAffiliate={isAffiliate} />
-
-        {/* Affiliate Section - Only visible for affiliates */}
-        {isAffiliate && (
-          <>
-            <Separator className="my-8" />
-            <AffiliateSection />
-          </>
-        )}
+        <GrowthOpportunities isPremium={isPremium} isAffiliate={false} />
       </main>
     </div>
   );
