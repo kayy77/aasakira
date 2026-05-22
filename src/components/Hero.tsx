@@ -81,7 +81,7 @@ const Hero = () => {
               onClick={() => setVipOpen(true)}
             >
               <Star className="mr-2 w-5 h-5 relative fill-current" />
-              <span className="relative">Upgrade to VIP</span>
+              <span className="relative">Get 50% OFF VIP — Limited Time</span>
             </Button>
           </div>
 
@@ -152,7 +152,7 @@ const Hero = () => {
               >
                 <span className="absolute inset-0 -translate-x-full animate-[shimmer_6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
               <Star className="mr-2 w-5 h-5 relative fill-current" />
-              <span className="relative">Upgrade to VIP</span>
+              <span className="relative">Claim 50% OFF VIP — Offer Expires Soon</span>
               </Button>
             </div>
           </Card>
