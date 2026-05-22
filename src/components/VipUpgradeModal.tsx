@@ -46,6 +46,11 @@ const VipUpgradeModal: React.FC<VipUpgradeModalProps> = ({ open, onOpenChange })
 
         <div className="space-y-6 py-2">
           <div className="text-center">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-600 via-red-500 to-amber-500 text-white font-extrabold text-sm uppercase tracking-wider px-4 py-1.5 rounded-full mb-3 shadow-lg shadow-red-500/30 animate-pulse">
+              <Sparkles className="w-4 h-4" />
+              50% OFF VIP — Offer Expires Soon
+            </div>
+            <div className="block" />
             <div className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold text-xl px-5 py-2 rounded-full mb-3">
               100% DEPOSIT BONUS
             </div>
