@@ -314,6 +314,7 @@ export default function LiveTradeSignal() {
   const [communityAll, setCommunityAll] = useState<ActiveTrade[]>([]);
   const [vipAll, setVipAll] = useState<ActiveTrade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<'all' | 'vip' | 'free'>('all');
 
   const [communityDateRange, setCommunityDateRange] = useState<DateRange>({
     from: startOfMonth(new Date()),
@@ -395,8 +396,30 @@ export default function LiveTradeSignal() {
   }
 
   return (
-    <div className="space-y-12">
-      <TradeSection
+    <div className="space-y-8">
+      {/* Category filter */}
+      <div className="flex gap-2 p-1 bg-muted/40 rounded-lg w-full sm:w-fit">
+        {([
+          { id: 'all', label: 'All' },
+          { id: 'vip', label: 'VIP' },
+          { id: 'free', label: 'FREE' },
+        ] as const).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setView(t.id)}
+            className={`flex-1 sm:flex-none px-4 py-2 text-sm font-semibold rounded-md transition ${
+              view === t.id
+                ? 'bg-background text-foreground shadow'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {(view === 'all' || view === 'vip') && (
+        <TradeSection
         label="VIP"
         badgeColor="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
         activeTrade={vipActive}
@@ -404,11 +427,13 @@ export default function LiveTradeSignal() {
         stats={vipStats}
         dateRange={vipDateRange}
         onDateChange={setVipDateRange}
-      />
+        />
+      )}
 
-      <div className="border-t border-border/40" />
+      {view === 'all' && <div className="border-t border-border/40" />}
 
-      <TradeSection
+      {(view === 'all' || view === 'free') && (
+        <TradeSection
         label="FREE"
         badgeColor="bg-blue-500/20 text-blue-400 border-blue-500/30"
         activeTrade={communityActive}
@@ -416,7 +441,8 @@ export default function LiveTradeSignal() {
         stats={communityStats}
         dateRange={communityDateRange}
         onDateChange={setCommunityDateRange}
-      />
+        />
+      )}
     </div>
   );
 }
