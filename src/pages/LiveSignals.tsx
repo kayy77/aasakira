@@ -2,7 +2,7 @@ import { useState } from 'react';
 import LiveTradeSignal from '@/components/LiveTradeSignal';
 import BackButton from '@/components/common/BackButton';
 import { Button } from '@/components/ui/button';
-import { Star } from 'lucide-react';
+import { Crown } from 'lucide-react';
 import VipUpgradeModal from '@/components/VipUpgradeModal';
 import {
   TradeStatsBanner,
@@ -18,14 +18,16 @@ export default function LiveSignals() {
         <div className="flex items-center justify-between gap-3 mb-4">
           <BackButton className="-ml-2" />
 
-          <Button
-            size="sm"
-            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold"
+          <button
             onClick={() => setVipOpen(true)}
+            className="group relative inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-gradient-to-b from-zinc-900 to-black px-4 py-2 text-sm font-semibold text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-amber-300/70 hover:text-white"
           >
-            <Star className="w-4 h-4 mr-1 fill-current" />
-            Upgrade to VIP
-          </Button>
+            <Crown className="w-3.5 h-3.5 text-amber-400 transition group-hover:text-amber-300" />
+            <span className="tracking-wide">Upgrade to VIP</span>
+            <span className="ml-1 rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 ring-1 ring-amber-400/30">
+              −50%
+            </span>
+          </button>
         </div>
 
         <h1 className="text-3xl font-bold mb-1">Trade History</h1>
