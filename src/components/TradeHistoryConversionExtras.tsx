@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Send, Sparkles, Crown, Users } from 'lucide-react';
+import { Send, Crown, Users } from 'lucide-react';
 import {
   getMaxTpPips,
   classifyTradeOutcome,
@@ -141,23 +141,27 @@ function StatColumn({
 export function StickyTelegramCTA() {
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-2 pointer-events-none">
-      <div className="pointer-events-auto max-w-2xl mx-auto rounded-2xl border border-sky-400/40 bg-gradient-to-r from-sky-500/95 via-blue-500/95 to-cyan-500/95 backdrop-blur-md shadow-[0_10px_40px_rgba(56,189,248,0.45)] p-3 flex items-center gap-3">
-        <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-white/15">
-          <Send className="w-5 h-5 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-white font-bold text-sm md:text-base leading-tight">
-            Get these signals live on Telegram
-          </div>
-          <div className="text-white/85 text-xs">
-            Free channel · Real-time alerts · No credit card
+      <div className="pointer-events-auto max-w-xl mx-auto rounded-full border border-border/60 bg-background/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] pl-4 pr-1.5 py-1.5 flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75 animate-ping"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-400"></span>
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-foreground font-semibold text-[13px] md:text-sm leading-tight truncate">
+              Live signals on Telegram
+            </div>
+            <div className="text-muted-foreground text-[11px] truncate">
+              Free · Real-time · No card
+            </div>
           </div>
         </div>
         <Button
           size="sm"
           onClick={() => window.open(TELEGRAM_FREE, '_blank')}
-          className="bg-white text-sky-700 hover:bg-white/90 font-bold whitespace-nowrap shrink-0"
+          className="rounded-full bg-sky-500 hover:bg-sky-400 text-white font-semibold whitespace-nowrap shrink-0 gap-1.5 h-9 px-4"
         >
+          <Send className="w-3.5 h-3.5" />
           Join Free
         </Button>
       </div>
@@ -192,20 +196,19 @@ export function FloatingVipBadge({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="fixed top-20 right-3 md:right-6 z-40 group animate-pulse hover:animate-none"
+      className="fixed top-24 right-3 md:right-6 z-40 group"
       aria-label="Claim 50% off VIP"
     >
-      <div className="rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 p-[2px] shadow-[0_8px_30px_rgba(251,146,60,0.55)]">
-        <div className="rounded-[10px] bg-black/85 backdrop-blur px-3 py-2 text-left">
-          <div className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-[10px] md:text-xs font-extrabold tracking-wider text-amber-300">
-              50% OFF VIP
-            </span>
-          </div>
-          <div className="text-[10px] text-white/70 leading-tight">
-            Ends in <span className="font-mono text-white">{timeLeft}</span>
-          </div>
+      <div className="rounded-2xl border border-amber-400/30 bg-gradient-to-b from-zinc-900/95 to-black/95 backdrop-blur-xl px-3.5 py-2.5 text-left shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition group-hover:border-amber-300/60 group-hover:-translate-y-0.5">
+        <div className="flex items-center gap-1.5">
+          <Crown className="w-3.5 h-3.5 text-amber-400" />
+          <span className="text-[10px] md:text-[11px] font-bold tracking-[0.15em] text-amber-300 uppercase">
+            50% Off VIP
+          </span>
+        </div>
+        <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+          Ends in{' '}
+          <span className="font-mono text-foreground tabular-nums">{timeLeft}</span>
         </div>
       </div>
     </button>
