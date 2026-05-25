@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Send, Sparkles, TrendingUp, Target, Trophy } from 'lucide-react';
+import { Send, Sparkles, Crown, Users } from 'lucide-react';
 import {
   getMaxTpPips,
   classifyTradeOutcome,
@@ -10,6 +10,8 @@ import {
 } from '@/utils/tradePips';
 
 const TELEGRAM_FREE = 'https://t.me/+E3IYiJSGNqkxNTdk';
+const COMMUNITY_CHANNEL_ID = -1002187927163;
+const VIP_CHANNEL_ID = -1003491244183;
 
 interface Stats {
   wins: number;
@@ -18,8 +20,11 @@ interface Stats {
   total: number;
 }
 
+const EMPTY: Stats = { wins: 0, losses: 0, pips: 0, total: 0 };
+
 export function TradeStatsBanner() {
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [vip, setVip] = useState<Stats>(EMPTY);
+  const [free, setFree] = useState<Stats>(EMPTY);
 
   useEffect(() => {
     let active = true;
@@ -28,71 +33,106 @@ export function TradeStatsBanner() {
       since.setDate(since.getDate() - 30);
       const { data } = await supabase
         .from('active_trades')
-        .select('status,outcome,take_profits,pips_realized,created_at')
+        .select('status,outcome,take_profits,pips_realized,created_at,channel_id')
         .gte('created_at', since.toISOString());
 
       if (!active || !data) return;
-      let wins = 0,
-        losses = 0,
-        pips = 0,
-        total = 0;
-      (data as TradeForPips[]).forEach((t) => {
+      const acc = { vip: { ...EMPTY }, free: { ...EMPTY } };
+      (data as (TradeForPips & { channel_id: number })[]).forEach((t) => {
         if (!isTradeCountable(t)) return;
-        total++;
-        if (classifyTradeOutcome(t) === 'win') wins++;
-        else losses++;
-        pips += getMaxTpPips(t);
+        const bucket =
+          t.channel_id === VIP_CHANNEL_ID
+            ? acc.vip
+            : t.channel_id === COMMUNITY_CHANNEL_ID
+            ? acc.free
+            : null;
+        if (!bucket) return;
+        bucket.total++;
+        if (classifyTradeOutcome(t) === 'win') bucket.wins++;
+        else bucket.losses++;
+        bucket.pips += getMaxTpPips(t);
       });
-      setStats({ wins, losses, pips: Math.round(pips), total });
+      setVip({ ...acc.vip, pips: Math.round(acc.vip.pips) });
+      setFree({ ...acc.free, pips: Math.round(acc.free.pips) });
     };
     load();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const winRate =
-    stats && stats.total > 0 ? Math.round((stats.wins / stats.total) * 100) : 0;
-
   return (
-    <div className="mb-6 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-purple-500/5 to-pink-500/10 p-4 md:p-5">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="mb-6 rounded-2xl border border-border/60 bg-card/40 backdrop-blur p-4 md:p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
         </span>
-        <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-          Last 30 Days · Verified Results
-        </span>
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Last 30 Days · Verified
+          </span>
+        </div>
       </div>
-      <div className="grid grid-cols-4 gap-2 md:gap-4">
-        <div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-            <Trophy className="w-3 h-3" /> Win Rate
-          </div>
-          <div className="text-xl md:text-3xl font-extrabold text-green-400">
-            {winRate}%
-          </div>
-        </div>
-        <div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-            <Target className="w-3 h-3" /> Pips
-          </div>
-          <div className="text-xl md:text-3xl font-extrabold text-primary">
-            +{stats?.pips ?? 0}
-          </div>
-        </div>
-        <div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-            <TrendingUp className="w-3 h-3" /> Wins
-          </div>
-          <div className="text-xl md:text-3xl font-extrabold">
-            {stats?.wins ?? 0}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground mb-1">Trades</div>
-          <div className="text-xl md:text-3xl font-extrabold">
-            {stats?.total ?? 0}
-          </div>
-        </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <StatColumn
+          label="VIP"
+          icon={<Crown className="w-3.5 h-3.5" />}
+          accent="text-amber-400"
+          ring="border-amber-500/30 bg-amber-500/[0.04]"
+          stats={vip}
+        />
+        <StatColumn
+          label="FREE"
+          icon={<Users className="w-3.5 h-3.5" />}
+          accent="text-sky-400"
+          ring="border-sky-500/30 bg-sky-500/[0.04]"
+          stats={free}
+        />
+      </div>
+    </div>
+  );
+}
+
+function StatColumn({
+  label,
+  icon,
+  accent,
+  ring,
+  stats,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  accent: string;
+  ring: string;
+  stats: Stats;
+}) {
+  const winRate = stats.total > 0 ? Math.round((stats.wins / stats.total) * 100) : 0;
+  return (
+    <div className={`rounded-xl border ${ring} p-3`}>
+      <div className={`flex items-center gap-1.5 mb-2 ${accent}`}>
+        {icon}
+        <span className="text-[11px] font-bold tracking-wider">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className={`text-2xl md:text-3xl font-extrabold ${accent}`}>
+          {winRate}%
+        </span>
+        <span className="text-[10px] text-muted-foreground uppercase">win</span>
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>
+          <span className="text-foreground font-semibold">
+            {stats.pips >= 0 ? '+' : ''}
+            {stats.pips}
+          </span>{' '}
+          pips
+        </span>
+        <span>
+          <span className="text-foreground font-semibold">{stats.total}</span>{' '}
+          trades
+        </span>
       </div>
     </div>
   );
