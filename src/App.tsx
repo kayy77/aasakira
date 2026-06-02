@@ -7,6 +7,9 @@ import ClientPortal from '@/pages/ClientPortal';
 import UserDashboard from '@/pages/UserDashboard';
 import ClientDashboard from '@/pages/ClientDashboard';
 import NotFound from '@/pages/NotFound';
+import Dashboard from '@/pages/Dashboard';
+import LotSizeCalculatorPage from '@/pages/tools/LotSizeCalculatorPage';
+import AppLayout from '@/components/app-shell/AppLayout';
 
 import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
@@ -24,11 +27,18 @@ function App() {
                 <Toaster />
                 <Routes>
                   <Route path="/" element={<Index />} />
-                  <Route path="/live-signals" element={<LiveSignals />} />
-                  <Route path="/portal" element={<ClientPortal />} />
-                  <Route path="/dashboard" element={<UserDashboard />} />
-                  <Route path="/client" element={<ClientDashboard />} />
                   <Route path="/pricing" element={<Pricing />} />
+
+                  {/* App shell — sidebar layout */}
+                  <Route element={<AppLayout />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/live-signals" element={<LiveSignals />} />
+                    <Route path="/tools/lot-size" element={<LotSizeCalculatorPage />} />
+                    <Route path="/portal" element={<ClientPortal />} />
+                    <Route path="/client" element={<ClientDashboard />} />
+                    <Route path="/account" element={<UserDashboard />} />
+                  </Route>
+
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>
