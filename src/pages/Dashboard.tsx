@@ -73,7 +73,7 @@ export default function Dashboard() {
       let pips = 0;
       (weekData ?? []).forEach((t: any) => {
         const outcome = classifyTradeOutcome(t);
-        if (outcome === "WIN") wins += 1;
+        if (outcome === "win") wins += 1;
         pips += getMaxTpPips(t) ?? 0;
       });
 
