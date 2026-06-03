@@ -26,19 +26,30 @@ export default function AppLayout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background text-foreground">
+      <div className="min-h-screen flex w-full bg-[#050505] text-foreground relative noise-overlay">
+        {/* Ambient gold glow behind app */}
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <div
+            className="absolute top-0 left-1/3 h-[500px] w-[800px] rounded-full opacity-60"
+            style={{
+              background:
+                "radial-gradient(ellipse, rgba(212,175,55,0.12) 0%, transparent 70%)",
+              filter: "blur(100px)",
+            }}
+          />
+        </div>
         <AppSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-40 h-14 flex items-center justify-between border-b border-border/60 bg-background/80 backdrop-blur px-3">
+          <header className="sticky top-0 z-40 h-14 flex items-center justify-between border-b border-[#D4AF37]/15 bg-[#050505]/80 backdrop-blur-xl px-3">
             <div className="flex items-center gap-2">
-              <SidebarTrigger />
+              <SidebarTrigger className="text-[#D4AF37] hover:bg-[#D4AF37]/10" />
               <Link
                 to="/"
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition"
+                className="hidden sm:inline-flex items-center gap-1.5 text-[10px] tracking-[0.22em] uppercase text-white/40 hover:text-[#F4D03F] transition"
               >
-                <Home className="h-3.5 w-3.5" />
-                Marketing site
+                <Home className="h-3 w-3" />
+                Home
               </Link>
             </div>
 
@@ -47,10 +58,10 @@ export default function AppLayout() {
                 <Button
                   size="sm"
                   onClick={() => setVipOpen(true)}
-                  className="h-8 gap-1.5 bg-gradient-to-r from-amber-400 to-amber-600 text-black hover:opacity-90 border-0 font-semibold"
+                  className="btn-gold h-8 gap-1.5 px-3 text-xs tracking-wider"
                 >
                   <Crown className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Upgrade to VIP</span>
+                  <span className="hidden sm:inline">Inner Circle</span>
                   <span className="rounded-full bg-black/20 px-1.5 py-0.5 text-[10px] font-bold">
                     −50%
                   </span>
@@ -61,8 +72,8 @@ export default function AppLayout() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/20 text-primary border border-primary/30 text-xs">
+                      <Avatar className="h-8 w-8 ring-1 ring-[#D4AF37]/40">
+                        <AvatarFallback className="bg-[#D4AF37]/15 text-[#F4D03F] border border-[#D4AF37]/30 text-xs font-display font-bold">
                           {user.email?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>

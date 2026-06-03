@@ -97,61 +97,61 @@ export default function Dashboard() {
       : null;
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className="container mx-auto px-4 py-8 max-w-7xl relative">
       {/* Greeting */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-3 pb-6 border-b border-[#D4AF37]/15">
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            Command Center
-          </p>
-          <h1 className="text-2xl sm:text-3xl font-bold mt-1">
+          <div className="flex items-center gap-3 text-[10px] tracking-[0.32em] uppercase text-[#D4AF37] mb-3">
+            <span className="h-px w-8 bg-[#D4AF37]/50" />
+            Private Terminal
+          </div>
+          <h1 className="font-display text-3xl sm:text-4xl font-bold mt-1 tracking-tight">
             Welcome back
-            {user?.email ? `, ${user.email.split("@")[0]}` : ""}.
+            {user?.email ? (
+              <span className="gold-text italic font-serif-lux">, {user.email.split("@")[0]}</span>
+            ) : ""}.
           </h1>
         </div>
         <Badge
           variant="outline"
           className={
             isPremium
-              ? "border-amber-400/40 text-amber-300"
-              : "border-border/60 text-muted-foreground"
+              ? "border-[#D4AF37]/50 text-[#F4D03F] bg-[#D4AF37]/10 tracking-widest uppercase text-[10px] px-3 py-1"
+              : "border-white/20 text-white/60 tracking-widest uppercase text-[10px] px-3 py-1"
           }
         >
           <Crown className="h-3 w-3 mr-1" />
-          {isPremium ? "VIP Member" : "Free Plan"}
+          {isPremium ? "Inner Circle" : "Observer"}
         </Badge>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Kpi
-          label="Open trades"
+          label="Open Positions"
           value={String(stats.activeTrades)}
           icon={Activity}
-          accent="text-emerald-400"
         />
         <Kpi
-          label="Signals this week"
+          label="Signals · 7d"
           value={String(stats.weekTrades)}
           icon={SignalIcon}
         />
         <Kpi
-          label="Win rate (7d)"
+          label="Win Rate · 7d"
           value={winRate !== null ? `${winRate}%` : "—"}
           icon={Trophy}
-          accent="text-amber-300"
+          highlight
         />
         <Kpi
-          label="Pips (7d)"
+          label="Pips · 7d"
           value={
             stats.weekPips > 0
               ? `+${stats.weekPips}`
               : String(stats.weekPips)
           }
           icon={TrendingUp}
-          accent={
-            stats.weekPips >= 0 ? "text-emerald-400" : "text-rose-400"
-          }
+          highlight
         />
       </div>
 
@@ -159,19 +159,19 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
           {/* Today's signals */}
-          <Card className="border-border/60 bg-card/60 backdrop-blur">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <SignalIcon className="h-4 w-4 text-primary" />
-                Recent signals
+          <Card className="lux-glass border-[#D4AF37]/15">
+            <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-[#D4AF37]/10">
+              <CardTitle className="text-sm flex items-center gap-2 tracking-[0.18em] uppercase text-white/80">
+                <SignalIcon className="h-3.5 w-3.5 text-[#F4D03F]" />
+                Recent Signals
               </CardTitle>
-              <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
+              <Button asChild variant="ghost" size="sm" className="h-7 text-[10px] tracking-widest uppercase text-[#D4AF37] hover:text-[#F4D03F] hover:bg-[#D4AF37]/10">
                 <Link to="/live-signals">
                   View all <ArrowRight className="h-3 w-3 ml-1" />
                 </Link>
               </Button>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-2 pt-4">
               {recent.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">
                   No signals yet. Live signals will appear here in real time.
@@ -180,15 +180,15 @@ export default function Dashboard() {
                 recent.map((t) => (
                   <div
                     key={t.id}
-                    className="flex items-center justify-between rounded-lg border border-border/40 bg-background/40 px-3 py-2"
+                    className="flex items-center justify-between rounded-lg border border-[#D4AF37]/15 bg-black/40 px-3 py-2.5 transition hover:border-[#D4AF37]/35"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <Badge
                         variant="outline"
                         className={
                           t.direction === "LONG"
-                            ? "border-emerald-400/30 text-emerald-300"
-                            : "border-rose-400/30 text-rose-300"
+                            ? "border-[#D4AF37]/40 text-[#F4D03F] bg-[#D4AF37]/10 text-[10px] tracking-wider"
+                            : "border-white/25 text-white/85 bg-white/5 text-[10px] tracking-wider"
                         }
                       >
                         {t.direction}
@@ -204,7 +204,7 @@ export default function Dashboard() {
                     </div>
                     <Badge
                       variant="outline"
-                      className="text-[10px] border-border/60"
+                      className="text-[9px] border-[#D4AF37]/25 text-[#D4AF37]/80 tracking-widest uppercase"
                     >
                       {t.status}
                     </Badge>
@@ -250,23 +250,28 @@ function Kpi({
   label,
   value,
   icon: Icon,
-  accent,
+  highlight,
 }: {
   label: string;
   value: string;
   icon: any;
-  accent?: string;
+  highlight?: boolean;
 }) {
   return (
-    <Card className="border-border/60 bg-card/60 backdrop-blur">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+    <Card className="lux-glass lux-glass-hover border-[#D4AF37]/15 relative overflow-hidden">
+      <div className="absolute -top-10 -right-10 h-24 w-24 rounded-full bg-[#D4AF37]/10 blur-2xl" />
+      <CardContent className="p-5 relative">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[9px] uppercase tracking-[0.28em] text-white/45">
             {label}
           </span>
-          <Icon className={`h-3.5 w-3.5 ${accent ?? "text-muted-foreground"}`} />
+          <Icon className="h-3.5 w-3.5 text-[#D4AF37]" />
         </div>
-        <div className={`text-2xl font-bold font-mono ${accent ?? ""}`}>
+        <div
+          className={`text-3xl font-bold font-display ${
+            highlight ? "gold-text" : "text-white"
+          }`}
+        >
           {value}
         </div>
       </CardContent>
@@ -288,14 +293,14 @@ function QuickAction({
   return (
     <Link
       to={to}
-      className="group flex items-center gap-3 rounded-xl border border-border/60 bg-card/60 backdrop-blur p-3 transition hover:border-primary/40 hover:bg-card"
+      className="group flex items-center gap-3 rounded-xl lux-glass lux-glass-hover p-3.5"
     >
-      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition">
-        <Icon className="h-4 w-4 text-primary" />
+      <div className="h-9 w-9 rounded-lg bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center group-hover:bg-[#D4AF37]/25 transition">
+        <Icon className="h-4 w-4 text-[#F4D03F]" />
       </div>
       <div className="min-w-0">
-        <div className="text-sm font-semibold truncate">{title}</div>
-        <div className="text-[11px] text-muted-foreground truncate">
+        <div className="text-sm font-semibold truncate font-display tracking-wide">{title}</div>
+        <div className="text-[10px] tracking-widest uppercase text-white/45 truncate">
           {subtitle}
         </div>
       </div>
