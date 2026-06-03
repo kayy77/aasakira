@@ -106,21 +106,31 @@ export function AppSidebar() {
   const isActive = (url: string) => url !== "#" && pathname === url;
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border/60">
-      <SidebarHeader className="px-4 py-4">
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-[#D4AF37]/15 bg-[#050505]"
+    >
+      <SidebarHeader className="px-4 py-5 border-b border-[#D4AF37]/10">
         {!collapsed ? (
-          <span className="text-lg font-bold tracking-wide gradient-text">
-            AASAKIRA
-          </span>
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded-md bg-gradient-to-br from-[#F4D03F] via-[#D4AF37] to-[#8B6914] gold-glow-sm flex items-center justify-center">
+              <span className="font-display text-xs font-bold text-black">A</span>
+            </div>
+            <span className="font-display text-base font-bold tracking-[0.28em] gold-text">
+              AASAKIRA
+            </span>
+          </div>
         ) : (
-          <span className="text-lg font-bold gradient-text">A</span>
+          <div className="h-7 w-7 rounded-md bg-gradient-to-br from-[#F4D03F] via-[#D4AF37] to-[#8B6914] gold-glow-sm flex items-center justify-center mx-auto">
+            <span className="font-display text-xs font-bold text-black">A</span>
+          </div>
         )}
       </SidebarHeader>
       <SidebarContent>
         {GROUPS.map((group) => (
           <SidebarGroup key={group.label}>
             {!collapsed && (
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+              <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.28em] text-[#D4AF37]/60 font-medium">
                 {group.label}
               </SidebarGroupLabel>
             )}
@@ -129,27 +139,30 @@ export function AppSidebar() {
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const disabled = item.soon;
+                  const active = isActive(item.url);
                   return (
                     <SidebarMenuItem key={`${group.label}-${item.title}`}>
                       <SidebarMenuButton
                         asChild={!disabled}
-                        isActive={isActive(item.url)}
+                        isActive={active}
                         tooltip={item.title}
                         className={
                           disabled
-                            ? "opacity-60 cursor-not-allowed pointer-events-none"
-                            : ""
+                            ? "opacity-50 cursor-not-allowed pointer-events-none"
+                            : active
+                            ? "bg-[#D4AF37]/10 text-[#F4D03F] border-l-2 border-[#D4AF37] gold-glow-sm"
+                            : "hover:bg-[#D4AF37]/5 hover:text-[#F4D03F] transition-all"
                         }
                       >
                         {disabled ? (
                           <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
+                            <Icon className="h-4 w-4 text-white/40" />
                             {!collapsed && (
                               <>
-                                <span className="flex-1">{item.title}</span>
+                                <span className="flex-1 text-white/55 text-[13px]">{item.title}</span>
                                 <Badge
                                   variant="outline"
-                                  className="text-[9px] py-0 px-1 h-4 border-border/60 text-muted-foreground"
+                                  className="text-[8px] py-0 px-1.5 h-4 border-[#D4AF37]/30 text-[#D4AF37]/70 tracking-widest uppercase"
                                 >
                                   Soon
                                 </Badge>
@@ -158,8 +171,8 @@ export function AppSidebar() {
                           </div>
                         ) : (
                           <NavLink to={item.url} className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            {!collapsed && <span>{item.title}</span>}
+                            <Icon className={`h-4 w-4 ${active ? "text-[#F4D03F]" : ""}`} />
+                            {!collapsed && <span className="text-[13px] tracking-wide">{item.title}</span>}
                           </NavLink>
                         )}
                       </SidebarMenuButton>
