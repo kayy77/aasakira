@@ -248,85 +248,213 @@ function Hero({
   onVipClick: () => void;
 }) {
   return (
-    <section className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 min-h-[calc(100vh-5rem)] flex flex-col items-center justify-center pt-8 pb-20">
-      <div className="flex flex-col items-center text-center max-w-5xl">
-        <Badge
-          variant="outline"
-          className="border-[#D4AF37]/40 bg-black/60 backdrop-blur text-[#F4D03F] px-4 py-1.5 mb-8 tracking-[0.2em] text-[10px] uppercase font-medium"
-        >
-          <Gem className="h-3 w-3 mr-2" />
-          By Invitation · The Inner Circle
-        </Badge>
-
-        <h1 className="font-display text-[clamp(3.5rem,12vw,9rem)] font-black tracking-[-0.04em] leading-[0.9]">
-          <span className="gold-text">AASAKIRA</span>
-        </h1>
-
-        <p className="mt-3 font-serif-lux italic text-2xl sm:text-3xl text-white/50 tracking-wide">
-          — the elite operating system —
-        </p>
-
-        <p className="mt-10 max-w-2xl text-lg sm:text-xl text-white/65 leading-relaxed font-light">
-          Built for traders who demand more. Private intelligence, institutional
-          execution, audited performance — engineered for those who treat
-          trading as a profession.
-        </p>
-
-        <div className="mt-12 flex flex-col sm:flex-row gap-4">
-          <Button
-            asChild
-            size="lg"
-            className="btn-gold h-14 px-9 gap-2 text-base relative overflow-hidden gold-sweep"
-          >
-            <Link to="/dashboard">
-              <span className="tracking-wider">Enter The Platform</span>
-              <ArrowRight className="h-5 w-5" />
-            </Link>
-          </Button>
-          <Button
-            size="lg"
+    <section className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10 pb-24">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+        {/* Copy */}
+        <div className="lg:col-span-6">
+          <Badge
             variant="outline"
-            onClick={onVipClick}
-            className="btn-onyx h-14 px-9 text-base tracking-wider"
+            className="border-[#D4AF37]/40 bg-black/60 backdrop-blur text-[#F4D03F] px-3 py-1 mb-6 tracking-[0.18em] text-[10px] uppercase font-medium"
           >
-            <Crown className="h-4 w-4 mr-2" />
-            Request Access
-          </Button>
+            <span className="h-1.5 w-1.5 rounded-full bg-[#F4D03F] mr-2 animate-pulse" />
+            Live · Trading Operating System
+          </Badge>
+
+          <h1 className="font-display text-[clamp(2.6rem,6.5vw,5rem)] font-bold leading-[1.02] tracking-[-0.035em]">
+            The operating system
+            <br />
+            for <span className="gold-text">serious traders.</span>
+          </h1>
+
+          <p className="mt-6 max-w-xl text-lg text-white/65 leading-relaxed">
+            Signals. Analytics. AI coaching. Risk management. Journaling.
+            Execution. One platform — engineered with institutional rigor.
+          </p>
+
+          {/* Capability rail */}
+          <div className="mt-7 flex flex-wrap gap-2 text-[11px] tracking-[0.14em] uppercase text-white/55">
+            {["Signals", "Analytics", "AI Coach", "Risk Suite", "Journal", "Copier"].map((t) => (
+              <span key={t} className="px-2.5 py-1 rounded-md border border-white/10 bg-white/[0.03]">
+                {t}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-9 flex flex-col sm:flex-row gap-3">
+            <Button
+              asChild
+              size="lg"
+              className="btn-gold h-12 px-7 gap-2 text-[15px] relative overflow-hidden"
+            >
+              <Link to="/dashboard">
+                Launch the Platform
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={onVipClick}
+              className="btn-onyx h-12 px-7 text-[15px]"
+            >
+              <Crown className="h-4 w-4 mr-2" />
+              See Inner Circle
+            </Button>
+          </div>
+
+          {/* Trust strip */}
+          <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-[11px] tracking-wider uppercase text-white/40">
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-[#D4AF37]" /> Audited by MyFxBook
+            </span>
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-[#D4AF37]" /> 1,000+ traders
+            </span>
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-[#D4AF37]" /> Live signals 24/5
+            </span>
+          </div>
         </div>
 
-        {/* Live metrics rail */}
-        <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-px rounded-2xl border border-[#D4AF37]/20 bg-black/50 backdrop-blur-xl overflow-hidden w-full max-w-4xl gold-border">
-          <MetricCell
-            label="Signals Tracked"
-            value={metrics.totalTrades.toLocaleString() || "—"}
-            icon={Activity}
-          />
-          <MetricCell
-            label="Win Rate"
-            value={metrics.winRate !== null ? `${metrics.winRate}%` : "—"}
-            icon={Trophy}
-            highlight
-          />
-          <MetricCell
-            label="Total Pips"
-            value={`+${metrics.totalPips.toLocaleString()}`}
-            icon={TrendingUp}
-            highlight
-          />
-          <MetricCell
-            label="Members"
-            value="1,000+"
-            icon={Users}
-          />
+        {/* Product mockup */}
+        <div className="lg:col-span-6 relative">
+          <HeroDashboardMock metrics={metrics} />
         </div>
       </div>
 
-      {/* Scroll cue */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-[10px] tracking-[0.3em] text-white/30 uppercase">
-        <span>Descend</span>
-        <div className="h-8 w-px bg-gradient-to-b from-[#D4AF37] to-transparent" />
+      {/* Metrics strip */}
+      <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-px rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-xl overflow-hidden">
+        <MetricCell
+          label="Signals Tracked"
+          value={metrics.totalTrades.toLocaleString() || "—"}
+          icon={Activity}
+        />
+        <MetricCell
+          label="Win Rate"
+          value={metrics.winRate !== null ? `${metrics.winRate}%` : "—"}
+          icon={Trophy}
+          highlight
+        />
+        <MetricCell
+          label="Total Pips"
+          value={`+${metrics.totalPips.toLocaleString()}`}
+          icon={TrendingUp}
+          highlight
+        />
+        <MetricCell label="Members" value="1,000+" icon={Users} />
       </div>
     </section>
+  );
+}
+
+function HeroDashboardMock({ metrics }: { metrics: LiveMetrics }) {
+  // Static-but-realistic terminal preview
+  const equity = [12, 18, 14, 22, 28, 24, 33, 31, 40, 46, 42, 52, 58, 55, 64, 70, 68, 78, 84, 92];
+  const max = Math.max(...equity);
+  const min = Math.min(...equity);
+  const points = equity
+    .map((v, i) => {
+      const x = (i / (equity.length - 1)) * 100;
+      const y = 100 - ((v - min) / (max - min)) * 100;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="relative">
+      {/* halo */}
+      <div className="absolute -inset-10 bg-gradient-to-tr from-[#D4AF37]/15 via-transparent to-[#F4D03F]/10 blur-3xl rounded-full" />
+      <div className="relative rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c0c0c] to-[#050505] shadow-[0_40px_120px_-30px_rgba(212,175,55,0.35)] overflow-hidden">
+        {/* Window chrome */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8 bg-black/60">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+            <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+            <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+          </div>
+          <div className="font-mono-pro text-[10px] tracking-widest uppercase text-white/45">
+            aasakira / terminal
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-emerald-400/90 font-mono-pro">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> LIVE
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 p-4">
+          {/* Master account */}
+          <div className="col-span-2 rounded-lg border border-white/8 bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] tracking-[0.22em] uppercase text-white/45">Master Account</span>
+              <Badge className="bg-emerald-500/15 text-emerald-300 border-emerald-500/30 text-[9px] tracking-widest">+2.41%</Badge>
+            </div>
+            <div className="font-mono-pro text-3xl font-semibold text-white">$127,421.08</div>
+            <div className="font-mono-pro text-xs text-emerald-400 mt-0.5">+$2,142.40 today</div>
+
+            {/* Equity sparkline */}
+            <div className="mt-3 h-20 w-full">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
+                <defs>
+                  <linearGradient id="eq" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#F4D03F" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#F4D03F" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <polyline fill="none" stroke="#F4D03F" strokeWidth="1.2" points={points} />
+                <polygon fill="url(#eq)" points={`0,100 ${points} 100,100`} />
+              </svg>
+            </div>
+          </div>
+
+          {/* Quick stats */}
+          <div className="space-y-3">
+            <MiniStat label="Win Rate" value={metrics.winRate !== null ? `${metrics.winRate}%` : "78%"} accent />
+            <MiniStat label="Open" value="3" />
+            <MiniStat label="Today Pips" value="+184" accent />
+          </div>
+
+          {/* Signals */}
+          <div className="col-span-3 rounded-lg border border-white/8 bg-white/[0.02] p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] tracking-[0.22em] uppercase text-white/45">Live Signals</span>
+              <span className="font-mono-pro text-[10px] text-white/40">3 active</span>
+            </div>
+            <div className="space-y-1.5">
+              <MockSignal pair="XAUUSD" dir="SHORT" entry="2387.40" pnl="+62" status="TP1 HIT" />
+              <MockSignal pair="US30" dir="LONG" entry="39,420" pnl="+48" status="RUNNING" />
+              <MockSignal pair="BTCUSD" dir="LONG" entry="68,210" pnl="+1.8%" status="BE" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
+      <div className="text-[9px] tracking-[0.22em] uppercase text-white/45">{label}</div>
+      <div className={`font-mono-pro text-lg font-semibold mt-0.5 ${accent ? "text-[#F4D03F]" : "text-white"}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function MockSignal({ pair, dir, entry, pnl, status }: { pair: string; dir: string; entry: string; pnl: string; status: string }) {
+  const long = dir === "LONG";
+  return (
+    <div className="flex items-center justify-between text-xs px-2.5 py-2 rounded-md border border-white/5 bg-black/40">
+      <div className="flex items-center gap-2.5">
+        <span className={`text-[9px] tracking-widest px-1.5 py-0.5 rounded ${long ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}`}>{dir}</span>
+        <span className="font-mono-pro font-semibold text-white">{pair}</span>
+        <span className="font-mono-pro text-white/40 hidden sm:inline">@ {entry}</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="font-mono-pro text-emerald-400">{pnl}</span>
+        <span className="text-[9px] tracking-widest text-[#D4AF37]/80 uppercase">{status}</span>
+      </div>
+    </div>
   );
 }
 
@@ -348,7 +476,7 @@ function MetricCell({
         {label}
       </div>
       <div
-        className={`mt-2 text-2xl font-bold font-display ${
+        className={`mt-2 text-2xl font-bold font-mono-pro ${
           highlight ? "gold-text" : "text-white"
         }`}
       >
