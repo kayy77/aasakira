@@ -518,7 +518,7 @@ function SectionHeader({
         {highlight && (
           <>
             <br />
-            <span className="gold-text italic font-serif-lux">{highlight}</span>
+            <span className="gold-text">{highlight}</span>
           </>
         )}
       </h2>
