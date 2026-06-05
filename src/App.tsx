@@ -10,6 +10,12 @@ import NotFound from '@/pages/NotFound';
 import Dashboard from '@/pages/Dashboard';
 import LotSizeCalculatorPage from '@/pages/tools/LotSizeCalculatorPage';
 import AppLayout from '@/components/app-shell/AppLayout';
+import RequireAuth from '@/components/RequireAuth';
+import Login from '@/pages/auth/Login';
+import Signup from '@/pages/auth/Signup';
+import ForgotPassword from '@/pages/auth/ForgotPassword';
+import ResetPassword from '@/pages/auth/ResetPassword';
+import TradingAccounts from '@/pages/account/TradingAccounts';
 
 import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
@@ -28,15 +34,22 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
 
-                  {/* App shell — sidebar layout */}
-                  <Route element={<AppLayout />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/live-signals" element={<LiveSignals />} />
-                    <Route path="/tools/lot-size" element={<LotSizeCalculatorPage />} />
-                    <Route path="/portal" element={<ClientPortal />} />
-                    <Route path="/client" element={<ClientDashboard />} />
-                    <Route path="/account" element={<UserDashboard />} />
+                  {/* Protected app shell */}
+                  <Route element={<RequireAuth />}>
+                    <Route element={<AppLayout />}>
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/live-signals" element={<LiveSignals />} />
+                      <Route path="/tools/lot-size" element={<LotSizeCalculatorPage />} />
+                      <Route path="/portal" element={<ClientPortal />} />
+                      <Route path="/client" element={<ClientDashboard />} />
+                      <Route path="/account" element={<UserDashboard />} />
+                      <Route path="/account/trading-accounts" element={<TradingAccounts />} />
+                    </Route>
                   </Route>
 
                   <Route path="*" element={<NotFound />} />

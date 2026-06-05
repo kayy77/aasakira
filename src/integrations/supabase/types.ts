@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_snapshots: {
+        Row: {
+          abs_gain_pct: number | null
+          account_id: string
+          balance: number | null
+          captured_at: string
+          daily_pct: number | null
+          drawdown_pct: number | null
+          equity: number | null
+          growth_pct: number | null
+          id: string
+          monthly_pct: number | null
+          open_pl: number | null
+          profit: number | null
+          user_id: string
+        }
+        Insert: {
+          abs_gain_pct?: number | null
+          account_id: string
+          balance?: number | null
+          captured_at?: string
+          daily_pct?: number | null
+          drawdown_pct?: number | null
+          equity?: number | null
+          growth_pct?: number | null
+          id?: string
+          monthly_pct?: number | null
+          open_pl?: number | null
+          profit?: number | null
+          user_id: string
+        }
+        Update: {
+          abs_gain_pct?: number | null
+          account_id?: string
+          balance?: number | null
+          captured_at?: string
+          daily_pct?: number | null
+          drawdown_pct?: number | null
+          equity?: number | null
+          growth_pct?: number | null
+          id?: string
+          monthly_pct?: number | null
+          open_pl?: number | null
+          profit?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_snapshots_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "trading_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       active_trades: {
         Row: {
           be_activated: boolean | null
@@ -96,6 +152,50 @@ export type Database = {
             columns: ["telegram_message_id"]
             isOneToOne: false
             referencedRelation: "telegram_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_insights: {
+        Row: {
+          account_id: string | null
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          metadata: Json | null
+          score: number | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          metadata?: Json | null
+          score?: number | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          metadata?: Json | null
+          score?: number | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "trading_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -299,6 +399,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      daily_reviews: {
+        Row: {
+          account_id: string | null
+          created_at: string
+          id: string
+          metrics: Json | null
+          review_date: string
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          created_at?: string
+          id?: string
+          metrics?: Json | null
+          review_date: string
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          created_at?: string
+          id?: string
+          metrics?: Json | null
+          review_date?: string
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_reviews_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "trading_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       data_source_heartbeat: {
         Row: {
@@ -677,6 +815,71 @@ export type Database = {
           },
         ]
       }
+      performance_metrics: {
+        Row: {
+          account_id: string
+          avg_loss: number | null
+          avg_win: number | null
+          best_trade: number | null
+          computed_at: string
+          id: string
+          losses: number | null
+          period: string
+          profit_factor: number | null
+          total_pips: number | null
+          total_profit: number | null
+          trades: number | null
+          user_id: string
+          win_rate: number | null
+          wins: number | null
+          worst_trade: number | null
+        }
+        Insert: {
+          account_id: string
+          avg_loss?: number | null
+          avg_win?: number | null
+          best_trade?: number | null
+          computed_at?: string
+          id?: string
+          losses?: number | null
+          period?: string
+          profit_factor?: number | null
+          total_pips?: number | null
+          total_profit?: number | null
+          trades?: number | null
+          user_id: string
+          win_rate?: number | null
+          wins?: number | null
+          worst_trade?: number | null
+        }
+        Update: {
+          account_id?: string
+          avg_loss?: number | null
+          avg_win?: number | null
+          best_trade?: number | null
+          computed_at?: string
+          id?: string
+          losses?: number | null
+          period?: string
+          profit_factor?: number | null
+          total_pips?: number | null
+          total_profit?: number | null
+          trades?: number | null
+          user_id?: string
+          win_rate?: number | null
+          wins?: number | null
+          worst_trade?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_metrics_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "trading_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       Premium: {
         Row: {
           created_at: string
@@ -1018,6 +1221,77 @@ export type Database = {
         }
         Relationships: []
       }
+      trade_history: {
+        Row: {
+          account_id: string
+          close_price: number | null
+          close_time: string | null
+          comment: string | null
+          commission: number | null
+          created_at: string
+          external_ticket: string | null
+          id: string
+          lots: number | null
+          open_price: number | null
+          open_time: string | null
+          pips: number | null
+          profit: number | null
+          raw: Json | null
+          side: string | null
+          swap: number | null
+          symbol: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          close_price?: number | null
+          close_time?: string | null
+          comment?: string | null
+          commission?: number | null
+          created_at?: string
+          external_ticket?: string | null
+          id?: string
+          lots?: number | null
+          open_price?: number | null
+          open_time?: string | null
+          pips?: number | null
+          profit?: number | null
+          raw?: Json | null
+          side?: string | null
+          swap?: number | null
+          symbol?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          close_price?: number | null
+          close_time?: string | null
+          comment?: string | null
+          commission?: number | null
+          created_at?: string
+          external_ticket?: string | null
+          id?: string
+          lots?: number | null
+          open_price?: number | null
+          open_time?: string | null
+          pips?: number | null
+          profit?: number | null
+          raw?: Json | null
+          side?: string | null
+          swap?: number | null
+          symbol?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_history_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "trading_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trade_setups: {
         Row: {
           ai_feedback: Json | null
@@ -1070,6 +1344,95 @@ export type Database = {
           stop_loss?: number
           take_profit?: number
           timeframe?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trader_scores: {
+        Row: {
+          account_id: string | null
+          breakdown: Json | null
+          computed_at: string
+          id: string
+          score: number
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          breakdown?: Json | null
+          computed_at?: string
+          id?: string
+          score: number
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          breakdown?: Json | null
+          computed_at?: string
+          id?: string
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trader_scores_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "trading_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_accounts: {
+        Row: {
+          account_login: string | null
+          account_name: string
+          broker: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          last_error: string | null
+          last_sync_at: string | null
+          leverage: number | null
+          provider: string
+          provider_account_id: string | null
+          server: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_login?: string | null
+          account_name: string
+          broker?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          leverage?: number | null
+          provider?: string
+          provider_account_id?: string | null
+          server?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_login?: string | null
+          account_name?: string
+          broker?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          leverage?: number | null
+          provider?: string
+          provider_account_id?: string | null
+          server?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -1246,6 +1609,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_usage: {
         Row: {
           created_at: string | null
@@ -1275,6 +1659,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      weekly_reviews: {
+        Row: {
+          account_id: string | null
+          created_at: string
+          id: string
+          metrics: Json | null
+          summary: string | null
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          account_id?: string | null
+          created_at?: string
+          id?: string
+          metrics?: Json | null
+          summary?: string | null
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          account_id?: string | null
+          created_at?: string
+          id?: string
+          metrics?: Json | null
+          summary?: string | null
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_reviews_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "trading_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1336,6 +1758,13 @@ export type Database = {
         Args: { p_daily_limit: number; p_feature: string; p_user_id: string }
         Returns: Json
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       update_user_progress: {
         Args: {
           p_activity_type: string
@@ -1347,7 +1776,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "member" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1474,6 +1903,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["member", "admin"],
+    },
   },
 } as const
