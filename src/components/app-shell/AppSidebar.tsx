@@ -18,6 +18,7 @@ import {
   Settings,
   CreditCard,
   Sparkles,
+  Link2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -92,6 +93,7 @@ const GROUPS: Group[] = [
   {
     label: "Account",
     items: [
+      { title: "Trading Accounts", url: "/account/trading-accounts", icon: Link2 },
       { title: "Settings", url: "#", icon: Settings, soon: true },
       { title: "Billing", url: "/pricing", icon: CreditCard },
     ],
