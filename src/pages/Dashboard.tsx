@@ -20,6 +20,8 @@ import {
   Crown,
   Users,
   TrendingUp,
+  Link2,
+  AlertCircle,
 } from "lucide-react";
 import { Brain, Calendar, Sparkles, Clock } from "lucide-react";
 import LotSizeCalculator from "@/components/tools/LotSizeCalculator";
@@ -44,6 +46,11 @@ export default function Dashboard() {
   const { isPremium } = useSubscription();
   const [stats, setStats] = useState<DashStats>(EMPTY);
   const [recent, setRecent] = useState<any[]>([]);
+  const [account, setAccount] = useState<any>(null);
+  const [snapshot, setSnapshot] = useState<any>(null);
+  const [perf, setPerf] = useState<any>(null);
+  const [equitySeries, setEquitySeries] = useState<number[]>([]);
+  const [accountLoaded, setAccountLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -92,8 +99,62 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Load connected trading account + latest snapshot/perf/series
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    (async () => {
+      const { data: accs } = await supabase
+        .from("trading_accounts")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const acc = accs?.[0];
+      if (!alive) return;
+      setAccount(acc ?? null);
+
+      if (acc) {
+        const [snapRes, perfRes, seriesRes] = await Promise.all([
+          supabase
+            .from("account_snapshots")
+            .select("*")
+            .eq("account_id", acc.id)
+            .order("captured_at", { ascending: false })
+            .limit(1),
+          supabase
+            .from("performance_metrics")
+            .select("*")
+            .eq("account_id", acc.id)
+            .eq("period", "all")
+            .maybeSingle(),
+          supabase
+            .from("account_snapshots")
+            .select("equity, captured_at")
+            .eq("account_id", acc.id)
+            .order("captured_at", { ascending: true })
+            .limit(40),
+        ]);
+        if (!alive) return;
+        setSnapshot(snapRes.data?.[0] ?? null);
+        setPerf(perfRes.data ?? null);
+        setEquitySeries(
+          (seriesRes.data ?? [])
+            .map((r: any) => Number(r.equity))
+            .filter((n: number) => Number.isFinite(n)),
+        );
+      }
+      setAccountLoaded(true);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [user?.id]);
+
   const winRate =
-    stats.weekTrades > 0
+    perf?.win_rate != null
+      ? Math.round(Number(perf.win_rate))
+      : stats.weekTrades > 0
       ? Math.round((stats.weekWins / stats.weekTrades) * 100)
       : null;
 
@@ -128,12 +189,43 @@ export default function Dashboard() {
 
       {/* Top hero: Live account widget + KPI column */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <LiveAccountWidget weekPips={stats.weekPips} />
+        {!accountLoaded ? (
+          <Card className="lux-glass border-[#D4AF37]/15 lg:col-span-2 h-48" />
+        ) : account && snapshot ? (
+          <LiveAccountWidget
+            account={account}
+            snapshot={snapshot}
+            perf={perf}
+            equitySeries={equitySeries}
+            weekPips={stats.weekPips}
+          />
+        ) : (
+          <ConnectAccountCard />
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <Kpi label="Open" value={String(stats.activeTrades)} icon={Activity} />
-          <Kpi label="Signals 7d" value={String(stats.weekTrades)} icon={SignalIcon} />
+          <Kpi
+            label="Open"
+            value={String(stats.activeTrades)}
+            icon={Activity}
+          />
+          <Kpi
+            label="Trades"
+            value={perf?.trades != null ? String(perf.trades) : String(stats.weekTrades)}
+            icon={SignalIcon}
+          />
           <Kpi label="Win Rate" value={winRate !== null ? `${winRate}%` : "—"} icon={Trophy} highlight />
-          <Kpi label="Pips 7d" value={stats.weekPips > 0 ? `+${stats.weekPips}` : String(stats.weekPips)} icon={TrendingUp} highlight />
+          <Kpi
+            label={perf?.total_pips != null ? "Total Pips" : "Pips 7d"}
+            value={
+              perf?.total_pips != null
+                ? `${Number(perf.total_pips) >= 0 ? "+" : ""}${Math.round(Number(perf.total_pips))}`
+                : stats.weekPips > 0
+                ? `+${stats.weekPips}`
+                : String(stats.weekPips)
+            }
+            icon={TrendingUp}
+            highlight
+          />
         </div>
       </div>
 
@@ -202,32 +294,98 @@ export default function Dashboard() {
   );
 }
 
-function LiveAccountWidget({ weekPips }: { weekPips: number }) {
-  const series = [22, 28, 25, 34, 32, 41, 38, 47, 52, 49, 58, 64, 61, 70, 76, 73, 82, 89, 86, 95];
+function LiveAccountWidget({
+  account,
+  snapshot,
+  perf,
+  equitySeries,
+  weekPips,
+}: {
+  account: any;
+  snapshot: any;
+  perf: any;
+  equitySeries: number[];
+  weekPips: number;
+}) {
+  const series = equitySeries.length >= 2
+    ? equitySeries
+    : [
+        Number(snapshot?.balance) || 0,
+        Number(snapshot?.equity) || Number(snapshot?.balance) || 0,
+      ];
   const max = Math.max(...series);
   const min = Math.min(...series);
+  const range = max - min || 1;
   const points = series
     .map((v, i) => {
       const x = (i / (series.length - 1)) * 100;
-      const y = 100 - ((v - min) / (max - min)) * 100;
+      const y = 100 - ((v - min) / range) * 100;
       return `${x},${y}`;
     })
     .join(" ");
+
+  const fmtMoney = (v: number | null | undefined, currency = "USD") => {
+    if (v == null || !Number.isFinite(Number(v))) return "—";
+    try {
+      return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 2 }).format(Number(v));
+    } catch {
+      return `$${Number(v).toLocaleString()}`;
+    }
+  };
+  const fmtCompact = (v: number | null | undefined) => {
+    if (v == null || !Number.isFinite(Number(v))) return "—";
+    const n = Number(v);
+    if (Math.abs(n) >= 1000) return `$${(n / 1000).toFixed(1)}K`;
+    return `$${n.toFixed(0)}`;
+  };
+
+  const ccy = account?.currency || "USD";
+  const equity = Number(snapshot?.equity);
+  const balance = Number(snapshot?.balance);
+  const openPL = Number.isFinite(equity) && Number.isFinite(balance) ? equity - balance : null;
+  const monthly = Number(snapshot?.monthly_pct);
+  const daily = Number(snapshot?.daily_pct);
+
   return (
     <Card className="lux-glass border-[#D4AF37]/15 lg:col-span-2 relative overflow-hidden">
       <div className="absolute -top-20 -right-20 h-60 w-60 rounded-full bg-[#D4AF37]/10 blur-3xl" />
       <CardContent className="p-6 relative">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <div className="text-[10px] tracking-[0.28em] uppercase text-white/45 mb-1">Master Account · Live</div>
-            <div className="font-mono-pro text-4xl font-semibold tracking-tight">$127,421.08</div>
-            <div className="flex items-center gap-3 mt-1 text-xs">
-              <span className="font-mono-pro text-emerald-400">+$2,142.40 today</span>
-              <span className="text-white/30">·</span>
-              <span className="font-mono-pro text-emerald-400">+18.3% this month</span>
+            <div className="text-[10px] tracking-[0.28em] uppercase text-white/45 mb-1">
+              {account?.account_name || "Master Account"} · Live
+            </div>
+            <div className="font-mono-pro text-4xl font-semibold tracking-tight">
+              {fmtMoney(balance, ccy)}
+            </div>
+            <div className="flex items-center gap-3 mt-1 text-xs flex-wrap">
+              {Number.isFinite(daily) && (
+                <span className={`font-mono-pro ${daily >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {daily >= 0 ? "+" : ""}{daily.toFixed(2)}% today
+                </span>
+              )}
+              {Number.isFinite(monthly) && (
+                <>
+                  <span className="text-white/30">·</span>
+                  <span className={`font-mono-pro ${monthly >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    {monthly >= 0 ? "+" : ""}{monthly.toFixed(2)}% this month
+                  </span>
+                </>
+              )}
             </div>
           </div>
-          <Badge className="bg-emerald-500/15 text-emerald-300 border-emerald-500/30 text-[10px] tracking-widest">+2.41%</Badge>
+          {Number.isFinite(Number(snapshot?.growth_pct)) && (
+            <Badge
+              className={
+                Number(snapshot.growth_pct) >= 0
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 text-[10px] tracking-widest"
+                  : "bg-rose-500/15 text-rose-300 border-rose-500/30 text-[10px] tracking-widest"
+              }
+            >
+              {Number(snapshot.growth_pct) >= 0 ? "+" : ""}
+              {Number(snapshot.growth_pct).toFixed(2)}%
+            </Badge>
+          )}
         </div>
         <div className="h-28 w-full">
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
@@ -242,11 +400,45 @@ function LiveAccountWidget({ weekPips }: { weekPips: number }) {
           </svg>
         </div>
         <div className="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-white/8">
-          <MiniKpi label="Balance" value="$127.4K" />
-          <MiniKpi label="Equity" value="$129.5K" />
-          <MiniKpi label="Open P&L" value="+$2.1K" accent />
-          <MiniKpi label="Pips · 7d" value={weekPips > 0 ? `+${weekPips}` : String(weekPips)} accent />
+          <MiniKpi label="Balance" value={fmtCompact(balance)} />
+          <MiniKpi label="Equity" value={fmtCompact(equity)} />
+          <MiniKpi
+            label="Open P&L"
+            value={openPL != null ? `${openPL >= 0 ? "+" : ""}${fmtCompact(openPL).replace("$", "$")}` : "—"}
+            accent
+          />
+          <MiniKpi
+            label="Drawdown"
+            value={Number.isFinite(Number(snapshot?.drawdown_pct)) ? `${Number(snapshot.drawdown_pct).toFixed(1)}%` : "—"}
+            accent
+          />
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ConnectAccountCard() {
+  return (
+    <Card className="lux-glass border-[#D4AF37]/25 lg:col-span-2 relative overflow-hidden">
+      <div className="absolute -top-20 -right-20 h-60 w-60 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+      <CardContent className="p-7 relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+        <div className="max-w-md">
+          <div className="flex items-center gap-2 text-[10px] tracking-[0.28em] uppercase text-[#D4AF37] mb-2">
+            <AlertCircle className="h-3 w-3" /> No trading account connected
+          </div>
+          <h2 className="font-display text-2xl font-bold tracking-tight mb-2">
+            Connect your trading account to unlock the <span className="gold-text">command center</span>
+          </h2>
+          <p className="text-sm text-white/60">
+            Personal analytics, AI-powered insights, risk analysis, and your Trader Score — all from your real trading history.
+          </p>
+        </div>
+        <Button asChild className="btn-gold h-11 px-5 tracking-widest uppercase text-xs whitespace-nowrap">
+          <Link to="/account/trading-accounts">
+            <Link2 className="h-3.5 w-3.5 mr-1.5" /> Connect account
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );
