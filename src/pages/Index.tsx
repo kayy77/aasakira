@@ -1,6 +1,6 @@
 
-import AasakiraLanding from '@/components/landing/AasakiraLanding';
+import AasakiraLandingV2 from '@/components/landing/AasakiraLandingV2';
 
-const Index = () => <AasakiraLanding />;
+const Index = () => <AasakiraLandingV2 />;
 
 export default Index;
