@@ -1,87 +1,94 @@
-# Auth + Trading Account Connection
 
-## 1. Auth gating
+# AASAKIRA Funnel — Build Plan (Pass 1)
 
-- Keep existing `AuthContext` / Supabase auth.
-- Public routes (no auth): `/`, `/pricing`, `/features`, `/academy-preview`, `/community-preview`, `/stats`, `/contact`, `/login`, `/signup`, `/forgot-password`, `/reset-password`.
-- Protected routes (wrap `AppLayout` in a `RequireAuth` guard that redirects to `/login?next=...`):
-  `/dashboard`, `/live-signals`, `/tools/*`, `/journal`, `/academy`, `/community`, `/coach`, `/account`, `/account/trading-accounts`, `/portal`, `/client`.
-- New pages: `Login`, `Signup`, `ForgotPassword`, `ResetPassword` (all using Supabase: `signInWithPassword`, `signUp` with `emailRedirectTo`, `resetPasswordForEmail` with `redirectTo`, `updateUser`).
-- Logout already exists in `AppLayout` dropdown.
+Scope locked from your answers: **Onboarding + Verification** as the first slice, **AI-assisted auto-review** for screenshots, **stub the paywall**, **full landing rebuild**. Everything else (Risk Suite, Claude Intelligence, Community, real Stripe paywall) ships as "Coming Soon" placeholders in this pass.
 
-## 2. User roles (Member / Admin)
+## 1. Landing page rebuild (`/`, public)
 
-Separate `user_roles` table + `app_role` enum + `has_role()` SECURITY DEFINER function (per project rule — roles never on profile table). All new users default to `member` via trigger on `auth.users`.
+Replace `AasakiraLanding` with a funnel-focused page in luxury black + gold:
 
-## 3. Database (new tables)
+- **Hero**: "The Operating System for Serious Traders" + single CTA `Start Free` → `/signup`. Live ticker strip (XAUUSD, US30, EURUSD) pulled from existing `fetch-live-prices`.
+- **Preview rail** (7 tiles, each links to `/signup`):
+  Live Signals · Recent Wins · Verified Trading Account · Performance Metrics · Academy · Risk Suite · AI Coach.
+  Tiles use real data where it exists (recent `active_trades`, MyFxBook stats), otherwise a sealed "Members only" state.
+- **Trust band**: MyFxBook verified card (existing `myfxbook-stats`) + win-rate + total pips this week.
+- **Funnel explainer**: 3-step strip — Create Workspace → Verify Account → Unlock AASAKIRA.
+- **Footer CTA**: `Create Your Trading Workspace` → `/signup`.
 
-```
-trading_accounts        broker, account_name, account_login, server, currency,
-                        leverage, provider ('myfxbook'|'mt5'|'mt4'|'ctrader'|'tradelocker'),
-                        provider_account_id, status, last_sync_at, user_id
+## 2. Signup copy + onboarding entry
 
-account_snapshots       account_id, balance, equity, open_pl, growth_pct,
-                        drawdown_pct, captured_at
+- Change Signup page title to **"Create Your Trading Workspace"**.
+- After successful signup, redirect to **`/onboarding`** instead of `/dashboard`.
+- `RequireAuth` gains an onboarding gate: if `user_profiles.onboarding_status != 'verified'` and route is in the gated set, redirect to `/onboarding`.
 
-trade_history           account_id, ticket, symbol, side, lots, open_price,
-                        close_price, open_time, close_time, pips, profit, commission, swap
+## 3. Onboarding flow (`/onboarding`, authenticated)
 
-performance_metrics     account_id, period ('all'|'30d'|'7d'|'today'),
-                        trades, wins, losses, win_rate, profit_factor,
-                        avg_win, avg_loss, best_trade, worst_trade,
-                        total_pips, total_profit, computed_at
+Single page, stepper UI, persists progress to `user_profiles.onboarding_*` fields.
 
-ai_insights             user_id, account_id, kind, title, body, score, created_at
-trader_scores           user_id, account_id, score, breakdown jsonb, computed_at
-weekly_reviews          user_id, account_id, week_start, summary, metrics jsonb
-daily_reviews           user_id, account_id, review_date, summary, metrics jsonb
-```
+**Step 1 — Trader type**
+Cards: `Personal Account` · `Funded Account` · `Prop Firm Challenge`.
 
-All have RLS scoped to `auth.uid()`, plus `service_role` full access. Standard GRANTs + `updated_at` triggers.
+**Step 2A — Personal route (STARTRADER)**
+Checklist with link-outs to the official STARTRADER live registration URL:
+- Open MT5 Hedge STP account
+- Claim 100% deposit bonus
+- Verify ID
+- Submit address verification
+- Fund account
+Each item is a checkbox the user ticks as they complete it. CTA: `I've completed all steps → Upload verification`.
 
-**Credentials are NOT stored in the DB.** Myfxbook email/password go to Supabase Vault via an edge function and are referenced by `account_id` — only the edge function can read them. (If Vault isn't acceptable, fallback: store only myfxbook email + provider account id and require the user to re-enter the password to re-sync.)
+**Step 2B — Funded / Prop route**
+- "3-Day Free Trial Active" banner with countdown (trial start = now, persisted).
+- Pricing cards: `$75/month` and `$475 Lifetime` with **stubbed** `Upgrade` button (opens existing VIP WhatsApp link from memory). No Stripe wiring yet.
+- After trial expiry: route is soft-locked to the pricing screen until upgraded (manual admin flip for now).
+- Still allows Step 3 verification during trial.
 
-## 4. Trading Account connection flow
+**Step 3 — Verification upload**
+Three screenshot slots (Trading account number, Broker dashboard, MT5 account screen) → uploaded to a new private `verification-screenshots` Storage bucket.
+On submit:
+1. Insert `verification_requests` row (status `pending`).
+2. Invoke edge function `verify-trading-account` → calls Lovable AI (Gemini 2.5 Flash vision) on each screenshot, extracts `{ account_number, broker, platform, confidence }`, and:
+   - If all 3 screenshots agree on broker = STARTRADER and account number is present with confidence ≥ 0.8 → status `verified`.
+   - Else → status `needs_review` (visible to admin queue later).
+3. UI shows: `Pending Verification` → polls every 5s → `Verified` (green) or `Needs review`.
 
-New page `/account/trading-accounts` (Settings → Trading Accounts):
+**Step 4 — Verified hand-off**
+Verified users see: `Connect Your Trading Account` CTA → `/account/trading-accounts` (already built).
 
-- **Intro card** (no "Myfxbook" mention): "Want to connect your trading account?" — bullets, single CTA "Connect Trading Account".
-- **Step 1 — Method picker**: Myfxbook (Recommended) + MT5/MT4/TradeLocker/cTrader as "Coming soon" cards.
-- **Step 2 — Instructions**: "Connect via Myfxbook" walkthrough with placeholder slots for screenshots/video.
-- **Step 3 — Form**: Myfxbook Email, Password, System Name → "Sync My Trading Account".
-- **Step 4 — Validation**: live checks (Account Found / History Available / Sync Ready).
-- **Step 5 — Sync complete**: redirect to `/dashboard` populated with imported data.
+## 4. Database (single migration)
 
-## 5. Edge functions
+- `verification_requests` (id, user_id, trader_type, account_number, broker, platform, ai_confidence, status enum `pending|verified|needs_review|rejected`, ai_raw jsonb, reviewed_by, reviewed_at, created_at).
+- `verification_screenshots` (id, request_id, user_id, slot enum, storage_path, ai_extraction jsonb, created_at).
+- Add to `user_profiles`: `trader_type`, `onboarding_status` (`not_started|in_progress|pending_verification|verified`), `onboarding_step`, `trial_started_at`.
+- Add `admin` value to existing `app_role` enum (for future admin queue).
+- Full GRANTs + RLS (`auth.uid() = user_id` for own rows, admin role can read all).
+- Private Storage bucket `verification-screenshots` with per-user folder RLS.
 
-- `trading-account-connect` — accept `{ email, password, system_name }`, call Myfxbook `login` + `get-my-accounts`, persist `trading_accounts` row, stash credentials in Vault, kick off first sync.
-- `trading-account-sync` — re-login (or use vault), fetch `get-my-accounts` + `get-history` + `get-data-daily`, write `account_snapshots`, `trade_history`, `performance_metrics`. Reuses the calc logic already in `myfxbook-stats`.
-- `trading-account-disconnect` — remove vault secret + delete row (cascade).
+## 5. Edge function
 
-CORS, zod validation, JWT validation in code.
+`verify-trading-account/index.ts` — JWT-validated, Zod-validated body `{ request_id }`. Loads the 3 screenshots from Storage, calls Lovable AI Gateway with vision, writes extractions back, updates request status. Uses existing `LOVABLE_API_KEY`.
 
-## 6. Dashboard wiring
+## 6. Coming Soon placeholders
 
-`Dashboard.tsx`:
-- Read user's primary `trading_account` → latest `account_snapshots` row → latest `performance_metrics` row.
-- Replace every hardcoded number (balance, equity, daily/weekly/monthly P&L, win rate, drawdown, equity curve) with these values.
-- Empty state when no account connected → big "Connect Trading Account" CTA linking to `/account/trading-accounts`.
-- Keep existing signal/AI insight panels intact.
+Stub pages (auth-gated, "Coming soon — launching with onboarding GA" card):
+- `/risk-suite` (with the 9 calculator names listed)
+- `/community` (free feed + link to existing Telegram community URL)
+- `/coach` (Claude Intelligence Engine teaser)
+- `/academy` (already exists or stub if not)
 
-## 7. Out of scope (this pass)
+Sidebar items added with `Soon` badge.
 
-- Building Academy / Community / Coach pages — they'll be auth-gated placeholders.
-- Actual AI generation (only the table scaffolding).
-- Replacing the homepage.
+## 7. Out of scope this pass
 
-## Files touched (approx)
+- Real Stripe price IDs for $75/$475 (button is stub).
+- Admin queue UI for `needs_review` (table exists, UI later).
+- Daily/Weekly AI reviews (Claude layer).
+- Risk Suite calculator logic.
+- Community feed backend.
 
-- New: `src/pages/auth/{Login,Signup,ForgotPassword,ResetPassword}.tsx`, `src/components/RequireAuth.tsx`, `src/pages/account/TradingAccounts.tsx`, `src/components/trading-accounts/{IntroCard,MethodPicker,Instructions,ConnectForm,SyncStatus}.tsx`, edge functions above.
-- Edited: `src/App.tsx` (route map + guards), `src/pages/Dashboard.tsx` (real data), `AppSidebar` (Settings → Trading Accounts link).
-- New migration: tables + RLS + grants + roles.
+## Technical notes
 
-## Confirm before I build
-
-1. OK to skip Vault and just re-prompt for password on each re-sync? (simpler, no extra secret surface)
-2. OK that Academy/Community/Coach stay as auth-gated "Coming soon" pages for now?
-3. OK to use email/password auth only (no Google/Apple OAuth) in this pass?
+- All new colors via existing gold tokens in `index.css`; no raw hex in components.
+- New files: `src/pages/Onboarding.tsx`, `src/components/onboarding/*` (TraderTypeStep, PersonalBrokerStep, PropTrialStep, VerificationUploadStep, VerificationStatus), `src/components/landing/v2/*`, `supabase/functions/verify-trading-account/index.ts`, 4 stub pages.
+- Edited: `src/App.tsx` (routes + onboarding gate), `src/pages/auth/Signup.tsx` (copy + redirect), `src/components/RequireAuth.tsx` (onboarding gate), `src/pages/Index.tsx` (new landing), `src/components/app-shell/AppSidebar.tsx` (placeholder items).
+- One migration file for tables + bucket policies.
