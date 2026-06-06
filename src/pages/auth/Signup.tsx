@@ -19,7 +19,7 @@ export default function Signup() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const next = params.get("next") || "/dashboard";
+  const next = params.get("next") || "/onboarding";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +37,7 @@ export default function Signup() {
       const { data, error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
-        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+        options: { emailRedirectTo: `${window.location.origin}/onboarding` },
       });
       if (error) throw error;
       toast({
@@ -64,8 +64,8 @@ export default function Signup() {
 
   return (
     <AuthShell
-      title="Create your account"
-      subtitle="Join the AASAKIRA trading platform"
+      title="Create Your Trading Workspace"
+      subtitle="Sign signals, verify your account, unlock AASAKIRA."
       footer={
         <>
           Already a member?{" "}
