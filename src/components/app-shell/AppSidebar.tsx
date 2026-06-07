@@ -16,9 +16,14 @@ import {
   Radio,
   PlayCircle,
   Settings,
-  CreditCard,
   Sparkles,
   Link2,
+  User,
+  ShieldCheck,
+  Bell,
+  Lock,
+  Brain,
+  MessageSquare,
 } from "lucide-react";
 import {
   Sidebar,
@@ -51,8 +56,9 @@ const GROUPS: Group[] = [
   {
     label: "Trading",
     items: [
-      { title: "Live Signals", url: "/live-signals", icon: Signal },
-      { title: "Signal History", url: "/live-signals", icon: History },
+      { title: "Signal Command", url: "/signals", icon: Signal },
+      { title: "Signal History", url: "/signals", icon: History },
+      { title: "Trade Review", url: "/trade-review", icon: MessageSquare },
       { title: "Trade Copier", url: "#", icon: Copy, soon: true },
       { title: "Market Scanner", url: "#", icon: Radar, soon: true },
     ],
@@ -93,9 +99,13 @@ const GROUPS: Group[] = [
   {
     label: "Account",
     items: [
+      { title: "Profile", url: "/account/profile", icon: User },
       { title: "Trading Accounts", url: "/account/trading-accounts", icon: Link2 },
-      { title: "Settings", url: "#", icon: Settings, soon: true },
-      { title: "Billing", url: "/pricing", icon: CreditCard },
+      { title: "Verification", url: "/account/verification", icon: ShieldCheck },
+      { title: "Notifications", url: "/account/notifications", icon: Bell },
+      { title: "Security", url: "/account/security", icon: Lock },
+      { title: "AI Preferences", url: "/account/ai-preferences", icon: Brain },
+      { title: "Billing", url: "#", icon: Settings, soon: true },
     ],
   },
 ];
