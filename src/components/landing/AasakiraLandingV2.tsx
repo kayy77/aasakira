@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, Activity, Trophy, ShieldCheck, BarChart3, GraduationCap, Calculator, Brain, Sparkles, LineChart, Lock } from "lucide-react";
 
 const previewTiles = [
@@ -18,6 +20,28 @@ const funnelSteps = [
 ];
 
 export default function AasakiraLandingV2() {
+  const [stats, setStats] = useState<{ total: number; wins: number; closed: number; pips: number; active: number } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("active_trades")
+        .select("status, outcome, pips_realized, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      const rows = (data as any[]) || [];
+      const wins = rows.filter((r) => ["WIN", "PARTIAL", "BE"].includes(r.outcome)).length;
+      const closed = rows.filter((r) => !!r.outcome).length;
+      const pips = rows.reduce((s, r) => s + (Number(r.pips_realized) || 0), 0);
+      const active = rows.filter((r) => ["OPEN", "ACTIVE"].includes((r.status || "").toUpperCase())).length;
+      setStats({ total: rows.length, wins, closed, pips, active });
+      setStatsLoading(false);
+    })();
+  }, []);
+
+  const winRate = stats && stats.closed > 0 ? (stats.wins / stats.closed) * 100 : 0;
+
   return (
     <div className="min-h-screen bg-[#050505] text-white relative overflow-hidden">
       {/* Backdrop */}
@@ -93,9 +117,13 @@ export default function AasakiraLandingV2() {
       <section id="proof" className="relative z-10 max-w-7xl mx-auto px-6 py-20">
         <SectionHeader eyebrow="Verified Performance" title="Audited. Not anecdotal." />
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Stat label="Total Signals" value={statsLoading ? "…" : (stats?.total ?? 0).toLocaleString()} sub="Live trading floor history" icon={Activity} />
+          <Stat label="Win Rate" value={statsLoading ? "…" : `${winRate.toFixed(0)}%`} sub={`${stats?.wins ?? 0} of ${stats?.closed ?? 0} closed`} icon={Trophy} />
+          <Stat label="Total Pips" value={statsLoading ? "…" : `+${Math.round(stats?.pips ?? 0).toLocaleString()}`} sub="All-time realized" icon={LineChart} />
+        </div>
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Stat label="Active Signals" value={statsLoading ? "…" : (stats?.active ?? 0).toString()} sub="Currently live on the floor" icon={ShieldCheck} />
           <Stat label="MyFxBook Verified" value="Live" sub="Third-party audited trading account" icon={ShieldCheck} />
-          <Stat label="Weekly Win Rate" value="72%" sub="Trailing 30-day rolling average" icon={Trophy} />
-          <Stat label="Avg RR" value="1:2.4" sub="Across XAUUSD, US30, EURUSD" icon={LineChart} />
         </div>
       </section>
 
@@ -156,10 +184,24 @@ function Stat({ label, value, sub, icon: Icon }: { label: string; value: string;
 }
 
 function Ticker({ symbol }: { symbol: string }) {
+  const [price, setPrice] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const { data } = await supabase.functions.invoke("fetch-live-prices", { body: { symbols: [symbol] } });
+        const p = (data as any)?.prices?.[symbol]?.price ?? (data as any)?.[symbol]?.price ?? (data as any)?.price;
+        if (!cancelled && typeof p === "number") setPrice(p);
+      } catch { /* ignore */ }
+    };
+    load();
+    const id = setInterval(load, 15000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [symbol]);
   return (
     <div className="flex flex-col items-center">
       <span className="text-[10px] tracking-widest uppercase text-white/40">{symbol}</span>
-      <span className="text-[#F4D03F] tabular-nums">— —</span>
+      <span className="text-[#F4D03F] tabular-nums">{price !== null ? price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</span>
     </div>
   );
 }
