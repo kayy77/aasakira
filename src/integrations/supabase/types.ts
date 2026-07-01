@@ -1473,6 +1473,8 @@ export type Database = {
           has_trading_account: boolean | null
           id: string
           is_premium: boolean | null
+          onboarding_status: string
+          onboarding_step: number
           phone_number: string | null
           plan_type: string | null
           premium_expires_at: string | null
@@ -1484,7 +1486,9 @@ export type Database = {
           telegram_link_code: string | null
           telegram_link_expires: string | null
           telegram_username: string | null
+          trader_type: string | null
           trial_end: string | null
+          trial_started_at: string | null
           updated_at: string
           user_id: string
           username: string | null
@@ -1500,6 +1504,8 @@ export type Database = {
           has_trading_account?: boolean | null
           id?: string
           is_premium?: boolean | null
+          onboarding_status?: string
+          onboarding_step?: number
           phone_number?: string | null
           plan_type?: string | null
           premium_expires_at?: string | null
@@ -1511,7 +1517,9 @@ export type Database = {
           telegram_link_code?: string | null
           telegram_link_expires?: string | null
           telegram_username?: string | null
+          trader_type?: string | null
           trial_end?: string | null
+          trial_started_at?: string | null
           updated_at?: string
           user_id: string
           username?: string | null
@@ -1527,6 +1535,8 @@ export type Database = {
           has_trading_account?: boolean | null
           id?: string
           is_premium?: boolean | null
+          onboarding_status?: string
+          onboarding_step?: number
           phone_number?: string | null
           plan_type?: string | null
           premium_expires_at?: string | null
@@ -1538,7 +1548,9 @@ export type Database = {
           telegram_link_code?: string | null
           telegram_link_expires?: string | null
           telegram_username?: string | null
+          trader_type?: string | null
           trial_end?: string | null
+          trial_started_at?: string | null
           updated_at?: string
           user_id?: string
           username?: string | null
@@ -1659,6 +1671,77 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      verification_requests: {
+        Row: {
+          broker: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          broker?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          broker?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      verification_screenshots: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          request_id: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          request_id: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          request_id?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_screenshots_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "verification_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weekly_reviews: {
         Row: {
