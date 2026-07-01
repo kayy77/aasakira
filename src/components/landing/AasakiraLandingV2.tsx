@@ -207,3 +207,47 @@ function Ticker({ symbol }: { symbol: string }) {
     </div>
   );
 }
+
+function MobileSection() {
+  const features = [
+    { icon: Activity, label: "Signals" },
+    { icon: Brain, label: "AI Coach" },
+    { icon: LineChart, label: "Analytics" },
+    { icon: ShieldCheck, label: "Risk Suite" },
+    { icon: GraduationCap, label: "Academy" },
+  ];
+  return (
+    <div className="mb-24">
+      <div className="text-[10px] tracking-[0.4em] uppercase text-[#D4AF37]/70">Mobile</div>
+      <h2 className="mt-3 font-display text-3xl md:text-5xl tracking-tight">
+        AASAKIRA <span className="gold-text">Mobile</span> — Coming Soon
+      </h2>
+      <p className="mt-4 text-white/55 max-w-xl mx-auto text-sm">
+        The entire terminal in your pocket. Native apps for iOS and Android.
+      </p>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        {features.map((f) => {
+          const I = f.icon;
+          return (
+            <div key={f.label} className="lux-glass rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs tracking-widest uppercase text-white/70">
+              <I className="w-3.5 h-3.5 text-[#F4D03F]" />
+              {f.label}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <button disabled className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-xs tracking-widest uppercase text-white/60 cursor-not-allowed opacity-70">
+          <Apple className="w-4 h-4" /> App Store · Coming Soon
+        </button>
+        <button disabled className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-xs tracking-widest uppercase text-white/60 cursor-not-allowed opacity-70">
+          <Play className="w-4 h-4" /> Google Play · Coming Soon
+        </button>
+      </div>
+      <div className="mt-10 mx-auto max-w-md lux-glass rounded-3xl p-6 flex items-center justify-center gap-3 text-white/50 text-xs">
+        <Smartphone className="w-4 h-4 text-[#F4D03F]" />
+        Get notified at launch — every AASAKIRA member gets Day-One access.
+      </div>
+    </div>
+  );
+}
