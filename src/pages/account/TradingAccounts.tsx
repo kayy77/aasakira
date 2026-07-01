@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ConnectTradingAccountFlow from "@/components/trading-accounts/ConnectTradingAccountFlow";
+import { LinkIcon, ExternalLink } from "lucide-react";
 
 export default function TradingAccounts() {
   const { user } = useAuth();
@@ -103,9 +104,14 @@ export default function TradingAccounts() {
           <Loader2 className="h-6 w-6 animate-spin text-[#D4AF37]" />
         </div>
       ) : accounts.length === 0 ? (
-        <IntroCard onConnect={() => setShowFlow(true)} />
+        <>
+          <MyfxbookConnectCard />
+          <div className="h-4" />
+          <IntroCard onConnect={() => setShowFlow(true)} />
+        </>
       ) : (
         <div className="space-y-4">
+          <MyfxbookConnectCard />
           {accounts.map((a) => (
             <Card key={a.id} className="lux-glass border-[#D4AF37]/15">
               <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
