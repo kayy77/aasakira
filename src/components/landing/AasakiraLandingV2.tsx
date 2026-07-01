@@ -143,6 +143,7 @@ export default function AasakiraLandingV2() {
 
       {/* Final CTA */}
       <section className="relative z-10 max-w-5xl mx-auto px-6 py-28 text-center">
+        <MobileSection />
         <h2 className="font-display text-4xl md:text-5xl leading-tight">
           Ready to <span className="gold-text">trade like an institution</span>?
         </h2>
