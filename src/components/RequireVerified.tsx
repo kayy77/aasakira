@@ -4,10 +4,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
+export const VERIFIED_STATUSES = [
+  "broker_verified",
+  "trial_active",
+  "member",
+  "premium",
+  "admin",
+] as const;
+
 /**
- * Server-trusted verification gate. Re-checks `user_profiles.onboarding_status`
- * on every route mount. Refreshing the page CANNOT bypass it because the
- * status is read fresh from Supabase, never persisted to client storage.
+ * Server-trusted access gate. Re-checks `user_profiles.onboarding_status` on
+ * every route mount and allows any status from `broker_verified` upward.
  */
 export default function RequireVerified() {
   const { user, isLoading: authLoading } = useAuth();
@@ -48,7 +55,7 @@ export default function RequireVerified() {
     return <Navigate to={`/login?next=${next}`} replace />;
   }
 
-  if (status !== "verified") {
+  if (!VERIFIED_STATUSES.includes((status ?? "pending") as any)) {
     return <Navigate to="/onboarding" replace />;
   }
 
