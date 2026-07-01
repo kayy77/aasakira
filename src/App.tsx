@@ -26,6 +26,7 @@ import AIPreferences from '@/pages/account/AIPreferences';
 import Verification from '@/pages/account/Verification';
 import SignalCommandCenter from '@/pages/SignalCommandCenter';
 import TradeReview from '@/pages/TradeReview';
+import AICoach from '@/pages/AICoach';
 
 import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
@@ -73,7 +74,7 @@ function App() {
                         <Route path="/trade-review" element={<TradeReview />} />
                         <Route path="/risk-suite" element={<ComingSoon title="Risk Suite" description="Nine institutional-grade calculators ship with onboarding GA." items={["Lot Size", "Risk", "Drawdown", "Compounding", "Position Size", "Prop Firm Rules", "Daily Drawdown", "Weekly Drawdown", "Margin"]} />} />
                         <Route path="/community" element={<ComingSoon title="Community" description="Members-only feed, wins log, events and free signals — launching soon." />} />
-                        <Route path="/coach" element={<ComingSoon title="AI Coach" description="Ask anything about your trading. The coach reads every signal, journal entry and outcome to answer." items={["Why am I losing money?", "Review my last 50 trades", "What is my biggest weakness?", "How do I pass my prop challenge?"]} />} />
+                        <Route path="/coach" element={<AICoach />} />
                         <Route path="/academy" element={<ComingSoon title="Academy" description="Beginner → Elite curriculum." items={["MT5 Setup", "Risk Management", "Market Structure", "Liquidity & Supply/Demand", "Institutional Concepts", "Funded Account Scaling"]} />} />
                       </Route>
                     </Route>

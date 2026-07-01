@@ -26,6 +26,8 @@ import {
 import { Brain, Calendar, Sparkles, Clock } from "lucide-react";
 import LotSizeCalculator from "@/components/tools/LotSizeCalculator";
 import { getMaxTpPips, classifyTradeOutcome } from "@/utils/tradePips";
+import VerificationBanner from "@/components/dashboard/VerificationBanner";
+import TraderScoreCard from "@/components/dashboard/TraderScoreCard";
 
 type DashStats = {
   activeTrades: number;
@@ -160,6 +162,7 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl relative">
+      <VerificationBanner />
       {/* Greeting */}
       <div className="mb-8 flex flex-wrap items-end justify-between gap-3 pb-6 border-b border-[#D4AF37]/15">
         <div>
@@ -233,6 +236,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <AIInsights winRate={winRate} pips={stats.weekPips} />
         <MarketIntel />
+        <TraderScoreCard winRate={winRate} weekPips={stats.weekPips} weekTrades={stats.weekTrades} />
       </div>
 
       {/* Main grid */}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowRight, Activity, Trophy, ShieldCheck, BarChart3, GraduationCap, Calculator, Brain, Sparkles, LineChart, Lock } from "lucide-react";
+import { ArrowRight, Activity, Trophy, ShieldCheck, BarChart3, GraduationCap, Calculator, Brain, Sparkles, LineChart, Lock, Smartphone, Apple, Play } from "lucide-react";
 
 const previewTiles = [
   { icon: Activity, title: "Live Signals", desc: "Institutional-grade entries streamed in real time." },
@@ -143,6 +143,7 @@ export default function AasakiraLandingV2() {
 
       {/* Final CTA */}
       <section className="relative z-10 max-w-5xl mx-auto px-6 py-28 text-center">
+        <MobileSection />
         <h2 className="font-display text-4xl md:text-5xl leading-tight">
           Ready to <span className="gold-text">trade like an institution</span>?
         </h2>
@@ -160,6 +161,7 @@ export default function AasakiraLandingV2() {
     </div>
   );
 }
+
 
 function SectionHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
@@ -202,6 +204,50 @@ function Ticker({ symbol }: { symbol: string }) {
     <div className="flex flex-col items-center">
       <span className="text-[10px] tracking-widest uppercase text-white/40">{symbol}</span>
       <span className="text-[#F4D03F] tabular-nums">{price !== null ? price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</span>
+    </div>
+  );
+}
+
+function MobileSection() {
+  const features = [
+    { icon: Activity, label: "Signals" },
+    { icon: Brain, label: "AI Coach" },
+    { icon: LineChart, label: "Analytics" },
+    { icon: ShieldCheck, label: "Risk Suite" },
+    { icon: GraduationCap, label: "Academy" },
+  ];
+  return (
+    <div className="mb-24">
+      <div className="text-[10px] tracking-[0.4em] uppercase text-[#D4AF37]/70">Mobile</div>
+      <h2 className="mt-3 font-display text-3xl md:text-5xl tracking-tight">
+        AASAKIRA <span className="gold-text">Mobile</span> — Coming Soon
+      </h2>
+      <p className="mt-4 text-white/55 max-w-xl mx-auto text-sm">
+        The entire terminal in your pocket. Native apps for iOS and Android.
+      </p>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        {features.map((f) => {
+          const I = f.icon;
+          return (
+            <div key={f.label} className="lux-glass rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs tracking-widest uppercase text-white/70">
+              <I className="w-3.5 h-3.5 text-[#F4D03F]" />
+              {f.label}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <button disabled className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-xs tracking-widest uppercase text-white/60 cursor-not-allowed opacity-70">
+          <Apple className="w-4 h-4" /> App Store · Coming Soon
+        </button>
+        <button disabled className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-xs tracking-widest uppercase text-white/60 cursor-not-allowed opacity-70">
+          <Play className="w-4 h-4" /> Google Play · Coming Soon
+        </button>
+      </div>
+      <div className="mt-10 mx-auto max-w-md lux-glass rounded-3xl p-6 flex items-center justify-center gap-3 text-white/50 text-xs">
+        <Smartphone className="w-4 h-4 text-[#F4D03F]" />
+        Get notified at launch — every AASAKIRA member gets Day-One access.
+      </div>
     </div>
   );
 }

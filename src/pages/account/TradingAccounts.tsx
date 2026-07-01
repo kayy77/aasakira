@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ConnectTradingAccountFlow from "@/components/trading-accounts/ConnectTradingAccountFlow";
+import { LinkIcon, ExternalLink } from "lucide-react";
 
 export default function TradingAccounts() {
   const { user } = useAuth();
@@ -103,9 +104,14 @@ export default function TradingAccounts() {
           <Loader2 className="h-6 w-6 animate-spin text-[#D4AF37]" />
         </div>
       ) : accounts.length === 0 ? (
-        <IntroCard onConnect={() => setShowFlow(true)} />
+        <>
+          <MyfxbookConnectCard />
+          <div className="h-4" />
+          <IntroCard onConnect={() => setShowFlow(true)} />
+        </>
       ) : (
         <div className="space-y-4">
+          <MyfxbookConnectCard />
           {accounts.map((a) => (
             <Card key={a.id} className="lux-glass border-[#D4AF37]/15">
               <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -214,6 +220,56 @@ function IntroCard({ onConnect }: { onConnect: () => void }) {
         <Button onClick={onConnect} className="btn-gold mt-8 h-11 px-6 tracking-widest uppercase text-xs">
           Connect Trading Account
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+type MyfxbookStatus = "not_connected" | "pending_sync" | "connected" | "sync_error";
+
+function MyfxbookConnectCard() {
+  const status: MyfxbookStatus = "not_connected"; // placeholder until backend wiring
+  const badge = {
+    not_connected: { label: "Not Connected", cls: "border-white/20 text-white/60" },
+    pending_sync:  { label: "Pending Sync",  cls: "border-amber-500/40 text-amber-300 bg-amber-500/10" },
+    connected:     { label: "Connected",     cls: "border-emerald-500/40 text-emerald-300 bg-emerald-500/10" },
+    sync_error:    { label: "Sync Error",    cls: "border-rose-500/40 text-rose-300 bg-rose-500/10" },
+  }[status];
+
+  return (
+    <Card className="lux-glass border-[#D4AF37]/15 relative overflow-hidden">
+      <div className="absolute -top-16 -right-16 h-52 w-52 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+      <CardContent className="p-5 relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="h-10 w-10 rounded-lg bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center flex-shrink-0">
+            <LinkIcon className="h-5 w-5 text-[#F4D03F]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="font-display text-lg font-semibold">Myfxbook</div>
+              <Badge variant="outline" className={`text-[10px] tracking-widest ${badge.cls}`}>{badge.label}</Badge>
+              <Badge variant="outline" className="text-[10px] tracking-widest border-[#D4AF37]/40 text-[#F4D03F] bg-[#D4AF37]/10">Beta</Badge>
+            </div>
+            <div className="text-xs text-white/55 mt-1 max-w-md">
+              Publish your account to Myfxbook — AASAKIRA reads verified stats (win rate, DD, RR, growth) to power the AI Coach and Trader Score.
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="border-white/15 hover:bg-white/5"
+          >
+            <a href="https://www.myfxbook.com/help/getting-started" target="_blank" rel="noreferrer">
+              How it works <ExternalLink className="h-3 w-3 ml-1.5" />
+            </a>
+          </Button>
+          <Button size="sm" className="btn-gold tracking-widest uppercase text-[10px]" disabled>
+            Connect Myfxbook
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
