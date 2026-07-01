@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowRight, Activity, Trophy, ShieldCheck, BarChart3, GraduationCap, Calculator, Brain, Sparkles, LineChart, Lock } from "lucide-react";
+import { ArrowRight, Activity, Trophy, ShieldCheck, BarChart3, GraduationCap, Calculator, Brain, Sparkles, LineChart, Lock, Smartphone, Apple, Play } from "lucide-react";
 
 const previewTiles = [
   { icon: Activity, title: "Live Signals", desc: "Institutional-grade entries streamed in real time." },
@@ -160,6 +160,7 @@ export default function AasakiraLandingV2() {
     </div>
   );
 }
+
 
 function SectionHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
