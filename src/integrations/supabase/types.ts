@@ -1674,35 +1674,50 @@ export type Database = {
       }
       verification_requests: {
         Row: {
+          account_number: string | null
+          ai_confidence: number | null
+          ai_raw: Json | null
           broker: string | null
           created_at: string
           id: string
           notes: string | null
+          platform: string | null
           reviewed_at: string | null
           reviewer_id: string | null
           status: string
+          trader_type: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          account_number?: string | null
+          ai_confidence?: number | null
+          ai_raw?: Json | null
           broker?: string | null
           created_at?: string
           id?: string
           notes?: string | null
+          platform?: string | null
           reviewed_at?: string | null
           reviewer_id?: string | null
           status?: string
+          trader_type?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          account_number?: string | null
+          ai_confidence?: number | null
+          ai_raw?: Json | null
           broker?: string | null
           created_at?: string
           id?: string
           notes?: string | null
+          platform?: string | null
           reviewed_at?: string | null
           reviewer_id?: string | null
           status?: string
+          trader_type?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1710,6 +1725,7 @@ export type Database = {
       }
       verification_screenshots: {
         Row: {
+          ai_extraction: Json | null
           created_at: string
           id: string
           kind: string
@@ -1718,6 +1734,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_extraction?: Json | null
           created_at?: string
           id?: string
           kind: string
@@ -1726,6 +1743,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_extraction?: Json | null
           created_at?: string
           id?: string
           kind?: string
