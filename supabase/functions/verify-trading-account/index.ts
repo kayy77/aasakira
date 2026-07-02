@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: `Bearer ${token}` } },
@@ -47,11 +47,21 @@ Deno.serve(async (req) => {
       .single();
     if (vrErr || !vr) return json({ error: "Not found" }, 404);
 
+    await admin.from("verification_requests").update({ status: "broker_submitted" }).eq("id", requestId);
+
     const { data: shots } = await admin
       .from("verification_screenshots")
       .select("*")
       .eq("request_id", requestId);
-    if (!shots || shots.length === 0) return json({ error: "No screenshots" }, 400);
+    if (!shots || shots.length === 0) {
+      await markNeedsReview(admin, requestId, user.id, { reason: "No screenshots found" });
+      return json({ status: "needs_review", reason: "No screenshots found" });
+    }
+
+    if (!LOVABLE_API_KEY) {
+      await markNeedsReview(admin, requestId, user.id, { reason: "AI verification unavailable" });
+      return json({ status: "needs_review", reason: "AI verification unavailable" });
+    }
 
     const extractions: Extraction[] = [];
     for (const shot of shots) {
@@ -74,7 +84,7 @@ Deno.serve(async (req) => {
     const hasAccount = !!accountNumber;
     const isVerified = brokerOk && hasAccount && avgConf >= 0.7;
 
-    const newStatus = isVerified ? "verified" : "needs_review";
+    const newStatus = isVerified ? "broker_verified" : "needs_review";
 
     await admin.from("verification_requests").update({
       account_number: accountNumber,
@@ -87,7 +97,7 @@ Deno.serve(async (req) => {
     }).eq("id", requestId);
 
     if (isVerified) {
-      await admin.from("user_profiles").update({ onboarding_status: "verified" }).eq("user_id", user.id);
+      await admin.from("user_profiles").update({ onboarding_status: "broker_verified" }).eq("user_id", user.id);
     }
 
     return json({ status: newStatus, confidence: avgConf, broker, account_number: accountNumber });
@@ -100,7 +110,7 @@ Deno.serve(async (req) => {
 async function extractFromImage(imageUrl: string, key: string): Promise<Extraction> {
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    headers: { "Lovable-API-Key": key, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages: [
@@ -136,6 +146,19 @@ async function extractFromImage(imageUrl: string, key: string): Promise<Extracti
   } catch {
     return { account_number: null, broker: null, platform: null, confidence: 0 };
   }
+}
+
+async function markNeedsReview(admin: any, requestId: string, userId: string, details: Record<string, unknown>) {
+  await admin.from("verification_requests").update({
+    status: "needs_review",
+    ai_confidence: 0,
+    ai_raw: details,
+  }).eq("id", requestId);
+
+  await admin.from("user_profiles").update({
+    onboarding_status: "broker_submitted",
+    onboarding_step: 4,
+  }).eq("user_id", userId);
 }
 
 function json(body: unknown, status = 200) {
