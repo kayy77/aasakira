@@ -10,6 +10,9 @@ import { Loader2, CheckCircle2, Upload, ExternalLink, ArrowRight, ShieldCheck, C
 type TraderType = "personal" | "funded" | "prop";
 type Slot = "account_number" | "broker_dashboard" | "mt5_screen";
 
+const ACCESS_STATUSES = new Set(["broker_verified", "trial_active", "member", "premium", "admin"]);
+const REQUEST_DONE_STATUSES = new Set(["broker_verified", "needs_review"]);
+
 const STARTRADER_URL = "https://startrader.com/en/live-account-registration";
 const VIP_WHATSAPP = "https://wa.me/447XXXXXXXXX?text=I%20want%20AASAKIRA%20Pro";
 
@@ -54,7 +57,7 @@ export default function Onboarding() {
         if (data.trader_type) setTraderType(data.trader_type as TraderType);
         if (data.onboarding_step) setStep(data.onboarding_step);
         if (data.trial_started_at) setTrialStartedAt(data.trial_started_at);
-        if (data.onboarding_status === "verified") {
+        if (ACCESS_STATUSES.has(data.onboarding_status)) {
           navigate("/dashboard", { replace: true });
           return;
         }
@@ -77,9 +80,31 @@ export default function Onboarding() {
 
   const saveProfile = useCallback(async (patch: Record<string, any>) => {
     if (!user) return;
-    await (supabase as any)
+
+    const payload = {
+      ...patch,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await (supabase as any)
       .from("user_profiles")
-      .upsert({ user_id: user.id, ...patch }, { onConflict: "user_id" });
+      .update(payload)
+      .eq("user_id", user.id)
+      .select("id")
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) {
+      const { error: insertError } = await (supabase as any)
+        .from("user_profiles")
+        .insert({
+          user_id: user.id,
+          email: user.email ?? null,
+          country: "Unknown",
+          ...payload,
+        });
+      if (insertError) throw insertError;
+    }
   }, [user]);
 
   const pickTraderType = async (t: TraderType) => {
@@ -107,9 +132,11 @@ export default function Onboarding() {
     }
     setSubmitting(true);
     try {
+      await saveProfile({ onboarding_status: "broker_submitted", onboarding_step: 4, trader_type: traderType });
+
       const { data: req, error } = await (supabase as any)
         .from("verification_requests")
-        .insert({ user_id: user.id, trader_type: traderType, status: "pending" })
+        .insert({ user_id: user.id, trader_type: traderType, status: "broker_submitted" })
         .select("id")
         .single();
       if (error) throw error;
@@ -122,17 +149,18 @@ export default function Onboarding() {
           .from("verification-screenshots")
           .upload(path, file, { upsert: false, contentType: file.type });
         if (upErr) throw upErr;
-        await (supabase as any).from("verification_screenshots").insert({
+        const { error: screenshotError } = await (supabase as any).from("verification_screenshots").insert({
           request_id: rId,
           user_id: user.id,
-          slot: slot.key,
+          kind: slot.key,
           storage_path: path,
         });
+        if (screenshotError) throw screenshotError;
       }
 
       setRequestId(rId);
-      setStatus("pending");
-      await saveProfile({ onboarding_status: "pending_verification", onboarding_step: 4 });
+      setStatus("broker_submitted");
+      await saveProfile({ onboarding_status: "broker_submitted", onboarding_step: 4, trader_type: traderType });
       setStep(4);
 
       // Fire AI verification
@@ -158,8 +186,11 @@ export default function Onboarding() {
         .maybeSingle();
       if (data?.status && data.status !== status) {
         setStatus(data.status);
-        if (data.status === "verified") {
-          await saveProfile({ onboarding_status: "verified" });
+        if (REQUEST_DONE_STATUSES.has(data.status)) {
+          clearInterval(interval);
+        }
+        if (data.status === "broker_verified") {
+          await saveProfile({ onboarding_status: "broker_verified" });
           clearInterval(interval);
         }
       }
@@ -379,7 +410,7 @@ function Step3Upload({ files, setFiles, submitting, onSubmit }: {
 
 function Step4Status({ status }: { status: string | null }) {
   const navigate = useNavigate();
-  const isVerified = status === "verified";
+  const isVerified = status === "broker_verified";
   const isReview = status === "needs_review";
   return (
     <Card className="lux-glass p-10 text-center">
