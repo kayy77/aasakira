@@ -27,7 +27,7 @@ export default function Verification() {
     })();
   }, [user]);
 
-  const verified = status === "verified";
+  const verified = ["broker_verified", "trial_active", "member", "premium", "admin"].includes(status ?? "");
   const Icon = verified ? ShieldCheck : reqStatus === "needs_review" ? AlertCircle : Clock;
 
   return (
