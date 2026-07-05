@@ -156,6 +156,38 @@ export type Database = {
           },
         ]
       }
+      ai_copy_insights: {
+        Row: {
+          follower_account_id: string | null
+          generated_at: string
+          id: string
+          payload: Json
+          user_id: string
+        }
+        Insert: {
+          follower_account_id?: string | null
+          generated_at?: string
+          id?: string
+          payload?: Json
+          user_id: string
+        }
+        Update: {
+          follower_account_id?: string | null
+          generated_at?: string
+          id?: string
+          payload?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_copy_insights_follower_account_id_fkey"
+            columns: ["follower_account_id"]
+            isOneToOne: false
+            referencedRelation: "follower_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_insights: {
         Row: {
           account_id: string | null
@@ -272,6 +304,73 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_risk_reports: {
+        Row: {
+          follower_account_id: string | null
+          generated_at: string
+          id: string
+          payload: Json
+          user_id: string
+        }
+        Insert: {
+          follower_account_id?: string | null
+          generated_at?: string
+          id?: string
+          payload?: Json
+          user_id: string
+        }
+        Update: {
+          follower_account_id?: string | null
+          generated_at?: string
+          id?: string
+          payload?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_risk_reports_follower_account_id_fkey"
+            columns: ["follower_account_id"]
+            isOneToOne: false
+            referencedRelation: "follower_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_trader_scores: {
+        Row: {
+          breakdown: Json
+          follower_account_id: string | null
+          generated_at: string
+          id: string
+          score: number
+          user_id: string
+        }
+        Insert: {
+          breakdown?: Json
+          follower_account_id?: string | null
+          generated_at?: string
+          id?: string
+          score?: number
+          user_id: string
+        }
+        Update: {
+          breakdown?: Json
+          follower_account_id?: string | null
+          generated_at?: string
+          id?: string
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_trader_scores_follower_account_id_fkey"
+            columns: ["follower_account_id"]
+            isOneToOne: false
+            referencedRelation: "follower_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_response_audit: {
         Row: {
           endpoint_url: string
@@ -357,6 +456,279 @@ export type Database = {
             columns: ["signal_id"]
             isOneToOne: false
             referencedRelation: "signals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copy_activity: {
+        Row: {
+          action: string
+          copy_job_id: string | null
+          follower_account_id: string | null
+          id: string
+          master_account_id: string | null
+          occurred_at: string
+          pnl: number | null
+          price: number | null
+          result: string | null
+          symbol: string | null
+          user_id: string
+          volume: number | null
+        }
+        Insert: {
+          action: string
+          copy_job_id?: string | null
+          follower_account_id?: string | null
+          id?: string
+          master_account_id?: string | null
+          occurred_at?: string
+          pnl?: number | null
+          price?: number | null
+          result?: string | null
+          symbol?: string | null
+          user_id: string
+          volume?: number | null
+        }
+        Update: {
+          action?: string
+          copy_job_id?: string | null
+          follower_account_id?: string | null
+          id?: string
+          master_account_id?: string | null
+          occurred_at?: string
+          pnl?: number | null
+          price?: number | null
+          result?: string | null
+          symbol?: string | null
+          user_id?: string
+          volume?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copy_activity_copy_job_id_fkey"
+            columns: ["copy_job_id"]
+            isOneToOne: false
+            referencedRelation: "copy_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copy_activity_follower_account_id_fkey"
+            columns: ["follower_account_id"]
+            isOneToOne: false
+            referencedRelation: "follower_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copy_activity_master_account_id_fkey"
+            columns: ["master_account_id"]
+            isOneToOne: false
+            referencedRelation: "master_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copy_events: {
+        Row: {
+          created_at: string
+          event_type: Database["public"]["Enums"]["copy_event_type"]
+          id: string
+          master_account_id: string
+          master_ticket: string | null
+          payload: Json
+        }
+        Insert: {
+          created_at?: string
+          event_type: Database["public"]["Enums"]["copy_event_type"]
+          id?: string
+          master_account_id: string
+          master_ticket?: string | null
+          payload?: Json
+        }
+        Update: {
+          created_at?: string
+          event_type?: Database["public"]["Enums"]["copy_event_type"]
+          id?: string
+          master_account_id?: string
+          master_ticket?: string | null
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copy_events_master_account_id_fkey"
+            columns: ["master_account_id"]
+            isOneToOne: false
+            referencedRelation: "master_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copy_jobs: {
+        Row: {
+          attempts: number
+          broker_ticket: string | null
+          copy_event_id: string
+          copy_relationship_id: string
+          created_at: string
+          executed_at: string | null
+          executed_price: number | null
+          executed_volume: number | null
+          follower_account_id: string
+          id: string
+          last_error: string | null
+          planned_volume: number | null
+          status: Database["public"]["Enums"]["copy_job_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          broker_ticket?: string | null
+          copy_event_id: string
+          copy_relationship_id: string
+          created_at?: string
+          executed_at?: string | null
+          executed_price?: number | null
+          executed_volume?: number | null
+          follower_account_id: string
+          id?: string
+          last_error?: string | null
+          planned_volume?: number | null
+          status?: Database["public"]["Enums"]["copy_job_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          broker_ticket?: string | null
+          copy_event_id?: string
+          copy_relationship_id?: string
+          created_at?: string
+          executed_at?: string | null
+          executed_price?: number | null
+          executed_volume?: number | null
+          follower_account_id?: string
+          id?: string
+          last_error?: string | null
+          planned_volume?: number | null
+          status?: Database["public"]["Enums"]["copy_job_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copy_jobs_copy_event_id_fkey"
+            columns: ["copy_event_id"]
+            isOneToOne: false
+            referencedRelation: "copy_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copy_jobs_copy_relationship_id_fkey"
+            columns: ["copy_relationship_id"]
+            isOneToOne: false
+            referencedRelation: "copy_relationships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copy_jobs_follower_account_id_fkey"
+            columns: ["follower_account_id"]
+            isOneToOne: false
+            referencedRelation: "follower_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copy_relationships: {
+        Row: {
+          copy_config: Json
+          copy_mode: Database["public"]["Enums"]["copy_mode"]
+          created_at: string
+          follower_account_id: string
+          id: string
+          master_account_id: string
+          status: Database["public"]["Enums"]["copy_relationship_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          copy_config?: Json
+          copy_mode?: Database["public"]["Enums"]["copy_mode"]
+          created_at?: string
+          follower_account_id: string
+          id?: string
+          master_account_id: string
+          status?: Database["public"]["Enums"]["copy_relationship_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          copy_config?: Json
+          copy_mode?: Database["public"]["Enums"]["copy_mode"]
+          created_at?: string
+          follower_account_id?: string
+          id?: string
+          master_account_id?: string
+          status?: Database["public"]["Enums"]["copy_relationship_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copy_relationships_follower_account_id_fkey"
+            columns: ["follower_account_id"]
+            isOneToOne: false
+            referencedRelation: "follower_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copy_relationships_master_account_id_fkey"
+            columns: ["master_account_id"]
+            isOneToOne: false
+            referencedRelation: "master_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copy_settings: {
+        Row: {
+          auto_pause_on_drawdown: boolean
+          blacklist_symbols: string[] | null
+          created_at: string
+          follower_account_id: string
+          id: string
+          notifications: Json
+          updated_at: string
+          user_id: string
+          whitelist_symbols: string[] | null
+        }
+        Insert: {
+          auto_pause_on_drawdown?: boolean
+          blacklist_symbols?: string[] | null
+          created_at?: string
+          follower_account_id: string
+          id?: string
+          notifications?: Json
+          updated_at?: string
+          user_id: string
+          whitelist_symbols?: string[] | null
+        }
+        Update: {
+          auto_pause_on_drawdown?: boolean
+          blacklist_symbols?: string[] | null
+          created_at?: string
+          follower_account_id?: string
+          id?: string
+          notifications?: Json
+          updated_at?: string
+          user_id?: string
+          whitelist_symbols?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copy_settings_follower_account_id_fkey"
+            columns: ["follower_account_id"]
+            isOneToOne: true
+            referencedRelation: "follower_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -612,6 +984,101 @@ export type Database = {
         }
         Relationships: []
       }
+      execution_logs: {
+        Row: {
+          context: Json | null
+          copy_job_id: string | null
+          created_at: string
+          id: string
+          level: string
+          message: string
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          copy_job_id?: string | null
+          created_at?: string
+          id?: string
+          level?: string
+          message: string
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          copy_job_id?: string | null
+          created_at?: string
+          id?: string
+          level?: string
+          message?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "execution_logs_copy_job_id_fkey"
+            columns: ["copy_job_id"]
+            isOneToOne: false
+            referencedRelation: "copy_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follower_accounts: {
+        Row: {
+          account_number: string
+          balance: number | null
+          broker: string | null
+          connection_status: Database["public"]["Enums"]["follower_conn_status"]
+          created_at: string
+          currency: string | null
+          encrypted_password: string | null
+          encryption_iv: string | null
+          equity: number | null
+          id: string
+          last_error: string | null
+          last_sync_at: string | null
+          leverage: number | null
+          server: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_number: string
+          balance?: number | null
+          broker?: string | null
+          connection_status?: Database["public"]["Enums"]["follower_conn_status"]
+          created_at?: string
+          currency?: string | null
+          encrypted_password?: string | null
+          encryption_iv?: string | null
+          equity?: number | null
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          leverage?: number | null
+          server: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_number?: string
+          balance?: number | null
+          broker?: string | null
+          connection_status?: Database["public"]["Enums"]["follower_conn_status"]
+          created_at?: string
+          currency?: string | null
+          encrypted_password?: string | null
+          encryption_iv?: string | null
+          equity?: number | null
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          leverage?: number | null
+          server?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       incoming_signals: {
         Row: {
           created_at: string
@@ -711,6 +1178,57 @@ export type Database = {
           strategy?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      master_accounts: {
+        Row: {
+          account_number: string | null
+          balance: number | null
+          broker: string | null
+          created_at: string
+          created_by: string | null
+          drawdown: number | null
+          equity: number | null
+          growth: number | null
+          id: string
+          is_active: boolean
+          name: string
+          server: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          balance?: number | null
+          broker?: string | null
+          created_at?: string
+          created_by?: string | null
+          drawdown?: number | null
+          equity?: number | null
+          growth?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          server?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          balance?: number | null
+          broker?: string | null
+          created_at?: string
+          created_by?: string | null
+          drawdown?: number | null
+          equity?: number | null
+          growth?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          server?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -915,6 +1433,56 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      risk_profiles: {
+        Row: {
+          created_at: string
+          equity_floor: number | null
+          follower_account_id: string
+          id: string
+          max_daily_drawdown_pct: number
+          max_drawdown_pct: number
+          max_lot_size: number
+          max_open_trades: number
+          min_margin_level: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          equity_floor?: number | null
+          follower_account_id: string
+          id?: string
+          max_daily_drawdown_pct?: number
+          max_drawdown_pct?: number
+          max_lot_size?: number
+          max_open_trades?: number
+          min_margin_level?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          equity_floor?: number | null
+          follower_account_id?: string
+          id?: string
+          max_daily_drawdown_pct?: number
+          max_drawdown_pct?: number
+          max_lot_size?: number
+          max_open_trades?: number
+          min_margin_level?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_profiles_follower_account_id_fkey"
+            columns: ["follower_account_id"]
+            isOneToOne: true
+            referencedRelation: "follower_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       signal_outcomes: {
         Row: {
@@ -1176,6 +1744,44 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_status: {
+        Row: {
+          error_count: number
+          follower_account_id: string
+          id: string
+          last_heartbeat: string | null
+          latency_ms: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          error_count?: number
+          follower_account_id: string
+          id?: string
+          last_heartbeat?: string | null
+          latency_ms?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          error_count?: number
+          follower_account_id?: string
+          id?: string
+          last_heartbeat?: string | null
+          latency_ms?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_status_follower_account_id_fkey"
+            columns: ["follower_account_id"]
+            isOneToOne: true
+            referencedRelation: "follower_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telegram_messages: {
         Row: {
           channel_id: number
@@ -1220,6 +1826,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      trade_closures: {
+        Row: {
+          broker_ticket: string | null
+          close_price: number | null
+          close_type: string
+          copy_job_id: string | null
+          created_at: string
+          id: string
+          pnl: number | null
+          user_id: string
+          volume_closed: number | null
+        }
+        Insert: {
+          broker_ticket?: string | null
+          close_price?: number | null
+          close_type: string
+          copy_job_id?: string | null
+          created_at?: string
+          id?: string
+          pnl?: number | null
+          user_id: string
+          volume_closed?: number | null
+        }
+        Update: {
+          broker_ticket?: string | null
+          close_price?: number | null
+          close_type?: string
+          copy_job_id?: string | null
+          created_at?: string
+          id?: string
+          pnl?: number | null
+          user_id?: string
+          volume_closed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_closures_copy_job_id_fkey"
+            columns: ["copy_job_id"]
+            isOneToOne: false
+            referencedRelation: "copy_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trade_history: {
         Row: {
@@ -1288,6 +1938,50 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "trading_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trade_modifications: {
+        Row: {
+          broker_ticket: string | null
+          copy_job_id: string | null
+          created_at: string
+          id: string
+          new_sl: number | null
+          new_tp: number | null
+          old_sl: number | null
+          old_tp: number | null
+          user_id: string
+        }
+        Insert: {
+          broker_ticket?: string | null
+          copy_job_id?: string | null
+          created_at?: string
+          id?: string
+          new_sl?: number | null
+          new_tp?: number | null
+          old_sl?: number | null
+          old_tp?: number | null
+          user_id: string
+        }
+        Update: {
+          broker_ticket?: string | null
+          copy_job_id?: string | null
+          created_at?: string
+          id?: string
+          new_sl?: number | null
+          new_tp?: number | null
+          old_sl?: number | null
+          old_tp?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_modifications_copy_job_id_fkey"
+            columns: ["copy_job_id"]
+            isOneToOne: false
+            referencedRelation: "copy_jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -1878,6 +2572,21 @@ export type Database = {
     }
     Enums: {
       app_role: "member" | "admin"
+      copy_event_type: "OPEN" | "MODIFY" | "PARTIAL_CLOSE" | "FULL_CLOSE"
+      copy_job_status:
+        | "pending"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "rejected"
+      copy_mode: "fixed_lot" | "risk_percent" | "balance_multiplier"
+      copy_relationship_status: "active" | "paused" | "stopped"
+      follower_conn_status:
+        | "connected"
+        | "connecting"
+        | "syncing"
+        | "disconnected"
+        | "error"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2006,6 +2715,23 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["member", "admin"],
+      copy_event_type: ["OPEN", "MODIFY", "PARTIAL_CLOSE", "FULL_CLOSE"],
+      copy_job_status: [
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "rejected",
+      ],
+      copy_mode: ["fixed_lot", "risk_percent", "balance_multiplier"],
+      copy_relationship_status: ["active", "paused", "stopped"],
+      follower_conn_status: [
+        "connected",
+        "connecting",
+        "syncing",
+        "disconnected",
+        "error",
+      ],
     },
   },
 } as const

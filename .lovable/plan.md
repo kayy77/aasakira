@@ -1,94 +1,79 @@
+# AASAKIRA Copy Trading Engine — Phase 1
 
-# AASAKIRA Funnel — Build Plan (Pass 1)
+Build production-ready copy trading infrastructure. This is scaffolding for real MT5 execution — the execution layer is abstracted so a broker adapter (MT5, cTrader) can be plugged in later without touching the queue, risk engine, or UI.
 
-Scope locked from your answers: **Onboarding + Verification** as the first slice, **AI-assisted auto-review** for screenshots, **stub the paywall**, **full landing rebuild**. Everything else (Risk Suite, Claude Intelligence, Community, real Stripe paywall) ships as "Coming Soon" placeholders in this pass.
+## Scope boundary
 
-## 1. Landing page rebuild (`/`, public)
+- Phase 1 (this pass): database, encryption, queue, risk engine, execution service abstraction, dashboards, admin panel, sidebar, AI hook tables.
+- Out of scope: live MT5 socket integration, real broker order placement (stubbed executor that writes to `execution_logs` and marks jobs `completed`/`failed`), AI analysis logic (tables only, no Claude calls yet), payment gating.
 
-Replace `AasakiraLanding` with a funnel-focused page in luxury black + gold:
+## 1. Database (single migration)
 
-- **Hero**: "The Operating System for Serious Traders" + single CTA `Start Free` → `/signup`. Live ticker strip (XAUUSD, US30, EURUSD) pulled from existing `fetch-live-prices`.
-- **Preview rail** (7 tiles, each links to `/signup`):
-  Live Signals · Recent Wins · Verified Trading Account · Performance Metrics · Academy · Risk Suite · AI Coach.
-  Tiles use real data where it exists (recent `active_trades`, MyFxBook stats), otherwise a sealed "Members only" state.
-- **Trust band**: MyFxBook verified card (existing `myfxbook-stats`) + win-rate + total pips this week.
-- **Funnel explainer**: 3-step strip — Create Workspace → Verify Account → Unlock AASAKIRA.
-- **Footer CTA**: `Create Your Trading Workspace` → `/signup`.
+New tables in `public`, each with GRANTs + RLS + policies:
 
-## 2. Signup copy + onboarding entry
+- `master_accounts` — id, name, broker, server, account_number, status, balance, equity, growth, drawdown, is_active, created_by (admin), timestamps. Readable by all authenticated; write = admin only (`has_role`).
+- `follower_accounts` — id, user_id, account_number, server, broker, encrypted_password (bytea), encryption_iv, connection_status (connected/connecting/syncing/disconnected/error), last_sync_at, balance, equity. RLS: user owns row.
+- `copy_relationships` — master_account_id, follower_account_id, copy_mode (fixed_lot/risk_percent/balance_multiplier), copy_config (jsonb: lot_size/risk_pct/multiplier), status (active/paused/stopped), created_at. RLS via follower ownership.
+- `copy_events` — master_account_id, event_type (OPEN/MODIFY/PARTIAL_CLOSE/FULL_CLOSE), payload jsonb, master_ticket, created_at. Admin write, authenticated read.
+- `copy_jobs` — copy_event_id, copy_relationship_id, follower_account_id, status (pending/processing/completed/failed/rejected), attempts, last_error, executed_at. RLS via follower ownership; service role writes.
+- `copy_activity` — denormalized feed: follower_account_id, master_account_id, action, symbol, volume, result, pnl, occurred_at.
+- `execution_logs` — copy_job_id, level (info/warn/error), message, context jsonb.
+- `risk_profiles` — follower_account_id, max_daily_drawdown_pct, max_drawdown_pct, max_lot_size, max_open_trades, min_margin_level, equity_floor.
+- `copy_settings` — per follower: auto_pause_on_drawdown, notifications, whitelist_symbols, blacklist_symbols.
+- `sync_status` — follower_account_id, last_heartbeat, latency_ms, error_count.
+- `trade_modifications` — history of MODIFY events applied.
+- `trade_closures` — history of PARTIAL/FULL closures.
+- `ai_copy_insights`, `ai_risk_reports`, `ai_trader_scores` — empty shells with follower_account_id, generated_at, payload jsonb, score numeric.
 
-- Change Signup page title to **"Create Your Trading Workspace"**.
-- After successful signup, redirect to **`/onboarding`** instead of `/dashboard`.
-- `RequireAuth` gains an onboarding gate: if `user_profiles.onboarding_status != 'verified'` and route is in the gated set, redirect to `/onboarding`.
+Reuse existing `trade_history` (already present) — no schema change.
 
-## 3. Onboarding flow (`/onboarding`, authenticated)
+## 2. Encryption
 
-Single page, stepper UI, persists progress to `user_profiles.onboarding_*` fields.
+Edge function `follower-account-connect` uses AES-256-GCM (Deno `crypto.subtle`) with a `COPY_TRADING_ENCRYPTION_KEY` secret (generated via `generate_secret`, 64 chars). Never store plaintext broker passwords. Store `encrypted_password` + `encryption_iv` in `follower_accounts`.
 
-**Step 1 — Trader type**
-Cards: `Personal Account` · `Funded Account` · `Prop Firm Challenge`.
+## 3. Edge functions
 
-**Step 2A — Personal route (STARTRADER)**
-Checklist with link-outs to the official STARTRADER live registration URL:
-- Open MT5 Hedge STP account
-- Claim 100% deposit bonus
-- Verify ID
-- Submit address verification
-- Fund account
-Each item is a checkbox the user ticks as they complete it. CTA: `I've completed all steps → Upload verification`.
+- `follower-account-connect` — encrypt & store credentials, mark `connecting` → `connected`.
+- `copy-event-dispatch` — admin/master action posts a `copy_events` row + fan-out `copy_jobs` for every active `copy_relationships` row.
+- `copy-job-processor` — runs risk engine per job, calls stub executor, writes `execution_logs` + `copy_activity`, updates job status. Cron-invoked every minute via `pg_cron` (existing pattern).
+- `copy-emergency-stop` — pauses/stops relationships for a user or master.
 
-**Step 2B — Funded / Prop route**
-- "3-Day Free Trial Active" banner with countdown (trial start = now, persisted).
-- Pricing cards: `$75/month` and `$475 Lifetime` with **stubbed** `Upgrade` button (opens existing VIP WhatsApp link from memory). No Stripe wiring yet.
-- After trial expiry: route is soft-locked to the pricing screen until upgraded (manual admin flip for now).
-- Still allows Step 3 verification during trial.
+## 4. Services (frontend)
 
-**Step 3 — Verification upload**
-Three screenshot slots (Trading account number, Broker dashboard, MT5 account screen) → uploaded to a new private `verification-screenshots` Storage bucket.
-On submit:
-1. Insert `verification_requests` row (status `pending`).
-2. Invoke edge function `verify-trading-account` → calls Lovable AI (Gemini 2.5 Flash vision) on each screenshot, extracts `{ account_number, broker, platform, confidence }`, and:
-   - If all 3 screenshots agree on broker = STARTRADER and account number is present with confidence ≥ 0.8 → status `verified`.
-   - Else → status `needs_review` (visible to admin queue later).
-3. UI shows: `Pending Verification` → polls every 5s → `Verified` (green) or `Needs review`.
+- `src/services/copyTrading/executionService.ts` — abstract interface `TradeExecutor` with `openTrade/modifyTrade/partialClose/closeTrade`. Default `StubExecutor` returns success; future `MT5Executor` implements the same interface.
+- `src/services/copyTrading/riskEngine.ts` — pure functions validating a job against `risk_profiles` + current account state.
+- `src/services/copyTrading/lotSizing.ts` — converts master volume to follower volume per copy_mode.
 
-**Step 4 — Verified hand-off**
-Verified users see: `Connect Your Trading Account` CTA → `/account/trading-accounts` (already built).
+## 5. UI
 
-## 4. Database (single migration)
+New sidebar group "Copy Trading" with routes:
 
-- `verification_requests` (id, user_id, trader_type, account_number, broker, platform, ai_confidence, status enum `pending|verified|needs_review|rejected`, ai_raw jsonb, reviewed_by, reviewed_at, created_at).
-- `verification_screenshots` (id, request_id, user_id, slot enum, storage_path, ai_extraction jsonb, created_at).
-- Add to `user_profiles`: `trader_type`, `onboarding_status` (`not_started|in_progress|pending_verification|verified`), `onboarding_step`, `trial_started_at`.
-- Add `admin` value to existing `app_role` enum (for future admin queue).
-- Full GRANTs + RLS (`auth.uid() = user_id` for own rows, admin role can read all).
-- Private Storage bucket `verification-screenshots` with per-user folder RLS.
+```text
+/copy               Overview
+/copy/accounts      My Accounts (connect + status)
+/copy/masters       Masters (browse + subscribe)
+/copy/activity      Copy Activity feed
+/copy/risk          Risk Settings
+/copy/performance   Performance
+/copy/settings      Settings + Emergency Stop
+```
 
-## 5. Edge function
+Dashboards:
+- Follower dashboard cards (copy status, current master, trades copied, PnL, drawdown, health).
+- Master dashboard (followers, allocated capital, open positions, execution metrics).
+- Admin panel at `/copy/admin` (guarded by `has_role('admin')`): masters CRUD, event log, force-disconnect, broadcast.
 
-`verify-trading-account/index.ts` — JWT-validated, Zod-validated body `{ request_id }`. Loads the 3 screenshots from Storage, calls Lovable AI Gateway with vision, writes extractions back, updates request status. Uses existing `LOVABLE_API_KEY`.
+## 6. Cron
 
-## 6. Coming Soon placeholders
+Add `pg_cron` job invoking `copy-job-processor` every minute via `net.http_post` (via `supabase--insert` per project rule).
 
-Stub pages (auth-gated, "Coming soon — launching with onboarding GA" card):
-- `/risk-suite` (with the 9 calculator names listed)
-- `/community` (free feed + link to existing Telegram community URL)
-- `/coach` (Claude Intelligence Engine teaser)
-- `/academy` (already exists or stub if not)
+## Deliverables
 
-Sidebar items added with `Soon` badge.
+- 1 migration (all tables, RLS, GRANTs, cron extensions).
+- 4 edge functions.
+- 3 frontend services + hooks.
+- 8 new pages + admin sub-page.
+- Sidebar update.
+- 1 encryption secret via `generate_secret`.
 
-## 7. Out of scope this pass
-
-- Real Stripe price IDs for $75/$475 (button is stub).
-- Admin queue UI for `needs_review` (table exists, UI later).
-- Daily/Weekly AI reviews (Claude layer).
-- Risk Suite calculator logic.
-- Community feed backend.
-
-## Technical notes
-
-- All new colors via existing gold tokens in `index.css`; no raw hex in components.
-- New files: `src/pages/Onboarding.tsx`, `src/components/onboarding/*` (TraderTypeStep, PersonalBrokerStep, PropTrialStep, VerificationUploadStep, VerificationStatus), `src/components/landing/v2/*`, `supabase/functions/verify-trading-account/index.ts`, 4 stub pages.
-- Edited: `src/App.tsx` (routes + onboarding gate), `src/pages/auth/Signup.tsx` (copy + redirect), `src/components/RequireAuth.tsx` (onboarding gate), `src/pages/Index.tsx` (new landing), `src/components/app-shell/AppSidebar.tsx` (placeholder items).
-- One migration file for tables + bucket policies.
+Approve to proceed.

@@ -27,6 +27,14 @@ import Verification from '@/pages/account/Verification';
 import SignalCommandCenter from '@/pages/SignalCommandCenter';
 import TradeReview from '@/pages/TradeReview';
 import AICoach from '@/pages/AICoach';
+import CopyOverview from '@/pages/copy/CopyOverview';
+import CopyAccounts from '@/pages/copy/CopyAccounts';
+import CopyMasters from '@/pages/copy/CopyMasters';
+import CopyActivity from '@/pages/copy/CopyActivity';
+import CopyRisk from '@/pages/copy/CopyRisk';
+import CopyPerformance from '@/pages/copy/CopyPerformance';
+import CopySettings from '@/pages/copy/CopySettings';
+import CopyAdmin from '@/pages/copy/CopyAdmin';
 
 import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
@@ -76,6 +84,14 @@ function App() {
                         <Route path="/community" element={<ComingSoon title="Community" description="Members-only feed, wins log, events and free signals — launching soon." />} />
                         <Route path="/coach" element={<AICoach />} />
                         <Route path="/academy" element={<ComingSoon title="Academy" description="Beginner → Elite curriculum." items={["MT5 Setup", "Risk Management", "Market Structure", "Liquidity & Supply/Demand", "Institutional Concepts", "Funded Account Scaling"]} />} />
+                        <Route path="/copy" element={<CopyOverview />} />
+                        <Route path="/copy/accounts" element={<CopyAccounts />} />
+                        <Route path="/copy/masters" element={<CopyMasters />} />
+                        <Route path="/copy/activity" element={<CopyActivity />} />
+                        <Route path="/copy/risk" element={<CopyRisk />} />
+                        <Route path="/copy/performance" element={<CopyPerformance />} />
+                        <Route path="/copy/settings" element={<CopySettings />} />
+                        <Route path="/copy/admin" element={<CopyAdmin />} />
                       </Route>
                     </Route>
                   </Route>
