@@ -24,6 +24,13 @@ import {
   Lock,
   Brain,
   MessageSquare,
+  Repeat,
+  Users2,
+  Activity,
+  ShieldAlert,
+  BarChart3,
+  Cog,
+  Shield,
 } from "lucide-react";
 import {
   Sidebar,
@@ -61,6 +68,19 @@ const GROUPS: Group[] = [
       { title: "Trade Review", url: "/trade-review", icon: MessageSquare },
       { title: "Trade Copier", url: "#", icon: Copy, soon: true },
       { title: "Market Scanner", url: "#", icon: Radar, soon: true },
+    ],
+  },
+  {
+    label: "Copy Trading",
+    items: [
+      { title: "Overview", url: "/copy", icon: Repeat },
+      { title: "My Accounts", url: "/copy/accounts", icon: Link2 },
+      { title: "Masters", url: "/copy/masters", icon: Users2 },
+      { title: "Copy Activity", url: "/copy/activity", icon: Activity },
+      { title: "Risk Settings", url: "/copy/risk", icon: ShieldAlert },
+      { title: "Performance", url: "/copy/performance", icon: BarChart3 },
+      { title: "Settings", url: "/copy/settings", icon: Cog },
+      { title: "Admin", url: "/copy/admin", icon: Shield },
     ],
   },
   {
