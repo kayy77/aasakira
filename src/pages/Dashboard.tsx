@@ -28,6 +28,7 @@ import LotSizeCalculator from "@/components/tools/LotSizeCalculator";
 import { getMaxTpPips, classifyTradeOutcome } from "@/utils/tradePips";
 import VerificationBanner from "@/components/dashboard/VerificationBanner";
 import TraderScoreCard from "@/components/dashboard/TraderScoreCard";
+import TradingIntelligence from "@/components/dashboard/TradingIntelligence";
 
 type DashStats = {
   activeTrades: number;
@@ -234,8 +235,7 @@ export default function Dashboard() {
 
       {/* AI Insights + Market Intel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <AIInsights winRate={winRate} pips={stats.weekPips} />
-        <MarketIntel />
+        <TradingIntelligence />
         <TraderScoreCard winRate={winRate} weekPips={stats.weekPips} weekTrades={stats.weekTrades} />
       </div>
 
