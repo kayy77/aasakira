@@ -61,7 +61,7 @@ export default function TradingIntelligence() {
   };
 
   return (
-    <Card className="lux-glass border-[#D4AF37]/15 lg:col-span-3 relative overflow-hidden">
+    <Card className="lux-glass border-[#D4AF37]/15 lg:col-span-2 relative overflow-hidden">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#D4AF37]/10 blur-3xl" />
       <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-[#D4AF37]/10 relative">
         <CardTitle className="text-sm flex items-center gap-2 tracking-[0.18em] uppercase text-white/80">
