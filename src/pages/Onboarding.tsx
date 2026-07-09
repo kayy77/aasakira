@@ -171,32 +171,18 @@ export default function Onboarding() {
         console.info("Screenshot uploaded", { requestId: rId, kind: upload.key });
       }
 
-      const imageUrls = plannedUploads.map((upload) => `storage://verification-screenshots/${upload.path}`);
-
-      const { error } = await (supabase as any)
-        .from("verification_requests")
-        .insert({
-          id: rId,
-          user_id: user.id,
-          trader_type: traderType,
-          status: "UPLOADED",
-          review_status: "uploaded",
-          uploaded_at: uploadedAt,
-          image_urls: imageUrls,
-        });
-      if (error) throw error;
-
-      for (const upload of plannedUploads) {
-        const { error: screenshotError } = await (supabase as any).from("verification_screenshots").insert({
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-trading-account", {
+        body: {
           request_id: rId,
-          user_id: user.id,
-          kind: upload.key,
-          storage_path: upload.path,
-        });
-        if (screenshotError) throw screenshotError;
-      }
-
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-trading-account", { body: { request_id: rId } });
+          trader_type: traderType,
+          uploaded_at: uploadedAt,
+          screenshots: plannedUploads.map((upload) => ({
+            kind: upload.key,
+            storage_path: upload.path,
+            image_url: `storage://verification-screenshots/${upload.path}`,
+          })),
+        },
+      });
       if (verifyError) throw verifyError;
 
       const nextStatus = normalizeVerificationStatus((verifyData as any)?.status ?? "PENDING_REVIEW");

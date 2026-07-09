@@ -13,6 +13,12 @@ interface Extraction {
   confidence: number;
 }
 
+type ScreenshotPayload = {
+  kind: string;
+  storage_path: string;
+  image_url?: string;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
@@ -36,16 +42,56 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const requestId = body?.request_id;
     if (typeof requestId !== "string") return json({ error: "request_id required" }, 400);
+    const screenshots = Array.isArray(body?.screenshots) ? body.screenshots as ScreenshotPayload[] : [];
+    const traderType = typeof body?.trader_type === "string" ? body.trader_type : null;
+    const uploadedAt = typeof body?.uploaded_at === "string" ? body.uploaded_at : new Date().toISOString();
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const { data: vr, error: vrErr } = await admin
+    let { data: vr, error: vrErr } = await admin
       .from("verification_requests")
       .select("*")
       .eq("id", requestId)
       .eq("user_id", user.id)
-      .single();
-    if (vrErr || !vr) return json({ error: "Not found" }, 404);
+      .maybeSingle();
+
+    if (!vr && screenshots.length > 0) {
+      validateScreenshots(user.id, requestId, screenshots);
+      const imageUrls = screenshots.map((shot) => shot.image_url ?? `storage://verification-screenshots/${shot.storage_path}`);
+      const { data: created, error: createErr } = await admin
+        .from("verification_requests")
+        .insert({
+          id: requestId,
+          user_id: user.id,
+          trader_type: traderType,
+          status: "UPLOADED",
+          review_status: "uploaded",
+          uploaded_at: uploadedAt,
+          image_urls: imageUrls,
+        })
+        .select("*")
+        .single();
+      if (createErr) throw createErr;
+
+      for (const shot of screenshots) {
+        const { error: shotErr } = await admin.from("verification_screenshots").insert({
+          request_id: requestId,
+          user_id: user.id,
+          kind: shot.kind,
+          storage_path: shot.storage_path,
+        });
+        if (shotErr) throw shotErr;
+      }
+
+      vr = created;
+      await transitionProfile(admin, user.id, requestId, "UPLOADED", "upload_successful", "verify-trading-account", {
+        screenshot_count: screenshots.length,
+      });
+      console.info("Upload successful; database updated", { user_id: user.id, request_id: requestId, screenshot_count: screenshots.length });
+    }
+
+    if (vrErr && vrErr.code !== "PGRST116") throw vrErr;
+    if (!vr) return json({ error: "Not found" }, 404);
 
     const startedAt = new Date().toISOString();
     await transitionProfile(admin, user.id, requestId, "PENDING_REVIEW", "upload_successful", "verify-trading-account", {
@@ -179,6 +225,16 @@ async function extractFromImage(imageUrl: string, key: string): Promise<Extracti
     };
   } catch {
     return { account_number: null, broker: null, platform: null, confidence: 0 };
+  }
+}
+
+function validateScreenshots(userId: string, requestId: string, screenshots: ScreenshotPayload[]) {
+  if (screenshots.length === 0 || screenshots.length > 10) throw new Error("Invalid screenshot count");
+  for (const shot of screenshots) {
+    if (typeof shot.kind !== "string" || !shot.kind.trim()) throw new Error("Screenshot kind required");
+    if (typeof shot.storage_path !== "string" || !shot.storage_path.startsWith(`${userId}/${requestId}/`)) {
+      throw new Error("Invalid screenshot path");
+    }
   }
 }
 
