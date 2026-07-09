@@ -199,6 +199,17 @@ export default function Onboarding() {
       }
     } catch (e: any) {
       console.error("Verification submission failed", e);
+      try {
+        const profile = await fetchVerificationProfile(user.id);
+        if (["UPLOADED", "PENDING_REVIEW"].includes(profile.onboarding_status)) {
+          setStatus(profile.onboarding_status);
+          setStep(4);
+          toast({ title: "Submission received", description: "Your verification is pending review." });
+          return;
+        }
+      } catch (recoveryError) {
+        console.error("Verification recovery check failed", recoveryError);
+      }
       toast({ title: "Submission failed", description: e.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
