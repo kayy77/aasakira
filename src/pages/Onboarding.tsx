@@ -3,15 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { fetchVerificationProfile, normalizeVerificationStatus, type VerificationStatus } from "@/lib/verificationState";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, CheckCircle2, Upload, ExternalLink, ArrowRight, ShieldCheck, Clock, Briefcase, Award, Target } from "lucide-react";
+import { Loader2, CheckCircle2, Upload, ExternalLink, ArrowRight, ShieldCheck, Clock, Briefcase, Award, Target, AlertCircle } from "lucide-react";
 
 type TraderType = "personal" | "funded" | "prop";
 type Slot = "account_number" | "broker_dashboard" | "mt5_screen";
-
-const ACCESS_STATUSES = new Set(["broker_verified", "trial_active", "member", "premium", "admin"]);
-const REQUEST_DONE_STATUSES = new Set(["broker_verified", "needs_review"]);
 
 const STARTRADER_URL = "https://startrader.com/en/live-account-registration";
 const VIP_WHATSAPP = "https://wa.me/447XXXXXXXXX?text=I%20want%20AASAKIRA%20Pro";
@@ -42,40 +40,54 @@ export default function Onboarding() {
   const [files, setFiles] = useState<Partial<Record<Slot, File>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<VerificationStatus | null>(null);
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
   // Load profile state
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await (supabase as any)
-        .from("user_profiles")
-        .select("trader_type, onboarding_status, onboarding_step, trial_started_at")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (data) {
-        if (data.trader_type) setTraderType(data.trader_type as TraderType);
-        if (data.onboarding_step) setStep(data.onboarding_step);
-        if (data.trial_started_at) setTrialStartedAt(data.trial_started_at);
-        if (ACCESS_STATUSES.has(data.onboarding_status)) {
-          navigate("/dashboard", { replace: true });
-          return;
-        }
+      const profile = await fetchVerificationProfile(user.id);
+      const dbStatus = normalizeVerificationStatus(profile.onboarding_status);
+
+      if (dbStatus === "VERIFIED") {
+        console.info("Redirect to dashboard", { reason: "verified_onboarding_load" });
+        navigate("/dashboard", { replace: true });
+        return;
       }
+
+      if (profile.trader_type) setTraderType(profile.trader_type as TraderType);
+      if (profile.trial_started_at) setTrialStartedAt(profile.trial_started_at);
+      setStatus(dbStatus);
+      setRejectionReason(profile.rejection_reason ?? null);
+
       // Most recent verification request
       const { data: req } = await (supabase as any)
         .from("verification_requests")
-        .select("id, status")
+        .select("id, status, review_status, rejection_reason")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       if (req) {
         setRequestId(req.id);
-        setStatus(req.status);
+        if (!profile.rejection_reason && req.rejection_reason) setRejectionReason(req.rejection_reason);
+      }
+
+      if (["UPLOADED", "PENDING_REVIEW", "REJECTED"].includes(dbStatus)) {
+        setStep(4);
+      } else if (profile.onboarding_step && profile.onboarding_step > 0 && profile.onboarding_step < 4) {
+        setStep(profile.onboarding_step);
+      } else {
+        setStep(1);
       }
       setLoading(false);
-    })();
+    })().catch((error) => {
+      console.error("Onboarding status load failed", error);
+      toast({ title: "Could not load verification status", description: error?.message ?? "Try refreshing.", variant: "destructive" });
+      setStatus("NOT_STARTED");
+      setLoading(false);
+    });
   }, [user, navigate]);
 
   const saveProfile = useCallback(async (patch: Record<string, any>) => {
@@ -111,7 +123,7 @@ export default function Onboarding() {
     setTraderType(t);
     const next = t === "personal" ? 2 : 2; // both go to step 2 (broker or trial)
     setStep(next);
-    const patch: any = { trader_type: t, onboarding_status: "in_progress", onboarding_step: next };
+    const patch: any = { trader_type: t, onboarding_step: next };
     if ((t === "funded" || t === "prop") && !trialStartedAt) {
       patch.trial_started_at = new Date().toISOString();
       setTrialStartedAt(patch.trial_started_at);
@@ -126,77 +138,105 @@ export default function Onboarding() {
 
   const onSubmit = async () => {
     if (!user) return;
+    if (!traderType) {
+      toast({ title: "Choose trader type first", variant: "destructive" });
+      setStep(1);
+      return;
+    }
     if (!files.account_number || !files.broker_dashboard || !files.mt5_screen) {
       toast({ title: "Upload all 3 screenshots", variant: "destructive" });
       return;
     }
     setSubmitting(true);
     try {
-      await saveProfile({ onboarding_status: "broker_submitted", onboarding_step: 4, trader_type: traderType });
-
-      const { data: req, error } = await (supabase as any)
-        .from("verification_requests")
-        .insert({ user_id: user.id, trader_type: traderType, status: "broker_submitted" })
-        .select("id")
-        .single();
-      if (error) throw error;
-      const rId = req.id as string;
-
-      for (const slot of slotMeta) {
+      const rId = crypto.randomUUID();
+      const uploadedAt = new Date().toISOString();
+      const plannedUploads = slotMeta.map((slot) => {
         const file = files[slot.key]!;
-        const path = `${user.id}/${rId}/${slot.key}-${Date.now()}.${file.name.split(".").pop() || "png"}`;
+        const ext = file.name.split(".").pop() || "png";
+        return {
+          ...slot,
+          file,
+          path: `${user.id}/${rId}/${slot.key}-${Date.now()}.${ext}`,
+        };
+      });
+
+      await saveProfile({ onboarding_step: 4, trader_type: traderType });
+
+      for (const upload of plannedUploads) {
         const { error: upErr } = await supabase.storage
           .from("verification-screenshots")
-          .upload(path, file, { upsert: false, contentType: file.type });
+          .upload(upload.path, upload.file, { upsert: false, contentType: upload.file.type });
         if (upErr) throw upErr;
-        const { error: screenshotError } = await (supabase as any).from("verification_screenshots").insert({
-          request_id: rId,
-          user_id: user.id,
-          kind: slot.key,
-          storage_path: path,
-        });
-        if (screenshotError) throw screenshotError;
+        console.info("Screenshot uploaded", { requestId: rId, kind: upload.key });
       }
 
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-trading-account", {
+        body: {
+          request_id: rId,
+          trader_type: traderType,
+          uploaded_at: uploadedAt,
+          screenshots: plannedUploads.map((upload) => ({
+            kind: upload.key,
+            storage_path: upload.path,
+            image_url: `storage://verification-screenshots/${upload.path}`,
+          })),
+        },
+      });
+      if (verifyError) throw verifyError;
+
+      const nextStatus = normalizeVerificationStatus((verifyData as any)?.status ?? "PENDING_REVIEW");
       setRequestId(rId);
-      setStatus("broker_submitted");
-      await saveProfile({ onboarding_status: "broker_submitted", onboarding_step: 4, trader_type: traderType });
+      setStatus(nextStatus);
+      setRejectionReason((verifyData as any)?.reason ?? null);
       setStep(4);
 
-      // Fire AI verification
-      supabase.functions.invoke("verify-trading-account", { body: { request_id: rId } })
-        .catch((e) => console.error("AI verify error", e));
-
-      toast({ title: "Submitted", description: "AI is reviewing your screenshots." });
+      if (nextStatus === "VERIFIED") {
+        console.info("Redirect to dashboard", { reason: "verification_approved", requestId: rId });
+        navigate("/dashboard", { replace: true });
+      } else {
+        toast({ title: "Submitted", description: "Your proof is now pending review." });
+      }
     } catch (e: any) {
+      console.error("Verification submission failed", e);
+      try {
+        const profile = await fetchVerificationProfile(user.id);
+        if (["UPLOADED", "PENDING_REVIEW"].includes(profile.onboarding_status)) {
+          setStatus(profile.onboarding_status);
+          setStep(4);
+          toast({ title: "Submission received", description: "Your verification is pending review." });
+          return;
+        }
+      } catch (recoveryError) {
+        console.error("Verification recovery check failed", recoveryError);
+      }
       toast({ title: "Submission failed", description: e.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Poll for verification status on step 4
+  // Poll server-owned profile status every 10 seconds while pending.
   useEffect(() => {
-    if (step !== 4 || !requestId) return;
+    if (step !== 4 || !user || !["UPLOADED", "PENDING_REVIEW"].includes(status ?? "NOT_STARTED")) return;
     const interval = setInterval(async () => {
-      const { data } = await (supabase as any)
-        .from("verification_requests")
-        .select("status")
-        .eq("id", requestId)
-        .maybeSingle();
-      if (data?.status && data.status !== status) {
-        setStatus(data.status);
-        if (REQUEST_DONE_STATUSES.has(data.status)) {
+      try {
+        const profile = await fetchVerificationProfile(user.id);
+        const dbStatus = normalizeVerificationStatus(profile.onboarding_status);
+        setStatus(dbStatus);
+        setRejectionReason(profile.rejection_reason ?? null);
+        if (dbStatus === "VERIFIED") {
+          console.info("Redirect to dashboard", { reason: "poll_detected_verified", requestId });
           clearInterval(interval);
+          navigate("/dashboard", { replace: true });
         }
-        if (data.status === "broker_verified") {
-          await saveProfile({ onboarding_status: "broker_verified" });
-          clearInterval(interval);
-        }
+        if (dbStatus === "REJECTED") clearInterval(interval);
+      } catch (error) {
+        console.error("Verification polling failed", error);
       }
-    }, 5000);
+    }, 10000);
     return () => clearInterval(interval);
-  }, [step, requestId, status, saveProfile]);
+  }, [step, requestId, status, user, navigate]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-[#050505]"><Loader2 className="h-6 w-6 animate-spin text-[#D4AF37]" /></div>;
@@ -232,7 +272,7 @@ export default function Onboarding() {
         {step === 3 && (
           <Step3Upload files={files} setFiles={setFiles} submitting={submitting} onSubmit={onSubmit} />
         )}
-        {step === 4 && <Step4Status status={status} />}
+        {step === 4 && <Step4Status status={status} rejectionReason={rejectionReason} onRetry={() => setStep(3)} />}
       </div>
     </div>
   );
@@ -408,10 +448,11 @@ function Step3Upload({ files, setFiles, submitting, onSubmit }: {
   );
 }
 
-function Step4Status({ status }: { status: string | null }) {
+function Step4Status({ status, rejectionReason, onRetry }: { status: VerificationStatus | null; rejectionReason?: string | null; onRetry: () => void }) {
   const navigate = useNavigate();
-  const isVerified = status === "broker_verified";
-  const isReview = status === "needs_review";
+  const normalized = normalizeVerificationStatus(status);
+  const isVerified = normalized === "VERIFIED";
+  const isRejected = normalized === "REJECTED";
   return (
     <Card className="lux-glass p-10 text-center">
       {isVerified ? (
@@ -425,13 +466,16 @@ function Step4Status({ status }: { status: string | null }) {
             Connect Trading Account <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </>
-      ) : isReview ? (
+      ) : isRejected ? (
         <>
-          <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/40 flex items-center justify-center mb-5">
-            <Clock className="w-8 h-8 text-amber-400" />
+          <div className="mx-auto w-16 h-16 rounded-full bg-red-500/10 border border-red-500/40 flex items-center justify-center mb-5">
+            <AlertCircle className="w-8 h-8 text-red-300" />
           </div>
-          <h2 className="font-display text-2xl mb-2">Manual Review Required</h2>
-          <p className="text-sm text-white/55 mb-8">Our team will review your submission within 24 hours.</p>
+          <h2 className="font-display text-2xl mb-2">Verification Rejected</h2>
+          <p className="text-sm text-white/55 mb-8">{rejectionReason || "Upload clearer screenshots showing your broker, live account number and platform."}</p>
+          <Button onClick={onRetry} className="btn-gold rounded-full px-6 py-3 text-xs tracking-widest uppercase">
+            Upload Again <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
         </>
       ) : (
         <>
@@ -439,7 +483,7 @@ function Step4Status({ status }: { status: string | null }) {
             <Loader2 className="w-8 h-8 text-[#F4D03F] animate-spin" />
           </div>
           <h2 className="font-display text-2xl mb-2">Pending Verification</h2>
-          <p className="text-sm text-white/55">AI is analyzing your screenshots — this usually takes under a minute.</p>
+          <p className="text-sm text-white/55">Your status is checked automatically every 10 seconds.</p>
         </>
       )}
     </Card>

@@ -1,51 +1,34 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { AlertTriangle, Clock3, ShieldCheck, Sparkles, Crown, ArrowRight } from "lucide-react";
-
-type Status =
-  | "pending"
-  | "in_progress"
-  | "broker_submitted"
-  | "broker_verified"
-  | "trial_active"
-  | "member"
-  | "premium"
-  | "admin";
+import { fetchVerificationProfile, type VerificationStatus } from "@/lib/verificationState";
+import { AlertTriangle, Clock3, ShieldCheck, ArrowRight } from "lucide-react";
 
 const CONFIG: Record<
-  Status,
+  VerificationStatus,
   { tone: "warn" | "info" | "ok" | "gold"; icon: any; title: string; desc: string; cta?: { label: string; to: string } }
 > = {
-  pending:          { tone: "warn", icon: AlertTriangle, title: "Complete Broker Verification", desc: "Upload broker screenshots to unlock signals, analytics and the AI coach.", cta: { label: "Start Verification", to: "/onboarding" } },
-  in_progress:      { tone: "warn", icon: AlertTriangle, title: "Finish Verification", desc: "You started onboarding — pick up where you left off.", cta: { label: "Resume", to: "/onboarding" } },
-  broker_submitted: { tone: "info", icon: Clock3,        title: "Verification Under Review", desc: "Our team is reviewing your broker submission. This usually takes minutes.", cta: { label: "View Status", to: "/account/verification" } },
-  broker_verified:  { tone: "ok",   icon: ShieldCheck,   title: "Verified Trader", desc: "You now have full access to the AASAKIRA terminal." },
-  trial_active:     { tone: "gold", icon: Sparkles,      title: "Trial Active", desc: "You're inside the 3-day trial. Explore every module.", cta: { label: "Upgrade", to: "/pricing" } },
-  member:           { tone: "ok",   icon: ShieldCheck,   title: "Member", desc: "Standard access to signals, journal and academy.", cta: { label: "Upgrade to Premium", to: "/pricing" } },
-  premium:          { tone: "gold", icon: Crown,         title: "Inner Circle · Premium", desc: "Full access — signals, AI coach, analytics and risk suite." },
-  admin:            { tone: "gold", icon: Crown,         title: "Admin", desc: "Full platform access." },
+  NOT_STARTED:    { tone: "warn", icon: AlertTriangle, title: "Complete Broker Verification", desc: "Upload broker screenshots to unlock signals, analytics and the coach.", cta: { label: "Start Verification", to: "/onboarding" } },
+  UPLOADED:       { tone: "info", icon: Clock3,        title: "Upload Received", desc: "Your broker screenshots were received and queued for review.", cta: { label: "View Status", to: "/account/verification" } },
+  PENDING_REVIEW: { tone: "info", icon: Clock3,        title: "Verification Under Review", desc: "Your broker submission is being reviewed.", cta: { label: "View Status", to: "/account/verification" } },
+  VERIFIED:       { tone: "ok",   icon: ShieldCheck,   title: "Verified Trader", desc: "You now have full access to the AASAKIRA terminal." },
+  REJECTED:       { tone: "warn", icon: AlertTriangle, title: "Verification Needs Attention", desc: "Your proof could not be verified. Upload a clearer set of screenshots.", cta: { label: "Retry", to: "/onboarding" } },
 };
 
 export default function VerificationBanner() {
   const { user } = useAuth();
-  const [status, setStatus] = useState<Status | null>(null);
+  const [status, setStatus] = useState<VerificationStatus | null>(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await (supabase as any)
-        .from("user_profiles")
-        .select("onboarding_status")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      setStatus(((data?.onboarding_status as Status) ?? "pending") as Status);
-    })();
+      const data = await fetchVerificationProfile(user.id);
+      setStatus(data.onboarding_status);
+    })().catch((error) => console.error("Verification banner failed", error));
   }, [user?.id]);
 
   if (!status) return null;
-  const cfg = CONFIG[status] ?? CONFIG.pending;
+  const cfg = CONFIG[status] ?? CONFIG.NOT_STARTED;
   const Icon = cfg.icon;
 
   const tones = {

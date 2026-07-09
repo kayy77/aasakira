@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchVerificationProfile, normalizeVerificationStatus, type VerificationStatus } from "@/lib/verificationState";
 import AccountLayout from "./_AccountLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,25 +10,28 @@ import { ShieldCheck, Clock, AlertCircle, ArrowRight, Loader2 } from "lucide-rea
 export default function Verification() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<string | null>(null);
-  const [reqStatus, setReqStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<VerificationStatus | null>(null);
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: profile } = await (supabase as any).from("user_profiles")
-        .select("onboarding_status").eq("user_id", user.id).maybeSingle();
-      const { data: req } = await (supabase as any).from("verification_requests")
-        .select("status").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      setStatus(profile?.onboarding_status ?? "pending");
-      setReqStatus(req?.status ?? null);
+      const profile = await fetchVerificationProfile(user.id);
+      setStatus(profile.onboarding_status);
+      setRejectionReason(profile.rejection_reason ?? null);
       setLoading(false);
-    })();
+    })().catch((error) => {
+      console.error("Verification page failed", error);
+      setStatus("NOT_STARTED");
+      setLoading(false);
+    });
   }, [user]);
 
-  const verified = ["broker_verified", "trial_active", "member", "premium", "admin"].includes(status ?? "");
-  const Icon = verified ? ShieldCheck : reqStatus === "needs_review" ? AlertCircle : Clock;
+  const normalized = normalizeVerificationStatus(status);
+  const verified = normalized === "VERIFIED";
+  const rejected = normalized === "REJECTED";
+  const Icon = verified ? ShieldCheck : rejected ? AlertCircle : Clock;
 
   return (
     <AccountLayout title="Verification" subtitle="Your broker proof and current access tier.">
@@ -43,7 +46,8 @@ export default function Verification() {
               </div>
               <div>
                 <div className="text-xs tracking-widest uppercase text-white/50">Status</div>
-                <div className="font-display text-xl mt-0.5">{(status || "pending").replace(/_/g, " ")}</div>
+                <div className="font-display text-xl mt-0.5">{(status || "NOT_STARTED").replace(/_/g, " ")}</div>
+                {rejected && rejectionReason && <div className="text-xs text-white/50 mt-1">{rejectionReason}</div>}
               </div>
             </div>
             {!verified ? (

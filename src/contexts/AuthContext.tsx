@@ -79,8 +79,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Memoize the initialization function to prevent unnecessary re-renders
   const initializeAuth = useCallback(async () => {
     try {
-      // Get initial session
-      const { data: { session }, error } = await supabase.auth.getSession();
+      // Revalidate the initial user with Supabase Auth instead of trusting a cached session.
+      const { data: { user: authUser }, error } = await supabase.auth.getUser();
       
       if (error) {
         console.error('Auth session error:', error);
@@ -88,9 +88,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      if (session?.user) {
+      if (authUser) {
         try {
-          const userData = initializeUserData(session.user);
+          const userData = initializeUserData(authUser);
           setUser(userData);
         } catch (userError) {
           console.error('User data initialization error:', userError);
