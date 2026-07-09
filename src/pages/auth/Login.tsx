@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { fetchVerificationProfile, routeForVerificationStatus } from "@/lib/verificationState";
+import { supabase } from "@/integrations/supabase/client";
 
 const schema = z.object({
   email: z.string().trim().email("Invalid email").max(255),
@@ -39,7 +41,12 @@ export default function Login() {
     setLoading(true);
     try {
       await signIn(parsed.data.email, parsed.data.password);
-      navigate(next, { replace: true });
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) throw userError ?? new Error("Unable to validate session.");
+      const profile = await fetchVerificationProfile(userData.user.id);
+      const destination = routeForVerificationStatus(profile.onboarding_status);
+      console.info("Redirect after login", { status: profile.onboarding_status, destination });
+      navigate(destination === "/dashboard" ? "/dashboard" : next === "/dashboard" ? "/onboarding" : destination, { replace: true });
     } catch (err: any) {
       toast({
         title: "Sign in failed",
