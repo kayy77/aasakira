@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchVerificationProfile, type VerificationStatus } from "@/lib/verificationState";
-import { AlertTriangle, Clock3, ShieldCheck, Sparkles, Crown, ArrowRight } from "lucide-react";
+import { AlertTriangle, Clock3, ShieldCheck, ArrowRight } from "lucide-react";
 
 const CONFIG: Record<
   VerificationStatus,
