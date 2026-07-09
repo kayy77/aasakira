@@ -46,7 +46,7 @@ export default function Login() {
       const profile = await fetchVerificationProfile(userData.user.id);
       const destination = routeForVerificationStatus(profile.onboarding_status);
       console.info("Redirect after login", { status: profile.onboarding_status, destination });
-      navigate(destination === "/dashboard" ? "/dashboard" : next === "/dashboard" ? "/onboarding" : destination, { replace: true });
+      navigate(destination, { replace: true });
     } catch (err: any) {
       toast({
         title: "Sign in failed",
