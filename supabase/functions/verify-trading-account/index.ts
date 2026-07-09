@@ -264,7 +264,7 @@ async function transitionProfile(
   admin: any,
   userId: string,
   requestId: string,
-  toStatus: "PENDING_REVIEW" | "VERIFIED" | "REJECTED",
+  toStatus: "UPLOADED" | "PENDING_REVIEW" | "VERIFIED" | "REJECTED",
   event: string,
   actor: string,
   details: Record<string, unknown>,
@@ -283,7 +283,7 @@ async function transitionProfile(
     updated_at: now,
   };
 
-  if (toStatus === "PENDING_REVIEW") {
+  if (toStatus === "UPLOADED" || toStatus === "PENDING_REVIEW") {
     patch.verification_uploaded_at = now;
     patch.rejection_reason = null;
   }
