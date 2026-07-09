@@ -2173,6 +2173,7 @@ export type Database = {
           plan_type: string | null
           premium_expires_at: string | null
           referral_source: string | null
+          rejection_reason: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
@@ -2186,6 +2187,9 @@ export type Database = {
           updated_at: string
           user_id: string
           username: string | null
+          verification_uploaded_at: string | null
+          verified_at: string | null
+          verified_by: string | null
           weekly_email_enabled: boolean | null
         }
         Insert: {
@@ -2204,6 +2208,7 @@ export type Database = {
           plan_type?: string | null
           premium_expires_at?: string | null
           referral_source?: string | null
+          rejection_reason?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -2217,6 +2222,9 @@ export type Database = {
           updated_at?: string
           user_id: string
           username?: string | null
+          verification_uploaded_at?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           weekly_email_enabled?: boolean | null
         }
         Update: {
@@ -2235,6 +2243,7 @@ export type Database = {
           plan_type?: string | null
           premium_expires_at?: string | null
           referral_source?: string | null
+          rejection_reason?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -2248,6 +2257,9 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string | null
+          verification_uploaded_at?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           weekly_email_enabled?: boolean | null
         }
         Relationships: []
@@ -2374,14 +2386,19 @@ export type Database = {
           broker: string | null
           created_at: string
           id: string
+          image_urls: Json
           notes: string | null
           platform: string | null
+          rejection_reason: string | null
+          review_status: string
           reviewed_at: string | null
           reviewer_id: string | null
           status: string
           trader_type: string | null
           updated_at: string
+          uploaded_at: string | null
           user_id: string
+          verified_by: string | null
         }
         Insert: {
           account_number?: string | null
@@ -2390,14 +2407,19 @@ export type Database = {
           broker?: string | null
           created_at?: string
           id?: string
+          image_urls?: Json
           notes?: string | null
           platform?: string | null
+          rejection_reason?: string | null
+          review_status?: string
           reviewed_at?: string | null
           reviewer_id?: string | null
           status?: string
           trader_type?: string | null
           updated_at?: string
+          uploaded_at?: string | null
           user_id: string
+          verified_by?: string | null
         }
         Update: {
           account_number?: string | null
@@ -2406,14 +2428,19 @@ export type Database = {
           broker?: string | null
           created_at?: string
           id?: string
+          image_urls?: Json
           notes?: string | null
           platform?: string | null
+          rejection_reason?: string | null
+          review_status?: string
           reviewed_at?: string | null
           reviewer_id?: string | null
           status?: string
           trader_type?: string | null
           updated_at?: string
+          uploaded_at?: string | null
           user_id?: string
+          verified_by?: string | null
         }
         Relationships: []
       }
@@ -2454,6 +2481,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      verification_state_events: {
+        Row: {
+          actor: string
+          created_at: string
+          details: Json
+          event: string
+          from_status: string | null
+          id: string
+          request_id: string | null
+          to_status: string
+          user_id: string
+        }
+        Insert: {
+          actor?: string
+          created_at?: string
+          details?: Json
+          event: string
+          from_status?: string | null
+          id?: string
+          request_id?: string | null
+          to_status: string
+          user_id: string
+        }
+        Update: {
+          actor?: string
+          created_at?: string
+          details?: Json
+          event?: string
+          from_status?: string | null
+          id?: string
+          request_id?: string | null
+          to_status?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       weekly_reviews: {
         Row: {
@@ -2560,6 +2623,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      log_verification_state_event: {
+        Args: {
+          p_actor?: string
+          p_details?: Json
+          p_event: string
+          p_from_status: string
+          p_request_id: string
+          p_to_status: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       update_user_progress: {
         Args: {
           p_activity_type: string
@@ -2587,6 +2662,12 @@ export type Database = {
         | "syncing"
         | "disconnected"
         | "error"
+      verification_state:
+        | "NOT_STARTED"
+        | "UPLOADED"
+        | "PENDING_REVIEW"
+        | "VERIFIED"
+        | "REJECTED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2731,6 +2812,13 @@ export const Constants = {
         "syncing",
         "disconnected",
         "error",
+      ],
+      verification_state: [
+        "NOT_STARTED",
+        "UPLOADED",
+        "PENDING_REVIEW",
+        "VERIFIED",
+        "REJECTED",
       ],
     },
   },
