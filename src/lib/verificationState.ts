@@ -65,7 +65,7 @@ export function isVerifiedStatus(status?: string | null) {
 }
 
 export async function fetchVerificationProfile(userId: string): Promise<VerificationProfile> {
-  const { data, error } = await withTimeout(
+  const result = await withTimeout<{ data: any; error: any }>(
     (supabase as any)
       .from("user_profiles")
       .select(
@@ -75,6 +75,7 @@ export async function fetchVerificationProfile(userId: string): Promise<Verifica
       .maybeSingle(),
     "Verification status took too long to load.",
   );
+  const { data, error } = result;
 
   if (error) throw error;
 
