@@ -18,6 +18,12 @@ export type VerificationProfile = {
   verification_uploaded_at?: string | null;
 };
 
+export type PlatformAccessState = {
+  profile: VerificationProfile;
+  isAdmin: boolean;
+  canAccessPlatform: boolean;
+};
+
 const LEGACY_STATUS_MAP: Record<string, VerificationStatus> = {
   pending: "NOT_STARTED",
   in_progress: "NOT_STARTED",
@@ -57,6 +63,27 @@ export async function fetchVerificationProfile(userId: string): Promise<Verifica
   return {
     ...(data ?? {}),
     onboarding_status: normalizeVerificationStatus(data?.onboarding_status),
+  };
+}
+
+export async function fetchPlatformAccessState(userId: string): Promise<PlatformAccessState> {
+  const [profile, roleResult] = await Promise.all([
+    fetchVerificationProfile(userId),
+    (supabase as any)
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle(),
+  ]);
+
+  if (roleResult.error) throw roleResult.error;
+
+  const isAdmin = roleResult.data?.role === "admin";
+  return {
+    profile,
+    isAdmin,
+    canAccessPlatform: isAdmin || isVerifiedStatus(profile.onboarding_status),
   };
 }
 

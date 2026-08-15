@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { fetchVerificationProfile, normalizeVerificationStatus, type VerificationStatus } from "@/lib/verificationState";
+import { fetchPlatformAccessState, fetchVerificationProfile, normalizeVerificationStatus, type VerificationStatus } from "@/lib/verificationState";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, CheckCircle2, Upload, ExternalLink, ArrowRight, ShieldCheck, Clock, Briefcase, Award, Target, AlertCircle } from "lucide-react";
@@ -47,11 +47,12 @@ export default function Onboarding() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const profile = await fetchVerificationProfile(user.id);
+      const access = await fetchPlatformAccessState(user.id);
+      const profile = access.profile;
       const dbStatus = normalizeVerificationStatus(profile.onboarding_status);
 
-      if (dbStatus === "VERIFIED") {
-        console.info("Redirect to dashboard", { reason: "verified_onboarding_load" });
+      if (access.canAccessPlatform) {
+        console.info("Redirect to dashboard", { reason: access.isAdmin ? "admin_access" : "verified_onboarding_load" });
         navigate("/dashboard", { replace: true });
         return;
       }
