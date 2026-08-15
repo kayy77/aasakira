@@ -37,6 +37,21 @@ const LEGACY_STATUS_MAP: Record<string, VerificationStatus> = {
   admin: "VERIFIED",
 };
 
+const PROFILE_FETCH_TIMEOUT_MS = 8000;
+
+async function withTimeout<T>(promise: PromiseLike<T>, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), PROFILE_FETCH_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([Promise.resolve(promise), timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 export function normalizeVerificationStatus(status?: string | null): VerificationStatus {
   if (!status) return "NOT_STARTED";
   if (["NOT_STARTED", "UPLOADED", "PENDING_REVIEW", "VERIFIED", "REJECTED"].includes(status)) {
@@ -50,13 +65,16 @@ export function isVerifiedStatus(status?: string | null) {
 }
 
 export async function fetchVerificationProfile(userId: string): Promise<VerificationProfile> {
-  const { data, error } = await (supabase as any)
-    .from("user_profiles")
-    .select(
-      "onboarding_status,onboarding_step,trader_type,trial_started_at,verified_at,verified_by,rejection_reason,verification_uploaded_at",
-    )
-    .eq("user_id", userId)
-    .maybeSingle();
+  const { data, error } = await withTimeout(
+    (supabase as any)
+      .from("user_profiles")
+      .select(
+        "onboarding_status,onboarding_step,trader_type,trial_started_at,verified_at,verified_by,rejection_reason,verification_uploaded_at",
+      )
+      .eq("user_id", userId)
+      .maybeSingle(),
+    "Verification status took too long to load.",
+  );
 
   if (error) throw error;
 
@@ -67,7 +85,7 @@ export async function fetchVerificationProfile(userId: string): Promise<Verifica
 }
 
 export async function fetchPlatformAccessState(userId: string): Promise<PlatformAccessState> {
-  const [profile, roleResult] = await Promise.all([
+  const [profile, roleResult] = await withTimeout(Promise.all([
     fetchVerificationProfile(userId),
     (supabase as any)
       .from("user_roles")
@@ -75,7 +93,7 @@ export async function fetchPlatformAccessState(userId: string): Promise<Platform
       .eq("user_id", userId)
       .eq("role", "admin")
       .maybeSingle(),
-  ]);
+  ]), "Platform access check took too long to load.");
 
   if (roleResult.error) throw roleResult.error;
 
