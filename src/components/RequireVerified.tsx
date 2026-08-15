@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchVerificationProfile, normalizeVerificationStatus, type VerificationStatus } from "@/lib/verificationState";
+import { fetchPlatformAccessState } from "@/lib/verificationState";
 import { Loader2 } from "lucide-react";
 
 /**
@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 export default function RequireVerified() {
   const { user, isLoading: authLoading } = useAuth();
   const location = useLocation();
-  const [status, setStatus] = useState<VerificationStatus | null>(null);
+  const [canAccess, setCanAccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,14 +22,14 @@ export default function RequireVerified() {
     }
     setLoading(true);
     (async () => {
-      const data = await fetchVerificationProfile(user.id);
+      const access = await fetchPlatformAccessState(user.id);
       if (cancelled) return;
-      setStatus(data.onboarding_status);
+      setCanAccess(access.canAccessPlatform);
       setLoading(false);
     })().catch((error) => {
       console.error("Verification gate failed", error);
       if (!cancelled) {
-        setStatus("NOT_STARTED");
+        setCanAccess(false);
         setLoading(false);
       }
     });
@@ -49,7 +49,7 @@ export default function RequireVerified() {
     return <Navigate to={`/login?next=${next}`} replace />;
   }
 
-  if (normalizeVerificationStatus(status) !== "VERIFIED") {
+  if (!canAccess) {
     return <Navigate to="/onboarding" replace />;
   }
 

@@ -18,6 +18,12 @@ export type VerificationProfile = {
   verification_uploaded_at?: string | null;
 };
 
+export type PlatformAccessState = {
+  profile: VerificationProfile;
+  isAdmin: boolean;
+  canAccessPlatform: boolean;
+};
+
 const LEGACY_STATUS_MAP: Record<string, VerificationStatus> = {
   pending: "NOT_STARTED",
   in_progress: "NOT_STARTED",
@@ -30,6 +36,21 @@ const LEGACY_STATUS_MAP: Record<string, VerificationStatus> = {
   premium: "VERIFIED",
   admin: "VERIFIED",
 };
+
+const PROFILE_FETCH_TIMEOUT_MS = 8000;
+
+async function withTimeout<T>(promise: PromiseLike<T>, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), PROFILE_FETCH_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([Promise.resolve(promise), timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 export function normalizeVerificationStatus(status?: string | null): VerificationStatus {
   if (!status) return "NOT_STARTED";
@@ -44,19 +65,44 @@ export function isVerifiedStatus(status?: string | null) {
 }
 
 export async function fetchVerificationProfile(userId: string): Promise<VerificationProfile> {
-  const { data, error } = await (supabase as any)
-    .from("user_profiles")
-    .select(
-      "onboarding_status,onboarding_step,trader_type,trial_started_at,verified_at,verified_by,rejection_reason,verification_uploaded_at",
-    )
-    .eq("user_id", userId)
-    .maybeSingle();
+  const result = await withTimeout<{ data: any; error: any }>(
+    (supabase as any)
+      .from("user_profiles")
+      .select(
+        "onboarding_status,onboarding_step,trader_type,trial_started_at,verified_at,verified_by,rejection_reason,verification_uploaded_at",
+      )
+      .eq("user_id", userId)
+      .maybeSingle(),
+    "Verification status took too long to load.",
+  );
+  const { data, error } = result;
 
   if (error) throw error;
 
   return {
     ...(data ?? {}),
     onboarding_status: normalizeVerificationStatus(data?.onboarding_status),
+  };
+}
+
+export async function fetchPlatformAccessState(userId: string): Promise<PlatformAccessState> {
+  const [profile, roleResult] = await withTimeout(Promise.all([
+    fetchVerificationProfile(userId),
+    (supabase as any)
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle(),
+  ]), "Platform access check took too long to load.");
+
+  if (roleResult.error) throw roleResult.error;
+
+  const isAdmin = roleResult.data?.role === "admin";
+  return {
+    profile,
+    isAdmin,
+    canAccessPlatform: isAdmin || isVerifiedStatus(profile.onboarding_status),
   };
 }
 
