@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { fetchPlatformAccessState } from "@/lib/verificationState";
 import { supabase } from "@/integrations/supabase/client";
 
 const schema = z.object({
