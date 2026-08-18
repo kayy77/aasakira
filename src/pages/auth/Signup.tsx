@@ -19,7 +19,7 @@ export default function Signup() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const next = params.get("next") || "/onboarding";
+  const next = params.get("next") || "/dashboard";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
