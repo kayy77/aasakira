@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { MockTradeExecutionProvider, type TradeDirection } from "../_shared/trade-execution.ts";
+import { checkRisk } from "../_shared/risk-engine.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,10 +11,11 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
-// Stub executor — real MT5 broker adapter plugs in here.
-async function stubExecute(_ctx: any) {
-  return { success: true, executed_volume: _ctx.planned_volume, executed_price: null, broker_ticket: `SIM-${Date.now()}` };
-}
+// NOTE: this function is triggered by pg_cron polling every few seconds (or
+// invoked manually from the admin UI) for Phase 1. At higher scale this
+// should move to a Postgres LISTEN/NOTIFY-driven worker or an external queue
+// (SQS/Cloud Tasks/etc.) so jobs are processed the moment they're created
+// instead of on a polling interval.
 
 function computeVolume(mode: string, config: any, masterVolume: number, followerBalance: number | null) {
   switch (mode) {
@@ -29,6 +32,19 @@ function computeVolume(mode: string, config: any, masterVolume: number, follower
     default:
       return 0.01;
   }
+}
+
+async function findOpenTrade(supabase: any, followerAccountId: string, symbol: string) {
+  const { data } = await supabase
+    .from("trade_history")
+    .select("id")
+    .eq("follower_account_id", followerAccountId)
+    .eq("symbol", symbol)
+    .is("close_time", null)
+    .order("open_time", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
 }
 
 Deno.serve(async (req) => {
@@ -49,36 +65,88 @@ Deno.serve(async (req) => {
       const rel = job.copy_relationships;
       const ev = job.copy_events;
       const fa = job.follower_accounts;
+      const symbol = String(ev?.payload?.symbol ?? "");
 
       if (!rel || rel.status !== "active") {
         await supabase.from("copy_jobs").update({ status: "rejected", last_error: "relationship inactive" }).eq("id", job.id);
+        await supabase.from("execution_logs").insert({ copy_job_id: job.id, user_id: job.user_id, level: "warn", message: "Rejected: copy relationship inactive" });
         rejected++; continue;
       }
       if (!fa || fa.connection_status !== "connected") {
         await supabase.from("copy_jobs").update({ status: "rejected", last_error: "follower not connected" }).eq("id", job.id);
-        await supabase.from("execution_logs").insert({ copy_job_id: job.id, user_id: job.user_id, level: "warn", message: "Follower not connected" });
+        await supabase.from("execution_logs").insert({ copy_job_id: job.id, user_id: job.user_id, level: "warn", message: "Rejected: follower not connected" });
         rejected++; continue;
       }
 
-      // Risk check
-      const { data: risk } = await supabase.from("risk_profiles").select("*").eq("follower_account_id", job.follower_account_id).maybeSingle();
       const masterVolume = Number(ev?.payload?.volume ?? 0.01);
       const planned = computeVolume(rel.copy_mode, rel.copy_config, masterVolume, fa.balance);
 
-      if (risk && planned > Number(risk.max_lot_size)) {
-        await supabase.from("copy_jobs").update({ status: "rejected", last_error: `lot ${planned} exceeds max ${risk.max_lot_size}` }).eq("id", job.id);
-        await supabase.from("execution_logs").insert({ copy_job_id: job.id, user_id: job.user_id, level: "warn", message: "Rejected by risk engine", context: { planned, max_lot_size: risk.max_lot_size } });
+      // Server-side risk engine — always re-checked here, never trusts
+      // anything the client computed.
+      const risk = await checkRisk(supabase, { followerAccountId: job.follower_account_id, symbol, plannedLotSize: planned });
+      if (!risk.allowed) {
+        await supabase.from("copy_jobs").update({ status: "rejected", last_error: risk.reason }).eq("id", job.id);
+        await supabase.from("execution_logs").insert({ copy_job_id: job.id, user_id: job.user_id, level: "warn", message: `Rejected by risk engine: ${risk.reason}` });
         rejected++; continue;
       }
 
+      const provider = new MockTradeExecutionProvider(supabase, job.user_id);
+      const meta = { copyJobId: job.id as string };
+
       try {
-        const result = await stubExecute({ ...ev?.payload, planned_volume: planned });
+        let result;
+        switch (ev?.event_type) {
+          case "OPEN": {
+            const direction = (String(ev?.payload?.type ?? "BUY").toUpperCase() as TradeDirection);
+            result = await provider.openTrade({
+              accountId: job.follower_account_id,
+              symbol,
+              direction,
+              lotSize: planned,
+              sl: ev?.payload?.sl ?? null,
+              tp: ev?.payload?.tp ?? null,
+              meta,
+            });
+            break;
+          }
+          case "MODIFY": {
+            const openTrade = await findOpenTrade(supabase, job.follower_account_id, symbol);
+            if (!openTrade) { result = { success: false, error: "no open position to modify" }; break; }
+            result = await provider.modifyTrade({ tradeId: openTrade.id, sl: ev?.payload?.sl ?? null, tp: ev?.payload?.tp ?? null, meta });
+            break;
+          }
+          case "PARTIAL_CLOSE": {
+            const openTrade = await findOpenTrade(supabase, job.follower_account_id, symbol);
+            if (!openTrade) { result = { success: false, error: "no open position to partially close" }; break; }
+            result = await provider.partialClose({ tradeId: openTrade.id, lotSize: Number(ev?.payload?.volume ?? planned), meta });
+            break;
+          }
+          case "FULL_CLOSE": {
+            const openTrade = await findOpenTrade(supabase, job.follower_account_id, symbol);
+            if (!openTrade) { result = { success: false, error: "no open position to close" }; break; }
+            result = await provider.closeTrade(openTrade.id, meta);
+            break;
+          }
+          default:
+            result = { success: false, error: `unknown event_type ${ev?.event_type}` };
+        }
+
+        if (!result.success) {
+          await supabase.from("copy_jobs").update({ status: "failed", last_error: result.error ?? "execution failed" }).eq("id", job.id);
+          // The provider already logs its own execution failures; this covers
+          // the "no matching open position" cases resolved above it, which
+          // never reach the provider and would otherwise fail silently.
+          await supabase.from("execution_logs").insert({ copy_job_id: job.id, user_id: job.user_id, level: "error", message: result.error ?? "execution failed", context: { event_type: ev?.event_type, symbol } });
+          failed++;
+          continue;
+        }
+
         await supabase.from("copy_jobs").update({
           status: "completed",
           planned_volume: planned,
-          executed_volume: result.executed_volume,
-          executed_price: result.executed_price,
-          broker_ticket: result.broker_ticket,
+          executed_volume: result.executedVolume ?? planned,
+          executed_price: result.executedPrice ?? null,
+          broker_ticket: result.brokerTicket ?? null,
           executed_at: new Date().toISOString(),
         }).eq("id", job.id);
 
@@ -88,12 +156,11 @@ Deno.serve(async (req) => {
           master_account_id: ev?.master_account_id,
           copy_job_id: job.id,
           action: ev?.event_type,
-          symbol: ev?.payload?.symbol,
-          volume: planned,
-          price: result.executed_price,
+          symbol,
+          volume: result.executedVolume ?? planned,
+          price: result.executedPrice ?? null,
           result: "success",
         });
-        await supabase.from("execution_logs").insert({ copy_job_id: job.id, user_id: job.user_id, level: "info", message: "Executed", context: result });
         processed++;
       } catch (e: any) {
         await supabase.from("copy_jobs").update({ status: "failed", last_error: e?.message ?? "unknown" }).eq("id", job.id);

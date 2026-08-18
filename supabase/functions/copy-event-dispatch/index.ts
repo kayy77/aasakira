@@ -29,9 +29,16 @@ Deno.serve(async (req) => {
     const payload = body.payload ?? {};
     if (!master_account_id) return json({ error: "master_account_id required" }, 400);
 
+    // Idempotent event ingestion: retried dispatch calls for the same
+    // (master, event_type, master_ticket) resolve to the same event row
+    // instead of creating a duplicate. Ticket-less manual/test events each
+    // get a unique fallback via copy_events.dedupe_ticket (generated column).
     const { data: event, error: evErr } = await supabase
       .from("copy_events")
-      .insert({ master_account_id, event_type, master_ticket, payload })
+      .upsert(
+        { master_account_id, event_type, master_ticket, payload },
+        { onConflict: "master_account_id,event_type,dedupe_ticket" },
+      )
       .select()
       .single();
     if (evErr) throw new Error(evErr.message);
@@ -49,10 +56,23 @@ Deno.serve(async (req) => {
       follower_account_id: r.follower_account_id,
       user_id: r.user_id,
       status: "pending",
+      idempotency_key: `${event.id}:${r.follower_account_id}`,
     }));
-    if (jobs.length) await supabase.from("copy_jobs").insert(jobs);
 
-    return json({ success: true, event_id: event.id, jobs_created: jobs.length });
+    // Idempotent job creation: even if this event was already dispatched
+    // (retry, duplicate webhook delivery), each follower gets at most one
+    // job per event — no duplicate trades.
+    let jobsCreated = 0;
+    if (jobs.length) {
+      const { data: inserted, error: jobErr } = await supabase
+        .from("copy_jobs")
+        .upsert(jobs, { onConflict: "idempotency_key", ignoreDuplicates: true })
+        .select("id");
+      if (jobErr) throw new Error(jobErr.message);
+      jobsCreated = inserted?.length ?? 0;
+    }
+
+    return json({ success: true, event_id: event.id, jobs_created: jobsCreated });
   } catch (e: any) {
     return json({ error: e?.message || "dispatch failed" }, 400);
   }

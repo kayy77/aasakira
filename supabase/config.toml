@@ -51,6 +51,9 @@ verify_jwt = false
 [functions.heartbeat-monitor]
 verify_jwt = false
 
+[functions.copy-job-processor]
+verify_jwt = false
+
 [functions.test-fcs-debug]
 verify_jwt = false
 

@@ -29,9 +29,10 @@ Deno.serve(async (req) => {
 
     if (scope === "master") {
       if (!isAdmin) return json({ error: "Admin only for master scope" }, 403);
-      const status = action === "resume" ? "active" : action === "stop" ? "stopped" : "paused";
-      await supabase.from("copy_relationships").update({ status }).eq("master_account_id", target_id!);
-      if (action === "stop") await supabase.from("master_accounts").update({ is_active: false }).eq("id", target_id!);
+      const relStatus = action === "resume" ? "active" : action === "stop" ? "stopped" : "paused";
+      const masterStatus = action === "resume" ? "active" : action === "stop" ? "disabled" : "paused";
+      await supabase.from("copy_relationships").update({ status: relStatus }).eq("master_account_id", target_id!);
+      await supabase.from("master_accounts").update({ status: masterStatus, is_active: action !== "stop" }).eq("id", target_id!);
       return json({ ok: true });
     }
 
