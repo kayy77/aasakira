@@ -43,10 +43,8 @@ export default function Login() {
       await signIn(parsed.data.email, parsed.data.password);
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) throw userError ?? new Error("Unable to validate session.");
-      const access = await fetchPlatformAccessState(userData.user.id);
-      const destination = access.canAccessPlatform ? next : "/onboarding";
-      console.info("Redirect after login", { status: access.profile.onboarding_status, isAdmin: access.isAdmin, destination });
-      navigate(destination, { replace: true });
+      // Verification is reviewed manually — everyone lands in the app.
+      navigate(next || "/dashboard", { replace: true });
     } catch (err: any) {
       toast({
         title: "Sign in failed",
