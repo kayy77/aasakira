@@ -18,7 +18,7 @@ import ResetPassword from '@/pages/auth/ResetPassword';
 import TradingAccounts from '@/pages/account/TradingAccounts';
 import Onboarding from '@/pages/Onboarding';
 import ComingSoon from '@/pages/ComingSoon';
-import RequireVerified from '@/components/RequireVerified';
+import RequireAdmin from '@/components/RequireAdmin';
 import Profile from '@/pages/account/Profile';
 import Notifications from '@/pages/account/Notifications';
 import Security from '@/pages/account/Security';
@@ -72,25 +72,25 @@ function App() {
                       <Route path="/account/ai-preferences" element={<AIPreferences />} />
                       <Route path="/tools/lot-size" element={<LotSizeCalculatorPage />} />
 
-                      {/* Verified-only — server-trusted gate */}
-                      <Route element={<RequireVerified />}>
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/live-signals" element={<SignalCommandCenter />} />
-                        <Route path="/signals" element={<SignalCommandCenter />} />
-                        <Route path="/portal" element={<ClientPortal />} />
-                        <Route path="/client" element={<ClientDashboard />} />
-                        <Route path="/trade-review" element={<TradeReview />} />
-                        <Route path="/risk-suite" element={<ComingSoon title="Risk Suite" description="Nine institutional-grade calculators ship with onboarding GA." items={["Lot Size", "Risk", "Drawdown", "Compounding", "Position Size", "Prop Firm Rules", "Daily Drawdown", "Weekly Drawdown", "Margin"]} />} />
-                        <Route path="/community" element={<ComingSoon title="Community" description="Members-only feed, wins log, events and free signals — launching soon." />} />
-                        <Route path="/coach" element={<AICoach />} />
-                        <Route path="/academy" element={<ComingSoon title="Academy" description="Beginner → Elite curriculum." items={["MT5 Setup", "Risk Management", "Market Structure", "Liquidity & Supply/Demand", "Institutional Concepts", "Funded Account Scaling"]} />} />
-                        <Route path="/copy" element={<CopyOverview />} />
-                        <Route path="/copy/accounts" element={<CopyAccounts />} />
-                        <Route path="/copy/masters" element={<CopyMasters />} />
-                        <Route path="/copy/activity" element={<CopyActivity />} />
-                        <Route path="/copy/risk" element={<CopyRisk />} />
-                        <Route path="/copy/performance" element={<CopyPerformance />} />
-                        <Route path="/copy/settings" element={<CopySettings />} />
+                      {/* Open to any signed-in user; verification is reviewed manually */}
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/live-signals" element={<SignalCommandCenter />} />
+                      <Route path="/signals" element={<SignalCommandCenter />} />
+                      <Route path="/portal" element={<ClientPortal />} />
+                      <Route path="/client" element={<ClientDashboard />} />
+                      <Route path="/trade-review" element={<TradeReview />} />
+                      <Route path="/risk-suite" element={<ComingSoon title="Risk Suite" description="Nine institutional-grade calculators ship with onboarding GA." items={["Lot Size", "Risk", "Drawdown", "Compounding", "Position Size", "Prop Firm Rules", "Daily Drawdown", "Weekly Drawdown", "Margin"]} />} />
+                      <Route path="/community" element={<ComingSoon title="Community" description="Members-only feed, wins log, events and free signals — launching soon." />} />
+                      <Route path="/coach" element={<AICoach />} />
+                      <Route path="/academy" element={<ComingSoon title="Academy" description="Beginner → Elite curriculum." items={["MT5 Setup", "Risk Management", "Market Structure", "Liquidity & Supply/Demand", "Institutional Concepts", "Funded Account Scaling"]} />} />
+                      <Route path="/copy" element={<CopyOverview />} />
+                      <Route path="/copy/accounts" element={<CopyAccounts />} />
+                      <Route path="/copy/masters" element={<CopyMasters />} />
+                      <Route path="/copy/activity" element={<CopyActivity />} />
+                      <Route path="/copy/risk" element={<CopyRisk />} />
+                      <Route path="/copy/performance" element={<CopyPerformance />} />
+                      <Route path="/copy/settings" element={<CopySettings />} />
+                      <Route element={<RequireAdmin />}>
                         <Route path="/copy/admin" element={<CopyAdmin />} />
                       </Route>
                     </Route>
