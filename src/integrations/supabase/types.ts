@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      academy_progress: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          last_viewed_at: string
+          lesson_id: string
+          quiz_attempts: number
+          quiz_best_score: number | null
+          quiz_score: number | null
+          task_completed: boolean
+          track: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_viewed_at?: string
+          lesson_id: string
+          quiz_attempts?: number
+          quiz_best_score?: number | null
+          quiz_score?: number | null
+          task_completed?: boolean
+          track?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_viewed_at?: string
+          lesson_id?: string
+          quiz_attempts?: number
+          quiz_best_score?: number | null
+          quiz_score?: number | null
+          task_completed?: boolean
+          track?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       account_snapshots: {
         Row: {
           abs_gain_pct: number | null
