@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
+import SyncStatusPanel from "@/components/copy/SyncStatusPanel";
 
 export default function CopyAccounts() {
   const { rows, loading, refresh } = useFollowerAccounts();
@@ -39,6 +40,8 @@ export default function CopyAccounts() {
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-display gold-text">My Accounts</h1>
+
+      <SyncStatusPanel />
 
       <Card className="bg-[#0a0a0a] border-[#D4AF37]/20">
         <CardHeader><CardTitle className="text-[#F4D03F]">Connect Trading Account</CardTitle></CardHeader>
