@@ -40,7 +40,7 @@ export function useAcademyProgress(track = "beginner") {
           ? Math.max(patch.quiz_score, existing?.quiz_best_score ?? 0)
           : existing?.quiz_best_score ?? null;
 
-      const payload: Record<string, unknown> = {
+      const payload: any = {
         user_id: uid,
         track,
         lesson_id: lessonId,
