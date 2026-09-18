@@ -55,7 +55,7 @@ export function useAcademyProgress(track = "beginner") {
       if (patch.quiz_score != null) payload.quiz_score = patch.quiz_score;
       if (patch.completed) payload.completed_at = new Date().toISOString();
 
-      await supabase.from("academy_progress").upsert(payload, { onConflict: "user_id,track,lesson_id" });
+      await supabase.from("academy_progress").upsert(payload, { onConflict: "user_id,lesson_id" });
       await refresh();
     },
     [rows, refresh, track],
