@@ -35,6 +35,8 @@ import CopyRisk from '@/pages/copy/CopyRisk';
 import CopyPerformance from '@/pages/copy/CopyPerformance';
 import CopySettings from '@/pages/copy/CopySettings';
 import CopyAdmin from '@/pages/copy/CopyAdmin';
+import BeginnerTrack from '@/pages/academy/BeginnerTrack';
+import LessonPage from '@/pages/academy/LessonPage';
 
 import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
@@ -82,7 +84,9 @@ function App() {
                       <Route path="/risk-suite" element={<ComingSoon title="Risk Suite" description="Nine institutional-grade calculators ship with onboarding GA." items={["Lot Size", "Risk", "Drawdown", "Compounding", "Position Size", "Prop Firm Rules", "Daily Drawdown", "Weekly Drawdown", "Margin"]} />} />
                       <Route path="/community" element={<ComingSoon title="Community" description="Members-only feed, wins log, events and free signals — launching soon." />} />
                       <Route path="/coach" element={<AICoach />} />
-                      <Route path="/academy" element={<ComingSoon title="Academy" description="Beginner → Elite curriculum." items={["MT5 Setup", "Risk Management", "Market Structure", "Liquidity & Supply/Demand", "Institutional Concepts", "Funded Account Scaling"]} />} />
+                      <Route path="/academy" element={<BeginnerTrack />} />
+                      <Route path="/academy/beginner" element={<BeginnerTrack />} />
+                      <Route path="/academy/beginner/:lessonId" element={<LessonPage />} />
                       <Route path="/copy" element={<CopyOverview />} />
                       <Route path="/copy/accounts" element={<CopyAccounts />} />
                       <Route path="/copy/masters" element={<CopyMasters />} />

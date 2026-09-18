@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import SyncStatusPanel from "@/components/copy/SyncStatusPanel";
 
 export default function CopyOverview() {
   const { rows: followers } = useFollowerAccounts();
@@ -31,6 +32,8 @@ export default function CopyOverview() {
         <StatCard label="Available Masters" value={String(masters.length)} />
         <StatCard label="Recent Success Rate" value={`${successRate}%`} />
       </div>
+
+      <SyncStatusPanel />
 
       <Card className="bg-[#0a0a0a] border-[#D4AF37]/20">
         <CardHeader><CardTitle className="text-[#F4D03F]">Recent Copy Activity</CardTitle></CardHeader>
