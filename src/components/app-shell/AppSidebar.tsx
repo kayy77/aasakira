@@ -95,6 +95,7 @@ const GROUPS: Group[] = [
   {
     label: "Academy",
     items: [
+      { title: "Overview", url: "/academy", icon: GraduationCap },
       { title: "Beginner", url: "/academy/beginner", icon: GraduationCap },
       { title: "Intermediate", url: "#", icon: GraduationCap, soon: true },
       { title: "Advanced", url: "#", icon: GraduationCap, soon: true },
