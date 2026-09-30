@@ -55,6 +55,23 @@ export default function LessonPage() {
     );
   }
 
+  if (accessLoading) {
+    return <div className="p-6 text-sm text-white/40">Loading lesson…</div>;
+  }
+
+  if (!canAccess) {
+    return (
+      <div className="p-6 space-y-4 max-w-3xl">
+        <Link to="/academy/beginner" className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-[#F4D03F]">
+          <ArrowLeft className="h-3.5 w-3.5" /> Beginner track
+        </Link>
+        <h1 className="text-2xl font-display gold-text">{lesson.title}</h1>
+        <p className="text-sm text-white/60">{lesson.summary}</p>
+        <AcademyLockedNotice status={status} />
+      </div>
+    );
+  }
+
   const prev = idx > 0 ? BEGINNER_LESSONS[idx - 1] : null;
   const next = idx < BEGINNER_LESSONS.length - 1 ? BEGINNER_LESSONS[idx + 1] : null;
 
