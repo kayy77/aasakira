@@ -105,7 +105,7 @@ export default function BeginnerTrack() {
                         {l.minutes}m
                       </span>
                     </div>
-                  </Link>
+                  </Row>
                 );
               })}
             </CardContent>
