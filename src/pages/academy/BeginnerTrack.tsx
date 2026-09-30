@@ -1,12 +1,14 @@
 import { Link } from "react-router-dom";
 import { BEGINNER_LESSONS, BEGINNER_MODULES, TOTAL_BEGINNER_LESSONS } from "@/data/academy/beginner";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
+import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Circle, Clock, GraduationCap, PlayCircle } from "lucide-react";
 
 export default function BeginnerTrack() {
+  const { canAccess, status, loading: accessLoading } = useAcademyAccess();
   const { byId, rows, loading } = useAcademyProgress("beginner");
   const completed = rows.filter((r) => r.completed).length;
   const pct = Math.round((completed / TOTAL_BEGINNER_LESSONS) * 100);
