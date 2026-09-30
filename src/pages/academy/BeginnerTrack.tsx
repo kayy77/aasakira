@@ -5,7 +5,7 @@ import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/Acad
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, Clock, GraduationCap, PlayCircle } from "lucide-react";
+import { CheckCircle2, Circle, Clock, GraduationCap, Lock, PlayCircle } from "lucide-react";
 
 export default function BeginnerTrack() {
   const { canAccess, status, loading: accessLoading } = useAcademyAccess();
