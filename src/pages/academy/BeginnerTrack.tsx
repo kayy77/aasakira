@@ -1,12 +1,14 @@
 import { Link } from "react-router-dom";
 import { BEGINNER_LESSONS, BEGINNER_MODULES, TOTAL_BEGINNER_LESSONS } from "@/data/academy/beginner";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
+import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, Clock, GraduationCap, PlayCircle } from "lucide-react";
+import { CheckCircle2, Circle, Clock, GraduationCap, Lock, PlayCircle } from "lucide-react";
 
 export default function BeginnerTrack() {
+  const { canAccess, status, loading: accessLoading } = useAcademyAccess();
   const { byId, rows, loading } = useAcademyProgress("beginner");
   const completed = rows.filter((r) => r.completed).length;
   const pct = Math.round((completed / TOTAL_BEGINNER_LESSONS) * 100);
@@ -24,14 +26,23 @@ export default function BeginnerTrack() {
             Twenty lessons across five modules. Read, complete the task, pass the quiz.
           </p>
         </div>
-        <Link
-          to={`/academy/beginner/${nextLesson.id}`}
-          className="inline-flex items-center gap-2 rounded-md bg-[#D4AF37] px-4 py-2 text-sm font-medium text-black hover:bg-[#F4D03F]"
-        >
-          <PlayCircle className="h-4 w-4" />
-          {completed === 0 ? "Start track" : "Continue"}
-        </Link>
+        {canAccess ? (
+          <Link
+            to={`/academy/beginner/${nextLesson.id}`}
+            className="inline-flex items-center gap-2 rounded-md bg-[#D4AF37] px-4 py-2 text-sm font-medium text-black hover:bg-[#F4D03F]"
+          >
+            <PlayCircle className="h-4 w-4" />
+            {completed === 0 ? "Start track" : "Continue"}
+          </Link>
+        ) : (
+          <span className="inline-flex items-center gap-2 rounded-md border border-white/10 px-4 py-2 text-sm text-white/40">
+            <Lock className="h-4 w-4" /> Locked
+          </span>
+        )}
       </div>
+
+      {!accessLoading && !canAccess && <AcademyLockedNotice status={status} />}
+
 
       <Card className="bg-[#0a0a0a] border-[#D4AF37]/20">
         <CardContent className="p-5 space-y-3">
@@ -63,11 +74,14 @@ export default function BeginnerTrack() {
             <CardContent className="space-y-2">
               {lessons.map((l) => {
                 const p = byId(l.id);
+                const Row = canAccess ? Link : ("div" as any);
                 return (
-                  <Link
+                  <Row
                     key={l.id}
-                    to={`/academy/beginner/${l.id}`}
-                    className="flex items-center justify-between gap-3 rounded-md border border-white/5 p-3 hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/5 transition-colors"
+                    {...(canAccess ? { to: `/academy/beginner/${l.id}` } : {})}
+                    className={`flex items-center justify-between gap-3 rounded-md border border-white/5 p-3 transition-colors ${
+                      canAccess ? "hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/5" : "opacity-50 cursor-not-allowed"
+                    }`}
                   >
                     <div className="flex items-start gap-3 min-w-0">
                       {p?.completed ? (
@@ -91,7 +105,7 @@ export default function BeginnerTrack() {
                         {l.minutes}m
                       </span>
                     </div>
-                  </Link>
+                  </Row>
                 );
               })}
             </CardContent>

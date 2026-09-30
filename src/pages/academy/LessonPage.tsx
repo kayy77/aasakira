@@ -7,6 +7,7 @@ import {
   TOTAL_BEGINNER_LESSONS,
 } from "@/data/academy/beginner";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
+import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ export default function LessonPage() {
   const idx = getLessonIndex(lessonId);
   const { byId, save } = useAcademyProgress("beginner");
   const progress = byId(lessonId);
+  const { canAccess, status, loading: accessLoading } = useAcademyAccess();
 
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -49,6 +51,23 @@ export default function LessonPage() {
         <Link to="/academy/beginner" className="text-[#F4D03F] text-sm">
           Back to the beginner track
         </Link>
+      </div>
+    );
+  }
+
+  if (accessLoading) {
+    return <div className="p-6 text-sm text-white/40">Loading lesson…</div>;
+  }
+
+  if (!canAccess) {
+    return (
+      <div className="p-6 space-y-4 max-w-3xl">
+        <Link to="/academy/beginner" className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-[#F4D03F]">
+          <ArrowLeft className="h-3.5 w-3.5" /> Beginner track
+        </Link>
+        <h1 className="text-2xl font-display gold-text">{lesson.title}</h1>
+        <p className="text-sm text-white/60">{lesson.summary}</p>
+        <AcademyLockedNotice status={status} />
       </div>
     );
   }

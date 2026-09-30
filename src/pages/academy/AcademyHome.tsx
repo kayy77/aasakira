@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { BEGINNER_LESSONS, BEGINNER_MODULES, TOTAL_BEGINNER_LESSONS } from "@/data/academy/beginner";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
+import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,7 @@ function computeStreak(dates: string[]) {
 export default function AcademyHome() {
   const { byId, rows } = useAcademyProgress("beginner");
   const [streak, setStreak] = useState(0);
+  const { canAccess, status, loading: accessLoading } = useAcademyAccess();
 
   useEffect(() => {
     (async () => {
@@ -55,7 +57,7 @@ export default function AcademyHome() {
       desc: "Foundations, market mechanics, risk, price and discipline.",
       lessons: TOTAL_BEGINNER_LESSONS,
       href: "/academy/beginner",
-      ready: true,
+      ready: canAccess,
       pct,
     },
     { name: "Intermediate", desc: "Structure, liquidity, sessions and multi-timeframe execution.", lessons: 20, href: "#", ready: false, pct: 0 },
@@ -74,13 +76,21 @@ export default function AcademyHome() {
             Structured curriculum from first principles to funded-account execution.
           </p>
         </div>
-        <Link to={`/academy/beginner/${nextLesson.id}`}>
-          <Button className="bg-[#D4AF37] text-black hover:bg-[#F4D03F]">
-            <PlayCircle className="h-4 w-4 mr-2" />
-            {completed === 0 ? "Start learning" : finished ? "Review lessons" : "Continue"}
+        {canAccess ? (
+          <Link to={`/academy/beginner/${nextLesson.id}`}>
+            <Button className="bg-[#D4AF37] text-black hover:bg-[#F4D03F]">
+              <PlayCircle className="h-4 w-4 mr-2" />
+              {completed === 0 ? "Start learning" : finished ? "Review lessons" : "Continue"}
+            </Button>
+          </Link>
+        ) : (
+          <Button disabled>
+            <Lock className="h-4 w-4 mr-2" /> Locked
           </Button>
-        </Link>
+        )}
       </div>
+
+      {!accessLoading && !canAccess && <AcademyLockedNotice status={status} />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat icon={<Target className="h-4 w-4" />} label="Lessons complete" value={`${completed}/${TOTAL_BEGINNER_LESSONS}`} />
