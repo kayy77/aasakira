@@ -26,14 +26,23 @@ export default function BeginnerTrack() {
             Twenty lessons across five modules. Read, complete the task, pass the quiz.
           </p>
         </div>
-        <Link
-          to={`/academy/beginner/${nextLesson.id}`}
-          className="inline-flex items-center gap-2 rounded-md bg-[#D4AF37] px-4 py-2 text-sm font-medium text-black hover:bg-[#F4D03F]"
-        >
-          <PlayCircle className="h-4 w-4" />
-          {completed === 0 ? "Start track" : "Continue"}
-        </Link>
+        {canAccess ? (
+          <Link
+            to={`/academy/beginner/${nextLesson.id}`}
+            className="inline-flex items-center gap-2 rounded-md bg-[#D4AF37] px-4 py-2 text-sm font-medium text-black hover:bg-[#F4D03F]"
+          >
+            <PlayCircle className="h-4 w-4" />
+            {completed === 0 ? "Start track" : "Continue"}
+          </Link>
+        ) : (
+          <span className="inline-flex items-center gap-2 rounded-md border border-white/10 px-4 py-2 text-sm text-white/40">
+            <Lock className="h-4 w-4" /> Locked
+          </span>
+        )}
       </div>
+
+      {!accessLoading && !canAccess && <AcademyLockedNotice status={status} />}
+
 
       <Card className="bg-[#0a0a0a] border-[#D4AF37]/20">
         <CardContent className="p-5 space-y-3">
