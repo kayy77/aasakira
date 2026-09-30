@@ -7,6 +7,7 @@ import {
   TOTAL_BEGINNER_LESSONS,
 } from "@/data/academy/beginner";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
+import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ export default function LessonPage() {
   const idx = getLessonIndex(lessonId);
   const { byId, save } = useAcademyProgress("beginner");
   const progress = byId(lessonId);
+  const { canAccess, status, loading: accessLoading } = useAcademyAccess();
 
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
