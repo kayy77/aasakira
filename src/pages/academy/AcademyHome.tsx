@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { BEGINNER_LESSONS, BEGINNER_MODULES, TOTAL_BEGINNER_LESSONS } from "@/data/academy/beginner";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
+import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,7 @@ function computeStreak(dates: string[]) {
 export default function AcademyHome() {
   const { byId, rows } = useAcademyProgress("beginner");
   const [streak, setStreak] = useState(0);
+  const { canAccess, status, loading: accessLoading } = useAcademyAccess();
 
   useEffect(() => {
     (async () => {
