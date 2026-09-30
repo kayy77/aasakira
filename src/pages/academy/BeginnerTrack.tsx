@@ -74,11 +74,14 @@ export default function BeginnerTrack() {
             <CardContent className="space-y-2">
               {lessons.map((l) => {
                 const p = byId(l.id);
+                const Row = canAccess ? Link : ("div" as any);
                 return (
-                  <Link
+                  <Row
                     key={l.id}
-                    to={`/academy/beginner/${l.id}`}
-                    className="flex items-center justify-between gap-3 rounded-md border border-white/5 p-3 hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/5 transition-colors"
+                    {...(canAccess ? { to: `/academy/beginner/${l.id}` } : {})}
+                    className={`flex items-center justify-between gap-3 rounded-md border border-white/5 p-3 transition-colors ${
+                      canAccess ? "hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/5" : "opacity-50 cursor-not-allowed"
+                    }`}
                   >
                     <div className="flex items-start gap-3 min-w-0">
                       {p?.completed ? (
