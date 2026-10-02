@@ -26,6 +26,9 @@ export type Database = {
           quiz_best_score: number | null
           quiz_score: number | null
           task_completed: boolean
+          task_evidence: Json | null
+          task_source: string | null
+          task_verified: boolean
           track: string
           updated_at: string
           user_id: string
@@ -41,6 +44,9 @@ export type Database = {
           quiz_best_score?: number | null
           quiz_score?: number | null
           task_completed?: boolean
+          task_evidence?: Json | null
+          task_source?: string | null
+          task_verified?: boolean
           track?: string
           updated_at?: string
           user_id: string
@@ -56,6 +62,9 @@ export type Database = {
           quiz_best_score?: number | null
           quiz_score?: number | null
           task_completed?: boolean
+          task_evidence?: Json | null
+          task_source?: string | null
+          task_verified?: boolean
           track?: string
           updated_at?: string
           user_id?: string
