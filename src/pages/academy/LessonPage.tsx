@@ -1,11 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import {
-  BEGINNER_LESSONS,
-  getLesson,
-  getLessonIndex,
-  TOTAL_BEGINNER_LESSONS,
-} from "@/data/academy/beginner";
+import { getTrack, TRACKS } from "@/data/academy/tracks";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
 import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,11 +21,14 @@ import {
 } from "lucide-react";
 
 export default function LessonPage() {
-  const { lessonId = "" } = useParams();
+  const { lessonId = "", track: trackId = "beginner" } = useParams();
   const navigate = useNavigate();
-  const lesson = getLesson(lessonId);
-  const idx = getLessonIndex(lessonId);
-  const { byId, save } = useAcademyProgress("beginner");
+  const track = getTrack(trackId) ?? TRACKS[0];
+  const BEGINNER_LESSONS = track.lessons;
+  const TOTAL_BEGINNER_LESSONS = BEGINNER_LESSONS.length;
+  const idx = BEGINNER_LESSONS.findIndex((l) => l.id === lessonId);
+  const lesson = idx >= 0 ? BEGINNER_LESSONS[idx] : undefined;
+  const { byId, save } = useAcademyProgress(track.id);
   const progress = byId(lessonId);
   const { canAccess, status, loading: accessLoading } = useAcademyAccess();
 
@@ -48,8 +46,8 @@ export default function LessonPage() {
     return (
       <div className="p-6">
         <p className="text-white/60">Lesson not found.</p>
-        <Link to="/academy/beginner" className="text-[#F4D03F] text-sm">
-          Back to the beginner track
+        <Link to={`/academy/${track.id}`} className="text-[#F4D03F] text-sm">
+          Back to the track
         </Link>
       </div>
     );
@@ -62,8 +60,8 @@ export default function LessonPage() {
   if (!canAccess) {
     return (
       <div className="p-6 space-y-4 max-w-3xl">
-        <Link to="/academy/beginner" className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-[#F4D03F]">
-          <ArrowLeft className="h-3.5 w-3.5" /> Beginner track
+        <Link to={`/academy/${track.id}`} className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-[#F4D03F]">
+          <ArrowLeft className="h-3.5 w-3.5" /> {track.name} track
         </Link>
         <h1 className="text-2xl font-display gold-text">{lesson.title}</h1>
         <p className="text-sm text-white/60">{lesson.summary}</p>
@@ -100,8 +98,8 @@ export default function LessonPage() {
   return (
     <div className="p-6 space-y-6 max-w-4xl">
       <div className="space-y-3">
-        <Link to="/academy/beginner" className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-[#F4D03F]">
-          <ArrowLeft className="h-3.5 w-3.5" /> Beginner track
+        <Link to={`/academy/${track.id}`} className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-[#F4D03F]">
+          <ArrowLeft className="h-3.5 w-3.5" /> {track.name} track
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="border-[#D4AF37]/30 text-[#D4AF37] text-[10px] uppercase tracking-widest">
@@ -268,14 +266,14 @@ export default function LessonPage() {
         <Button
           variant="outline"
           disabled={!prev}
-          onClick={() => prev && navigate(`/academy/beginner/${prev.id}`)}
+          onClick={() => prev && navigate(`/academy/${track.id}/${prev.id}`)}
         >
           <ArrowLeft className="h-4 w-4 mr-1" /> Previous
         </Button>
         <Button
           className="bg-[#D4AF37] text-black hover:bg-[#F4D03F]"
           disabled={!next}
-          onClick={() => next && navigate(`/academy/beginner/${next.id}`)}
+          onClick={() => next && navigate(`/academy/${track.id}/${next.id}`)}
         >
           Next <ArrowRight className="h-4 w-4 ml-1" />
         </Button>

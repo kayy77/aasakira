@@ -87,9 +87,9 @@ function App() {
                       <Route path="/community" element={<ComingSoon title="Community" description="Members-only feed, wins log, events and free signals — launching soon." />} />
                       <Route path="/coach" element={<AICoach />} />
                       <Route path="/academy" element={<AcademyHome />} />
-                      <Route path="/academy/certificate/beginner" element={<Certificate />} />
-                      <Route path="/academy/beginner" element={<BeginnerTrack />} />
-                      <Route path="/academy/beginner/:lessonId" element={<LessonPage />} />
+                      <Route path="/academy/certificate/:track" element={<Certificate />} />
+                      <Route path="/academy/:track" element={<BeginnerTrack />} />
+                      <Route path="/academy/:track/:lessonId" element={<LessonPage />} />
                       <Route path="/copy" element={<CopyOverview />} />
                       <Route path="/copy/accounts" element={<CopyAccounts />} />
                       <Route path="/copy/masters" element={<CopyMasters />} />

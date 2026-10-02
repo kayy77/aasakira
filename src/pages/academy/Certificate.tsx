@@ -1,13 +1,16 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
-import { TOTAL_BEGINNER_LESSONS } from "@/data/academy/beginner";
+import { getTrack, TRACKS } from "@/data/academy/tracks";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Award, Printer } from "lucide-react";
 
 export default function Certificate() {
   const { user } = useAuth();
-  const { rows } = useAcademyProgress("beginner");
+  const { track: trackId = "beginner" } = useParams();
+  const track = getTrack(trackId) ?? TRACKS[0];
+  const TOTAL_BEGINNER_LESSONS = track.lessons.length;
+  const { rows } = useAcademyProgress(track.id);
   const completed = rows.filter((r) => r.completed).length;
   const finished = completed === TOTAL_BEGINNER_LESSONS;
   const name = user?.email?.split("@")[0] ?? "Trader";
@@ -18,9 +21,9 @@ export default function Certificate() {
       <div className="p-6 space-y-3">
         <h1 className="text-2xl font-display gold-text">Certificate locked</h1>
         <p className="text-sm text-white/60">
-          Complete all {TOTAL_BEGINNER_LESSONS} beginner lessons to unlock your certificate. You're at {completed}.
+          Complete all {TOTAL_BEGINNER_LESSONS} {track.name} lessons to unlock your certificate. You're at {completed}.
         </p>
-        <Link to="/academy/beginner">
+        <Link to={`/academy/${track.id}`}>
           <Button className="bg-[#D4AF37] text-black hover:bg-[#F4D03F]">Back to the track</Button>
         </Link>
       </div>
@@ -47,8 +50,7 @@ export default function Certificate() {
         <p className="text-sm text-white/60">This certifies that</p>
         <div className="text-2xl text-white font-display capitalize">{name}</div>
         <p className="text-sm text-white/60 max-w-lg mx-auto">
-          has completed all {TOTAL_BEGINNER_LESSONS} lessons of the Beginner track, covering foundations, market
-          mechanics, risk and capital, reading price, and execution and discipline.
+          has completed all {TOTAL_BEGINNER_LESSONS} lessons of the {track.name} track, covering {track.modules.join(", ").toLowerCase()}.
         </p>
         <div className="flex items-center justify-center gap-10 pt-4 text-xs text-white/50">
           <div>
@@ -56,7 +58,7 @@ export default function Certificate() {
             <div className="uppercase tracking-widest text-[10px]">Date</div>
           </div>
           <div>
-            <div className="text-white/80 font-mono">Beginner · 20 lessons</div>
+            <div className="text-white/80 font-mono">{track.name} · {TOTAL_BEGINNER_LESSONS} lessons</div>
             <div className="uppercase tracking-widest text-[10px]">Track</div>
           </div>
         </div>
