@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { BEGINNER_LESSONS, BEGINNER_MODULES, TOTAL_BEGINNER_LESSONS } from "@/data/academy/beginner";
+import { TRACKS } from "@/data/academy/tracks";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
 import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,9 +61,7 @@ export default function AcademyHome() {
       ready: canAccess,
       pct,
     },
-    { name: "Intermediate", desc: "Structure, liquidity, sessions and multi-timeframe execution.", lessons: 20, href: "#", ready: false, pct: 0 },
-    { name: "Advanced", desc: "Institutional concepts, order flow and portfolio-level risk.", lessons: 20, href: "#", ready: false, pct: 0 },
-    { name: "Elite", desc: "Prop firm scaling, psychology under size, and performance systems.", lessons: 20, href: "#", ready: false, pct: 0 },
+    ...TRACKS.slice(1).map((t) => ({ name: t.name, desc: t.desc, lessons: t.lessons.length, href: `/academy/${t.id}`, ready: canAccess, pct: 0 })),
   ];
 
   return (

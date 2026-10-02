@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import { BEGINNER_LESSONS, BEGINNER_MODULES, TOTAL_BEGINNER_LESSONS } from "@/data/academy/beginner";
+import { Link, useParams } from "react-router-dom";
+import { getTrack, TRACKS } from "@/data/academy/tracks";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
 import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Circle, Clock, GraduationCap, Lock, PlayCircle } from "lucide-react";
 
 export default function BeginnerTrack() {
+  const { track: trackId = "beginner" } = useParams();
+  const track = getTrack(trackId) ?? TRACKS[0];
+  const BEGINNER_LESSONS = track.lessons;
+  const BEGINNER_MODULES = track.modules;
+  const TOTAL_BEGINNER_LESSONS = BEGINNER_LESSONS.length;
   const { canAccess, status, loading: accessLoading } = useAcademyAccess();
-  const { byId, rows, loading } = useAcademyProgress("beginner");
+  const { byId, rows, loading } = useAcademyProgress(track.id);
   const completed = rows.filter((r) => r.completed).length;
   const pct = Math.round((completed / TOTAL_BEGINNER_LESSONS) * 100);
 
@@ -20,7 +25,7 @@ export default function BeginnerTrack() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-display gold-text flex items-center gap-2">
-            <GraduationCap className="h-6 w-6 text-[#D4AF37]" /> Academy · Beginner
+            <GraduationCap className="h-6 w-6 text-[#D4AF37]" /> Academy · {track.name}
           </h1>
           <p className="text-sm text-white/60">
             Twenty lessons across five modules. Read, complete the task, pass the quiz.
@@ -28,7 +33,7 @@ export default function BeginnerTrack() {
         </div>
         {canAccess ? (
           <Link
-            to={`/academy/beginner/${nextLesson.id}`}
+            to={`/academy/${track.id}/${nextLesson.id}`}
             className="inline-flex items-center gap-2 rounded-md bg-[#D4AF37] px-4 py-2 text-sm font-medium text-black hover:bg-[#F4D03F]"
           >
             <PlayCircle className="h-4 w-4" />
@@ -78,7 +83,7 @@ export default function BeginnerTrack() {
                 return (
                   <Row
                     key={l.id}
-                    {...(canAccess ? { to: `/academy/beginner/${l.id}` } : {})}
+                    {...(canAccess ? { to: `/academy/${track.id}/${l.id}` } : {})}
                     className={`flex items-center justify-between gap-3 rounded-md border border-white/5 p-3 transition-colors ${
                       canAccess ? "hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/5" : "opacity-50 cursor-not-allowed"
                     }`}
