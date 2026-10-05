@@ -59,15 +59,10 @@ export default function RealTradeTaskPanel({ module, verified, onVerified }: Pro
         <p className="text-xs text-white/40">Checking your trades…</p>
       ) : source === "none" ? (
         <div className="space-y-2">
-          <p className="text-xs text-white/60">No real trades found yet. Link a trading account or log trades in your Journal.</p>
-          <div className="flex gap-2">
-            <Button asChild size="sm" variant="outline" className="border-[#D4AF37]/40 text-[#F4D03F]">
-              <Link to="/account/trading-accounts"><Link2 className="h-3.5 w-3.5 mr-1" /> Link account</Link>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="border-white/15 text-white/70">
-              <Link to="/journal"><BookOpen className="h-3.5 w-3.5 mr-1" /> Open Journal</Link>
-            </Button>
-          </div>
+          <p className="text-xs text-white/60">No real trades found yet. Link a trading account, or log trades in your Journal — we check whichever has data.</p>
+          <Button asChild size="sm" variant="outline" className="border-[#D4AF37]/40 text-[#F4D03F]">
+            <Link to="/account/trading-accounts"><Link2 className="h-3.5 w-3.5 mr-1" /> Link account</Link>
+          </Button>
         </div>
       ) : result ? (
         <div className="space-y-2">

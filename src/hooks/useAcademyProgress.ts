@@ -7,6 +7,9 @@ export type ProgressRow = {
   quiz_best_score: number | null;
   quiz_attempts: number;
   task_completed: boolean;
+  task_verified?: boolean;
+  task_source?: string | null;
+  task_evidence?: Record<string, unknown> | null;
 };
 
 export function useAcademyProgress(track = "beginner") {
@@ -16,9 +19,9 @@ export function useAcademyProgress(track = "beginner") {
   const refresh = useCallback(async () => {
     const { data } = await supabase
       .from("academy_progress")
-      .select("lesson_id, completed, quiz_best_score, quiz_attempts, task_completed")
+      .select("lesson_id, completed, quiz_best_score, quiz_attempts, task_completed, task_verified, task_source, task_evidence")
       .eq("track", track);
-    setRows((data as ProgressRow[]) ?? []);
+    setRows((data as unknown as ProgressRow[]) ?? []);
     setLoading(false);
   }, [track]);
 
@@ -46,6 +49,9 @@ export function useAcademyProgress(track = "beginner") {
         lesson_id: lessonId,
         completed: patch.completed ?? existing?.completed ?? false,
         task_completed: patch.task_completed ?? existing?.task_completed ?? false,
+        task_verified: patch.task_verified ?? existing?.task_verified ?? false,
+        task_source: patch.task_source ?? existing?.task_source ?? null,
+        task_evidence: patch.task_evidence ?? existing?.task_evidence ?? null,
         quiz_best_score: nextBest,
         quiz_attempts:
           patch.quiz_score != null ? (existing?.quiz_attempts ?? 0) + 1 : existing?.quiz_attempts ?? 0,
