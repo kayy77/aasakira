@@ -1,0 +1,1 @@
+- Academy practical tasks are proven against real trades via per-module checks in src/lib/academy/realTradeChecks.ts (linked-account trade_history first, journal_entries fallback); proof is stored on academy_progress. Why: one place to tune lesson-to-trading rules.
