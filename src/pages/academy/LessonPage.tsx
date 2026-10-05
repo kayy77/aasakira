@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getTrack, TRACKS } from "@/data/academy/tracks";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
+import RealTradeTaskPanel from "@/components/academy/RealTradeTaskPanel";
 import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -183,12 +184,25 @@ export default function LessonPage() {
               </li>
             ))}
           </ol>
+          <RealTradeTaskPanel
+            module={lesson.module}
+            verified={!!progress?.task_verified}
+            onVerified={async ({ source, result }) => {
+              await save(lesson.id, {
+                task_completed: true,
+                task_verified: true,
+                task_source: source,
+                task_evidence: { metric: result.metric, insight: result.insight, sample: result.sample, at: new Date().toISOString() },
+              });
+              toast({ title: "Task proven on real trades", description: result.metric });
+            }}
+          />
           <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
             <Checkbox
               checked={!!progress?.task_completed}
               onCheckedChange={(v) => save(lesson.id, { task_completed: !!v })}
             />
-            I've completed this task
+            I've practised the steps above
           </label>
         </CardContent>
       </Card>
