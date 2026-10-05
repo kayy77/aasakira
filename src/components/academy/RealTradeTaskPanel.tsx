@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getCheckForModule, loadRealTrades, type CheckResult, type TradeSource } from "@/lib/academy/realTradeChecks";
-import { Activity, BookOpen, CheckCircle2, Link2, RefreshCw, XCircle } from "lucide-react";
+import { Activity, CheckCircle2, Link2, RefreshCw, XCircle } from "lucide-react";
 
 type Props = {
   module: string;

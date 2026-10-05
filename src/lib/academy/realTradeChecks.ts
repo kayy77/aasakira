@@ -152,7 +152,7 @@ const CHECKS: Record<string, RealTradeCheck> = {
     requirement: "Keep position size consistent: largest lot no more than 2× your typical lot.",
     evaluate: (t) => {
       const l = t.map((x) => x.lots).filter((x): x is number => x != null && x > 0);
-      if (l.length < 3) return needs(99, []) && { passed: false, metric: `${l.length} trades with size`, insight: "Record lot size on at least 3 trades so we can check your sizing.", sample: l.length };
+      if (l.length < 3) return { passed: false, metric: `${l.length} trades with size`, insight: "Record lot size on at least 3 trades so we can check your sizing.", sample: l.length };
       const r = Math.max(...l) / median(l);
       return ok(r <= 2, `Largest lot ${fmt(r, 1)}× typical`, "Your sizing is consistent — risk is under control.", `One trade was ${fmt(r, 1)}× your normal size. Oversized trades are where accounts get hurt.`, l.length);
     },
