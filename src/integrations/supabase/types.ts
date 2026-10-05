@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      academy_journal: {
+        Row: {
+          created_at: string
+          id: string
+          lesson_id: string
+          note: string
+          step_index: number
+          step_text: string
+          track: string
+          trade_key: string | null
+          trade_label: string | null
+          trade_time: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lesson_id: string
+          note?: string
+          step_index: number
+          step_text: string
+          track: string
+          trade_key?: string | null
+          trade_label?: string | null
+          trade_time?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          note?: string
+          step_index?: number
+          step_text?: string
+          track?: string
+          trade_key?: string | null
+          trade_label?: string | null
+          trade_time?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       academy_progress: {
         Row: {
           completed: boolean

@@ -100,9 +100,7 @@ const GROUPS: Group[] = [
       { title: "Intermediate", url: "/academy/intermediate", icon: GraduationCap },
       { title: "Advanced", url: "/academy/advanced", icon: GraduationCap },
       { title: "Elite", url: "/academy/elite", icon: GraduationCap },
-      { title: "Intermediate", url: "#", icon: GraduationCap, soon: true },
-      { title: "Advanced", url: "#", icon: GraduationCap, soon: true },
-      { title: "Elite", url: "#", icon: Sparkles, soon: true },
+      { title: "Academy Journal", url: "/academy/journal", icon: BookOpen },
     ],
   },
   {

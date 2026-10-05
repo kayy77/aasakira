@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { getTrack, TRACKS } from "@/data/academy/tracks";
 import { useAcademyProgress } from "@/hooks/useAcademyProgress";
 import RealTradeTaskPanel from "@/components/academy/RealTradeTaskPanel";
+import LessonStepJournal from "@/components/academy/LessonStepJournal";
 import { AcademyLockedNotice, useAcademyAccess } from "@/components/academy/AcademyAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -184,6 +185,7 @@ export default function LessonPage() {
               </li>
             ))}
           </ol>
+          <LessonStepJournal track={track.id} lessonId={lesson.id} steps={lesson.task.steps} />
           <RealTradeTaskPanel
             module={lesson.module}
             verified={!!progress?.task_verified}
