@@ -39,6 +39,7 @@ import BeginnerTrack from '@/pages/academy/BeginnerTrack';
 import LessonPage from '@/pages/academy/LessonPage';
 import AcademyHome from '@/pages/academy/AcademyHome';
 import Certificate from '@/pages/academy/Certificate';
+import AcademyJournal from '@/pages/academy/AcademyJournal';
 
 import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
@@ -87,6 +88,7 @@ function App() {
                       <Route path="/community" element={<ComingSoon title="Community" description="Members-only feed, wins log, events and free signals — launching soon." />} />
                       <Route path="/coach" element={<AICoach />} />
                       <Route path="/academy" element={<AcademyHome />} />
+                      <Route path="/academy/journal" element={<AcademyJournal />} />
                       <Route path="/academy/certificate/:track" element={<Certificate />} />
                       <Route path="/academy/:track" element={<BeginnerTrack />} />
                       <Route path="/academy/:track/:lessonId" element={<LessonPage />} />
