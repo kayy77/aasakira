@@ -40,6 +40,7 @@ import LessonPage from '@/pages/academy/LessonPage';
 import AcademyHome from '@/pages/academy/AcademyHome';
 import Certificate from '@/pages/academy/Certificate';
 import AcademyJournal from '@/pages/academy/AcademyJournal';
+import TradingJournal from '@/pages/TradingJournal';
 
 import { Toaster } from "@/components/ui/toaster"
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
@@ -88,6 +89,7 @@ function App() {
                       <Route path="/community" element={<ComingSoon title="Community" description="Members-only feed, wins log, events and free signals — launching soon." />} />
                       <Route path="/coach" element={<AICoach />} />
                       <Route path="/academy" element={<AcademyHome />} />
+                      <Route path="/journal" element={<TradingJournal />} />
                       <Route path="/academy/journal" element={<AcademyJournal />} />
                       <Route path="/academy/certificate/:track" element={<Certificate />} />
                       <Route path="/academy/:track" element={<BeginnerTrack />} />

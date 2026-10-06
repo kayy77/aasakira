@@ -89,7 +89,7 @@ const GROUPS: Group[] = [
       { title: "Lot Size Calculator", url: "/tools/lot-size", icon: Calculator },
       { title: "Risk Calculator", url: "#", icon: Percent, soon: true },
       { title: "Economic Calendar", url: "#", icon: CalendarDays, soon: true },
-      { title: "Trading Journal", url: "#", icon: BookOpen, soon: true },
+      { title: "Trading Journal", url: "/journal", icon: BookOpen },
     ],
   },
   {
