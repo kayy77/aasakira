@@ -57,6 +57,8 @@ export default function TradingJournal() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<Form>(empty);
   const [saving, setSaving] = useState(false);
+  const [sendLive, setSendLive] = useState(false);
+  const [slTp, setSlTp] = useState({ sl: "", tp: "" });
 
   const load = async () => {
     if (!user) return;
@@ -104,13 +106,26 @@ export default function TradingJournal() {
       ...d, user_id: user.id, pair: d.pair.toUpperCase(),
       entry_time: new Date(d.entry_time).toISOString(), exit_time: d.exit_time ? new Date(d.exit_time).toISOString() : null,
     } as any;
+    const execute = !editId && sendLive && d.status === "OPEN";
+    if (execute) {
+      if (!d.lot_size) return toast({ title: "Lot size required", description: "Enter a lot size to place a live order.", variant: "destructive" });
+      if (!confirm(`Place a REAL ${d.direction === "LONG" ? "BUY" : "SELL"} order for ${d.lot_size} lots of ${payload.pair} on your cTrader account?`)) return;
+    }
     setSaving(true);
-    const { error } = editId
-      ? await supabase.from("journal_entries").update(payload).eq("id", editId)
-      : await supabase.from("journal_entries").insert(payload);
+    const res = editId
+      ? await supabase.from("journal_entries").update(payload).eq("id", editId).select("id").single()
+      : await supabase.from("journal_entries").insert(payload).select("id").single();
+    if (res.error) { setSaving(false); return toast({ title: "Couldn't save trade", description: res.error.message, variant: "destructive" }); }
+    if (execute) {
+      const { data, error } = await supabase.functions.invoke("ctrader-execute", {
+        body: { journalEntryId: res.data.id, symbol: payload.pair, side: d.direction === "LONG" ? "BUY" : "SELL", lots: d.lot_size, stopLoss: num(slTp.sl), takeProfit: num(slTp.tp) },
+      });
+      let msg = error?.message;
+      if (error && (error as any).context?.json) { try { msg = (await (error as any).context.json()).error ?? msg; } catch { /* keep */ } }
+      if (error) toast({ title: "Saved, but cTrader order failed", description: String(msg), variant: "destructive" });
+      else toast({ title: "Order filled on cTrader", description: `Position ${data.positionId ?? ""}${data.fillPrice ? ` @ ${data.fillPrice}` : ""}${data.live ? "" : " (demo account)"}` });
+    } else toast({ title: editId ? "Trade updated" : "Trade added" });
     setSaving(false);
-    if (error) return toast({ title: "Couldn't save trade", description: error.message, variant: "destructive" });
-    toast({ title: editId ? "Trade updated" : "Trade added" });
     setOpen(false);
     load();
   };
@@ -214,6 +229,21 @@ export default function TradingJournal() {
             <div className="col-span-2 md:col-span-1"><Label>How you felt</Label><Input {...f("feelings")} /></div>
             <div className="col-span-2"><Label>Mistakes</Label><Input {...f("mistakes")} /></div>
           </div>
+          {!editId && form.status === "OPEN" && (
+            <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={sendLive} onChange={(e) => setSendLive(e.target.checked)} />
+                Also place this as a real market order on my cTrader account
+              </label>
+              {sendLive && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Stop loss price</Label><Input type="number" step="any" value={slTp.sl} onChange={(e) => setSlTp({ ...slTp, sl: e.target.value })} /></div>
+                  <div><Label>Take profit price</Label><Input type="number" step="any" value={slTp.tp} onChange={(e) => setSlTp({ ...slTp, tp: e.target.value })} /></div>
+                  <p className="col-span-2 text-xs text-muted-foreground">Fills at market price. Real money is at risk.</p>
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={save} disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save trade</Button>

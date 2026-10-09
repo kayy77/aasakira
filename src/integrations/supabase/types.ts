@@ -1214,10 +1214,13 @@ export type Database = {
       journal_entries: {
         Row: {
           ai_feedback: string | null
+          broker_account_id: string | null
+          broker_position_id: string | null
           created_at: string
           direction: string
           entry_price: number
           entry_time: string
+          executed_via: string | null
           exit_price: number | null
           exit_time: string | null
           feelings: string | null
@@ -1237,10 +1240,13 @@ export type Database = {
         }
         Insert: {
           ai_feedback?: string | null
+          broker_account_id?: string | null
+          broker_position_id?: string | null
           created_at?: string
           direction: string
           entry_price: number
           entry_time: string
+          executed_via?: string | null
           exit_price?: number | null
           exit_time?: string | null
           feelings?: string | null
@@ -1260,10 +1266,13 @@ export type Database = {
         }
         Update: {
           ai_feedback?: string | null
+          broker_account_id?: string | null
+          broker_position_id?: string | null
           created_at?: string
           direction?: string
           entry_price?: number
           entry_time?: string
+          executed_via?: string | null
           exit_price?: number | null
           exit_time?: string | null
           feelings?: string | null
