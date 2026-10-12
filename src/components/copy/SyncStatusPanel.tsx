@@ -51,13 +51,20 @@ export default function SyncStatusPanel() {
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
 
+  const [orders, setOrders] = useState<any[]>([]);
   const load = useCallback(async () => {
-    const [{ data: a }, { data: s }] = await Promise.all([
+    const [{ data: a }, { data: s }, { data: o }] = await Promise.all([
       supabase.from("follower_accounts").select("*").order("created_at", { ascending: false }),
       supabase.from("sync_status").select("*"),
+      supabase
+        .from("copy_jobs")
+        .select("id, status, broker_ticket, executed_volume, executed_price, executed_at, last_error, created_at, copy_events(event_type, payload)")
+        .order("created_at", { ascending: false })
+        .limit(8),
     ]);
     setAccounts((a as Row[]) ?? []);
     setSyncs((s as Sync[]) ?? []);
+    setOrders(o ?? []);
     setLoading(false);
   }, []);
 
@@ -67,6 +74,7 @@ export default function SyncStatusPanel() {
       .channel("copy-sync-status")
       .on("postgres_changes", { event: "*", schema: "public", table: "sync_status" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "follower_accounts" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "copy_jobs" }, load)
       .subscribe();
     const poll = setInterval(load, 30_000);
     const clock = setInterval(() => setTick((t) => t + 1), 1000);
@@ -140,6 +148,42 @@ export default function SyncStatusPanel() {
             );
           })
         )}
+
+        <div className="pt-3 border-t border-white/5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] uppercase tracking-widest text-white/40">Live cTrader orders</span>
+            <span className="text-[10px] text-yellow-400/80">Demo accounts only</span>
+          </div>
+          {orders.length === 0 ? (
+            <p className="text-xs text-white/50">No copied orders yet.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {orders.map((o) => {
+                const ev = o.copy_events;
+                const tone =
+                  o.status === "completed" ? "border-emerald-500 text-emerald-400"
+                  : o.status === "failed" || o.status === "rejected" ? "border-red-500 text-red-400"
+                  : "border-yellow-500 text-yellow-400";
+                return (
+                  <div key={o.id} className="flex items-center justify-between gap-2 text-xs">
+                    <div className="min-w-0 truncate">
+                      <span className="text-white/80">{ev?.event_type}</span>{" "}
+                      <span className="text-white/60">{ev?.payload?.symbol}</span>{" "}
+                      {o.executed_volume != null && <span className="text-white/40">{o.executed_volume} lots</span>}{" "}
+                      {o.executed_price != null && <span className="text-white/40 font-mono">@ {o.executed_price}</span>}
+                      {o.broker_ticket && <span className="text-white/30 font-mono"> #{o.broker_ticket}</span>}
+                      {o.last_error && o.status !== "completed" && <span className="text-red-400/80"> — {o.last_error}</span>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant="outline" className={`${tone} text-[10px]`}>{o.status}</Badge>
+                      <span className="text-white/40">{ago(o.executed_at ?? o.created_at)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
