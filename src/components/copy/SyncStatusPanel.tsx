@@ -51,13 +51,20 @@ export default function SyncStatusPanel() {
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
 
+  const [orders, setOrders] = useState<any[]>([]);
   const load = useCallback(async () => {
-    const [{ data: a }, { data: s }] = await Promise.all([
+    const [{ data: a }, { data: s }, { data: o }] = await Promise.all([
       supabase.from("follower_accounts").select("*").order("created_at", { ascending: false }),
       supabase.from("sync_status").select("*"),
+      supabase
+        .from("copy_jobs")
+        .select("id, status, broker_ticket, executed_volume, executed_price, executed_at, last_error, created_at, copy_events(event_type, payload)")
+        .order("created_at", { ascending: false })
+        .limit(8),
     ]);
     setAccounts((a as Row[]) ?? []);
     setSyncs((s as Sync[]) ?? []);
+    setOrders(o ?? []);
     setLoading(false);
   }, []);
 

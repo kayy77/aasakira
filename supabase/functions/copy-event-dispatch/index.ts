@@ -72,7 +72,18 @@ Deno.serve(async (req) => {
       jobsCreated = inserted?.length ?? 0;
     }
 
-    return json({ success: true, event_id: event.id, jobs_created: jobsCreated });
+    // Execute immediately on the followers' cTrader accounts.
+    let execution: unknown = null;
+    if (jobsCreated) {
+      const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/copy-job-processor`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
+        body: "{}",
+      }).catch(() => null);
+      execution = r ? await r.json().catch(() => null) : null;
+    }
+
+    return json({ success: true, event_id: event.id, jobs_created: jobsCreated, execution });
   } catch (e: any) {
     return json({ error: e?.message || "dispatch failed" }, 400);
   }
