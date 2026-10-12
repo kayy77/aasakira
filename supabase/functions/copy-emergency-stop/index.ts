@@ -27,6 +27,22 @@ Deno.serve(async (req) => {
     const { data: adminRow } = await supabase.from("user_roles").select("role").eq("user_id", uid).eq("role", "admin").maybeSingle();
     const isAdmin = !!adminRow;
 
+    if (scope === "relationship") {
+      if (!target_id) return json({ error: "target_id required" }, 400);
+      const q = supabase.from("copy_relationships").update({ status: action === "resume" ? "active" : action === "stop" ? "stopped" : "paused" }).eq("id", target_id);
+      if (!isAdmin) q.eq("user_id", uid);
+      await q;
+      return json({ ok: true });
+    }
+
+    if (scope === "all") {
+      if (!isAdmin) return json({ error: "Admin only" }, 403);
+      const status = action === "resume" ? "active" : action === "stop" ? "stopped" : "paused";
+      const from = action === "resume" ? ["paused"] : ["active", "paused"];
+      await supabase.from("copy_relationships").update({ status }).in("status", from);
+      return json({ ok: true });
+    }
+
     if (scope === "master") {
       if (!isAdmin) return json({ error: "Admin only for master scope" }, 403);
       const relStatus = action === "resume" ? "active" : action === "stop" ? "stopped" : "paused";
